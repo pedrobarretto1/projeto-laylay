@@ -1,0 +1,20 @@
+{
+  "versao": 8,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "APLICATIVO_NOME_E": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo Sal e Pimenta iniciar"}]},
+    "PASTA_CATEGORIA_OU": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "pasta de fotos ou vídeos estiver vazia"}]},
+    "PESSOAS_SUJEITO_E": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "Maria e João aprovarem"}]},
+    "SERVIDOR_CLIENTE_E": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor responder"}, {"citacao": "cliente autenticar"}]},
+    "CHUVA_VENTO_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "chuva cessar"}, {"citacao": "vento diminuir"}]},
+    "SENSORES_REDE_E": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensores de luz e temperatura registrarem mudança"}, {"citacao": "rede estiver ativa"}]},
+    "CHAVE_BOTAO_NECESSIDADE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias", "condicoes": [{"citacao": "chave estiver presente"}, {"citacao": "botão estiver pressionado"}]},
+    "BOTOES_EQUIVALENCIA": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia", "condicoes": [{"citacao": "botões A e B forem pressionados"}]},
+    "SENSOR_NEGADO_E": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor não responder"}, {"citacao": "bateria acabar"}]},
+    "CAMERA_DOIS_VERBOS": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera captar imagem"}, {"citacao": "registrar movimento"}]},
+    "LED_ELIPSE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "porta estiver fechada"}, {"citacao": "LED verde"}]},
+    "RELATIVA_OBJETO_COMPOSTO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que monitora a porta e a janela detectar fumaça"}]},
+    "MISTO_ARVORE_V8": {"representavel": false, "motivo": "(porta e camera) ou operador exige arvore, nao conectivo plano"},
+    "MISTO_SUJEITO_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensores A e B detectarem falha"}, {"citacao": "bateria acabar"}]}
+  }
+}

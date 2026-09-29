@@ -1,0 +1,12 @@
+{
+  "versao": 20,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CAMERA_PONTE_MOTOR_BOMBA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera observar a ponte"}, {"citacao": "o motor e a bomba pararem"}], "ancoras_segmentos": {"c0": "observar", "c1": "", "c2": "pararem"}},
+    "SISTEMA_LOG_USUARIO_CLIENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sistema registrar o log"}, {"citacao": "o usuário e o cliente confirmarem"}], "ancoras_segmentos": {"c0": "registrar", "c1": "", "c2": "confirmarem"}},
+    "ROBO_PECA_ETIQUETA_ESTEIRA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "robô localizar a peça e a etiqueta"}, {"citacao": "a esteira parar"}], "ancoras_segmentos": {"c0": "localizar", "c1": "", "c2": "parar"}},
+    "APP_LOG_RELATORIO_REDE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo criar o log e o relatório"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "criar", "c1": "", "c2": "cair"}},
+    "SENSOR_FOTO_VIDEO_SERVIDORES": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor salvar foto e vídeo"}, {"citacao": "os servidores reiniciarem"}], "ancoras_segmentos": {"c0": "salvar", "c1": "", "c2": "reiniciarem"}},
+    "APP_LOG_RELATIVA_ERRO_ALERTA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo enviar o log que contém erro e alerta"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "enviar", "c1": "", "c2": "cair"}}
+  }
+}

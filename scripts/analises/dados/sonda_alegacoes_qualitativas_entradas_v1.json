@@ -1,0 +1,62 @@
+{
+  "versao": 1,
+  "casos": [
+    {
+      "id": "SOLO_SEM_CRITERIO",
+      "dominio": "sensores",
+      "fontes": {"leitura": {"origem": "usuario", "texto": "O sensor do solo leu 15% de umidade."}},
+      "fala": "O sensor do solo leu 15% de umidade. Isso é bastante seco."
+    },
+    {
+      "id": "VIGA_SEM_CRITERIO",
+      "dominio": "engenharia",
+      "fontes": {"ensaio": {"origem": "usuario", "texto": "A viga suportou 2 kN durante o ensaio."}},
+      "fala": "A viga suportou 2 kN. Portanto, ela é segura."
+    },
+    {
+      "id": "TEMPERATURA_SEM_CRITERIO",
+      "dominio": "temperatura",
+      "fontes": {"leitura": {"origem": "usuario", "texto": "A temperatura medida foi 18°C."}},
+      "fala": "A temperatura medida foi 18°C. Isso é frio."
+    },
+    {
+      "id": "MOTOR_SEM_CRITERIO",
+      "dominio": "eletricidade",
+      "fontes": {"leitura": {"origem": "usuario", "texto": "O motor consumiu 3 A."}},
+      "fala": "O motor consumiu 3 A. Esse consumo é alto."
+    },
+    {
+      "id": "SOLO_COM_CRITERIO",
+      "dominio": "sensores",
+      "fontes": {
+        "leitura": {"origem": "usuario", "texto": "A umidade do solo foi 15%."},
+        "criterio": {"origem": "usuario", "texto": "Neste protocolo, leituras de umidade do solo abaixo de 20% são classificadas como secas."}
+      },
+      "fala": "A umidade do solo foi 15%. Pelo critério informado, essa leitura é seca."
+    },
+    {
+      "id": "TEMPERATURA_COM_CRITERIO",
+      "dominio": "temperatura",
+      "fontes": {
+        "leitura": {"origem": "usuario", "texto": "A temperatura medida foi 18°C."},
+        "criterio": {"origem": "usuario", "texto": "Neste ensaio, temperatura abaixo de 20°C é classificada como fria."}
+      },
+      "fala": "A temperatura medida foi 18°C. Pelo critério do ensaio, ela é fria."
+    },
+    {
+      "id": "COMPARACAO_NUMERICA_CONTROLE",
+      "dominio": "matematica",
+      "fontes": {
+        "leitura": {"origem": "usuario", "texto": "A leitura foi 15%."},
+        "limiar": {"origem": "usuario", "texto": "O limiar configurado é 20%."}
+      },
+      "fala": "15% é menor que 20%."
+    },
+    {
+      "id": "LITERAL_PROGRAMACAO_CONTROLE",
+      "dominio": "programacao",
+      "fontes": {"codigo": {"origem": "usuario", "texto": "A função retorna True quando x > 0."}},
+      "fala": "A função retorna True quando x > 0."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "versao": 20,
+  "casos": [
+    {"id": "CAMERA_PONTE_MOTOR_BOMBA", "dominio": "alarme_hipotetico", "escopo": "sonda:v20:sujeito1", "fonte": "Se a câmera observar a ponte e o motor e a bomba pararem, o aviso toca."},
+    {"id": "SISTEMA_LOG_USUARIO_CLIENTE", "dominio": "sistema_hipotetico", "escopo": "sonda:v20:sujeito2", "fonte": "Se o sistema registrar o log e o usuário e o cliente confirmarem, a tarefa termina."},
+    {"id": "ROBO_PECA_ETIQUETA_ESTEIRA", "dominio": "fabrica_hipotetica", "escopo": "sonda:v20:objeto1", "fonte": "Se o robô localizar a peça e a etiqueta e a esteira parar, o painel avisa."},
+    {"id": "APP_LOG_RELATORIO_REDE", "dominio": "registro_hipotetico", "escopo": "sonda:v20:objeto2", "fonte": "Se o aplicativo criar o log e o relatório e a rede cair, o alerta toca."},
+    {"id": "SENSOR_FOTO_VIDEO_SERVIDORES", "dominio": "arquivo_hipotetico", "escopo": "sonda:v20:objeto3", "fonte": "Se o sensor salvar foto e vídeo e os servidores reiniciarem, o aviso aparece."},
+    {"id": "APP_LOG_RELATIVA_ERRO_ALERTA", "dominio": "registro_hipotetico", "escopo": "sonda:v20:relativa", "fonte": "Se o aplicativo enviar o log que contém erro e alerta e a rede cair, o painel avisa."}
+  ]
+}

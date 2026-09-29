@@ -28,6 +28,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_construir_parecer_especialistas_mente",
     "_construir_retrato_turno_mente",
     "_contexto_horario_atual",
+    "_definir_emocao_conversacional",
     "_estado_compartilhado_runtime",
     "_especialista_neural_comandos_runtime",
     "_evidencia_habilidades_turno_mente",

@@ -1,0 +1,48 @@
+{
+  "versao": 24,
+  "origem": "revisao_manual_local_previa; painel focado apos invalidez de ambiguidade em v22 e v23",
+  "casos": {
+    "TREINADOR_GOLEIRO_ATACANTE_ZAGUEIROS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o treinador chamar o goleiro e o atacante", "os zagueiros correrem"],
+        "sujeito_seguinte": ["o treinador chamar o goleiro", "o atacante e os zagueiros correrem"]
+      }
+    },
+    "CAMERA_ONIBUS_CAMINHAO_TAXIS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a câmera registrar o ônibus e o caminhão", "os táxis passarem"],
+        "sujeito_seguinte": ["a câmera registrar o ônibus", "o caminhão e os táxis passarem"]
+      }
+    },
+    "GUIA_LOBO_CERVO_JAVALIS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o guia observar o lobo e o cervo", "os javalis fugirem"],
+        "sujeito_seguinte": ["o guia observar o lobo", "o cervo e os javalis fugirem"]
+      }
+    },
+    "MEDICA_PAI_FILHO_FILHAS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a médica examinar o pai e o filho", "as filhas saírem"],
+        "sujeito_seguinte": ["a médica examinar o pai", "o filho e as filhas saírem"]
+      }
+    },
+    "BIOLOGA_TUCANO_ARARA_PAPAGAIOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a bióloga fotografar o tucano e a arara", "os papagaios voarem"],
+        "sujeito_seguinte": ["a bióloga fotografar o tucano", "a arara e os papagaios voarem"]
+      }
+    },
+    "FAZENDEIRO_CAVALO_BURRO_VACAS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o fazendeiro vigiar o cavalo e o burro", "as vacas correrem"],
+        "sujeito_seguinte": ["o fazendeiro vigiar o cavalo", "o burro e as vacas correrem"]
+      }
+    }
+  }
+}

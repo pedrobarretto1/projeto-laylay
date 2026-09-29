@@ -2,6 +2,142 @@
 
 Atualizado em **23/09/2026**, por Astra e SOL, a pedido do Pedro.
 
+### P01 — generalização v6 e validade de critério revogado, 28/09/2026
+
+Comparação posterior em 29/09: candidato offline separando ato/alvo/operação
+**não promovido**. Em 12 casos novos congelados, relação final alinhada em
+8/12 contra 6/12 do baseline isolado; no replay dos 12 históricos, 7/12 contra
+9/12. Melhora em perguntas não compensou regressões em negação, conversa
+irrelevante e ambiguidade. 510 testes didáticos verdes provam contratos,
+não eliminam esses erros reais. Artefatos `sonda_relacoes_fontes_v2_ab_primeira`
+e `sonda_relacoes_fontes_v2_v1_ab_diagnostico`, em resultados_testes, JSONL.
+Não ajustar painel/gabarito aos erros. Nenhuma guarda ou runtime alterado.
+Próxima fronteira: validar ato e alvo separadamente, incluindo serviços
+canônicos existentes, antes de compor uma relação ou liberar vigência.
+
+Experimento de relações em 29/09: a fonte alvo é fixa e cada fala posterior
+recebe uma relação **proposta**, sem registro de vigência ou liberação.
+Painel local de 12 casos congelado antes do Qwen: saída conjunta com citações
+teve 5/12 casos completos alinhados (7/12 com ancoragem correta). Separando
+cópia literal no host e uma relação por chamada, replay diagnóstico ficou
+em 9/12 (12/12 ancorados). Restam pergunta interpretada como revogação,
+revogação de outro alvo e citação confundida com manutenção. Não generalizar
+9/12 para produção: não é novo holdout, nem revisão humana independente.
+Resultados exclusivos em `resultados_testes/sonda_relacoes_fontes_v1_*.jsonl`.
+486 testes didáticos verdes (27 novos); três erros reais do modelo preservados.
+Nenhum veto foi relaxado; modelo não escreve no registro confiável.
+
+Continuação em 29/09: corrigida a lacuna lexical já registrada abaixo,
+`maior/menor ou igual a número`. O `ou` interno é parte de um comparador,
+não uma junção de condições. O mesmo sinal literal serve ao segmentador
+e à auditoria do grafo; comparação inclusiva conserva a igualdade no limite.
+12 REDs reproduzidos antes do candidato; controles cobrem junção real,
+negação, unidade, limiar, decimais negativos e contexto revogado. Replay
+diagnóstico com Qwen real: `TANQUE_INCLUSIVO` agora alinhado até o grafo;
+câmara preservada; duto revogado continua bloqueado (modelo ainda erra).
+**459 testes didáticos aprovados**, compilação e diff-check limpos.
+Não é treino nem novo holdout. Nenhum runtime alterado. Vigência semântica,
+números por extenso e efeito `classificado como` continuam pendentes.
+
+Correção posterior (28/09): o **RED histórico passou no caminho automático**
+da sonda. `conferir_qualificacao_na_conversa` agora exige cobertura do contexto
+posterior à regra antes de comparar. Texto do usuário não conferido produz
+`contexto_criterio_pendente`, não revogação afirmada. Leitura numérica integral
+representada pela premissa pode passar; ressalva adicional não. Revisor
+explícito pode decidir sobre o snapshot completo, sem autoaprovação.
+**431 testes aprovados** e repetição real com Qwen: duto revogado bloqueado,
+câmara/limiar negativo e rotor/condição necessária preservados. Modelo ainda
+erra seleção; não contar o veto como aprendizado. Sem execução da Laylay.
+Cobertura é conservadora: conversa posterior não numérica, mesmo irrelevante,
+exige revisão. Não há ainda interpretação geral de revogação/substituição.
+Correção validada no escopo da sonda, raiz semântica mais ampla permanece
+parcial. Os parágrafos seguintes preservam o histórico anterior ao patch.
+
+Continuação: contrato explícito de vigência implementado **offline/opt-in**
+em `scripts/analises/contrato_vigencia_criterios.py`. Registro pertence ao
+revisor confiável e vincula decisão ao grafo, alvo, escopo e conteúdo integral
+ordenado do contexto. Mudança exige nova revisão; conflito permanece pendente.
+Pergunta/negação/outra regra não são classificadas por palavras-chave.
+**417 aprovados e 1 RED original ainda aberto**: rota automática não dispõe
+de revisor integrado e continua baseline. A rota opt-in bloqueia sem revisão,
+inclusive no caso histórico, mas isto não comprova interpretação da revogação.
+Sem chamada a modelo, treino, runtime ou encerramento da raiz. A API de escrita
+do registro deve ficar exclusiva de um owner confiável; não é verificador
+automático da decisão humana/modelada que alguém lhe entregar.
+
+- Painel novo de 12 casos, congelado antes da medição real: seis positivos
+  (inclusive construções fora da gramática) e seis negativos/sem vínculo
+  comprovado. Qwen original **0/6** positivos completos; segmentado **3/6**.
+  Seleção exata **5/12** e **zero abstenções corretas** nos dois braços.
+- Limites distintos: `maior ou igual` é segmentado como disjunção; `vinte`
+  não é normalizado a número; `classificado como` não entra na gramática.
+  Não contar veto de frase válida como acerto, nem trocar o gabarito.
+- **RED aberto prioritário:** regra revogada em outra fonte do mesmo contexto
+  ainda chega à comparação no grafo. Modelo erra a seleção, normalizador
+  recebe só a fonte escolhida e grafo confere observação, não vigência.
+  Reproduzido sem modelo/gabarito, com controle idêntico sem revogação.
+  Nenhuma autorização de fala/efeito: barreiras globais permanecem falsas.
+- **399 testes aprovados e 1 RED preservado**, sem xfail. Teste:
+  `scripts/tests/test_criterio_revogado_nao_fundamenta_qualificacao.py`.
+  Artefato real: `resultados_testes/sonda_criterios_v6_ab_primeira.jsonl`.
+  Próxima prioridade: contrato de validade/contexto da fonte antes de ampliar
+  gramática ou treinar. Sem patch de runtime, treino ou liberação da rede.
+
+### P01 — comparação real da normalização segmentada, 28/09/2026
+
+- Opção offline separa condição/consequência/direção literais dos cinco slots
+  propostos pelo Qwen. Reusa os segmentadores existentes; o caminho original
+  continua padrão. Fonte/gabarito não são modificados pelo proponente.
+- Painel v5 congelado antes das consultas: cinco positivos e quatro negativos,
+  ordem das fontes e dos braços alternada. `qwen3:4b-instruct`, temperatura 0:
+  **original 0/5 positivos completos; segmentada 5/5**. Seleção exata permanece
+  5/9 em ambos: modelo errou os quatro negativos. Não contar veto como acerto
+  do modelo. Guardas bloquearam todos os negativos; nenhuma autorização.
+- **392 testes didáticos verdes**. Artefato bruto exclusivo:
+  `resultados_testes/sonda_criterios_v5_ab_primeira.jsonl`. Sem treino/runtime.
+  Pequeno painel de gramática estreita e revisão local, não prova de
+  generalização. Próximo passo: ampliar construções/abstenções fora destes
+  exemplos, mantendo esse resultado congelado e critérios independentes.
+
+### P01 — consequência literal no avaliador offline, 28/09/2026
+
+Continuação — sujeito da consequência: seis REDs demonstraram que a menção
+na condição validava indevidamente outro sujeito (quatro domínios), pronome
+sem vínculo ou descrição duplicada. O grafo agora exige descrição ancorada
+completa e única compatível com o sujeito extraído; não usa ID, grandeza ou
+substring como alias. **371 testes aprovados**, inclusive fluxo composto da
+sonda com proponente controlado e guardas reais. Sem modelo/runtime/treino.
+A fixture que confundia sensor e solo foi corrigida e ganhou teste negativo
+histórico. Painéis v1/v2 preservados: dois casos de equivalência não demonstrada
+agora ficam pendentes; v4 permanece intacto e mantém os cinco controles
+positivos. Compatibilidade literal ainda não certifica identidade semântica.
+
+- Reproduzida sem modelo/gabarito uma lacuna na avaliação: rótulo pedido
+  preenchia o efeito do grafo, e menções na regra inteira permitiam avançar
+  a comparação numérica em ação de alarme e consequência negada. Não houve
+  aprovação de fala nem efeito externo; não confundir com falha de execução.
+- Seis REDs e controles positivos sustentaram uma guarda compartilhada de
+  consequência qualificativa na fonte integral. Trecho, offsets, predicado,
+  sujeito literal, polaridade e prefixo de escopo ficam explícitos.
+- 360 regressivos didáticos verdes; replay v4 bloqueia os dois negativos e
+  preserva cinco positivos. Sem novo treino/chamada ao Qwen/runtime; hashes
+  congelados preservados. Detalhes em `../PLANO_ENSINO_FUNDAMENTADO_LAYLAY.md`.
+- **Parcial, não encerrado:** gramática literal limitada; identidade do
+  sujeito e escopo ainda não comprovados, e propostas do modelo seguem sem
+  ganho novo medido. Pertence à investigação P01, não é outro ID por frase.
+
+### Sonda separada: desculpa seguida de comando — 27/09/2026
+
+- Durante a validação da P16, `classificar_modalidade_turno` leu
+  “Desculpa, repeti o pedido, mas agora abra o Opera.” como `conversa`.
+  `planejar_turno` recebeu `pedido_desculpas` como função comunicativa e
+  devolveu `requer_execucao=False`. A sondagem não passou pelo executor.
+- Isto é uma suspeita de raiz na segmentação/autoridade do turno misto, não
+  consequência demonstrada do decaimento emocional nem prova de que um comando
+  real foi perdido. Não houve patch nessa fronteira. Próximo diagnóstico:
+  comparar o classificador e o interpretador principal com comandos mistos
+  equivalentes sem desculpa, em mais de um domínio, e localizar o primeiro RED.
+
 ### Complemento da observabilidade da entrada — prompts vazios, 23/09
 
 - Evidência do Pedro às 10:30:40 confirma que o texto recebido agora aparece;
@@ -177,6 +313,212 @@ Atualizado em **23/09/2026**, por Astra e SOL, a pedido do Pedro.
   cenário segue em sombra.** 236 testes relevantes verdes; os 4/4 do roteiro
   mediam transporte/não execução, não verdade. Evidência e próxima fronteira
   de alegações atômicas em `PLANO_ENSINO_FUNDAMENTADO_LAYLAY.md`.
+- **27/09, subdiagnóstico P01 ainda em sombra:** a seleção direta de
+  segmentação pelo Qwen mostrou viés de ordem e saídas estruturais instáveis.
+  Uma sonda POS portuguesa independente alinhou 9/13 regras planas de um
+  painel inédito à revisão local, mas errou uma oração relativa e um verbo
+  rotulado como adjetivo; absteve-se numa elipse e recusou uma regra plana
+  cuja mistura `e/ou` era só superficial. Esses REDs pertencem às fronteiras
+  de escopo sintático, POS e cobertura lexical descritas no plano de ensino;
+  não são quatro novas raízes nem prova de qualidade didática no runtime.
+  Nenhuma promoção para fala, treino ou execução.
+- **27/09, mesma raiz P01, oração relativa:** RED focado mostrou que um
+  predicado `acl:relcl` não pode fechar sozinho uma premissa
+  independente. Candidato apenas na sonda POS offline: 55 testes focados
+  verdes; v8 passou de 9/13 para 10/13 regras planas alinhadas à revisão
+  local. Painel novo v9 congelado antes da execução: 8/8 alinhamentos de
+  superfície, porém um deles usou âncora sintática errada (`escreve` em vez
+  de `confirmar`), logo não é 8/8 de análise correta nem razão para promoção.
+  Excluir toda a subárvore relativa foi falsificado: só 5/8 no v9; o
+  candidato ficou restrito ao verbo relativo e a auxiliares diretamente
+  ligados a ele.
+  Parser ambíguo, POS `cessar`, elipse e mistura superficial seguem abertos;
+  nenhum código de produção, fala ou executor alterado nesta etapa.
+- **27/09, continuação da mesma raiz P01:** a âncora `escreve` foi aceita
+  acidentalmente no v9 onde a condição principal depende de `confirmar`.
+  RED focado antes do ajuste; a sonda offline agora se abstém quando uma
+  relativa ainda aberta é seguida imediatamente por verbo após o conectivo.
+  v9: 7 alinhamentos locais/1 abstenção. Painel v10 novo, congelado antes da
+  primeira execução: 4 alinhamentos/2 abstenções; controles independentes
+  preservados. 68 testes da área verdes. Nenhuma promoção ao runtime nem
+  encerramento de P01; demais fronteiras continuam separadas.
+- **27/09, auditoria de âncora da mesma raiz P01:** `ROOT` do parser foi
+  falsificado como regra geral para o verbo principal. O confronto offline
+  separa âncora, trecho e abstenção sem usar a revisão na proposta. Painel
+  v11 congelado antes do parser: 6/8 casos com âncoras alinhadas à revisão
+  local e 2/8 abstenções; `vapor` etiquetado `VERB` revelou outra falha POS
+  sem gerar sucesso falso. 71 testes focados verdes. Não houve alteração de
+  produção nem validação da fala no runtime; P01 permanece aberto.
+- **27/09, mesma raiz P01, confiabilidade POS/fronteira:** `cessar` foi
+  `ADJ/advcl`; variantes com `soprar` e `soar` variaram entre `ADJ/acl`,
+  `ADJ/ROOT`, `ADJ/amod` e `PROPN/ROOT`. Veto por etiqueta foi falsificado
+  em dois painéis novos. O contrato offline compartilhado agora se abstém
+  quando há fragmento sem âncora entre fragmentos ancorados, sem inventar
+  verbo. No v14, 2 fusões falsas passaram a abstenções; no v15 congelado,
+  4/7 alinharam e 3/7 se abstiveram, incluindo duas frases válidas cuja
+  cobertura foi perdida conscientemente. 79 testes focados verdes. Nenhuma
+  promoção para produção/runtime; P01 continua aberto.
+- **27/09, mesma raiz P01, continuidade nominal:** a sonda POS passou a
+  registrar candidato de objeto coordenado ligado ao verbo anterior sem
+  desfazer `fronteira_interna_sem_predicado_ambigua`. Painel v16 congelado:
+  2/3 objetos compostos forneceram essa evidência, 0/2 controles
+  problemáticos; o terceiro objeto revelou `câmera` classificada como
+  `VERB` e âncora inicial errada. São 1 alinhamento e 5 abstenções no
+  painel, não 5 erros equivalentes nem liberação de cobertura. 81 testes
+  focados verdes. Sem produção, runtime real ou treino alterados; P01 aberto.
+- **27/09, mesma raiz P01, POS verbal contraditório:** no caso `a câmera
+  registrar foto e vídeo`, `câmera` foi `VERB/nsubj` com filho `a/DET/det`.
+  RED focado comprovou que sua seleção como âncora ocultava a continuação
+  nominal; a guarda diagnóstica a exclui e se abstém, sem aprovar a regra.
+  Painel v17 congelado: evidência nominal nos 3/3 objetos compostos, nenhum
+  dos dois controles problemáticos; 1 alinhamento independente, 5 abstenções.
+  O controle `o vento soprar` voltou a perder o verbo no POS, logo a
+  cobertura segue limitada. 82 testes focados verdes; v8–v15 sem mudança
+  nas contagens. Hashes e limites no plano de ensino. Nada promovido a
+  produção, fala, autorização, treino ou runtime real; P01 aberto.
+- **27/09, mesma raiz P01, vínculo literal auditável:** REDs exigiram offsets
+  do arco `conj` → `obj` → âncora e uma prévia separada da decisão canônica.
+  A sonda registra conflito POS sem perder o arco; `VERB` com papel de
+  coordenado de objeto leva à abstenção. Painel v18 congelado antes do modelo:
+  prévia em 3/3 objetos compostos, 0/4 controles, mas os três continuam em
+  `fronteira_interna_sem_predicado_ambigua` no reconstrutor. Dois controles
+  alinharam; os demais se abstiveram. Um arco incompleto passou a ser
+  descartado sem exceção após RED focado. 86 testes focados verdes; v8–v17
+  conservaram as contagens de estados. Hashes, limites e próxima fronteira
+  no plano de ensino. Nenhuma alteração de produção, fala, treino, autorização
+  ou runtime real; P01 aberto.
+- **27/09, mesma raiz P01, parser atravessa a fronteira oracional:** v19
+  congelado revelou 2/3 controles de sujeito composto com **prévia falsa**:
+  `conj → obj` ligou o sujeito da condição seguinte ao objeto anterior.
+  Offset e POS estavam coerentes, portanto não bastavam. REDs levaram a
+  abstenção conservadora quando nominal determinado precede predicado plural
+  e quando `VERB` tem determinante. Repetição v19: 0/5 controles com prévia,
+  1/2 objetos cobertos. V20 congelado depois do primeiro candidato: primeira
+  execução 2/3 objetos e 0/3 controles. Um falso veto adicional foi revelado
+  por verbo com sujeito próprio, corrigido após RED; repetição v20 3/3 e
+  0/3, **não** holdout independente para o último ajuste. 90 testes focados
+  verdes. A decisão canônica segue em abstenção; P01 não encerrada, sem
+  mudança de produção ou runtime. Detalhes e hashes no plano de ensino.
+- **27/09, mesma raiz P01, checagem sem parser:** piloto local de Qwen em
+  três contrastes falhou como segundo voto (`indeterminado/anterior/anterior`
+  contra `anterior/seguinte/anterior`; com partições completas, três
+  `indeterminado`). Não foi integrado. RED com morfologia do parser ausente
+  motivou veto textual unilateral por artigo e possíveis flexões plurais,
+  validando offsets sem POS/dependência. A ausência de veto não aprova
+  agrupamento e pode haver perda de cobertura em objeto legítimo seguido de
+  condição plural. Painéis v15–v20 sem mudança de estados ou prévias;
+  97 testes focados verdes. P01 permanece aberta, sem produção/runtime.
+- **28/09, mesma raiz P01, POS e medição da prévia:** v21 foi congelado antes
+  da primeira execução (hashes e casos no plano de ensino). O parser real
+  marcou `falham` como `ADJ/conj` com sujeito próprio e como `PROPN/flat:name`
+  em contextos distintos. RED focado tornou o primeiro caso uma abstenção
+  POS explícita; o segundo permanece em `sem_predicado_suficiente`, sem
+  inferir verbo a partir da palavra. Auditoria tipada da prévia distingue
+  vínculo ausente, conflito POS e vetos; aferição retrospectiva separada
+  compara apenas trechos ao gabarito manual local. Em v15–v21, 14/44 casos
+  tiveram prévia, as 14 coincidiram com a revisão local; não é prova
+  semântica independente. Um objeto legítimo do v21 perdeu cobertura pelo
+  veto conservador. 106 testes focados e 230 testes das sondas de ensino
+  verdes nesta etapa; P01 aberta,
+  sem alteração de produção, fala, treino, autorização ou executor.
+  Controle pareado com mesma topologia de arco/POS em leituras distintas
+  sustenta a abstenção; `--resumo` torna a contagem local reproduzível,
+  sem converter acordo com gabarito em prova semântica.
+- **28/09, P01, segundo avaliador ainda não apto:** sonda independente sem
+  POS/dependências/gabarito no input e painel v22 congelado (10 casos: 4
+  sujeito, 4 objeto, 2 ambíguos). Primeira chamada: 3/10 citações aceitas,
+  todas de sujeito. Repetição diagnóstica após expor a resposta bruta,
+  sem mudar o prompt: 5/10 rótulos brutos alinhados (4/4 sujeitos, 0/4
+  objetos, 1/2 ambíguos). O primeiro RED inclui classificação do objeto,
+  não apenas formato da citação. Sem promoção; hashes e limites no plano
+  de ensino. Não atribuir placar bruto ao primeiro uso cego.
+- **28/09, P01, segunda formulação apenas diagnóstica no v22 já visto:**
+  partições literais completas com ordem invertida deram 20/20 respostas
+  `objeto_anterior`, mas só 4/10 rótulos alinhados à revisão (0/4 sujeitos,
+  4/4 objetos, 0/2 ambíguos). Concordância à ordem do mesmo modelo não é
+  voto independente; o prompt mudou o viés, não resolveu a fronteira.
+  Próxima investigação: fonte de evidência diferente. P01 permanece sombra.
+- **28/09, P01, tentativa de segundo modelo inconclusiva:**
+  `gemma4:26b` estava instalado, mas a primeira consulta do contrato de
+  citação excedeu 90 segundos (`ReadTimeout`). O restante foi interrompido
+  e o modelo descarregado. Nenhum rótulo foi observado; não entra no placar
+  semântico nem justifica promoção. Os 244 testes locais das sondas passaram;
+  ainda falta evidência independente operacionalmente viável e runtime real.
+- **28/09, P01, transporte OpenRouter comprovado em um caso:**
+  sonda offline reutiliza a credencial DPAPI da Laylay sem terminal ou
+  exposição da chave. `google/gemini-3.1-flash-lite` retornou um julgamento
+  ancorado no primeiro caso sintético v22; recibo da API registrou custo de
+  US$ 0,0001245. Isto não é placar semântico nem holdout. Nenhuma integração
+  de produção foi ativada; próximo passo continua sendo painel novo cego.
+- **28/09, P01, revisão local inválida em v22/v23:**
+  a primeira medição externa do v23 acertou os oito casos definidos com
+  citação válida, mas a revisão dos quatro "ambíguos" não era gramatical:
+  último sujeito singular com verbo plural na leitura de objeto. Os dois
+  "ambíguos" do v22 tinham a mesma falha. Nenhum desses seis itens conta
+  como prova de calibração de incerteza. V23 foi preservado imutável;
+  v24 registra explicitamente as duas leituras plausíveis antes da chamada.
+  P01 continua em sombra, sem remendo para o modelo.
+- **28/09, P01, abstenção ausente em ambiguidade plausível:**
+  v24 registrou duas partições literais plausíveis em seis casos; Gemini
+  escolheu sempre objeto e GPT-4o mini alternou quatro sujeitos/dois objetos,
+  mas nenhum retornou `indeterminado`. Citação literal não prova que o lado
+  oposto seja inviável. Hipótese de contrato: a instrução original não define
+  quando abster. Variante explícita e v25 novo foram congelados antes da
+  primeira consulta, sem mudar o gabarito anterior ou liberar P01.
+- **28/09, P01, troca de viés no prompt explícito:**
+  v25 novo (3 sujeito, 3 objeto, 3 ambíguo) com Gemini: 3/3 sujeitos
+  ancorados, 3/3 ambíguos abstidos, mas 3/3 objetos definidos também
+  abstidos. A nova instrução não é solução geral; primeira fronteira RED
+  agora é verificar a viabilidade de ambas as partições, não escolher um
+  rótulo pela preferência do prompt. Nenhuma alteração de produção.
+- **28/09, P01, viabilidade precisa de contexto e validação tipada:**
+  sonda offline avalia as duas partições separadamente, sem gabarito ou
+  alternativa na mesma chamada. RED local impediu agregação de pareceres
+  não validados. V25 de desenvolvimento mostrou erro de concordância
+  alegado quando se removia o `Se` da frase; a reconstrução contextualizada
+  corrigiu esse transporte, e somente parênteses externos adicionados pela
+  própria sonda podem ser removidos da citação. V26 novo foi congelado para
+  aferição; nenhuma decisão ou executor da Laylay foi modificado.
+- **28/09, P01, primeira medição v26 e variação dos pareceres:**
+  GPT-4o mini alinhou 6/9 casos à revisão local (2/3 sujeito, 1/3 objeto,
+  3/3 ambíguo), em 18 chamadas. Os três desalinhamentos vieram da
+  viabilidade atribuída às partições, antes da agregação. Repetições
+  diagnósticas mudaram dois pareceres, sem alterar o placar. Mesmo com
+  temperatura zero e semente 42, um caso repetido variou; o provedor não
+  foi fixado, logo a causa dessa variação não está demonstrada. Citação
+  literal não verifica gramática. Sonda e 275 testes locais verdes; P01
+  segue offline/sombra, sem treino ou integração operacional.
+- **28/09, P01, variação não depende só de roteamento:**
+  observabilidade offline revelou chamadas Azure/OpenAI no mesmo caso, mas
+  `provider.only=openai` com fallback desligado não estabilizou o parecer.
+  Em cinco repetições diagnósticas fixadas, a leitura de sujeito oscilou
+  entre viável (2) e inviável (3). Em três repetições, SHA-256 do pedido,
+  provedor OpenAI, fingerprint e término `stop` foram idênticos. Diferença
+  no corpo, troca de provedor e truncamento aparente foram falsificados
+  como explicações suficientes; mecanismo interno ainda desconhecido.
+  Parecer isolado não comprova concordância; próxima fronteira é um
+  verificador independente de escopo explícito. Sem promoção ou produção.
+- **28/09, P01, motivo gramatical alegado sem contraprova:**
+  RED offline reproduziu exclusão falsa da leitura `sujeito_seguinte` por
+  `inviavel/concordancia` embora a condição trouxesse sujeito composto
+  curto e marcador verbal plural explícito. Contrato unilateral no módulo
+  superficial existente marca apenas esse conflito; o agregador se abstém,
+  sem converter o sinal em viabilidade comprovada. Controles de verbo
+  singular, casos fora de escopo, motivo semântico e domínios distintos
+  passaram; 290 testes de sonda relacionados verdes. Nenhuma mudança de
+  produção, treino, promoção, fala ou executor. Verificação morfossintática
+  abrangente e runtime permanecem abertos.
+- **28/09, P01, verificação morfológica de escopo curto:**
+  o sinal anterior por sufixo não reconhecia `forem` e aceitaria a forma
+  inventada `trubarem`. Fonte externa PortiLexicon-UD congelada por commit
+  e SHA gerou índice local de 368 KB (licença preservada); código da sonda
+  valida o hash e compara pessoa/número em estruturas curtas. Parecer do
+  modelo `inviavel/concordancia` agora requer divergência numérica
+  corroborada; convergência, falta de forma/recurso ou estrutura fora do
+  alcance levam à abstenção. Painel novo congelado antes da medição:
+  21/21 alinhados à revisão **manual local** (8/8/5), sem alegar qualidade
+  semântica ou generalização. SpaCy médio não substitui o índice nem a
+  revisão da estrutura. P01 segue offline/sombra; nenhum treino ou produção.
 
 ### P01 — Perfil explicativo perdido na escolha do prompt — 23/09
 
@@ -1120,6 +1462,52 @@ no plano de ensino fundamentado. Primeira fronteira demonstrada: produtor de
 condições, não o executor nem o comparador. Próxima prova: contrato de saída
 decomposto e novo painel cego. Nenhuma alteração em produção, treino, fala ou
 ação; P01 continua aberto.
+
+**27/09 — P01, dois estágios em sombra e painel v3:** o contrato separou
+trechos/relação de normalização tipada. V2 foi reutilizado somente como
+diagnóstico após ajuste conservador da aferição; não conta como holdout.
+No v3 novo, Qwen3:4b-instruct alinhou 1/6 de ponta a ponta. Três casos
+falharam em citação/limite do trecho, um em cardinalidade do conectivo,
+e a árvore aninhada foi achatada; apenas o bicondicional chegou ao segundo
+estágio. Portanto a primeira fronteira RED continua na seleção e relação
+das condições; a generalização da normalização permanece desconhecida.
+Painéis, hashes e limites estão no plano de ensino fundamentado. Nenhum
+treino, executor ou fala de produção alterado. Próxima prova: candidatos
+literais indexados sem gabarito no prompt e painel cego adicional. P01 aberto.
+
+**27/09 — P01, hipótese de offsets livres falsificada em diagnóstico:**
+o protótipo de intervalos reconstrói citações literais a partir da fonte e
+passou cinco controles locais, mas Qwen3:4b-instruct não alinhou nenhuma das
+seis propostas no painel v3 reutilizado. Os primeiros REDs foram limites de
+condições, combinação inválida de abstenção/campos e direção/conectivo;
+árvore aninhada ainda foi achatada. Como v3 já fora usado, este 0/6 não é
+novo holdout nem prova estatística de piora. Próxima hipótese: selecionar
+entre candidatos atômicos com cobertura verificável, sem entregar rótulos
+revisados ao modelo. Nenhuma promoção, fala, treino ou executor alterado.
+
+**27/09 — P01, candidatos literais e cobertura limitada:** painel v4 novo,
+congelado antes da geração, expôs cinco regras planas cobertas, uma regra
+com `quando` sem candidato e uma árvore mista. Na primeira sonda real com
+Qwen3:4b-instruct, 4/5 regras cobertas tiveram seleção e relação alinhadas à
+revisão local (4/7 do painel inteiro). `apenas se` continuou invertido em
+`ARQUIVO_ONLY`; `TRAVA_MISTA` foi achatada pelo modelo e recusada no confronto.
+Teste RED→GREEN acrescentou veto conservador de mistura `e/ou` antes da
+consulta, sem contabilizá-lo como acerto da primeira sonda. O gerador é
+lexical, pode cortar sujeitos compostos e não cobre `quando`; revisão local
+não autenticada, sem avaliação da normalização, ensino, verificador ou fala
+real. Detalhes e hashes estão no plano de ensino. P01 aberto, sem produção.
+
+**27/09 — P01, marcador lógico e painel v5:** sinal lexical conservador veta
+direção incompatível de `apenas/somente/só se` e bicondicional sem depender
+do gabarito; `quando` simples continua indeterminado. A composição offline
+agora não confunde o `se` pronominal de `se move` com `apenas se`. Painel v5,
+congelado antes da geração: cinco regras planas cobertas, uma falha de
+segmentação no sujeito composto e uma recusa de árvore mista. A primeira
+sonda Qwen3:4b-instruct alinhou 3/5 regras cobertas (3/7 total); errou `ou`
+como `e` e absteve-se da direção em `quando`. Um RED posterior provou que o
+conectivo ainda dependia do gabarito; guarda textual externa RED→GREEN
+acrescentada, sem contabilizar ganho retroativo. A referência é manual local,
+não prova ensino, verificador ou fala final. P01 aberto; sem treino/promoção.
 
 ### P02 — Recomendação técnica sem vínculo verificável com fontes
 

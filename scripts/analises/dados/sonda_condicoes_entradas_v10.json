@@ -1,0 +1,11 @@
+{
+  "versao": 10,
+  "casos": [
+    {"id": "CANTORA_RELATIVA_COORDENADA", "dominio": "palco_hipotetico", "escopo": "sonda:v10:cantora", "fonte": "Se a cantora que compõe e ensaia apresentar a música, o palco acende."},
+    {"id": "OPERADOR_RELATIVA_COORDENADA", "dominio": "registro_hipotetico", "escopo": "sonda:v10:operador", "fonte": "Se o operador que lê e revisa confirmar o relatório, o sistema registra."},
+    {"id": "SENSOR_RELATIVA_OBJETO", "dominio": "alarme_hipotetico", "escopo": "sonda:v10:sensor", "fonte": "Se o sensor que acompanha a porta e a janela registrar movimento, o alarme toca."},
+    {"id": "BIBLIOTECA_RELATIVA_OU", "dominio": "aviso_hipotetico", "escopo": "sonda:v10:biblioteca", "fonte": "Se a biblioteca que guarda mapas ou livros fechar, o aviso aparece."},
+    {"id": "SENSOR_CAMERA_PREMISSAS", "dominio": "alarme_hipotetico", "escopo": "sonda:v10:controle_e", "fonte": "Se o sensor registrar movimento e a câmera detectar presença, o alarme toca."},
+    {"id": "TECNICO_RELATIVA_E_PREMISSA", "dominio": "manutencao_hipotetica", "escopo": "sonda:v10:tecnico", "fonte": "Se o técnico que revisa o motor encontrar falha e a bomba parar, o painel avisa."}
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "versao": 2,
+  "casos": [
+    {
+      "id": "VOLUME_SEM_FAIXA",
+      "dominio": "reservatorio",
+      "fontes": [{"id": "leitura", "texto": "O volume do reservatório foi 8 L."}],
+      "referentes": [{"id": "volume", "tipo": "medida", "grandeza": "volume do reservatório", "fonte_id": "leitura", "citacao": "volume do reservatório"}],
+      "medida": {"fonte_id": "leitura", "citacao": "volume do reservatório foi 8 L", "referente_id": "volume", "atributo": "volume do reservatório", "valor": "8", "unidade": "L"},
+      "rotulo_alvo": "baixo"
+    },
+    {
+      "id": "VOLUME_REGRA_ALARME",
+      "dominio": "reservatorio",
+      "fontes": [
+        {"id": "leitura", "texto": "O volume do reservatório foi 8 L."},
+        {"id": "alarme", "texto": "Se o volume do reservatório ficar abaixo de 10 L, o alarme dispara."}
+      ],
+      "referentes": [{"id": "volume", "tipo": "medida", "grandeza": "volume do reservatório", "fonte_id": "leitura", "citacao": "volume do reservatório"}],
+      "medida": {"fonte_id": "leitura", "citacao": "volume do reservatório foi 8 L", "referente_id": "volume", "atributo": "volume do reservatório", "valor": "8", "unidade": "L"},
+      "rotulo_alvo": "baixo"
+    },
+    {
+      "id": "VOLUME_CRITERIO_BAIXO",
+      "dominio": "reservatorio",
+      "fontes": [
+        {"id": "leitura", "texto": "O volume do reservatório foi 8 L."},
+        {"id": "criterio", "texto": "Neste protocolo, se o volume do reservatório ficar abaixo de 10 L, o volume é baixo."}
+      ],
+      "referentes": [{"id": "volume", "tipo": "medida", "grandeza": "volume do reservatório", "fonte_id": "leitura", "citacao": "volume do reservatório"}],
+      "medida": {"fonte_id": "leitura", "citacao": "volume do reservatório foi 8 L", "referente_id": "volume", "atributo": "volume do reservatório", "valor": "8", "unidade": "L"},
+      "rotulo_alvo": "baixo"
+    },
+    {
+      "id": "MOTOR_CRITERIO_INSTAVEL",
+      "dominio": "motores",
+      "fontes": [
+        {"id": "leitura", "texto": "A vibração do motor foi 7 mm/s."},
+        {"id": "criterio", "texto": "Se a vibração do motor ficar acima de 5 mm/s, o motor é instável."}
+      ],
+      "referentes": [{"id": "motor", "tipo": "dispositivo", "grandeza": "vibração do motor", "fonte_id": "leitura", "citacao": "motor"}],
+      "medida": {"fonte_id": "leitura", "citacao": "vibração do motor foi 7 mm/s", "referente_id": "motor", "atributo": "vibração do motor", "valor": "7", "unidade": "mm/s"},
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "MOTOR_REGRA_CONTROLADOR",
+      "dominio": "motores",
+      "fontes": [
+        {"id": "leitura", "texto": "A vibração do motor foi 7 mm/s."},
+        {"id": "controle", "texto": "Se a vibração do motor ficar acima de 5 mm/s, o controlador reduz a rotação."}
+      ],
+      "referentes": [{"id": "motor", "tipo": "dispositivo", "grandeza": "vibração do motor", "fonte_id": "leitura", "citacao": "motor"}],
+      "medida": {"fonte_id": "leitura", "citacao": "vibração do motor foi 7 mm/s", "referente_id": "motor", "atributo": "vibração do motor", "valor": "7", "unidade": "mm/s"},
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "TESTE_CRITERIO_CONTAGEM",
+      "dominio": "engenharia_software",
+      "fontes": [
+        {"id": "leitura", "texto": "A contagem de falhas do teste foi 4."},
+        {"id": "criterio", "texto": "Se a contagem de falhas do teste ficar acima de 3, o teste é instável."}
+      ],
+      "referentes": [{"id": "teste", "tipo": "avaliacao", "grandeza": "contagem de falhas do teste", "fonte_id": "leitura", "citacao": "teste"}],
+      "medida": {"fonte_id": "leitura", "citacao": "falhas do teste foi 4", "referente_id": "teste", "atributo": "contagem de falhas do teste", "valor": "4", "unidade": ""},
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "TESTE_APENAS_SE",
+      "dominio": "engenharia_software",
+      "fontes": [
+        {"id": "leitura", "texto": "A contagem de falhas do teste foi 4."},
+        {"id": "criterio", "texto": "O teste é instável apenas se a contagem de falhas do teste ficar acima de 3."}
+      ],
+      "referentes": [{"id": "teste", "tipo": "avaliacao", "grandeza": "contagem de falhas do teste", "fonte_id": "leitura", "citacao": "teste"}],
+      "medida": {"fonte_id": "leitura", "citacao": "falhas do teste foi 4", "referente_id": "teste", "atributo": "contagem de falhas do teste", "valor": "4", "unidade": ""},
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "PNEUS_REFERENTE_ABERTO",
+      "dominio": "veiculos",
+      "fontes": [
+        {"id": "inventario", "texto": "Há um sensor no pneu dianteiro e outro no pneu traseiro."},
+        {"id": "leitura", "texto": "O sensor marcou 18 psi."},
+        {"id": "criterio", "texto": "Se a pressão do pneu dianteiro ficar abaixo de 20 psi, o pneu dianteiro é murcho."}
+      ],
+      "referentes": [
+        {"id": "dianteiro", "tipo": "pneu", "grandeza": "pressão do pneu dianteiro", "fonte_id": "inventario", "citacao": "pneu dianteiro"},
+        {"id": "traseiro", "tipo": "pneu", "grandeza": "pressão do pneu traseiro", "fonte_id": "inventario", "citacao": "pneu traseiro"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "sensor marcou 18 psi", "referente_id": "", "atributo": "pressão", "valor": "18", "unidade": "psi"},
+      "rotulo_alvo": "murcho"
+    },
+    {
+      "id": "CARREGADOR_OUTRO_ROTULO",
+      "dominio": "eletricidade",
+      "fontes": [
+        {"id": "leitura", "texto": "A potência do carregador foi 65 W."},
+        {"id": "criterio", "texto": "Se a potência do carregador ficar abaixo de 70 W, o carregador é econômico."}
+      ],
+      "referentes": [{"id": "carregador", "tipo": "dispositivo", "grandeza": "potência do carregador", "fonte_id": "leitura", "citacao": "carregador"}],
+      "medida": {"fonte_id": "leitura", "citacao": "potência do carregador foi 65 W", "referente_id": "carregador", "atributo": "potência do carregador", "valor": "65", "unidade": "W"},
+      "rotulo_alvo": "fraco"
+    }
+  ]
+}

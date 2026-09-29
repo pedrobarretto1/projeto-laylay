@@ -1,0 +1,13 @@
+{
+  "versao": 12,
+  "casos": [
+    {"id": "CHUVA_NEBLINA_ALTERNATIVAS", "dominio": "clima_hipotetico", "escopo": "sonda:v12:chuva", "fonte": "Se a chuva cessar ou a neblina aumentar, a corrida começa."},
+    {"id": "CALDEIRA_VALVULA_ALTERNATIVAS", "dominio": "maquina_hipotetica", "escopo": "sonda:v12:caldeira", "fonte": "Se a caldeira desligar ou a válvula abrir, a luz acende."},
+    {"id": "CRIANCAS_COM_ADJETIVOS", "dominio": "portao_hipotetico", "escopo": "sonda:v12:criancas", "fonte": "Se a criança rápida e a lenta chegarem, o portão abre."},
+    {"id": "CAIXA_CATEGORIAS_OU", "dominio": "aviso_hipotetico", "escopo": "sonda:v12:caixa", "fonte": "Se uma caixa de mapas ou desenhos estiver vazia, o aviso aparece."},
+    {"id": "VALVULA_RELATIVA_VAPOR", "dominio": "valvula_hipotetica", "escopo": "sonda:v12:vapor", "fonte": "Se a válvula que libera água e vapor fechar, o sinal toca."},
+    {"id": "CAMPO_IRRIGACAO_ALTERNATIVAS", "dominio": "campo_hipotetico", "escopo": "sonda:v12:campo", "fonte": "Se o campo secar ou a irrigação falhar, o alerta toca."},
+    {"id": "CHUVA_VENTO_ALTERNATIVAS", "dominio": "clima_hipotetico", "escopo": "sonda:v12:vento", "fonte": "Se a chuva parar ou o vento soprar, a partida começa."},
+    {"id": "SENSOR_RELATIVA_GRANDEZAS_V12", "dominio": "telemetria_hipotetica", "escopo": "sonda:v12:sensor", "fonte": "Se o sensor que mede calor e pressão registrar falha, o alerta aparece."}
+  ]
+}

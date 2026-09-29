@@ -168,7 +168,7 @@ def selecionar_postura_amizade(
         or ""
     ).strip().casefold()
 
-    if funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"} or re.search(
+    if funcao in {"alivio", "desabafo", "inseguranca", "decepcao", "frustracao"} or re.search(
         r"\b(?:to|tô|estou)\s+(?:cansad[oa]|triste|mal|preocupad[oa]|ansios[oa])\b|"
         r"\bn[aã]o\s+aguento\b",
         texto,

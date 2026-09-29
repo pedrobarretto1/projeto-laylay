@@ -1,0 +1,112 @@
+{
+  "versao": 4,
+  "casos": [
+    {
+      "id": "POMAR_CRITERIO_SECO",
+      "dominio": "cultivo",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo do pomar foi 18%."},
+        {"id": "criterio", "texto": "Se a umidade do solo do pomar ficar abaixo de 25%, o solo do pomar é seco."}
+      ],
+      "referentes": [{"id": "solo", "tipo": "ambiente", "grandeza": "umidade do solo do pomar", "fonte_id": "leitura", "citacao": "solo do pomar"}],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo do pomar foi 18%", "referente_id": "solo", "atributo": "umidade do solo do pomar", "valor": "18", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "EMPILHADEIRA_BATERIA_FRACA",
+      "dominio": "logistica",
+      "fontes": [
+        {"id": "leitura", "texto": "A carga da bateria da empilhadeira foi 22%."},
+        {"id": "criterio", "texto": "Se a carga da bateria da empilhadeira ficar abaixo de 30%, a bateria da empilhadeira é fraca."}
+      ],
+      "referentes": [{"id": "bateria", "tipo": "dispositivo", "grandeza": "carga da bateria da empilhadeira", "fonte_id": "leitura", "citacao": "bateria da empilhadeira"}],
+      "medida": {"fonte_id": "leitura", "citacao": "carga da bateria da empilhadeira foi 22%", "referente_id": "bateria", "atributo": "carga da bateria da empilhadeira", "valor": "22", "unidade": "%"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "SERVICO_APENAS_SE",
+      "dominio": "rede",
+      "fontes": [
+        {"id": "leitura", "texto": "A latência do serviço foi 350 ms."},
+        {"id": "criterio", "texto": "O serviço é degradado apenas se a latência do serviço ficar acima de 300 ms."}
+      ],
+      "referentes": [{"id": "servico", "tipo": "servico", "grandeza": "latência do serviço", "fonte_id": "leitura", "citacao": "serviço"}],
+      "medida": {"fonte_id": "leitura", "citacao": "latência do serviço foi 350 ms", "referente_id": "servico", "atributo": "latência do serviço", "valor": "350", "unidade": "ms"},
+      "rotulo_alvo": "degradado"
+    },
+    {
+      "id": "IMPRESSORA_CRITERIO_LENTA",
+      "dominio": "escritorio",
+      "fontes": [
+        {"id": "leitura", "texto": "O tempo de impressão da impressora foi 12 s."},
+        {"id": "criterio", "texto": "Se o tempo de impressão da impressora ficar acima de 10 s, a impressora é lenta."}
+      ],
+      "referentes": [{"id": "impressora", "tipo": "dispositivo", "grandeza": "tempo de impressão da impressora", "fonte_id": "leitura", "citacao": "impressora"}],
+      "medida": {"fonte_id": "leitura", "citacao": "tempo de impressão da impressora foi 12 s", "referente_id": "impressora", "atributo": "tempo de impressão da impressora", "valor": "12", "unidade": "s"},
+      "rotulo_alvo": "lenta"
+    },
+    {
+      "id": "CAFETEIRA_AGUA_QUENTE",
+      "dominio": "cozinha",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura da água da cafeteira foi 94 °C."},
+        {"id": "criterio", "texto": "Se a temperatura da água da cafeteira ficar acima de 90 °C, a água da cafeteira é quente."}
+      ],
+      "referentes": [{"id": "agua", "tipo": "liquido", "grandeza": "temperatura da água da cafeteira", "fonte_id": "leitura", "citacao": "água da cafeteira"}],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura da água da cafeteira foi 94 °C", "referente_id": "agua", "atributo": "temperatura da água da cafeteira", "valor": "94", "unidade": "°C"},
+      "rotulo_alvo": "quente"
+    },
+    {
+      "id": "CAIXA_ROTULO_NA_LEITURA",
+      "dominio": "logistica",
+      "fontes": [{"id": "leitura", "texto": "A caixa danificada pesou 4 kg."}],
+      "referentes": [{"id": "caixa", "tipo": "objeto", "grandeza": "massa da caixa", "fonte_id": "leitura", "citacao": "caixa"}],
+      "medida": {"fonte_id": "leitura", "citacao": "caixa danificada pesou 4 kg", "referente_id": "caixa", "atributo": "massa da caixa", "valor": "4", "unidade": "kg"},
+      "rotulo_alvo": "danificada"
+    },
+    {
+      "id": "POMAR_REGRA_COMPOSTA",
+      "dominio": "cultivo",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo do pomar foi 18%."},
+        {"id": "criterio", "texto": "Se a umidade do solo do pomar ficar abaixo de 25% e a velocidade do vento ficar acima de 30 km/h, o solo do pomar é seco."}
+      ],
+      "referentes": [{"id": "solo", "tipo": "ambiente", "grandeza": "umidade do solo do pomar", "fonte_id": "leitura", "citacao": "solo do pomar"}],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo do pomar foi 18%", "referente_id": "solo", "atributo": "umidade do solo do pomar", "valor": "18", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "CIRCUITO_ACAO_COM_ROTULO",
+      "dominio": "eletricidade",
+      "fontes": [
+        {"id": "leitura", "texto": "A corrente do circuito foi 6 A."},
+        {"id": "controle", "texto": "Se a corrente do circuito ficar acima de 5 A, o aviso de risco alto acende."}
+      ],
+      "referentes": [{"id": "circuito", "tipo": "dispositivo", "grandeza": "corrente do circuito", "fonte_id": "leitura", "citacao": "circuito"}],
+      "medida": {"fonte_id": "leitura", "citacao": "corrente do circuito foi 6 A", "referente_id": "circuito", "atributo": "corrente do circuito", "valor": "6", "unidade": "A"},
+      "rotulo_alvo": "alto"
+    },
+    {
+      "id": "TERMOSTATO_OUTRO_ROTULO",
+      "dominio": "climatizacao",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura da sala foi 29 °C."},
+        {"id": "criterio", "texto": "Se a temperatura da sala ficar acima de 28 °C, a sala é quente."}
+      ],
+      "referentes": [{"id": "sala", "tipo": "ambiente", "grandeza": "temperatura da sala", "fonte_id": "leitura", "citacao": "sala"}],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura da sala foi 29 °C", "referente_id": "sala", "atributo": "temperatura da sala", "valor": "29", "unidade": "°C"},
+      "rotulo_alvo": "fria"
+    },
+    {
+      "id": "PORTA_EFEITO_NEGADO",
+      "dominio": "mecanica",
+      "fontes": [
+        {"id": "leitura", "texto": "A pressão da porta foi 6 bar."},
+        {"id": "criterio", "texto": "Se a pressão da porta ficar acima de 5 bar, a porta não é aberta."}
+      ],
+      "referentes": [{"id": "porta", "tipo": "mecanismo", "grandeza": "pressão da porta", "fonte_id": "leitura", "citacao": "porta"}],
+      "medida": {"fonte_id": "leitura", "citacao": "pressão da porta foi 6 bar", "referente_id": "porta", "atributo": "pressão da porta", "valor": "6", "unidade": "bar"},
+      "rotulo_alvo": "aberta"
+    }
+  ]
+}

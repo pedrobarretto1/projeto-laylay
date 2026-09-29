@@ -1,0 +1,68 @@
+{
+  "versao": 5,
+  "casos": [
+    {
+      "id": "ESTUFA_QUENTE",
+      "fontes": [{"id": "leitura", "texto": "A temperatura da estufa foi 26 °C."}, {"id": "criterio", "texto": "Se a temperatura da estufa ficar acima de 24 °C, a estufa é quente."}],
+      "referentes": [{"id": "estufa", "tipo": "ambiente", "grandeza": "temperatura da estufa", "fonte_id": "leitura", "citacao": "estufa"}],
+      "medida": {"referente_id": "estufa", "atributo": "temperatura da estufa", "valor": "26", "unidade": "°C", "fonte_id": "leitura", "citacao": "temperatura da estufa foi 26 °C"},
+      "rotulo_alvo": "quente"
+    },
+    {
+      "id": "COMPRESSOR_ESTAVEL",
+      "fontes": [{"id": "criterio", "texto": "Se a vibração do compressor ficar abaixo de 4 mm/s, o compressor é estável."}, {"id": "leitura", "texto": "A vibração do compressor foi 2 mm/s."}],
+      "referentes": [{"id": "compressor", "tipo": "equipamento", "grandeza": "vibração do compressor", "fonte_id": "leitura", "citacao": "compressor"}],
+      "medida": {"referente_id": "compressor", "atributo": "vibração do compressor", "valor": "2", "unidade": "mm/s", "fonte_id": "leitura", "citacao": "vibração do compressor foi 2 mm/s"},
+      "rotulo_alvo": "estável"
+    },
+    {
+      "id": "CANAL_CONTAGEM",
+      "fontes": [{"id": "leitura", "texto": "A contagem de pacotes do canal foi 9."}, {"id": "criterio", "texto": "Se a contagem de pacotes do canal ficar acima de 7, o canal é congestionado."}],
+      "referentes": [{"id": "canal", "tipo": "rede", "grandeza": "contagem de pacotes do canal", "fonte_id": "leitura", "citacao": "canal"}],
+      "medida": {"referente_id": "canal", "atributo": "contagem de pacotes do canal", "valor": "9", "unidade": "", "fonte_id": "leitura", "citacao": "contagem de pacotes do canal foi 9"},
+      "rotulo_alvo": "congestionado"
+    },
+    {
+      "id": "FONTE_DECIMAL",
+      "fontes": [{"id": "criterio", "texto": "Se a tensão da fonte ficar abaixo de 4,8 V, a fonte é fraca."}, {"id": "leitura", "texto": "A tensão da fonte foi 4,2 V."}],
+      "referentes": [{"id": "fonte", "tipo": "dispositivo", "grandeza": "tensão da fonte", "fonte_id": "leitura", "citacao": "fonte"}],
+      "medida": {"referente_id": "fonte", "atributo": "tensão da fonte", "valor": "4,2", "unidade": "V", "fonte_id": "leitura", "citacao": "tensão da fonte foi 4,2 V"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "SERVIDOR_NECESSARIO",
+      "fontes": [{"id": "leitura", "texto": "A latência do servidor foi 170 ms."}, {"id": "criterio", "texto": "O servidor é lento apenas se a latência do servidor ficar acima de 150 ms."}],
+      "referentes": [{"id": "servidor", "tipo": "equipamento", "grandeza": "latência do servidor", "fonte_id": "leitura", "citacao": "servidor"}],
+      "medida": {"referente_id": "servidor", "atributo": "latência do servidor", "valor": "170", "unidade": "ms", "fonte_id": "leitura", "citacao": "latência do servidor foi 170 ms"},
+      "rotulo_alvo": "lento"
+    },
+    {
+      "id": "ESTUFA_OUTRO_SUJEITO",
+      "fontes": [{"id": "criterio", "texto": "Se a temperatura da estufa ficar acima de 24 °C, a tubulação da estufa é quente."}, {"id": "leitura", "texto": "A temperatura da estufa foi 26 °C."}],
+      "referentes": [{"id": "estufa", "tipo": "ambiente", "grandeza": "temperatura da estufa", "fonte_id": "leitura", "citacao": "estufa"}],
+      "medida": {"referente_id": "estufa", "atributo": "temperatura da estufa", "valor": "26", "unidade": "°C", "fonte_id": "leitura", "citacao": "temperatura da estufa foi 26 °C"},
+      "rotulo_alvo": "quente"
+    },
+    {
+      "id": "COMPRESSOR_NEGADO",
+      "fontes": [{"id": "leitura", "texto": "A vibração do compressor foi 2 mm/s."}, {"id": "criterio", "texto": "Se a vibração do compressor ficar abaixo de 4 mm/s, o compressor não é estável."}],
+      "referentes": [{"id": "compressor", "tipo": "equipamento", "grandeza": "vibração do compressor", "fonte_id": "leitura", "citacao": "compressor"}],
+      "medida": {"referente_id": "compressor", "atributo": "vibração do compressor", "valor": "2", "unidade": "mm/s", "fonte_id": "leitura", "citacao": "vibração do compressor foi 2 mm/s"},
+      "rotulo_alvo": "estável"
+    },
+    {
+      "id": "FONTE_ACAO",
+      "fontes": [{"id": "criterio", "texto": "Se a tensão da fonte ficar abaixo de 4,8 V, o aviso de fonte fraca acende."}, {"id": "leitura", "texto": "A tensão da fonte foi 4,2 V."}],
+      "referentes": [{"id": "fonte", "tipo": "dispositivo", "grandeza": "tensão da fonte", "fonte_id": "leitura", "citacao": "fonte"}],
+      "medida": {"referente_id": "fonte", "atributo": "tensão da fonte", "valor": "4,2", "unidade": "V", "fonte_id": "leitura", "citacao": "tensão da fonte foi 4,2 V"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "CANAL_COMPOSTO",
+      "fontes": [{"id": "leitura", "texto": "A contagem de pacotes do canal foi 9."}, {"id": "criterio", "texto": "Se a contagem de pacotes do canal ficar acima de 7 e a latência ficar acima de 30 ms, o canal é congestionado."}],
+      "referentes": [{"id": "canal", "tipo": "rede", "grandeza": "contagem de pacotes do canal", "fonte_id": "leitura", "citacao": "canal"}],
+      "medida": {"referente_id": "canal", "atributo": "contagem de pacotes do canal", "valor": "9", "unidade": "", "fonte_id": "leitura", "citacao": "contagem de pacotes do canal foi 9"},
+      "rotulo_alvo": "congestionado"
+    }
+  ]
+}

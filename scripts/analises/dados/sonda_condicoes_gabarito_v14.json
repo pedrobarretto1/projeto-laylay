@@ -1,0 +1,12 @@
+{
+  "versao": 14,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "PORTA_VENTO_MOTOR_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "porta abrir"}, {"citacao": "o vento soprar"}, {"citacao": "o motor parar"}], "ancoras_segmentos": {"c0": "abrir", "c1": "soprar", "c2": "parar"}},
+    "ALARME_SIRENE_LUZ_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "alarme tocar"}, {"citacao": "a sirene soar"}, {"citacao": "a luz apagar"}], "ancoras_segmentos": {"c0": "tocar", "c1": "soar", "c2": "apagar"}},
+    "MOTOR_BOMBA_SENSOR_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a bomba falhar"}, {"citacao": "o sensor apitar"}], "ancoras_segmentos": {"c0": "parar", "c1": "falhar", "c2": "apitar"}},
+    "VALVULAS_TRES_CORES": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "válvula azul e a vermelha e a branca abrirem"}], "ancoras_segmentos": {"c0": "", "c1": "", "c2": "abrirem"}},
+    "CAIXA_TRES_CATEGORIAS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "caixa de fotos ou vídeos ou mapas estiver vazia"}], "ancoras_segmentos": {"c0": "", "c1": "", "c2": "estiver"}},
+    "SENSOR_RELATIVA_LUZ_CALOR": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que mede luz e calor registrar falha"}], "ancoras_segmentos": {"c0": "", "c1": "registrar"}}
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "versao": 6,
+  "nota": "Revisão semântica local prévia. Positivo não implica cobertura pela gramática atual. Revogação é contexto da fonte, não uma nova regra numérica.",
+  "casos": {
+    "CANAL_INVERSO": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "canal",
+      "atributo": "latência do canal",
+      "operador": ">",
+      "limiar": "80",
+      "unidade": "ms",
+      "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "a latência do canal ficar acima de 80 ms"
+    },
+    "CAMARA_LIMIAR_NEGATIVO": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "câmara",
+      "atributo": "temperatura da câmara",
+      "operador": "<",
+      "limiar": "-12",
+      "unidade": "°C",
+      "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "a temperatura da câmara ficar abaixo de -12 °C"
+    },
+    "ROTOR_SOMENTE_SE": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "rotor",
+      "atributo": "vibração do rotor",
+      "operador": ">",
+      "limiar": "8",
+      "unidade": "mm/s",
+      "direcao_implicacao": "condicoes_necessarias",
+      "citacao_condicao": "a vibração do rotor ficar acima de 8 mm/s"
+    },
+    "TANQUE_INCLUSIVO": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "tanque",
+      "atributo": "volume do tanque",
+      "operador": ">=",
+      "limiar": "40",
+      "unidade": "L",
+      "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "o volume do tanque for maior ou igual a 40 L"
+    },
+    "FILTRO_EXTENSO": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "filtro",
+      "atributo": "pressão do filtro",
+      "operador": "<",
+      "limiar": "20",
+      "unidade": "bar",
+      "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "a pressão do filtro ficar abaixo de vinte bar"
+    },
+    "LOTE_CLASSIFICADO": {
+      "estado": "criterio_candidato",
+      "fonte_id": "criterio",
+      "referente_id": "lote",
+      "atributo": "contagem de falhas do lote",
+      "operador": ">",
+      "limiar": "5",
+      "unidade": "",
+      "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "a contagem de falhas do lote ficar acima de 5"
+    },
+    "AMBIENTE_REFERENTE_ABERTO": {
+      "estado": "abster",
+      "motivo": "referente_indeterminado"
+    },
+    "BOMBA_PRONOME": {
+      "estado": "abster",
+      "motivo": "referente_indeterminado"
+    },
+    "MOTOR_NEGACAO": {
+      "estado": "abster",
+      "motivo": "rotulo_nao_declarado"
+    },
+    "PAINEL_ACAO": {
+      "estado": "abster",
+      "motivo": "efeito_eh_acao"
+    },
+    "FORNO_COMPOSTO": {
+      "estado": "abster",
+      "motivo": "regra_composta"
+    },
+    "DUTO_REGRA_REVOGADA": {
+      "estado": "abster",
+      "motivo": "criterio_ausente"
+    }
+  }
+}
+

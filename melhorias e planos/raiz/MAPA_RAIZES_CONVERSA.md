@@ -6,6 +6,105 @@ de produção. Mantém os IDs históricos do registro central.
 
 ## Base e escopo
 
+### Adendo de 29/09 — P01, átomo comparativo não é conectivo lógico
+
+Lacuna de cobertura do v6, distinta da vigência: `maior ou igual a 40 L`
+→ corte lexical no `ou` → duas condições artificiais → veto da fonte antes
+do Qwen. Com a fonte intacta injetada diretamente no grafo, segunda lacuna:
+auditoria/comparação cobriam somente desigualdade estrita. Falsificadas
+causa exclusiva do modelo e perda de sujeito/efeito usando os mesmos dados
+e isolando cada fronteira. Novo sinal literal compartilhado preserva o átomo;
+grafo confere operador/valor/unidade antes de calcular `<=` ou `>=`.
+Junções reais e misturas `e/ou` continuam preservadas, sem certificar lógica
+ou semântica geral. 12 REDs reproduzidos; Qwen real passou no tanque histórico
+e manteve duto revogado bloqueado. Não agrupar essa lacuna lexical com o erro
+de seleção da fonte pelo modelo. Sem runtime, treino ou liberação da rede.
+
+### Adendo de 28/09 — P01, fonte observada não equivale a critério vigente
+
+29/09, comparação ato/alvo/operação: hipótese de melhora consistente por
+decomposição monolítica em três campos **não sustentada**. Relação final:
+novos 8/12 vs baseline 6/12; históricos 7/12 vs 9/12. Conservado baseline e
+veto, candidato somente diagnóstico. A primeira fronteira semântica continua
+na proposta de ato/alvo: relatos viram perguntas e mudança exclusiva de
+outro alvo pode virar revogação do alvo consultado. Conversão tipada do host
+não corrige campos errados. Pode haver relação certa por rótulos errados;
+510 testes de contrato não são prova de interpretação semântica geral.
+
+Experimento posterior (29/09), sem integração: propor uma relação para cada
+fala posterior com alvo fornecido pelo host. Há duas fronteiras distintas:
+copiar/associar a fonte correta e interpretar a relação com o alvo. Qwen
+conjunto acertou 5/12 casos completos e 7/12 ancoragens; cópia/ID sob dono
+host com uma relação por chamada chegou a 9/12 no replay, 12/12 ancoragens.
+Pergunta e mudança de outro alvo continuam sendo marcadas como revogação;
+citação sem adoção foi marcada como manutenção. Citação correta não verifica
+a semântica. Sem autorizar `registrar_revisao`, remover gate conservador ou
+declarar root encerrada. Próxima evidência deve separar ato de fala/alvo e
+usar casos novos depois de fixar o contrato, sem ajustar o gabarito observado.
+
+Atualização: a conferência conversacional do grafo passa a exigir revisão de
+contexto posterior não coberto. Não classifica texto desconhecido como
+revogação nem declara vigência pela ausência de palavra-chave. Usa as falas
+reais ordenadas, não só a seleção proposta de fontes, e preserva o owner de
+revisão explícita. Oito REDs antes do candidato, **431 verdes** depois,
+incluindo o histórico; repetição real Qwen bloqueou o duto e preservou dois
+controles. Não é runtime real Laylay nem compreensão geral de revogações.
+Pergunta/negação/outra regra ficam pendentes sem revisão, não são tratadas
+como revogação confirmada. Historico das etapas anteriores abaixo.
+
+Continuação arquitetural: registro offline de revisão vinculado ao snapshot
+integral, sem interpretar texto. Rota opt-in exige esse registro antes da
+comparação e mantém todas as guardas do grafo. Conflito ou alteração do objeto
+revisado invalida o uso da decisão. 417 testes verdes, RED automático original
+preservado. Falta o owner integrado que receba propostas de relação e valide
+alvo/autoridade/contexto antes de registrar. Não trocar essa lacuna por
+autoaprovação da LLM nem por exigência de revisão manual em toda conversa do
+runtime. Nenhuma integração com a Laylay foi feita.
+
+Painel v6 revelou: revogação presente no contexto → seleção da regra antiga
+→ normalizador recebe somente a fonte selecionada → grafo valida origem e
+literais, mas não vigência → comparação numérica satisfeita. Gabarito detecta
+o erro, sem substituir uma guarda independente. Reproduzido sem Qwen nem
+gabarito; retirar a revogação não muda a decisão do grafo. Não é falha de
+receipt/executor, e não houve aprovação de composição ou efeito.
+RED canônico aberto; 399 testes verdes e 1 vermelho. A geração melhorou nos
+slots (3/6 contra 0/6 no painel mais amplo), tornando visível esta lacuna que
+antes era mascarada por números inválidos. Priorizar validade da fonte antes
+de ampliar cobertura lexical. Não criar lista privada de frases revogadoras
+nem promover este resultado de laboratório a diagnóstico do runtime real.
+
+### Adendo de 28/09 — P01, separar cópia literal de normalização tipada
+
+Experimento controlado v5: mesmo Qwen e seleção, comparando pedido monolítico
+de sete campos com cinco slots e trechos/direção mantidos pelo host. Cinco
+positivos novos: 0/5 completos no original, 5/5 na segmentada. Não se provou
+qual mudança isolada causou o ganho (schema, prompt e entrada foram reduzidos
+juntos); sustenta a composição proposta, não incapacidade geral do modelo.
+Quatro negativos continuam mal selecionados pelo Qwen e vetados pelo host.
+Não consolidar erro de seleção com extração dos slots. 392 testes verdes,
+sem treino, runtime ou autorização; painel/gabarito e respostas preservados.
+
+### Adendo de 28/09 — P01, rótulo procurado não comprova consequência
+
+Na sonda offline: rótulo da consulta → efeito sintetizado no grafo → menção
+na regra integral → comparação numérica satisfeita apesar de ação/negação.
+Reproduzido sem Qwen e sem gabarito; não era autorização de fala/execução.
+A fronteira compartilhada de qualificação agora confere o trecho do efeito
+na fonte integral, com polaridade e predicado extraído, antes da comparação.
+Seis REDs; 360 regressivos verdes. Mesma causa demonstrada em ação de aviso
+e negação, sem criar novos IDs. Não atribuir a ela todas as falhas do Qwen.
+Identidade do sujeito e escopo permanecem não verificados; a gramática
+superficial não resolve semântica geral. Nenhuma integração com runtime.
+
+Continuação de 28/09: isolada a transição seguinte: presença do referente
+na condição → aparente vínculo com sujeito diferente na consequência.
+Seis REDs sem modelo, em quatro domínios/ambiguidade; a guarda exige agora
+correspondência integral e única com descrição ancorada. 371 regressivos
+verdes, incluindo composição da sonda. A identidade semântica segue pendente:
+compatibilidade literal não prova alias, foco, cobertura de inventário ou
+verdade. Dois controles históricos v1/v2 perderam elegibilidade por falta
+de vínculo explícito; os dados não foram reescritos para contornar a guarda.
+
 ### Adendo de 23/09 — complemento do contrato de entrada no DEV
 
 O texto recebido já aparece na evidência do Pedro, mas o espelho promovia

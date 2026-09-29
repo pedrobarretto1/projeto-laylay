@@ -1,0 +1,14 @@
+{
+  "versao": 25,
+  "casos": [
+    {"id": "PROFESSORA_PROVA_MONITOR_DIRETORA", "fonte": "Se a professora corrigir a prova e o monitor e a diretora voltarem, a sala abre."},
+    {"id": "TECNICO_ROTEADOR_GERENTE_ASSISTENTE", "fonte": "Se o técnico instalar o roteador e o gerente e a assistente chegarem, o sinal libera."},
+    {"id": "JUIZA_PROCESSO_PROMOTOR_DEFENSORA", "fonte": "Se a juíza ler o processo e o promotor e a defensora concordarem, a audiência segue."},
+    {"id": "FERREIRO_MARTELO_ALICATE_APRENDIZ", "fonte": "Se o ferreiro polir o martelo e o alicate e a aprendiz chegar, a oficina abre."},
+    {"id": "FLORISTA_SAMAMBAIA_ORQUIDEA_CLIENTE", "fonte": "Se a florista regar a samambaia e a orquídea e a cliente entrar, a loja abre."},
+    {"id": "PROGRAMADOR_SERVIDOR_BANCO_USUARIO", "fonte": "Se o programador atualizar o servidor e o banco de dados e o usuário voltar, o teste começa."},
+    {"id": "PESCADOR_SALMAO_TRUTA_GOLFINHOS", "fonte": "Se o pescador observar o salmão e a truta e os golfinhos saltarem, o barco para."},
+    {"id": "PROFESSORA_ALUNO_ALUNA_COLEGAS", "fonte": "Se a professora chamar o aluno e a aluna e os colegas entrarem, a aula começa."},
+    {"id": "FOTOGRAFO_TREM_BONDE_ONIBUS", "fonte": "Se o fotógrafo registrar o trem e o bonde e os ônibus passarem, a exposição abre."}
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "versao": 28,
+  "origem": "revisao_manual_local_previa; quatro controles por classe; sem validacao externa",
+  "casos": {
+    "ARQUITETA_PLANTA_ENGENHEIRO_TECNICA": {"relacao": "sujeito_seguinte"},
+    "PADEIRO_FARINHA_COZINHEIRA_AJUDANTE": {"relacao": "sujeito_seguinte"},
+    "MEDICA_EXAME_ENFERMEIRO_PACIENTE": {"relacao": "sujeito_seguinte"},
+    "PILOTO_MAPA_MECANICO_COPILOTA": {"relacao": "sujeito_seguinte"},
+    "PINTORA_PINCEL_ESPATULA_ASSISTENTE": {"relacao": "objeto_anterior"},
+    "ALFAIATE_CASACO_CALCA_CLIENTE": {"relacao": "objeto_anterior"},
+    "FARMACEUTICA_FRASCO_SERINGA_MEDICO": {"relacao": "objeto_anterior"},
+    "TECNICO_CABO_SENSOR_OPERADORA": {"relacao": "objeto_anterior"},
+    "TREINADORA_ATLETA_ARBITRA_TORCEDORES": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a treinadora cumprimentar a atleta e a árbitra", "os torcedores aplaudirem"],
+        "sujeito_seguinte": ["a treinadora cumprimentar a atleta", "a árbitra e os torcedores aplaudirem"]
+      }
+    },
+    "DIRETOR_ATRIZ_CANTOR_MUSICOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o diretor chamar a atriz e o cantor", "os músicos entrarem"],
+        "sujeito_seguinte": ["o diretor chamar a atriz", "o cantor e os músicos entrarem"]
+      }
+    },
+    "BIOLOGA_LOBO_RAPOSA_CERVOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a bióloga observar o lobo e a raposa", "os cervos correrem"],
+        "sujeito_seguinte": ["a bióloga observar o lobo", "a raposa e os cervos correrem"]
+      }
+    },
+    "GUIA_CICLISTA_PEDESTRE_VISITANTES": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o guia ouvir o ciclista e o pedestre", "os visitantes responderem"],
+        "sujeito_seguinte": ["o guia ouvir o ciclista", "o pedestre e os visitantes responderem"]
+      }
+    }
+  }
+}

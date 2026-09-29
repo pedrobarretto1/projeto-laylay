@@ -1,0 +1,110 @@
+{
+  "versao": 1,
+  "casos": [
+    {
+      "id": "SOLO_SOMENTE_MEDIDA",
+      "dominio": "sensores",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo foi 15%."}
+      ],
+      "referentes": [
+        {"id": "solo", "tipo": "local", "grandeza": "umidade do solo", "fonte_id": "leitura", "citacao": "umidade do solo"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo foi 15%", "referente_id": "solo", "atributo": "umidade do solo", "valor": "15", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "SOLO_REGRA_BOMBA",
+      "dominio": "sensores",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo foi 15%."},
+        {"id": "automacao", "texto": "Se a umidade do solo cair abaixo de 20%, a bomba liga."}
+      ],
+      "referentes": [
+        {"id": "solo", "tipo": "local", "grandeza": "umidade do solo", "fonte_id": "leitura", "citacao": "umidade do solo"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo foi 15%", "referente_id": "solo", "atributo": "umidade do solo", "valor": "15", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "SOLO_CRITERIO_EXPLICITO",
+      "dominio": "sensores",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo foi 15%."},
+        {"id": "criterio", "texto": "Se a umidade do solo ficar abaixo de 20%, o solo é seco."}
+      ],
+      "referentes": [
+        {"id": "solo", "tipo": "local", "grandeza": "umidade do solo", "fonte_id": "leitura", "citacao": "umidade do solo"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo foi 15%", "referente_id": "solo", "atributo": "umidade do solo", "valor": "15", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "DOIS_SENSORES_REFERENTE_ABERTO",
+      "dominio": "sensores",
+      "fontes": [
+        {"id": "inventario", "texto": "Há um sensor de umidade do solo e outro de umidade do ar."},
+        {"id": "leitura", "texto": "O sensor leu 15% de umidade."},
+        {"id": "criterio", "texto": "Se a umidade do solo ficar abaixo de 20%, o solo é seco."}
+      ],
+      "referentes": [
+        {"id": "solo", "tipo": "sensor", "grandeza": "umidade do solo", "fonte_id": "inventario", "citacao": "sensor de umidade do solo"},
+        {"id": "ar", "tipo": "sensor", "grandeza": "umidade do ar", "fonte_id": "inventario", "citacao": "umidade do ar"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "sensor leu 15%", "referente_id": "", "atributo": "umidade", "valor": "15", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "BATERIA_CRITERIO_EXPLICITO",
+      "dominio": "eletricidade",
+      "fontes": [
+        {"id": "leitura", "texto": "A tensão da bateria foi 11 V."},
+        {"id": "criterio", "texto": "Se a tensão da bateria ficar abaixo de 12 V, a bateria é fraca."}
+      ],
+      "referentes": [
+        {"id": "bateria", "tipo": "dispositivo", "grandeza": "tensão da bateria", "fonte_id": "leitura", "citacao": "bateria"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "tensão da bateria foi 11 V", "referente_id": "bateria", "atributo": "tensão da bateria", "valor": "11", "unidade": "V"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "BATERIA_ROTULO_DIFERENTE",
+      "dominio": "eletricidade",
+      "fontes": [
+        {"id": "leitura", "texto": "A tensão da bateria foi 11 V."},
+        {"id": "recarga", "texto": "Se a tensão da bateria ficar abaixo de 12 V, a bateria pede recarga."}
+      ],
+      "referentes": [
+        {"id": "bateria", "tipo": "dispositivo", "grandeza": "tensão da bateria", "fonte_id": "leitura", "citacao": "bateria"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "tensão da bateria foi 11 V", "referente_id": "bateria", "atributo": "tensão da bateria", "valor": "11", "unidade": "V"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "SALA_CRITERIO_NECESSARIO",
+      "dominio": "temperatura",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura da sala foi 18°C."},
+        {"id": "criterio", "texto": "A sala é fria apenas se a temperatura da sala estiver abaixo de 20°C."}
+      ],
+      "referentes": [
+        {"id": "sala", "tipo": "local", "grandeza": "temperatura da sala", "fonte_id": "leitura", "citacao": "sala"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura da sala foi 18°C", "referente_id": "sala", "atributo": "temperatura da sala", "valor": "18", "unidade": "°C"},
+      "rotulo_alvo": "fria"
+    },
+    {
+      "id": "SALA_REGRA_TERMOSTATO",
+      "dominio": "temperatura",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura da sala foi 18°C."},
+        {"id": "termostato", "texto": "Se a temperatura da sala ficar abaixo de 20°C, o termostato liga."}
+      ],
+      "referentes": [
+        {"id": "sala", "tipo": "local", "grandeza": "temperatura da sala", "fonte_id": "leitura", "citacao": "sala"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura da sala foi 18°C", "referente_id": "sala", "atributo": "temperatura da sala", "valor": "18", "unidade": "°C"},
+      "rotulo_alvo": "fria"
+    }
+  ]
+}

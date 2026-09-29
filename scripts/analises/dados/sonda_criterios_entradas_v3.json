@@ -1,0 +1,117 @@
+{
+  "versao": 3,
+  "casos": [
+    {
+      "id": "AQUARIO_CRITERIO_FRIO",
+      "dominio": "aquario",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura da água do aquário foi 19 °C."},
+        {"id": "criterio", "texto": "Se a temperatura da água do aquário ficar abaixo de 22 °C, a água do aquário é fria."}
+      ],
+      "referentes": [{"id": "agua", "tipo": "ambiente", "grandeza": "temperatura da água do aquário", "fonte_id": "leitura", "citacao": "água do aquário"}],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura da água do aquário foi 19 °C", "referente_id": "agua", "atributo": "temperatura da água do aquário", "valor": "19", "unidade": "°C"},
+      "rotulo_alvo": "fria"
+    },
+    {
+      "id": "ESTOQUE_CRITERIO_ESCASSO",
+      "dominio": "logistica",
+      "fontes": [
+        {"id": "leitura", "texto": "A contagem de peças do estoque foi 2."},
+        {"id": "criterio", "texto": "Se a contagem de peças do estoque ficar abaixo de 4, o estoque é escasso."}
+      ],
+      "referentes": [{"id": "estoque", "tipo": "inventario", "grandeza": "contagem de peças do estoque", "fonte_id": "leitura", "citacao": "estoque"}],
+      "medida": {"fonte_id": "leitura", "citacao": "contagem de peças do estoque foi 2", "referente_id": "estoque", "atributo": "contagem de peças do estoque", "valor": "2", "unidade": ""},
+      "rotulo_alvo": "escasso"
+    },
+    {
+      "id": "FILTRO_APENAS_SE",
+      "dominio": "manutencao",
+      "fontes": [
+        {"id": "leitura", "texto": "A diferença de pressão do filtro foi 9 kPa."},
+        {"id": "criterio", "texto": "O filtro é saturado apenas se a diferença de pressão do filtro ficar acima de 8 kPa."}
+      ],
+      "referentes": [{"id": "filtro", "tipo": "componente", "grandeza": "diferença de pressão do filtro", "fonte_id": "leitura", "citacao": "filtro"}],
+      "medida": {"fonte_id": "leitura", "citacao": "diferença de pressão do filtro foi 9 kPa", "referente_id": "filtro", "atributo": "diferença de pressão do filtro", "valor": "9", "unidade": "kPa"},
+      "rotulo_alvo": "saturado"
+    },
+    {
+      "id": "ROBO_FONTE_DISTRATORA",
+      "dominio": "robotica",
+      "fontes": [
+        {"id": "leitura", "texto": "A temperatura do braço robótico foi 75 °C."},
+        {"id": "controle", "texto": "Se a temperatura do braço robótico ficar acima de 65 °C, o ventilador liga."},
+        {"id": "criterio", "texto": "Se a temperatura do braço robótico ficar acima de 70 °C, o braço robótico é superaquecido."}
+      ],
+      "referentes": [{"id": "braco", "tipo": "dispositivo", "grandeza": "temperatura do braço robótico", "fonte_id": "leitura", "citacao": "braço robótico"}],
+      "medida": {"fonte_id": "leitura", "citacao": "temperatura do braço robótico foi 75 °C", "referente_id": "braco", "atributo": "temperatura do braço robótico", "valor": "75", "unidade": "°C"},
+      "rotulo_alvo": "superaquecido"
+    },
+    {
+      "id": "SERVIDOR_CRITERIO_LENTO",
+      "dominio": "rede",
+      "fontes": [
+        {"id": "leitura", "texto": "A latência do servidor foi 240 ms."},
+        {"id": "criterio", "texto": "Se a latência do servidor ficar acima de 200 ms, o servidor é lento."}
+      ],
+      "referentes": [{"id": "servidor", "tipo": "servico", "grandeza": "latência do servidor", "fonte_id": "leitura", "citacao": "servidor"}],
+      "medida": {"fonte_id": "leitura", "citacao": "latência do servidor foi 240 ms", "referente_id": "servidor", "atributo": "latência do servidor", "valor": "240", "unidade": "ms"},
+      "rotulo_alvo": "lento"
+    },
+    {
+      "id": "PACOTE_ROTULO_NA_LEITURA",
+      "dominio": "logistica",
+      "fontes": [{"id": "leitura", "texto": "O pacote frágil pesou 3 kg."}],
+      "referentes": [{"id": "pacote", "tipo": "objeto", "grandeza": "massa do pacote", "fonte_id": "leitura", "citacao": "pacote"}],
+      "medida": {"fonte_id": "leitura", "citacao": "pacote frágil pesou 3 kg", "referente_id": "pacote", "atributo": "massa do pacote", "valor": "3", "unidade": "kg"},
+      "rotulo_alvo": "frágil"
+    },
+    {
+      "id": "ESTUFA_REGRA_IRRIGACAO",
+      "dominio": "cultivo",
+      "fontes": [
+        {"id": "leitura", "texto": "A umidade do solo da estufa foi 28%."},
+        {"id": "controle", "texto": "Se a umidade do solo da estufa ficar abaixo de 30%, a irrigação inicia."}
+      ],
+      "referentes": [{"id": "solo", "tipo": "ambiente", "grandeza": "umidade do solo da estufa", "fonte_id": "leitura", "citacao": "solo da estufa"}],
+      "medida": {"fonte_id": "leitura", "citacao": "umidade do solo da estufa foi 28%", "referente_id": "solo", "atributo": "umidade do solo da estufa", "valor": "28", "unidade": "%"},
+      "rotulo_alvo": "seco"
+    },
+    {
+      "id": "LAMPADA_OUTRO_ROTULO",
+      "dominio": "iluminacao",
+      "fontes": [
+        {"id": "leitura", "texto": "A iluminância da lâmpada foi 45 lux."},
+        {"id": "criterio", "texto": "Se a iluminância da lâmpada ficar abaixo de 50 lux, a iluminação é suave."}
+      ],
+      "referentes": [{"id": "lampada", "tipo": "dispositivo", "grandeza": "iluminância da lâmpada", "fonte_id": "leitura", "citacao": "lâmpada"}],
+      "medida": {"fonte_id": "leitura", "citacao": "iluminância da lâmpada foi 45 lux", "referente_id": "lampada", "atributo": "iluminância da lâmpada", "valor": "45", "unidade": "lux"},
+      "rotulo_alvo": "fraca"
+    },
+    {
+      "id": "DUAS_SONDAS_REFERENTE_ABERTO",
+      "dominio": "laboratorio",
+      "fontes": [
+        {"id": "inventario", "texto": "Há uma sonda no tanque A e outra no tanque B."},
+        {"id": "leitura", "texto": "A sonda marcou 18 °C."},
+        {"id": "criterio", "texto": "Se a temperatura da água do tanque A ficar abaixo de 20 °C, a água do tanque A é fria."}
+      ],
+      "referentes": [
+        {"id": "tanque_a", "tipo": "tanque", "grandeza": "temperatura da água do tanque A", "fonte_id": "inventario", "citacao": "tanque A"},
+        {"id": "tanque_b", "tipo": "tanque", "grandeza": "temperatura da água do tanque B", "fonte_id": "inventario", "citacao": "tanque B"}
+      ],
+      "medida": {"fonte_id": "leitura", "citacao": "sonda marcou 18 °C", "referente_id": "", "atributo": "temperatura", "valor": "18", "unidade": "°C"},
+      "rotulo_alvo": "fria"
+    },
+    {
+      "id": "BATERIA_REGRA_COMPOSTA",
+      "dominio": "energia",
+      "fontes": [
+        {"id": "leitura", "texto": "A tensão da bateria foi 11 V."},
+        {"id": "criterio", "texto": "Se a tensão da bateria ficar abaixo de 12 V e a temperatura da bateria ficar acima de 40 °C, a bateria é crítica."}
+      ],
+      "referentes": [{"id": "bateria", "tipo": "dispositivo", "grandeza": "tensão da bateria", "fonte_id": "leitura", "citacao": "bateria"}],
+      "medida": {"fonte_id": "leitura", "citacao": "tensão da bateria foi 11 V", "referente_id": "bateria", "atributo": "tensão da bateria", "valor": "11", "unidade": "V"},
+      "rotulo_alvo": "crítica"
+    }
+  ]
+}

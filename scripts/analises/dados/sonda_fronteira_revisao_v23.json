@@ -1,0 +1,18 @@
+{
+  "versao": 23,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "ARQUITETA_PROJETO_ENGENHEIRO_CLIENTE": {"relacao": "sujeito_seguinte"},
+    "ZELADOR_PORTAO_MOTORISTA_FISCAL": {"relacao": "sujeito_seguinte"},
+    "DIRETORA_RELATORIO_GERENTE_AUDITOR": {"relacao": "sujeito_seguinte"},
+    "FOTOGRAFO_FOCO_MODELO_PRODUTORA": {"relacao": "sujeito_seguinte"},
+    "COZINHEIRA_PANELA_FRIGIDEIRA_CONVIDADOS": {"relacao": "objeto_anterior"},
+    "BIBLIOTECARIO_ATLAS_DICIONARIO_LEITORES": {"relacao": "objeto_anterior"},
+    "MECANICA_FREIO_EMBREAGEM_PILOTOS": {"relacao": "objeto_anterior"},
+    "PINTOR_ROLO_PINCEL_CLIENTES": {"relacao": "objeto_anterior"},
+    "TREINADOR_GOLEIRO_ATACANTE_ZAGUEIRO": {"relacao": "indeterminado"},
+    "CAMERA_ONIBUS_CAMINHAO_TAXI": {"relacao": "indeterminado"},
+    "GUIA_LOBO_CERVO_JAVALI": {"relacao": "indeterminado"},
+    "MEDICA_PAI_FILHO_FILHA": {"relacao": "indeterminado"}
+  }
+}

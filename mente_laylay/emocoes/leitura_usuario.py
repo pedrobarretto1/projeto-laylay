@@ -91,11 +91,12 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         ("correcao", r"^(?:eu\s+)?(?:estou\s+(?:perguntando|falando)|perguntei|falei)\s+(?:sobre|d[aoe])\b[^.!?]{1,180}\bn[aã]o\s+(?:sobre|d[aoe])\b", "reconhecer a correcao de escopo sem confundir contexto com autorizacao"),
         ("encerramento", r"\b(?:era so isso|era só isso|por hoje e so|por hoje é só|ate mais|até mais|falou|depois a gente ve|depois a gente vê)\b", "encerrar o assunto sem retomar contexto antigo"),
         ("correcao", r"^(?:na verdade|nao lay|não lay|eu quis dizer|quis dizer|meu nome n[aã]o|voce (?:ainda )?nao (?:tem|consegue)|você (?:ainda )?não (?:tem|consegue)|ja falei|já falei)\b", "aceitar a correcao e atualizar o entendimento"),
+        ("pedido_desculpas", r"^(?:(?:me\s+)?(?:desculpa|desculpe|perdoa|perdoe)|perd[aã]o|foi mal)\b[^.!?]{0,140}\b(?:repeti|pedi de novo|insisti|exagerei)\b", "reconhecer o pedido de desculpas pelo excesso confirmado sem apagar a causa"),
         ("conquista", r"\b(?:consegui|passei|ganhei|venci|tirei nota maxima|tirei nota máxima|deu certo|terminei|fui aprovado|fui aprovada)\b", "reconhecer a conquista antes de perguntar ou aconselhar"),
         ("agradecimento", r"\b(?:obrigad[oa]?|brigad[oa]?|valeu|vlw)\b", "reconhecer a ajuda concreta que motivou o agradecimento"),
         ("reacao_positiva", r"^(?:que bom|ainda bem|fico feliz)(?: lay| laylay)?[.!]*$", "receber a reação positiva sem inventar novo estado nem forçar pergunta"),
         ("elogio", r"\b(?:voce e incrivel|você é incrível|voce e maravilhosa|você é maravilhosa|gosto de voce|gosto de você|te adoro|te amo)\b", "receber o elogio como dirigido a Laylay"),
-        ("desabafo", r"\b(?:nao aguento|não aguento|to triste|tô triste|to cansad|tô cansad|estou cansad|me sinto|dia horrivel|dia horrível)\b", "acolher antes de oferecer solucao"),
+        ("desabafo", r"^(?:eu\s+)?(?:estou|to|tô)\s+(?:(?:um\s+pouco|meio|muito|bem|bastante)\s+)?triste\b|\b(?:nao aguento|não aguento|to triste|tô triste|to cansad|tô cansad|estou cansad|me sinto|dia horrivel|dia horrível)\b", "acolher antes de oferecer solucao"),
         ("frustracao", r"\b(?:nao foi|não foi|nao funcionou|não funcionou|de novo isso|voce errou|você errou|ja falei|já falei)\b", "reconhecer a frustracao e corrigir sem se defender"),
         ("decepcao", r"\b(?:fiquei decepcionad|esperava mais|que pena|achei que ia|poxa vida)\b", "reconhecer a decepcao antes de explicar"),
         ("inseguranca", r"\b(?:sera que eu consigo|será que eu consigo|nao sei se consigo|não sei se consigo|to com medo|tô com medo)\b", "acolher a inseguranca sem prometer resultado"),
@@ -105,6 +106,8 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
     perfis = {
         "encerramento": ("serenidade", "breve", False),
         "correcao": ("frustracao_possivel", "receptiva", False),
+        "pedido_desculpas": ("reconciliacao", "receptiva", False),
+        "alivio": ("alivio", "acolhedora", False),
         "conquista": ("alegria_ou_orgulho", "celebratoria", True),
         "agradecimento": ("gratidao", "calorosa", False),
         "reacao_positiva": ("alegria_leve", "breve", False),
@@ -117,6 +120,21 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         "relato": ("neutra", "interessada", True),
     }
     for funcao, padrao, objetivo in regras:
+        # Correções e encerramentos mantêm prioridade. Antes de classificar
+        # conquista, a leitura causal já existente distingue alívio autoral
+        # de mera conclusão, hipótese ou citação.
+        if funcao == "conquista" and _inferir_alivio_com_causa(bruto):
+            emocao, postura, permite_pergunta = perfis["alivio"]
+            return {
+                "funcao": "alivio",
+                "objetivo": "reconhecer o alívio pela carga concluída sem forçar pergunta ou conselho",
+                "emocao_implicita": emocao,
+                "postura_esperada": postura,
+                "permite_pergunta": permite_pergunta,
+                "confianca": 0.82,
+                "texto": bruto,
+                "ts": time.time(),
+            }
         if re.search(padrao, base):
             emocao, postura, permite_pergunta = perfis.get(funcao, ("neutra", "natural", True))
             return {

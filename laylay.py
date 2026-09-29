@@ -4184,6 +4184,21 @@ def main():
     roteiro_finalizado = _threading.Event()
     roteiro_runtime = None
     if configuracao_roteiro is not None and diretorio_resultado_roteiro is not None:
+        def resultado_turno_roteiro() -> dict[str, Any]:
+            """Captura o plano e o episódio observado na publicação da fala."""
+            plano = dict(
+                _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
+            )
+            conversa = dict(_estado_compartilhado_runtime.conversacional)
+            episodio = dict(conversa.get("episodio_emocional") or {})
+            plano["estado_emocional_observado"] = {
+                "emocao": str(conversa.get("current_emotion") or "calma"),
+                "nivel": int(conversa.get("emotion_level") or 1),
+                "episodio_origem": str(episodio.get("origem") or ""),
+                "episodio_evidencia_ref": str(episodio.get("evidencia_ref") or ""),
+            }
+            return plano
+
         def finalizar_roteiro(_sucesso: bool) -> None:
             if configuracao_roteiro.silenciar_voz_durante_teste:
                 _voz_runtime.definir_modo_silencioso(
@@ -4196,9 +4211,7 @@ def main():
             enviar_entrada=lambda texto: _agendar_entrada_canonica(
                 texto, canal="roteiro_teste",
             ),
-            resultado_getter=lambda: dict(
-                _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
-            ),
+            resultado_getter=resultado_turno_roteiro,
             voz_ocupada_getter=lambda: bool(
                 _conversa_estado_get("is_speaking", False)
                 or _conversa_estado_get("audio_playing", False)

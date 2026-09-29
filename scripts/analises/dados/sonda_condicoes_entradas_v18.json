@@ -1,0 +1,12 @@
+{
+  "versao": 18,
+  "casos": [
+    {"id": "IMPRESSORA_ETIQUETA_RECIBO", "dominio": "impressao_hipotetica", "escopo": "sonda:v18:objeto1", "fonte": "Se a impressora emitir etiqueta e recibo e o pedido concluir, a luz acende."},
+    {"id": "BOMBA_PRESSAO_TEMPERATURA", "dominio": "medicao_hipotetica", "escopo": "sonda:v18:objeto2", "fonte": "Se a bomba medir pressão e temperatura e o alarme disparar, a central registra."},
+    {"id": "APP_FOTO_VIDEO", "dominio": "arquivo_hipotetico", "escopo": "sonda:v18:objeto3", "fonte": "Se o aplicativo exportar foto e vídeo e a pasta sincronizar, o aviso aparece."},
+    {"id": "VENTO_AGUA_PORTA", "dominio": "alarme_hipotetico", "escopo": "sonda:v18:oracoes", "fonte": "Se o vento soprar e a água subir e a porta abrir, o alerta toca."},
+    {"id": "PAINEL_SENSORES_P_Q", "dominio": "alarme_hipotetico", "escopo": "sonda:v18:sujeito", "fonte": "Se o painel iniciar e os sensores P e Q detectarem fumaça, o alarme toca."},
+    {"id": "MOTOR_CAMERA_VALVULA_E", "dominio": "maquina_hipotetica", "escopo": "sonda:v18:independente", "fonte": "Se o motor parar e a câmera gravar e a válvula fechar, o painel avisa."},
+    {"id": "CAMERA_RELATIVA_PECAS_ETIQUETAS", "dominio": "visao_hipotetica", "escopo": "sonda:v18:relativa", "fonte": "Se a câmera que fotografa peças e etiquetas parar e a rede cair, o aviso aparece."}
+  ]
+}

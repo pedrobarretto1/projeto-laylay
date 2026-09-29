@@ -1,0 +1,40 @@
+{
+  "versao": 3,
+  "casos": {
+    "AQUARIO_CRITERIO_FRIO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "agua",
+      "atributo": "temperatura da água do aquário", "operador": "<", "limiar": "22",
+      "unidade": "°C", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "temperatura da água do aquário ficar abaixo de 22 °C"
+    },
+    "ESTOQUE_CRITERIO_ESCASSO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "estoque",
+      "atributo": "contagem de peças do estoque", "operador": "<", "limiar": "4",
+      "unidade": "", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "contagem de peças do estoque ficar abaixo de 4"
+    },
+    "FILTRO_APENAS_SE": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "filtro",
+      "atributo": "diferença de pressão do filtro", "operador": ">", "limiar": "8",
+      "unidade": "kPa", "direcao_implicacao": "condicoes_necessarias",
+      "citacao_condicao": "diferença de pressão do filtro ficar acima de 8 kPa"
+    },
+    "ROBO_FONTE_DISTRATORA": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "braco",
+      "atributo": "temperatura do braço robótico", "operador": ">", "limiar": "70",
+      "unidade": "°C", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "temperatura do braço robótico ficar acima de 70 °C"
+    },
+    "SERVIDOR_CRITERIO_LENTO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "servidor",
+      "atributo": "latência do servidor", "operador": ">", "limiar": "200",
+      "unidade": "ms", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "latência do servidor ficar acima de 200 ms"
+    },
+    "PACOTE_ROTULO_NA_LEITURA": {"estado": "abster", "motivo": "criterio_ausente"},
+    "ESTUFA_REGRA_IRRIGACAO": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "LAMPADA_OUTRO_ROTULO": {"estado": "abster", "motivo": "rotulo_nao_declarado"},
+    "DUAS_SONDAS_REFERENTE_ABERTO": {"estado": "abster", "motivo": "referente_indeterminado"},
+    "BATERIA_REGRA_COMPOSTA": {"estado": "abster", "motivo": "regra_composta"}
+  }
+}

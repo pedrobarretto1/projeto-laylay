@@ -66,7 +66,10 @@ from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
     criar_evento_leitura_semantica_usuario,
+    criar_evento_reconhecimento_social_usuario,
+    evento_esta_ativo,
 )
+from mente_laylay.personalidade.leitura_social_conversa import elogio_pessoal_direto
 from mente_laylay.cognicao.preferencia_humor import (
     extrair_preferencia_humor,
     preferencia_humor_ativa,
@@ -1314,6 +1317,17 @@ def _iniciar_planejamento_turno(
         leitura_emocional_usuario,
         turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
     )
+    if (
+        not evento_emocional_causal
+        and str(funcao_comunicativa.get('funcao') or '') == 'elogio'
+        and not plano.get('requer_execucao')
+        and elogio_pessoal_direto(texto)
+    ):
+        evento_emocional_causal = criar_evento_reconhecimento_social_usuario(
+            turno_id=str(plano.get('id') or turno.get('id') or ''),
+            confianca=float(funcao_comunicativa.get('confianca') or 0.0),
+            tipo='elogio_pessoal',
+        )
     if evento_emocional_causal:
         turno['evento_emocional_causal'] = dict(evento_emocional_causal)
         plano['evento_emocional_causal'] = dict(evento_emocional_causal)
@@ -1375,6 +1389,18 @@ def _iniciar_planejamento_turno(
             except Exception as erro:
                 ns['print'](f"⚠️ [MEMÓRIA] não consegui persistir a correção: {erro}")
     ns['_estado_compartilhado_runtime'].atualizar_campos('mental', **atualizacoes_turno)
+    if (
+        evento_emocional_causal.get('origem') == 'reconhecimento_social_usuario'
+        and dict(ns['_estado_compartilhado_runtime'].mental.get('eventos_emocionais_causais') or {}).get('atual')
+        == evento_emocional_causal
+    ):
+        definir_emocao = ns.get('_definir_emocao_conversacional')
+        if callable(definir_emocao):
+            definir_emocao(
+                str(evento_emocional_causal['emocao']),
+                int(evento_emocional_causal['nivel']),
+                str(evento_emocional_causal['causa']),
+            )
     if preferencia_humor.get('duravel'):
         registrar_preferencia = ns.get('_registrar_preferencia_humor')
         if callable(registrar_preferencia):
@@ -1414,12 +1440,11 @@ def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura:
     evento_anterior = dict(plano.get('evento_emocional_causal') or {})
     if (
         evento
-        and evento_anterior.get('origem') == 'contingencia_lexical_usuario'
-        and evento_anterior.get('natureza_evidencia') == 'leitura_social'
-        and evento.get('natureza_evidencia') == 'inferencia'
+        and evento_anterior.get('natureza_evidencia') in {'leitura_social', 'fato_observado'}
+        and evento_esta_ativo(evento_anterior)
     ):
-        # Sentimento declarado pelo usuário prevalece sobre rótulo inferido
-        # da proposta da LLM. A leitura principal continua observável.
+        # Evidência direta vigente já resolveu o evento do turno. A leitura
+        # posterior da LLM segue observável sem trocar essa decisão.
         semantica['evento_emocional_suprimido'] = 'evidencia_direta_prevalece'
         evento = {}
     campos_semanticos = {

@@ -1,0 +1,11 @@
+{
+  "versao": 16,
+  "casos": [
+    {"id": "CAMERA_FOTO_VIDEO_ARQUIVO", "dominio": "arquivo_hipotetico", "escopo": "sonda:v16:objeto", "fonte": "Se a câmera registrar foto e vídeo e o arquivo salvar, o aviso aparece."},
+    {"id": "SERVIDOR_LOG_RELATORIO", "dominio": "registro_hipotetico", "escopo": "sonda:v16:registro", "fonte": "Se o servidor gerar log e relatório e a rede cair, o alerta toca."},
+    {"id": "ROBO_CAIXA_ETIQUETA", "dominio": "fabrica_hipotetica", "escopo": "sonda:v16:robo", "fonte": "Se o robô localizar caixa e etiqueta e a esteira parar, o painel avisa."},
+    {"id": "PORTA_VENTO_LUZ", "dominio": "alarme_hipotetico", "escopo": "sonda:v16:pos", "fonte": "Se a porta abrir ou o vento soprar ou a luz apagar, o alarme toca."},
+    {"id": "SERVIDOR_SENSORES_A_B", "dominio": "alarme_hipotetico", "escopo": "sonda:v16:sujeito", "fonte": "Se o servidor responder e os sensores C e D detectarem fumaça, o alarme toca."},
+    {"id": "MOTOR_VALVULA_BATERIA", "dominio": "maquina_hipotetica", "escopo": "sonda:v16:controle", "fonte": "Se o motor parar ou a válvula fechar ou a bateria acabar, o painel avisa."}
+  ]
+}

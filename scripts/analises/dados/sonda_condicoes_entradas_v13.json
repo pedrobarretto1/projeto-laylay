@@ -1,0 +1,12 @@
+{
+  "versao": 13,
+  "casos": [
+    {"id": "SINO_VENTO_PORTA_OU", "dominio": "alerta_hipotetico", "escopo": "sonda:v13:vento_meio", "fonte": "Se o sino tocar ou o vento soprar ou a porta abrir, o alerta acende."},
+    {"id": "SINO_SIRENE_PORTA_OU", "dominio": "alerta_hipotetico", "escopo": "sonda:v13:controle_tres", "fonte": "Se o sino tocar ou a sirene soar ou a porta abrir, o alerta acende."},
+    {"id": "CRIANCAS_TRES_ADJETIVOS", "dominio": "portao_hipotetico", "escopo": "sonda:v13:adjetivos", "fonte": "Se a criança alta e a baixa e a tímida chegarem, o portão abre."},
+    {"id": "CAIXA_MAPAS_FOTOS", "dominio": "aviso_hipotetico", "escopo": "sonda:v13:categorias", "fonte": "Se a caixa de mapas ou fotografias estiver vazia, o aviso aparece."},
+    {"id": "VALVULA_RELATIVA_AR", "dominio": "valvula_hipotetica", "escopo": "sonda:v13:relativa", "fonte": "Se a válvula que controla água e ar fechar, o aviso toca."},
+    {"id": "CHUVA_CAMPO_BOMBA_OU", "dominio": "clima_hipotetico", "escopo": "sonda:v13:pos_inicio", "fonte": "Se a chuva cessar ou o campo secar ou a bomba falhar, o alerta toca."},
+    {"id": "MOTOR_HELICE_BATERIA_OU", "dominio": "maquina_hipotetica", "escopo": "sonda:v13:controle_maquina", "fonte": "Se o motor parar ou a hélice girar ou a bateria acabar, o painel avisa."}
+  ]
+}

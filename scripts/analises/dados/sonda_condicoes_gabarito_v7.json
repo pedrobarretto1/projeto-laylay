@@ -1,0 +1,38 @@
+{
+  "versao": 7,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "MODULOS_SUJEITO_E": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "módulos Norte e Sul enviarem sinal"}]
+    },
+    "PROTOCOLO_SUJEITO_OU": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "protocolo HTTP ou MQTT falhar"}]
+    },
+    "SOLO_PREDICADOS_E": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "solo ressecar"}, {"citacao": "irrigação parar"}]
+    },
+    "CREDENCIAL_PREDICADOS_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "credencial expirar"}, {"citacao": "sessão terminar"}]
+    },
+    "FREIOS_NECESSARIOS": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [{"citacao": "freios dianteiro e traseiro estiverem liberados"}]
+    },
+    "ICONE_EQUIVALENTE_V7": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "equivalencia",
+      "condicoes": [{"citacao": "teste passar"}, {"citacao": "serviço responder"}]
+    },
+    "SENSORES_E_BATERIA": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "sensores A e B detectarem fumaça"}, {"citacao": "bateria estiver carregada"}]
+    },
+    "PROTOCOLO_MISTO_V7": {
+      "representavel": false,
+      "motivo": "(porta e sensor) ou operador exige arvore, nao conectivo plano"
+    }
+  }
+}

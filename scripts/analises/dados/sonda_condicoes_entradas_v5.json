@@ -1,0 +1,72 @@
+{
+  "versao": 5,
+  "casos": [
+    {
+      "id": "BACKUP_SOMENTE_QUANDO", "dominio": "programacao", "escopo": "sonda:v5:backup",
+      "fonte": "O backup inicia somente quando o disco estiver montado e a chave estiver presente.",
+      "referentes": [
+        {"identificador": "backup", "tipo": "processo", "grandeza": "estado", "citacao": "backup"},
+        {"identificador": "disco", "tipo": "armazenamento", "grandeza": "montagem", "citacao": "disco"},
+        {"identificador": "chave", "tipo": "credencial", "grandeza": "presenca", "citacao": "chave"}
+      ],
+      "efeito": {"referente_id": "backup", "atributo": "estado", "valor": "inicia"}
+    },
+    {
+      "id": "VASO_OU", "dominio": "cultivo_hipotetico", "escopo": "sonda:v5:vaso",
+      "fonte": "Se o vaso receber luz difusa ou a lâmpada auxiliar estiver ligada, a planta cresce.",
+      "referentes": [
+        {"identificador": "vaso", "tipo": "recipiente", "grandeza": "luz", "citacao": "vaso"},
+        {"identificador": "lampada", "tipo": "equipamento", "grandeza": "estado", "citacao": "lâmpada auxiliar"},
+        {"identificador": "planta", "tipo": "organismo", "grandeza": "crescimento", "citacao": "planta"}
+      ],
+      "efeito": {"referente_id": "planta", "atributo": "estado", "valor": "cresce"}
+    },
+    {
+      "id": "ICONE_SE_E_SO_SE", "dominio": "interface", "escopo": "sonda:v5:icone",
+      "fonte": "O ícone fica verde se e só se o autoteste passar.",
+      "referentes": [
+        {"identificador": "icone", "tipo": "interface", "grandeza": "cor", "citacao": "ícone"},
+        {"identificador": "autoteste", "tipo": "processo", "grandeza": "estado", "citacao": "autoteste"}
+      ],
+      "efeito": {"referente_id": "icone", "atributo": "cor", "valor": "verde"}
+    },
+    {
+      "id": "NIVEL_QUANDO", "dominio": "monitoramento", "escopo": "sonda:v5:nivel",
+      "fonte": "Quando o nível alcançar 70 cm, a sirene toca.",
+      "referentes": [
+        {"identificador": "nivel", "tipo": "medicao", "grandeza": "nivel", "citacao": "nível"},
+        {"identificador": "sirene", "tipo": "sinal", "grandeza": "estado", "citacao": "sirene"}
+      ],
+      "efeito": {"referente_id": "sirene", "atributo": "estado", "valor": "toca"}
+    },
+    {
+      "id": "BRACO_SE_MOVE", "dominio": "robotica_hipotetica", "escopo": "sonda:v5:braco",
+      "fonte": "O braço se move apenas se a energia estiver estável.",
+      "referentes": [
+        {"identificador": "braco", "tipo": "atuador", "grandeza": "movimento", "citacao": "braço"},
+        {"identificador": "energia", "tipo": "suprimento", "grandeza": "estado", "citacao": "energia"}
+      ],
+      "efeito": {"referente_id": "braco", "atributo": "estado", "valor": "move"}
+    },
+    {
+      "id": "SENSORES_SUJEITO_COMPOSTO", "dominio": "alarme_hipotetico", "escopo": "sonda:v5:sensores",
+      "fonte": "Se os sensores A e B detectarem fumaça, o painel alerta.",
+      "referentes": [
+        {"identificador": "sensores", "tipo": "conjunto_de_sensores", "grandeza": "deteccao", "citacao": "sensores A e B"},
+        {"identificador": "painel", "tipo": "interface", "grandeza": "alerta", "citacao": "painel"}
+      ],
+      "efeito": {"referente_id": "painel", "atributo": "estado", "valor": "alerta"}
+    },
+    {
+      "id": "ACESSO_MISTO", "dominio": "controle_hipotetico", "escopo": "sonda:v5:acesso",
+      "fonte": "Se a porta estiver travada e a câmera estiver ativa, ou se o supervisor confirmar, o acesso é liberado.",
+      "referentes": [
+        {"identificador": "porta", "tipo": "componente", "grandeza": "estado", "citacao": "porta"},
+        {"identificador": "camera", "tipo": "sensor", "grandeza": "estado", "citacao": "câmera"},
+        {"identificador": "supervisor", "tipo": "pessoa", "grandeza": "confirmacao", "citacao": "supervisor"},
+        {"identificador": "acesso", "tipo": "permissao", "grandeza": "estado", "citacao": "acesso"}
+      ],
+      "efeito": {"referente_id": "acesso", "atributo": "estado", "valor": "liberado"}
+    }
+  ]
+}

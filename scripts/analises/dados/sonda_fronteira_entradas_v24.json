@@ -1,0 +1,11 @@
+{
+  "versao": 24,
+  "casos": [
+    {"id": "TREINADOR_GOLEIRO_ATACANTE_ZAGUEIROS", "fonte": "Se o treinador chamar o goleiro e o atacante e os zagueiros correrem, o treino começa."},
+    {"id": "CAMERA_ONIBUS_CAMINHAO_TAXIS", "fonte": "Se a câmera registrar o ônibus e o caminhão e os táxis passarem, o sinal acende."},
+    {"id": "GUIA_LOBO_CERVO_JAVALIS", "fonte": "Se o guia observar o lobo e o cervo e os javalis fugirem, o grupo recua."},
+    {"id": "MEDICA_PAI_FILHO_FILHAS", "fonte": "Se a médica examinar o pai e o filho e as filhas saírem, a consulta termina."},
+    {"id": "BIOLOGA_TUCANO_ARARA_PAPAGAIOS", "fonte": "Se a bióloga fotografar o tucano e a arara e os papagaios voarem, o relatório começa."},
+    {"id": "FAZENDEIRO_CAVALO_BURRO_VACAS", "fonte": "Se o fazendeiro vigiar o cavalo e o burro e as vacas correrem, o portão fecha."}
+  ]
+}

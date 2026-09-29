@@ -1,0 +1,12 @@
+{
+  "versao": 19,
+  "casos": [
+    {"id": "IMPRESSORA_RELATORIO_RECIBO", "dominio": "impressao_hipotetica", "escopo": "sonda:v19:objeto", "fonte": "Se a impressora emitir relatório e recibo e a fila encerrar, a luz apaga."},
+    {"id": "APP_LOG_COPIA", "dominio": "registro_hipotetico", "escopo": "sonda:v19:objeto2", "fonte": "Se o aplicativo criar log e cópia e a rede cair, o alerta toca."},
+    {"id": "CAMERA_PORTA_VENTO_CHUVA", "dominio": "alarme_hipotetico", "escopo": "sonda:v19:sujeito1", "fonte": "Se a câmera registrar a porta e o vento e a chuva pararem, o aviso aparece."},
+    {"id": "ROBO_FUMACA_SENSOR_SIRENE", "dominio": "alarme_hipotetico", "escopo": "sonda:v19:sujeito2", "fonte": "Se o robô detectar a fumaça e o sensor e a sirene falharem, o painel avisa."},
+    {"id": "APP_FOTO_CAMERA_DRONE", "dominio": "arquivo_hipotetico", "escopo": "sonda:v19:sujeito3", "fonte": "Se o aplicativo registrar a foto e a câmera e o drone pararem, a tarefa pausa."},
+    {"id": "SENSOR_DETECTAR_SUBORDINADA", "dominio": "visao_hipotetica", "escopo": "sonda:v19:subordinada1", "fonte": "Se o sensor detectar que a câmera registrou foto e vídeo e a bateria acabar, o aviso toca."},
+    {"id": "APP_PEDIR_EXPORTACAO", "dominio": "arquivo_hipotetico", "escopo": "sonda:v19:subordinada2", "fonte": "Se o aplicativo pedir para exportar foto e vídeo e o usuário confirmar, a tarefa começa."}
+  ]
+}

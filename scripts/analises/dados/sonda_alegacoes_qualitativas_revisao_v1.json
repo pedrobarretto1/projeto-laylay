@@ -1,0 +1,14 @@
+{
+  "versao": 1,
+  "origem": "revisao_manual_local_previa; nao autenticada",
+  "casos": {
+    "SOLO_SEM_CRITERIO": {"classe": "qualificacao_sem_criterio"},
+    "VIGA_SEM_CRITERIO": {"classe": "qualificacao_sem_criterio"},
+    "TEMPERATURA_SEM_CRITERIO": {"classe": "qualificacao_sem_criterio"},
+    "MOTOR_SEM_CRITERIO": {"classe": "qualificacao_sem_criterio"},
+    "SOLO_COM_CRITERIO": {"classe": "criterio_candidato_revisao_pendente"},
+    "TEMPERATURA_COM_CRITERIO": {"classe": "criterio_candidato_revisao_pendente"},
+    "COMPARACAO_NUMERICA_CONTROLE": {"classe": "sem_qualificacao"},
+    "LITERAL_PROGRAMACAO_CONTROLE": {"classe": "sem_qualificacao"}
+  }
+}

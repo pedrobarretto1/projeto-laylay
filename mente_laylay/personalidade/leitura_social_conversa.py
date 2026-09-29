@@ -35,6 +35,23 @@ def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
     return "elogio_resultado"
 
 
+def elogio_pessoal_direto(texto_usuario: str) -> bool:
+    """Só uma afirmação dirigida à Laylay pode causar episódio próprio."""
+    texto = _normalizar_reconhecimento(texto_usuario).strip()
+    if (
+        not texto or "?" in texto
+        or re.search(r'["“”‘’«»]|\b(?:se|talvez|hipotese)\b', texto)
+        or tipo_reconhecimento_afetivo(texto_usuario) != "elogio_pessoal"
+    ):
+        return False
+    return bool(re.match(
+        r"^(?:(?:lay|laylay)[,:]?\s+)?"
+        r"(?:voce|vc|(?:a\s+)?laylay|te\s+acho|gosto\s+de\s+voce|"
+        r"amo\s+voce|te\s+amo)\b",
+        texto,
+    ))
+
+
 
 
 def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str) -> bool:

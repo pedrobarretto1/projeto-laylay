@@ -249,6 +249,237 @@ roteiro não medem toda a qualidade de conversa. Prosódia física, sequências
 visuais de atividade, tolerância implícita e validação final P15–P21 seguem
 abertas. Este checkpoint não ativa a versão final.
 
+### Continuação de P19 — fallback local de voz — 26/09/2026
+
+Na falha do TTS neural, a síntese local recebia apenas a categoria emocional:
+`irritada nível 1` e `brava nível 3` usavam a mesma velocidade. O RED
+reproduziu a perda de intensidade na assinatura de `fallback_pyttsx`. O
+runtime agora repassa o nível tanto quando falha o primeiro trecho quanto
+quando o restante precisa de fallback, e converte o ritmo do perfil emocional
+canônico para pyttsx3 e SAPI dentro de limites moderados. Os testes verificam
+as duas sínteses locais e a queda do TTS neural, sem depender de hardware.
+
+Os 106 testes focados de voz, orquestração e composição passaram. A suíte
+completa terminou com 7.400 aprovados, 1 ignorado, 14 xfailed e 56
+subtestes aprovados em 226,74 s. A distinção de parâmetros está comprovada;
+percepção acústica real, alinhamento temporal do avatar e qualidade da fala
+P15 permanecem abertos. P15–P21 não foram ativados por este checkpoint.
+
+Validação posterior no processo real: com evento causal vigente e falha
+controlada do TTS neural, o fallback padrão encontrou pyttsx3 indisponível,
+migrou para SAPI e concluiu a reprodução pelo dispositivo de saída. Para a
+mesma frase, `irritada nível 1` produziu WAV de 4,459 s e `brava nível 3`
+produziu WAV de 3,599 s; o driver retornou após tocar ambos. Isso comprova
+diferença física de duração e entrega pela API, não avaliação auditiva humana.
+No mesmo caminho apareceu um RED de observabilidade: `tts_total` marcava
+falha apesar do fallback confirmado. A métrica agora registra entrega total
+verdadeira e mantém a falha da síntese neural em métrica separada. Os 64
+testes focados passaram, e o processo real confirmou
+`tts_sintese_primeiro_trecho=False` com `tts_total=True`. A suíte completa
+acima precede esse ajuste localizado de métrica.
+
+### Continuação de P15 — alívio autoral e fala causal — 26/09/2026
+
+O processo real mostrou a primeira divergência antes da geração: o relato
+"entreguei o projeto depois de semanas preso nisso" publicava um evento de
+alívio com causa, mas sua função comunicativa era `informacao` neutra. O
+classificador agora reutiliza a inferência conservadora existente e publica
+`alivio` apenas quando conclusão própria, carga anterior com duração e
+liberação literal coexistem. Citação, hipótese, negação e conclusão sem
+liberação continuam sem esse rótulo. O contrato compartilhado reconhece o
+relato, dispensa pergunta opcional e bloqueia humor.
+
+Repetições do roteiro real revelaram três fronteiras posteriores que o placar
+semântico sozinho não cobria: o modelo copiou a conclusão do usuário em
+primeira pessoa, atribuiu à Laylay um alívio sem evento operacional, e produziu
+um comentário de 73 palavras com gestos e imagens não relatados. O verificador
+agora barra esses casos; no relato de alívio, a recuperação usa a contingência
+causal local e não abre outra chamada de modelo. Frases vizinhas que respondem
+ao pedido são preservadas quando uma alegação de emoção própria é removida.
+O guardião final também deixou de tratar "você entregou o projeto" como
+recebimento físico da Laylay; "você me entregou" continua protegido.
+
+No processo `laylay.py` após essa correção, o roteiro P15 respondeu 7/7 sem
+alerta, p95 de 7,422 s. A fala de alívio publicada foi: "Você entregou o
+projeto depois de semanas lidando com isso. Dá para entender o alívio."
+Isso comprova a fronteira causal nesse ensaio, mas não encerra P15: uma
+resposta posterior ainda afirmou categoricamente "eu não tenho emoção", em
+contradição com a capacidade de expressão causal documentada. A qualidade
+geral da fala e a sequência P15–P21 continuam sem validação final. A suíte
+completa terminou com 7.417 aprovados, 1 ignorado, 14 xfailed e 56 subtestes
+aprovados após este patch.
+
+### Continuação de P15 — alegação de capacidade emocional — 26/09/2026
+
+A primeira fronteira RED do relato anterior foi a validação final: o modelo
+propôs "eu não tenho emoção" e o guardião publicou a frase, embora o catálogo
+vivo registre expressão emocional condicionada a causa e evidência. Um RED
+com a fala produzida no processo confirmou a passagem indevida. Os controles
+de negação situada ("não estou irritada"), distinção de emoções humanas e
+citação literal não exigiram reparo.
+
+O guardião de alegações agora rejeita a negação absoluta da capacidade,
+responde à hipótese sem inventar emoção e preserva a possibilidade de
+expressão causal. A mesma fronteira exigia permissão explícita do evento:
+validade temporal e causa rastreável, sozinhas, não autorizam a Laylay a
+atribuir a si uma emoção forte. O consumo passou a usar o contrato canônico
+`evento_pode_alterar_estado`. O verificador final bloqueou a fala histórica
+no teste, e 143 testes P15 e vizinhos passaram.
+
+No processo `laylay.py`, o roteiro P15 passou 7/7, sem alertas, p95 de
+12,934 s. À hipótese de irritação, a fala publicada foi "Não, não estou
+irritada. Você disse que entregou o projeto depois de semanas — isso é fato.
+Não há causa para irritação." O ensaio confirma este caso no runtime; a
+validação geral de P15–P21 permanece aberta.
+
+Uma falsificação adicional mostrou que a permissão de um evento de alívio
+ainda liberava a alegação de irritação, e que, sem hipótese explícita do
+usuário, uma alegação forte dispensava evento. O guardião agora confere a
+classe emocional do evento autorizado e exige o mesmo contrato causal em
+qualquer alegação forte da própria Laylay. Citações da fala do usuário,
+negação de um estado momentâneo e classes próximas de irritação permanecem
+preservadas. No segundo ensaio real após esse ajuste, os 7 turnos passaram
+sem alertas, p95 de 12,738 s; a Laylay respondeu à hipótese sem atribuir a
+si irritação. O conjunto focado e vizinho terminou com 148 testes aprovados.
+A suíte completa após esse candidato terminou com 7.427 aprovados,
+1 ignorado, 14 xfailed e 56 subtestes aprovados. A inspeção do diff não
+apontou erros de espaço ou formatação.
+
+### Continuação de P15 — reconhecimento de conquista — 26/09/2026
+
+Um ensaio real posterior publicou "Foi só um passo" ao responder à conquista
+de terminar um projeto. O plano já identificava `conquista` e pedia celebração;
+a primeira divergência ocorreu na fala proposta, e a qualidade aceitou a
+minimização sem base no relato. Um teste com a fala exata reproduziu esse RED.
+O verificador agora identifica qualificadores que diminuem uma conquista
+explícita quando não vieram do usuário, preservando negação, citação e
+qualificadores relatados pelo próprio usuário. A recuperação usa uma fala
+local ancorada no motivo e não faz segunda chamada ao modelo. O replay do
+turno e 192 testes focados e vizinhos passaram.
+
+No processo real após o ajuste, o roteiro passou 7/7 sem alertas, p95 de
+12,724 s. A resposta de conquista desta rodada não continha a minimização;
+por isso, a prova específica do reparo vem do replay do texto anterior pelo
+caminho real de preparação da resposta. Houve um timeout separado no briefing
+inicial, antes dos sete turnos. A suíte completa após o reparo terminou com
+7.433 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados. A qualidade
+geral de P15–P21 segue em aberto.
+
+Auditoria somente leitura da composição IoT: o runtime ainda calcula um tom
+local para o resultado, mas `laylay.py` o instancia com `emitir_fala=False`.
+Seu callback de estado chega ao setter conversacional, que exige evento
+vigente com emoção, nível e causa iguais antes de gravar. Portanto, essa
+hipótese de bypass não reproduziu uma alteração emocional no caminho real.
+
+### Continuação de P15 — elogio pessoal e fronteiras de fala — 26/09/2026
+
+O agradecimento local tentava mudar a emoção para `envergonhada` sem publicar
+causa. O setter canônico recusava corretamente a mudança; no processo real,
+o elogio seguia pela resposta principal, sem passar por aquele ramo local.
+O primeiro ensaio com oito turnos reproduziu o RED: o oitavo tinha fala, mas
+não tinha evento causal. A publicação foi colocada no orquestrador do turno,
+que já recebe a classificação comunicativa e escreve o plano. Somente um
+elogio direto e explícito à Laylay, com confiança suficiente e sem execução,
+produz o evento `reconhecimento_social_usuario`. O mesmo evento é publicado
+no quadro compartilhado antes da tentativa de atualizar o episódio
+conversacional. A rotina local de agradecimento deixou de escrever emoção.
+O ensaio seguinte pelo `laylay.py` publicou o evento esperado no plano do
+oitavo turno. Um teste com os componentes reais de estado, publicador e
+setter confirmou o episódio `envergonhada` após a publicação. O artefato do
+roteiro não captura o estado conversacional; essa prova de estado ainda é de
+integração, enquanto a publicação no plano é de processo real.
+
+Esse ensaio também expôs duas falas independentes aceitas pelo fluxo: a
+conquista do usuário foi diminuída com "só isso" e uma hipótese de irritação
+recebeu a negação absoluta "nem é possível de ser verdade". As falas exatas
+foram reproduzidas como REDs distintos. O verificador de conquista agora
+captura o desmerecimento e aciona a contingência local existente, sem segunda
+chamada ao modelo; controles preservam negação, citação e uso de "só isso"
+referido à própria Laylay. O guardião trata impossibilidade absoluta de uma
+emoção como negação indevida de capacidade e devolve uma explicação causal.
+O replay da preparação e o guardião final passaram nos respectivos testes.
+Após esses ajustes, o roteiro real passou 8/8 sem alertas, p95 de 9,568 s.
+Os 237 testes P15 e vizinhos passaram; a suíte completa terminou com 7.453
+aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados. `git diff --check`
+não apontou problemas de formatação.
+P15 continua aberta para outras fontes, transições e prova do estado no
+processo; P16–P21 continuam sem validação final.
+
+### Continuação de P15 — episódio no processo e uma interação por turno — 26/09/2026
+
+A captura somente leitura do estado conversacional no roteiro revelou que o
+evento de elogio no plano não bastava: na primeira execução instrumentada,
+o episódio observado estava em `calma`. A composição filtrada do turno não
+entregava ao orquestrador o setter emocional canônico; um RED de composição
+reproduziu exatamente a dependência ausente. Depois de incluí-la, o log
+detalhado do processo mostrou `envergonhada` nível 2 sendo criada, seguida
+por dois decaimentos do mesmo turno antes da fala. O coordenador refinava
+o texto normalizado e o fluxo de IA refinava o texto original; a deduplicação
+por texto tratava as duas chamadas como interações diferentes. O consumo
+agora usa o ID do plano, e chamadas do mesmo turno não consomem novamente
+o episódio, mesmo depois da antiga janela de dois segundos. Um novo ID de
+turno continua consumindo uma interação.
+
+O mesmo ensaio revelou uma segunda fronteira: a leitura semântica posterior
+do modelo podia substituir o evento direto do elogio, inclusive quando vinha
+rotulada como `leitura_social`. Um RED com leitura validada reproduziu a
+substituição. O registrador agora preserva evidência direta vigente no plano;
+a proposta semântica da LLM segue observável, sem ganhar a decisão causal.
+Essa precedência também protege relatos diretos do usuário e não impede uma
+leitura quando não houver evento direto vigente.
+
+Após os ajustes, o roteiro `laylay.py` passou 8/8 sem alertas, p95 de 9,49 s.
+O oitavo turno publicou `reconhecimento_social_usuario` e o snapshot real da
+fala mostrou `envergonhada` nível 2 com a mesma referência de evidência do
+episódio. Uma execução intermediária teve falha separada de conteúdo no
+turno de alívio: a resposta não citou o projeto; o RED causal do elogio não
+foi atribuído a essa variação da LLM. A P15 ainda exige auditoria das demais
+fontes e transições antes de encerrar a etapa.
+
+O controle temporal adicional confirmou que duas leituras do mesmo ID devem
+contar como uma interação mesmo após dois segundos. A suíte completa passou
+com 7.457 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados.
+Na última repetição pelo processo real, já com esse controle, o roteiro
+passou 8/8 sem alertas, p95 de 8,249 s; plano e episódio observado mantiveram
+origem, emoção, nível e referência causal compatíveis. `git diff --check`
+não apontou erros de formatação.
+
+### Continuação de P15 — publicação operacional e alegação de capacidade — 26/09/2026
+
+A auditoria das fontes confirmou que a escolha emocional da LLM não altera o
+episódio: o setter exige um evento causal publicado com emoção, nível e causa
+coincidentes. O tom da voz também passa por esse setter. No adaptador de
+resultado operacional, porém, um publicador que recusasse o evento ainda
+permitia chamar o setter e devolver uma avaliação expressável à fala. Um RED
+com publicação recusada reproduziu a primeira divergência; a publicação
+aceita serviu de controle. O adaptador agora exige confirmação da publicação
+antes de permitir expressão, registra `publicacao_nao_confirmada` quando ela
+falha e impede que o resultado colore a resposta sem evento compartilhado.
+Os 91 testes P15 e do adaptador passaram. A suíte ampla após essa correção
+terminou com 7.459 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados.
+
+O roteiro seguinte pelo `laylay.py` respondeu aos oito turnos, mas passou
+semanticamente em 7/8. No quinto, a LLM alegou que não sentiria irritação nem
+alívio por não ter corpo ou sentidos. O plano marcou a fala como aceita: o
+guardião reconhecia a negação genérica de emoção, mas não a mesma incapacidade
+atribuída à ausência de corpo. O replay da frase exata reproduziu o RED nessa
+fronteira. O guardião agora rejeita essa justificativa quando ligada a uma
+emoção, preservando a negação situada de um episódio e limites físicos como
+não sentir toque. O replay e 225 controles vizinhos passaram.
+
+Na repetição pelo processo real, o roteiro passou 8/8, sem alertas, p95 de
+8,652 s. O elogio final manteve `envergonhada` nível 2 no plano e no estado
+observado, com a mesma referência causal. A fala exata defeituosa ficou
+protegida pelo replay; a LLM variou a redação na repetição. P15 permanece
+aberta para outras fontes, transições e validação final.
+
+A primeira suíte ampla após o ajuste do guardião teve um RED isolado no teste
+de busca musical (7.461 aprovados, 1 falha): a fixture injeta os resultados,
+mas ainda consulta o YouTube por HTTP antes de usá-los. O teste e seu módulo
+passaram isolados sem alteração nos arquivos de mídia. A repetição completa
+terminou com 7.462 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados.
+Essa instabilidade de rede fica registrada como problema separado da P15.
+
 ### P15 — Contrato emocional causal canônico
 
 - [ ] Representar cada evento com origem, causa, responsabilidade, confiança,
@@ -268,6 +499,151 @@ abertas. Este checkpoint não ativa a versão final.
   bruscas ou emoções presas.
 - [ ] Cobrir arcos de repetição, erro próprio, falha do sistema, conquista,
   correção, vulnerabilidade, pedido de desculpas e mudança de assunto.
+
+### Continuação de P16 — reidratação de episódio e humor — 27/09/2026
+
+Na inicialização, a persistência carregava `current_emotion` e o nível sem
+carregar o episódio causal. Assim, o prompt podia receber `brava` depois de
+reiniciar, enquanto o retrato expressável da voz e do avatar devolvia `calma`.
+O snapshot também gravava `humor_level`, mas o carregador o descartava e não
+gravava o horário necessário para decaimento. REDs com o carregador e o estado
+compartilhado reais reproduziram as divergências: ausência de evento, evento
+vigente, evento expirado e humor recente.
+
+O snapshot agora conserva o episódio causal expressável e o relógio do humor.
+No carregamento, o contrato emocional valida causa, validade e compatibilidade
+de emoção e nível; só então reidrata o episódio e aplica o decaimento pelo
+tempo passado. Sem causa vigente, a categoria volta a `calma`. Humor recente
+é restaurado; humor antigo decai até zero, e um registro legado sem horário
+volta ao neutro. O ciclo de escrita e leitura em SQLite real passou, assim
+como 172 testes de persistência, mente e política vizinha. O roteiro P15 pelo
+`laylay.py` passou 8/8, sem alertas, p95 de 12,963 s, e observou o elogio
+final como `envergonhada` nível 2 com origem e evidência causal. A suíte
+completa terminou com 7.470 aprovados, 1 ignorado, 14 xfailed e 56 subtestes
+aprovados. P16 continua aberta para prioridade entre eventos e os demais
+arcos de transição.
+
+A leitura expressável tinha outra divergência temporal: validava o prazo do
+evento causal, mas não a duração nem as interações restantes do episódio.
+Sem novo turno, voz e avatar podiam conservar uma emoção cuja duração já
+terminara. O primeiro teste ficou verde pelo motivo errado, pois sua fixture
+dava ao evento o mesmo prazo do episódio; ao separar os dois relógios, o RED
+apareceu na leitura. O retrato agora exige ambos os prazos e interações
+restantes. A projeção do avatar precisou entregar esses campos ao mesmo
+contrato; um RED específico comprovou que antes ela devolvia `calma` enquanto
+a voz lia `brava` no episódio vigente. Testes de composição antigos montavam
+episódios sem dados temporais; foram ajustados para usar o aplicador canônico,
+preservando suas expectativas de voz e reação visual. O roteiro de processo
+após o ajuste do retrato passou 8/8, sem alertas, p95 de 12,623 s; após a
+projeção visual, 307 testes focados e vizinhos passaram. A suíte completa
+terminou com 7.472 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados.
+`git diff --check` permaneceu limpo.
+
+### Continuação de P16 — prioridade causal entre episódios — 27/09/2026
+
+Um resultado expressável mais fraco substituía imediatamente um episódio forte
+ainda vigente. O RED mostrou a primeira divergência em
+`aplicar_evento_emocional`: o publicador aceitava corretamente o fato novo,
+mas a transição de episódio não comparava intensidade e relevância. A hipótese
+de que toda emoção menor deveria ser bloqueada caiu no controle com sucesso
+confirmado após falhas consecutivas do mesmo alvo: essa recuperação precisa
+substituir a irritação. Um sucesso rotineiro e uma recuperação de outro alvo
+não precisam fazê-lo.
+
+O estado agora mantém o episódio vigente quando o fato novo tem nível menor,
+ou igual nível e menor relevância; o humor de fundo ainda incorpora a nova
+evidência. Uma recuperação operacional observada, confiável e do mesmo alvo
+pode abrir o arco de alívio. O setter compartilhado devolve se o evento
+publicado realmente se tornou o episódio ativo. Um segundo RED mostrou que o
+adaptador operacional usava a aceitação do publicador para colorir a fala,
+mesmo quando a prioridade conservava o episódio anterior. A expressão agora
+exige também a confirmação do setter. O contrato vale para qualquer fonte
+que use o estado e para qualquer habilidade que use esse adaptador.
+
+Os controles de prioridade, recuperação pelo avaliador real, publicador e
+setter compartilhados, e expressão operacional passaram com os testes
+vizinhos (85 aprovados). O roteiro de processo `laylay.py` passou 8/8, sem
+alertas, p95 de 13,421 s; ele não contém uma sequência operacional de
+prioridade. A suíte completa terminou com 7.476 aprovados, 1 ignorado,
+14 xfailed e 56 subtestes aprovados. Depois desse passe, o motivo de recusa
+foi tornado genérico para não atribuir toda falha à prioridade, e um controle
+negativo confirmou que o setter recusa evento ausente ou com causa diferente;
+os testes focados finais passaram 86/86. P16 permanece aberta para os demais
+arcos e para a prova sequencial no processo de uma troca de episódios.
+
+### Continuação de P16 — desculpa por repetição — 27/09/2026
+
+A leitura compartilhada classificava “Desculpa, repeti o pedido mesmo depois de
+você confirmar” como informação. Após quatro receipts de redundância visível,
+o episódio `brava` nível 3 sobrevivia ao primeiro pedido de desculpas sem
+redução de nível: o decaimento comum ainda mirava nível 3 nessa interação.
+Os REDs localizaram duas fronteiras: reconhecimento da função do turno e
+transição do episódio. Uma desculpa citada por terceiro já não passava pelo
+reconhecimento direto; uma desculpa do usuário diante de uma falha atribuída
+ao sistema não deveria aliviar a irritação causada por esse sistema.
+
+O classificador canônico agora reconhece desculpas diretas com admissão de
+repetição ou insistência. No decaimento, esse contexto reduz um nível do
+episódio de bronca por repetição atribuída ao usuário, preservando a causa,
+o prazo e o consumo normal de interações. Ele não altera episódios de outra
+responsabilidade ou arco, nem converte a desculpa em autorização operacional.
+Uma sequência com avaliador real, publicador e setter compartilhados confirmou
+quatro receipts, um turno intermediário e a desculpa: `brava` 3 → 3 → 2.
+Os testes focados e vizinhos passaram 58/58; a suíte ampla terminou com
+7.484 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados.
+
+A prova ainda é de integração com componentes reais. O roteiro conversacional
+de processo não contém essa sequência operacional, e os demais arcos da P16
+continuam abertos.
+
+### Continuação de P16 — vulnerabilidade interrompe bronca — 27/09/2026
+
+“Estou um pouco triste hoje” já tinha leitura emocional causal no roteiro P15,
+mas a função comunicativa compartilhada a classificava como `informacao`.
+Com um episódio `brava` ativo, o decaimento receberia esse contexto neutro e
+continuaria a bronca. REDs com a frase do roteiro, variações em primeira
+pessoa e o estado compartilhado localizaram a primeira divergência no
+classificador; relatos em terceira pessoa e citações não eram desabafos do
+usuário. A leitura emocional separada reconhecia a tristeza, mas não
+alimentava a função usada pelo decaimento, confirmando que as duas fronteiras
+não estavam ligadas para essa frase.
+
+O classificador canônico reconhece agora tristeza declarada em primeira pessoa
+com intensificadores comuns. A política temporal existente de escuta então
+encerra a bronca, limpa o episódio e mantém a Laylay em `calma`; a causa de
+tristeza continua sendo do usuário, não vira emoção própria da assistente.
+Os controles de terceira pessoa e citação não acionam essa transição. Os
+testes focados e vizinhos passaram 170/170, a suíte ampla terminou com
+7.491 aprovados, 1 ignorado, 14 xfailed e 56 subtestes aprovados, e o
+roteiro real `laylay.py` passou 8/8 sem alertas (p95 de 14,01 s). Esse
+roteiro exercita a frase vulnerável a partir do estado neutro; a interrupção
+de bronca foi comprovada na integração com estado compartilhado.
+
+### Continuação de P16 — encerramento de assunto e episódio — 27/09/2026
+
+O classificador compartilhado de encerramento já reconhecia “Mudando de
+assunto: como está o tempo?” como fechamento de tópico. O refinamento mental,
+porém, entregava apenas a função comunicativa `informacao` ao decaimento.
+O primeiro RED mostrou essa perda de contexto; depois de passar o fechamento
+canônico, outro RED mostrou que o estado temporal ainda mantinha `brava`.
+Uma pergunta comum sem marcador de mudança continuou como controle: não
+deve encerrar o episódio por mera diferença de palavras.
+
+O refinamento agora entrega `mudanca_assunto` quando o classificador existente
+confirma o fechamento do tópico. O decaimento limpa o episódio nessa fronteira
+explícita, mantém `humor_level` e não cria nova causa emocional. Testes com
+`EstadoContextoRuntime`, `RespostaConversacionalRuntime` e estado compartilhado
+confirmaram a transição; 116 testes focados e vizinhos passaram. A suíte ampla
+terminou com 7.494 aprovados, 1 ignorado, 14 xfailed e 56 subtestes
+aprovados. Uma sonda reproduzível em processo separado importou a composição
+real de `laylay.py` e chamou seus callbacks com quatro receipts sintéticos de
+redundância: `brava` 3 permaneceu no turno comum, mudou para `calma` 1 no
+fechamento explícito e preservou o humor de fundo (-2). As projeções usadas
+por voz e avatar concordaram em `brava` 3 e depois em `calma` 1. A sonda
+`scripts/roteiros/sonda_personalidade_viva_p16_composicao.py` terminou com
+código zero; não iniciou o loop da assistente, não executou aplicativo nem
+comprovou reprodução física de fala/avatar. A validação sequencial no loop
+completo e os demais arcos da P16 permanecem pendentes.
 
 ### P17 — Liberdade comportamental e recusa segura
 

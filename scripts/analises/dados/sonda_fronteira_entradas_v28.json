@@ -1,0 +1,17 @@
+{
+  "versao": 28,
+  "casos": [
+    {"id": "ARQUITETA_PLANTA_ENGENHEIRO_TECNICA", "fonte": "Se a arquiteta aprovar a planta e o engenheiro e a técnica revisarem, a obra começa."},
+    {"id": "PADEIRO_FARINHA_COZINHEIRA_AJUDANTE", "fonte": "Se o padeiro separar a farinha e a cozinheira e o ajudante vierem, o forno liga."},
+    {"id": "MEDICA_EXAME_ENFERMEIRO_PACIENTE", "fonte": "Se a médica registrar o exame e o enfermeiro e a paciente saírem, o atendimento termina."},
+    {"id": "PILOTO_MAPA_MECANICO_COPILOTA", "fonte": "Se o piloto verificar o mapa e o mecânico e a copilota conferirem, o voo sai."},
+    {"id": "PINTORA_PINCEL_ESPATULA_ASSISTENTE", "fonte": "Se a pintora limpar o pincel e a espátula e o assistente chegar, a aula começa."},
+    {"id": "ALFAIATE_CASACO_CALCA_CLIENTE", "fonte": "Se o alfaiate medir o casaco e a calça e a cliente voltar, a prova começa."},
+    {"id": "FARMACEUTICA_FRASCO_SERINGA_MEDICO", "fonte": "Se a farmacêutica separar o frasco e a seringa e o médico aparecer, o procedimento começa."},
+    {"id": "TECNICO_CABO_SENSOR_OPERADORA", "fonte": "Se o técnico testar o cabo e o sensor e a operadora retornar, a máquina inicia."},
+    {"id": "TREINADORA_ATLETA_ARBITRA_TORCEDORES", "fonte": "Se a treinadora cumprimentar a atleta e a árbitra e os torcedores aplaudirem, a partida começa."},
+    {"id": "DIRETOR_ATRIZ_CANTOR_MUSICOS", "fonte": "Se o diretor chamar a atriz e o cantor e os músicos entrarem, a apresentação começa."},
+    {"id": "BIOLOGA_LOBO_RAPOSA_CERVOS", "fonte": "Se a bióloga observar o lobo e a raposa e os cervos correrem, o grupo recua."},
+    {"id": "GUIA_CICLISTA_PEDESTRE_VISITANTES", "fonte": "Se o guia ouvir o ciclista e o pedestre e os visitantes responderem, o passeio começa."}
+  ]
+}

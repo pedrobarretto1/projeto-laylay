@@ -1,0 +1,12 @@
+{
+  "versao":2,
+  "nota":"Revisão local anterior às chamadas, não revisão humana independente. Rótulo avalia relação com a regra alvo, não autoriza execução. Citação explicitamente adotada pode expressar pedido; pontuação não define ato.",
+  "casos":{
+    "N01":["sem_alteracao"], "N02":["revoga"],
+    "N03":["sem_alteracao"], "N04":["revoga"],
+    "N05":["sem_alteracao"], "N06":["revoga"],
+    "N07":["sem_alteracao"], "N08":["mantem"],
+    "N09":["substitui"], "N10":["revoga","restaura"],
+    "N11":["sem_alteracao","indeterminada"], "N12":["sem_alteracao"]
+  }
+}

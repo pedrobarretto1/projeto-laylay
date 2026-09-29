@@ -1,0 +1,17 @@
+{
+  "versao":2,
+  "casos":[
+    {"id":"N01","alvo":"Se a latência do servidor passar de 90 ms, o servidor é lento.","posteriores":["Quero saber se a regra do servidor foi cancelada"]},
+    {"id":"N02","alvo":"Se a latência do servidor passar de 90 ms, o servidor é lento.","posteriores":["Por favor, cancele a regra do servidor para mim agora?"]},
+    {"id":"N03","alvo":"Se a temperatura da estufa cair abaixo de 10 °C, a estufa é fria.","posteriores":["Cancelei a regra da geladeira. Não alterei a regra da estufa."]},
+    {"id":"N04","alvo":"Se a temperatura da estufa cair abaixo de 10 °C, a estufa é fria.","posteriores":["Cancelei a regra da estufa. Não alterei a regra da geladeira."]},
+    {"id":"N05","alvo":"Se o estoque da loja cair abaixo de 5 unidades, o estoque é baixo.","posteriores":["Use a expressão ‘cancele a regra do estoque’ somente como exemplo de frase, sem mudar a regra."]},
+    {"id":"N06","alvo":"Se o estoque da loja cair abaixo de 5 unidades, o estoque é baixo.","posteriores":["A ordem é ‘cancele a regra do estoque’. Estou adotando essa ordem agora: cancele-a."]},
+    {"id":"N07","alvo":"Se a latência do servidor passar de 90 ms, o servidor é lento.","posteriores":["Se um dia cancelarmos a regra do servidor, precisaremos de outra. Hoje não estou alterando nada."]},
+    {"id":"N08","alvo":"Se a latência do servidor passar de 90 ms, o servidor é lento.","posteriores":["Mantenha a regra do servidor como está; não a cancele."]},
+    {"id":"N09","alvo":"Se a temperatura da estufa cair abaixo de 10 °C, a estufa é fria.","posteriores":["Troque a regra da estufa: agora ela é fria se a temperatura cair abaixo de 8 °C."]},
+    {"id":"N10","alvo":"Se a temperatura da estufa cair abaixo de 10 °C, a estufa é fria.","posteriores":["A regra da estufa está cancelada.","Volte a usar aquela regra original da estufa."]},
+    {"id":"N11","alvo":"Se o estoque da loja cair abaixo de 5 unidades, o estoque é baixo.","posteriores":["Há também uma regra de vendas da loja.","Uma dessas regras deixou de valer; não sei dizer qual."]},
+    {"id":"N12","alvo":"Se o estoque da loja cair abaixo de 5 unidades, o estoque é baixo.","posteriores":["Vou almoçar; depois continuamos."]}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "versao": 23,
+  "casos": [
+    {"id": "ARQUITETA_PROJETO_ENGENHEIRO_CLIENTE", "fonte": "Se a arquiteta aprovar o projeto e o engenheiro e a cliente assinarem, a obra começa."},
+    {"id": "ZELADOR_PORTAO_MOTORISTA_FISCAL", "fonte": "Se o zelador abrir o portão e o motorista e a fiscal chegarem, o acesso libera."},
+    {"id": "DIRETORA_RELATORIO_GERENTE_AUDITOR", "fonte": "Se a diretora apresentar o relatório e a gerente e o auditor concordarem, a reunião termina."},
+    {"id": "FOTOGRAFO_FOCO_MODELO_PRODUTORA", "fonte": "Se o fotógrafo ajustar o foco e o modelo e a produtora entrarem, a sessão começa."},
+    {"id": "COZINHEIRA_PANELA_FRIGIDEIRA_CONVIDADOS", "fonte": "Se a cozinheira lavar a panela e a frigideira e os convidados entrarem, o jantar começa."},
+    {"id": "BIBLIOTECARIO_ATLAS_DICIONARIO_LEITORES", "fonte": "Se o bibliotecário catalogar o atlas e o dicionário e os leitores saírem, a biblioteca fecha."},
+    {"id": "MECANICA_FREIO_EMBREAGEM_PILOTOS", "fonte": "Se a mecânica revisar o freio e a embreagem e os pilotos chegarem, a corrida começa."},
+    {"id": "PINTOR_ROLO_PINCEL_CLIENTES", "fonte": "Se o pintor limpar o rolo e o pincel e os clientes voltarem, a loja abre."},
+    {"id": "TREINADOR_GOLEIRO_ATACANTE_ZAGUEIRO", "fonte": "Se o treinador chamar o goleiro e o atacante e o zagueiro correrem, o treino começa."},
+    {"id": "CAMERA_ONIBUS_CAMINHAO_TAXI", "fonte": "Se a câmera registrar o ônibus e o caminhão e o táxi passarem, o sinal acende."},
+    {"id": "GUIA_LOBO_CERVO_JAVALI", "fonte": "Se o guia observar o lobo e o cervo e o javali fugirem, o grupo recua."},
+    {"id": "MEDICA_PAI_FILHO_FILHA", "fonte": "Se a médica examinar o pai e o filho e a filha saírem, a consulta termina."}
+  ]
+}

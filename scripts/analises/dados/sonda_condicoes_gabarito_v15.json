@@ -1,0 +1,13 @@
+{
+  "versao": 15,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "SINO_BUZINA_PORTA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sino tocar"}, {"citacao": "a buzina soar"}, {"citacao": "a porta fechar"}], "ancoras_segmentos": {"c0": "tocar", "c1": "soar", "c2": "fechar"}},
+    "JANELA_VENTO_BOMBA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "janela abrir"}, {"citacao": "o vento soprar"}, {"citacao": "a bomba parar"}], "ancoras_segmentos": {"c0": "abrir", "c1": "soprar", "c2": "parar"}},
+    "SERVIDOR_SENSORES_SUJEITO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor responder"}, {"citacao": "os sensores A e B detectarem fumaça"}], "ancoras_segmentos": {"c0": "responder", "c1": "", "c2": "detectarem"}},
+    "CAMERAS_TRES_NOMES": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmeras Norte e Sul e Leste gravarem"}], "ancoras_segmentos": {"c0": "", "c1": "", "c2": "gravarem"}},
+    "PORTA_CAMERA_OPERADOR_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "porta travar"}, {"citacao": "a câmera gravar"}, {"citacao": "o operador confirmar"}], "ancoras_segmentos": {"c0": "travar", "c1": "gravar", "c2": "confirmar"}},
+    "SENSOR_RELATIVA_UMIDADE": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que mede temperatura e umidade registrar alteração"}], "ancoras_segmentos": {"c0": "", "c1": "registrar"}},
+    "CAMERA_OBJETO_COMPOSTO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera captar foto e vídeo"}, {"citacao": "o arquivo salvar"}], "ancoras_segmentos": {"c0": "captar", "c1": "", "c2": "salvar"}}
+  }
+}

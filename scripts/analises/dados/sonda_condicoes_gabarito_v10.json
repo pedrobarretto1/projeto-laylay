@@ -1,0 +1,12 @@
+{
+  "versao": 10,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CANTORA_RELATIVA_COORDENADA": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "cantora que compõe e ensaia apresentar a música"}]},
+    "OPERADOR_RELATIVA_COORDENADA": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "operador que lê e revisa confirmar o relatório"}]},
+    "SENSOR_RELATIVA_OBJETO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que acompanha a porta e a janela registrar movimento"}]},
+    "BIBLIOTECA_RELATIVA_OU": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "biblioteca que guarda mapas ou livros fechar"}]},
+    "SENSOR_CAMERA_PREMISSAS": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor registrar movimento"}, {"citacao": "a câmera detectar presença"}]},
+    "TECNICO_RELATIVA_E_PREMISSA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "técnico que revisa o motor encontrar falha"}, {"citacao": "a bomba parar"}]}
+  }
+}

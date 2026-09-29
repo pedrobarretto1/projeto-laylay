@@ -1,0 +1,14 @@
+{
+  "versao": 12,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CHUVA_NEBLINA_ALTERNATIVAS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "chuva cessar"}, {"citacao": "a neblina aumentar"}], "ancoras_segmentos": {"c0": "cessar", "c1": "aumentar"}},
+    "CALDEIRA_VALVULA_ALTERNATIVAS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "caldeira desligar"}, {"citacao": "a válvula abrir"}], "ancoras_segmentos": {"c0": "desligar", "c1": "abrir"}},
+    "CRIANCAS_COM_ADJETIVOS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "criança rápida e a lenta chegarem"}], "ancoras_segmentos": {"c0": "", "c1": "chegarem"}},
+    "CAIXA_CATEGORIAS_OU": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "caixa de mapas ou desenhos estiver vazia"}], "ancoras_segmentos": {"c0": "", "c1": "estiver"}},
+    "VALVULA_RELATIVA_VAPOR": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "válvula que libera água e vapor fechar"}], "ancoras_segmentos": {"c0": "", "c1": "fechar"}},
+    "CAMPO_IRRIGACAO_ALTERNATIVAS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "campo secar"}, {"citacao": "a irrigação falhar"}], "ancoras_segmentos": {"c0": "secar", "c1": "falhar"}},
+    "CHUVA_VENTO_ALTERNATIVAS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "chuva parar"}, {"citacao": "o vento soprar"}], "ancoras_segmentos": {"c0": "parar", "c1": "soprar"}},
+    "SENSOR_RELATIVA_GRANDEZAS_V12": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que mede calor e pressão registrar falha"}], "ancoras_segmentos": {"c0": "", "c1": "registrar"}}
+  }
+}

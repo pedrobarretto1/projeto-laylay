@@ -1,0 +1,14 @@
+{
+  "versao": 27,
+  "casos": [
+    {"id": "BIBLIOTECARIA_LIVRO_PROFESSOR_ALUNA", "fonte": "Se a bibliotecária catalogar o livro e o professor e a aluna consultarem, a biblioteca abre."},
+    {"id": "TECNICA_PAINEL_SUPERVISOR_OPERADORA", "fonte": "Se a técnica testar o painel e o supervisor e a operadora retornarem, o laboratório abre."},
+    {"id": "FOTOGRAFO_CAMERA_ATOR_DIRETORA", "fonte": "Se o fotógrafo ajustar a câmera e o ator e a diretora chegarem, a gravação começa."},
+    {"id": "CERAMISTA_BARRO_ARGILA_CLIENTE", "fonte": "Se a ceramista separar o barro e a argila e o cliente chegar, a oficina abre."},
+    {"id": "SECRETARIA_CONTRATO_ANEXO_GERENTE", "fonte": "Se a secretária revisar o contrato e o anexo e a gerente voltar, o processo avança."},
+    {"id": "JARDINEIRO_ROSEIRA_SAMAMBAIA_VIZINHO", "fonte": "Se o jardineiro regar a roseira e a samambaia e o vizinho aparecer, o jardim abre."},
+    {"id": "MUSICO_CANTORA_PIANISTA_TECNICOS", "fonte": "Se o músico ouvir a cantora e o pianista e os técnicos saírem, o show termina."},
+    {"id": "GUIA_TURISTA_CRIANCA_MOTORISTAS", "fonte": "Se a guia chamar o turista e a criança e os motoristas pararem, a travessia começa."},
+    {"id": "PROFESSOR_ALUNA_MONITOR_ESTUDANTES", "fonte": "Se o professor observar a aluna e o monitor e os estudantes responderem, a aula continua."}
+  ]
+}

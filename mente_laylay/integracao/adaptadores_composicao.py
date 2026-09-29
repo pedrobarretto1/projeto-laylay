@@ -18,14 +18,19 @@ def avaliar_evento_emocional_operacional(
     log: Callable[[str], Any] = print,
 ) -> dict[str, Any]:
     avaliacao = dict(avaliador.avaliar(resultado) or {})
-    if callable(publicar_evento):
-        publicar_evento(dict(avaliacao))
-    if evento_pode_alterar_estado(avaliacao):
-        definir_emocao(
+    publicado = bool(publicar_evento(dict(avaliacao))) if callable(publicar_evento) else False
+    if not publicado and evento_pode_alterar_estado(avaliacao):
+        avaliacao["permite_expressao"] = False
+        avaliacao["motivo_expressao"] = "publicacao_nao_confirmada"
+    if publicado and evento_pode_alterar_estado(avaliacao):
+        aplicado = bool(definir_emocao(
             str(avaliacao.get("emocao") or "calma"),
             int(avaliacao.get("nivel") or 1),
             str(avaliacao.get("causa") or "evento operacional"),
-        )
+        ))
+        if not aplicado:
+            avaliacao["permite_expressao"] = False
+            avaliacao["motivo_expressao"] = "aplicacao_no_estado_nao_confirmada"
     log(
         "🎭 [EMOÇÃO:CAUSA] "
         f"responsabilidade={avaliacao.get('responsabilidade')} "

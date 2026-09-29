@@ -1,0 +1,15 @@
+{
+  "versao": 22,
+  "casos": [
+    {"id": "ENTREGADOR_PEDIDO_CLIENTE_GERENTE", "fonte": "Se o entregador registrar o pedido e o cliente e o gerente chegarem, a loja abre."},
+    {"id": "LAB_MICROSCOPIO_PESQUISADORA_TECNICO", "fonte": "Se o laboratório fotografar o microscópio e a pesquisadora e o técnico saírem, o aviso toca."},
+    {"id": "SISTEMA_RECIBO_IMPRESSORA_MONITOR", "fonte": "Se o sistema imprimir o recibo e a impressora e o monitor falharem, o suporte é chamado."},
+    {"id": "ESCOLA_PACOTE_PROFESSORA_DIRETOR", "fonte": "Se a escola receber o pacote e a professora e o diretor assinarem, o arquivo fecha."},
+    {"id": "ENFERMEIRA_BANDEJA_COPO_PACIENTE", "fonte": "Se a enfermeira lavar a bandeja e o copo e o paciente acordar, o monitor avisa."},
+    {"id": "MARCENEIRO_CADEIRA_MESA_LUZ", "fonte": "Se o marceneiro pintar a cadeira e a mesa e a luz apagar, o trabalho para."},
+    {"id": "OPERADOR_PALETES_CAIXAS_CAMINHOES", "fonte": "Se o operador contar os paletes e as caixas e os caminhões chegarem, o portão abre."},
+    {"id": "JARDINEIRO_ROSEIRA_ARBUSTO_CRIANCAS", "fonte": "Se o jardineiro podar a roseira e o arbusto e as crianças saírem, o portão fecha."},
+    {"id": "CAMERA_CAO_GATO_CAVALO_AMBIGUO", "fonte": "Se a câmera detectar o cão e o gato e o cavalo correrem, o aviso toca."},
+    {"id": "RADAR_BARCO_AVIAO_HELICOPTERO_AMBIGUO", "fonte": "Se o radar registrar o barco e o avião e o helicóptero desaparecerem, o alerta toca."}
+  ]
+}

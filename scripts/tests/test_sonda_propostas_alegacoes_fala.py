@@ -1,6 +1,12 @@
 """A LLM apenas propõe; a cobertura e as fontes são verificadas fora dela."""
 
-from scripts.analises.sonda_propostas_alegacoes_fala import conferir_proposta
+from mente_laylay.cognicao.auditoria_alegacoes_didaticas import (
+    auditar_fala_didatica_sombra,
+)
+from scripts.analises.sonda_propostas_alegacoes_fala import (
+    conferir_classificacao_qualitativa,
+    conferir_proposta,
+)
 
 
 def _fonte(texto):
@@ -75,3 +81,64 @@ def test_conta_incorreta_nunca_recebe_recibo_de_sucesso():
     ), {"alegacoes": [_proposta(0, "comparacao_numerica")]})
     assert resultado["recibos_calculo"][0]["estado"] == "calculo_incorreto"
     assert resultado["aprovado_para_producao"] is False
+
+
+def test_derivacao_qualitativa_proposta_chega_ao_verificador_externo():
+    fala = "Isso é bastante seco."
+    resultado = conferir_proposta(fala, _fonte("O sensor leu 15% de umidade."), {
+        "alegacoes": [{
+            "indice": 0, "papel": "conclusao_derivada",
+            "evidencias": [{"fonte_id": "u", "citacao": "15% de umidade"}],
+            "derivacao": {"tipo": "qualificacao_qualitativa",
+                          "referente_id": "solo", "atributo": "umidade",
+                          "valor": "15", "unidade": "%", "rotulo": "seco",
+                          "medida_fonte_id": "u", "criterio_fonte_id": ""},
+        }],
+    })
+    assert resultado["alegacoes"][0]["estado"] == "qualificacao_sem_criterio"
+    assert resultado["aprovado_para_producao"] is False
+
+
+def test_triagem_qualitativa_localiza_rotulo_sem_validar_o_sentido():
+    fala = "A leitura foi 15%. Isso é bastante seco."
+    segmentos = auditar_fala_didatica_sombra(
+        fala, fontes={}, plano_id="teste",
+    )["segmentos"]
+    propostas = [{"indice": indice, "tipo": "outro", "rotulo": ""}
+                 for indice in range(len(segmentos))]
+    propostas[-1].update(tipo="qualificacao_qualitativa", rotulo="seco")
+    resultado = conferir_classificacao_qualitativa(
+        fala, {"segmentos": propostas},
+    )
+    assert resultado["estado"] == "candidatos_qualitativos_revisao_pendente"
+    assert [item["rotulo"] for item in resultado["candidatos"]] == ["seco"]
+    assert resultado["classificacao_verificada"] is False
+    assert resultado["aprovado_para_producao"] is False
+
+
+def test_triagem_qualitativa_rejeita_rotulo_ou_indice_forjado():
+    fala = "A função retorna True quando x > 0."
+    bruto = {"segmentos": [{"indice": 0, "tipo": "outro", "rotulo": ""}]}
+    assert conferir_classificacao_qualitativa(fala, bruto)["candidatos"] == []
+    bruto["segmentos"][0].update(tipo="qualificacao_qualitativa",
+                                 rotulo="seco")
+    assert conferir_classificacao_qualitativa(fala, bruto)["estado"] \
+        == "classificacao_invalida"
+
+
+def test_triagem_qualitativa_tipo_malformado_falha_fechada_sem_excecao():
+    fala = "A bateria está fraca."
+    segmentos = auditar_fala_didatica_sombra(
+        fala, fontes={}, plano_id="teste",
+    )["segmentos"]
+    bruto = {"segmentos": [
+        {"indice": indice, "tipo": ["qualificacao_qualitativa"],
+         "rotulo": "fraca"}
+        for indice, _ in enumerate(segmentos)
+    ]}
+    resultado = conferir_classificacao_qualitativa(fala, bruto)
+    assert resultado["estado"] == "classificacao_invalida"
+    assert resultado["aprovado_para_producao"] is False
+    bruto["segmentos"][0].update(indice=1)
+    assert conferir_classificacao_qualitativa(fala, bruto)["estado"] \
+        == "classificacao_invalida"

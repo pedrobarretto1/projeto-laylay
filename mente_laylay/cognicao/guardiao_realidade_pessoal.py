@@ -18,7 +18,7 @@ _EXPERIENCIA_FISICA = re.compile(
     re.IGNORECASE,
 )
 _OBJETO_FISICO_RECEBIDO = re.compile(
-    r"\b(?:voc[eê]|pedro)\s+(?:me\s+)?(?:deu|trouxe|entregou)\b|"
+    r"\b(?:voc[eê]|pedro)\s+me\s+(?:deu|trouxe|entregou)\b|"
     r"\bque\s+(?:voc[eê]|pedro)\s+me\s+deu\b",
     re.IGNORECASE,
 )

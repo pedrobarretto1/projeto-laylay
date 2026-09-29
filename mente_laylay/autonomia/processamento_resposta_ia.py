@@ -31,6 +31,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
     contingencia_comunicacao,
     montar_mensagens_reparo_comunicacao,
     compor_reparo_comunicacao,
+    remover_autopercepcao_emocional_sem_evento,
 )
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from mente_laylay.autonomia.higiene_resposta_ia import (
@@ -748,6 +749,80 @@ def preparar_resposta_para_execucao(
         if not comandos and not falha_tecnica_llm and not realidade_bloqueada
         else {"aceita": True, "problemas": [], "foco": {}}
     )
+    if (
+        "conquista_minimizada_sem_base"
+        in avaliacao_comunicacao.get("problemas_bloqueantes", ())
+        and not comandos
+    ):
+        enviar_mensagem_cb = None
+        fala_local = contingencia_comunicacao(
+            texto,
+            falas_evitar=falas_recentes_comunicacao,
+            motivo_falha="conquista_minimizada_sem_base",
+        )
+        if fala_local:
+            avaliacao_local = avaliar_qualidade_comunicacao(
+                texto, fala_local, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            )
+            if avaliacao_local.get("aceita"):
+                fala_limpa = fala_local
+                bot_raw = json.dumps(
+                    {"fala": fala_local, "comandos": []}, ensure_ascii=False,
+                )
+                avaliacao_comunicacao = avaliacao_local
+                comunicacao_autocorrigida = True
+                registrar_log("🧷 [COMUNICAÇÃO] conquista preservada localmente.")
+    if (
+        "autopercepcao_emocional_sem_causa"
+        in avaliacao_comunicacao.get("problemas_bloqueantes", ())
+        and not comandos
+    ):
+        enviar_mensagem_cb = None
+        fala_local = remover_autopercepcao_emocional_sem_evento(fala_limpa)
+        if fala_local:
+            avaliacao_local = avaliar_qualidade_comunicacao(
+                texto, fala_local, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            )
+            if avaliacao_local.get("aceita"):
+                fala_limpa = fala_local
+                bot_raw = json.dumps(
+                    {"fala": fala_local, "comandos": []}, ensure_ascii=False,
+                )
+                avaliacao_comunicacao = avaliacao_local
+                comunicacao_autocorrigida = True
+                registrar_log("🧷 [COMUNICAÇÃO] emoção própria sem evento removida localmente.")
+    if (
+        dict(plano_comunicacao.get("contrato_fala") or {}).get("funcao") == "alivio"
+        and avaliacao_comunicacao.get("problemas_bloqueantes")
+        and not plano_comunicacao.get("requer_execucao")
+        and not comandos
+    ):
+        # Uma resposta que perdeu o relato não vai a outra geração: a leitura
+        # causal do turno já oferece uma contingência rastreável e mantém o
+        # orçamento de uma chamada principal.
+        enviar_mensagem_cb = None
+        fala_local = fala_contingencia_natural(
+            texto, contexto=contexto_contingencia,
+            motivo_falha="autoria_usuario_invertida",
+        )
+        if fala_local:
+            avaliacao_local = avaliar_qualidade_comunicacao(
+                texto, fala_local, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            )
+            if avaliacao_local.get("aceita"):
+                fala_limpa = fala_local
+                bot_raw = json.dumps(
+                    {"fala": fala_local, "comandos": []}, ensure_ascii=False,
+                )
+                avaliacao_comunicacao = avaliacao_local
+                comunicacao_autocorrigida = True
+                registrar_log("🧷 [COMUNICAÇÃO] autoria do relato preservada localmente.")
     if avaliacao_comunicacao.get("requer_reparo"):
         problemas = list(avaliacao_comunicacao.get("problemas") or [])
         somente_consultiva = bool(avaliacao_comunicacao.get("somente_consultiva"))

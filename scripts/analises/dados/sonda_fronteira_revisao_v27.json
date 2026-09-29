@@ -1,0 +1,33 @@
+{
+  "versao": 27,
+  "origem": "revisao_manual_local_previa; tres controles por classe; sem validacao externa",
+  "casos": {
+    "BIBLIOTECARIA_LIVRO_PROFESSOR_ALUNA": {"relacao": "sujeito_seguinte"},
+    "TECNICA_PAINEL_SUPERVISOR_OPERADORA": {"relacao": "sujeito_seguinte"},
+    "FOTOGRAFO_CAMERA_ATOR_DIRETORA": {"relacao": "sujeito_seguinte"},
+    "CERAMISTA_BARRO_ARGILA_CLIENTE": {"relacao": "objeto_anterior"},
+    "SECRETARIA_CONTRATO_ANEXO_GERENTE": {"relacao": "objeto_anterior"},
+    "JARDINEIRO_ROSEIRA_SAMAMBAIA_VIZINHO": {"relacao": "objeto_anterior"},
+    "MUSICO_CANTORA_PIANISTA_TECNICOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o músico ouvir a cantora e o pianista", "os técnicos saírem"],
+        "sujeito_seguinte": ["o músico ouvir a cantora", "o pianista e os técnicos saírem"]
+      }
+    },
+    "GUIA_TURISTA_CRIANCA_MOTORISTAS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a guia chamar o turista e a criança", "os motoristas pararem"],
+        "sujeito_seguinte": ["a guia chamar o turista", "a criança e os motoristas pararem"]
+      }
+    },
+    "PROFESSOR_ALUNA_MONITOR_ESTUDANTES": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o professor observar a aluna e o monitor", "os estudantes responderem"],
+        "sujeito_seguinte": ["o professor observar a aluna", "o monitor e os estudantes responderem"]
+      }
+    }
+  }
+}

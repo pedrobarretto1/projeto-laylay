@@ -1,0 +1,13 @@
+{
+  "versao": 11,
+  "casos": [
+    {"id": "ALUNA_RELATIVA_COORDENADA", "dominio": "sala_hipotetica", "escopo": "sonda:v11:aluna", "fonte": "Se a aluna que canta e dança responder, a luz acende."},
+    {"id": "ARTISTA_RELATIVA_COORDENADA", "dominio": "mural_hipotetico", "escopo": "sonda:v11:artista", "fonte": "Se o artista que desenha e pinta confirmar, o mural abre."},
+    {"id": "VALVULA_RELATIVA_OBJETO", "dominio": "valvula_hipotetica", "escopo": "sonda:v11:valvula", "fonte": "Se a válvula que controla água e vapor fechar, o aviso toca."},
+    {"id": "CAMERA_RELATIVA_E_PREMISSA", "dominio": "alarme_hipotetico", "escopo": "sonda:v11:camera", "fonte": "Se a câmera que observa o corredor detectar movimento e o sensor apitar, o alarme toca."},
+    {"id": "TECNICO_VERBOS_EM_CADEIA", "dominio": "manutencao_hipotetica", "escopo": "sonda:v11:tecnico", "fonte": "Se o técnico tentar reparar o motor e a bomba parar, o painel avisa."},
+    {"id": "RELATORIO_COMPLEMENTO_QUE", "dominio": "relatorio_hipotetico", "escopo": "sonda:v11:relatorio", "fonte": "Se o relatório indicar que o motor falhou e a bomba parar, o aviso aparece."},
+    {"id": "SENSOR_RELATIVA_GRANDEZAS", "dominio": "telemetria_hipotetica", "escopo": "sonda:v11:sensor", "fonte": "Se o sensor que mede pressão e temperatura registrar alteração, o painel acende."},
+    {"id": "SERVIDOR_CLIENTE_ALTERNATIVOS", "dominio": "software_hipotetico", "escopo": "sonda:v11:controle_ou", "fonte": "Se o servidor verificar a chave ou o cliente autenticar, a sessão inicia."}
+  ]
+}

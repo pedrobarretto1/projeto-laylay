@@ -76,6 +76,7 @@ from mente_laylay.emocoes.contrato_causal import (
 from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal as publicar_evento_emocional_no_quadro,
 )
+from mente_laylay.memoria_mental.encerramento_assunto import classificar_encerramento_assunto
 from mente_laylay.memoria_mental.consciencia_temporal import atualizar_consciencia_temporal
 from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto
 from mente_laylay.memoria_mental.sessao_conversa import renovar_contexto_sessao
@@ -536,8 +537,16 @@ class EstadoContextoRuntime:
         avancar_emocao = self._namespace().get("_avancar_emocao_conversacional")
         if callable(avancar_emocao):
             funcao = analisar_funcao_comunicativa(texto).get("funcao", "")
+            if classificar_encerramento_assunto(texto, estado_runtime.mental) == "topico":
+                funcao = "mudanca_assunto"
+            plano_id = str(
+                dict(estado_runtime.mental.get("plano_turno_atual") or {}).get("id") or ""
+            ).strip()
             avancar_emocao(
-                consumir_interacao=True, interaction_key=texto, contexto=funcao,
+                consumir_interacao=True,
+                interaction_key=f"turno:{plano_id}" if plano_id else texto,
+                contexto=funcao,
+                por_turno=bool(plano_id),
             )
         dados = extrair_refino_contexto_mental(texto, resultado)
         if not dados.get("texto"):

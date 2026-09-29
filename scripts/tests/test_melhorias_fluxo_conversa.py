@@ -1063,10 +1063,11 @@ def test_agradecimento_por_receita_responde_ao_motivo_da_ajuda() -> None:
     assert tipo_reconhecimento_afetivo("obrigado lay") == "agradecimento"
     assert any(p in fala.casefold() for p in ("receita", "medidas", "quantidades"))
     assert "isso foi fofo" not in fala.casefold()
-    assert emocoes == [("envergonhada", 1, "agradeceu pela ajuda")]
+    # Gratidão comum dá forma à resposta, sem abrir episódio da Laylay.
+    assert emocoes == []
 
 
-def test_elogio_pessoal_tem_vergonha_mais_marcada() -> None:
+def test_elogio_pessoal_sem_publicador_preserva_fala_sem_forcar_estado() -> None:
     emocoes = []
     ctx = {
         "mente_integrada_estado": {},
@@ -1076,7 +1077,7 @@ def test_elogio_pessoal_tem_vergonha_mais_marcada() -> None:
     fala = responder_agradecimento_ou_elogio(ctx, "você é incrível, Lay")
     assert tipo_reconhecimento_afetivo("você é incrível, Lay") == "elogio_pessoal"
     assert any(p in fala.casefold() for p in ("obrigada", "elogio", "gostei"))
-    assert emocoes == [("envergonhada", 2, "recebeu elogio")]
+    assert emocoes == []
 
 
 def test_reacoes_a_agradecimento_nao_repetem_a_mesma_fala_em_sequencia() -> None:

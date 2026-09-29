@@ -163,8 +163,8 @@ class RespostaConversacionalRuntime:
         except Exception as erro:
             self.log(f"⚠️ [CONVERSA] falha ao acalmar emoção: {type(erro).__name__}: {erro}")
 
-    def definir_emocao(self, emocao: str, nivel: int = 1, motivo: str = "") -> None:
-        """Atualiza a emoção conversacional na mesma fonte de estado da voz."""
+    def definir_emocao(self, emocao: str, nivel: int = 1, motivo: str = "") -> bool:
+        """Confirma se o evento publicado virou o episódio da voz."""
         try:
             emocao_limpa = str(emocao or "calma").strip().lower() or "calma"
             nivel_limpo = max(1, min(3, int(nivel or 1)))
@@ -182,12 +182,15 @@ class RespostaConversacionalRuntime:
             else:
                 # O tom de uma fala e o status de uma habilidade não publicam
                 # por si só um episódio emocional da Laylay.
-                return
+                return False
             estado.substituir("conversacional", novo)
-            if motivo:
+            aplicado = dict(novo.get("episodio_emocional") or {}) == evento
+            if aplicado and motivo:
                 self.log(f"🎭 [EMOÇÃO] {emocao_limpa} nível {nivel_limpo} | {motivo}")
+            return aplicado
         except Exception as erro:
             self.log(f"⚠️ [EMOÇÃO] falha ao atualizar estado: {type(erro).__name__}: {erro}")
+            return False
 
     def avancar_emocao(
         self,
@@ -195,6 +198,7 @@ class RespostaConversacionalRuntime:
         consumir_interacao: bool = True,
         interaction_key: str = "",
         contexto: str = "",
+        por_turno: bool = False,
     ) -> None:
         try:
             estado = self.estado_runtime_getter()
@@ -204,7 +208,7 @@ class RespostaConversacionalRuntime:
             if consumir_interacao and chave:
                 chave_anterior = str(anterior.get("emotion_last_input_key") or "")
                 ts_anterior = float(anterior.get("emotion_last_input_at") or 0.0)
-                if chave == chave_anterior and agora - ts_anterior <= 2.0:
+                if chave == chave_anterior and (por_turno or agora - ts_anterior <= 2.0):
                     return
             novo, alterou = decair_estado_emocional(
                 anterior,

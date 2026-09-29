@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 
 FUNCOES_SOCIAIS_PRIORITARIAS = {
-    "agradecimento", "brincadeira", "conquista", "correcao", "decepcao",
+    "agradecimento", "alivio", "brincadeira", "conquista", "correcao", "decepcao",
     "desabafo", "elogio", "encerramento", "frustracao", "inseguranca",
     "reacao_positiva", "relato",
 }

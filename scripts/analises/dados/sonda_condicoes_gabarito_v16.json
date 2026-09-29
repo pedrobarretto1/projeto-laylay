@@ -1,0 +1,12 @@
+{
+  "versao": 16,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CAMERA_FOTO_VIDEO_ARQUIVO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera registrar foto e vídeo"}, {"citacao": "o arquivo salvar"}], "ancoras_segmentos": {"c0": "registrar", "c1": "", "c2": "salvar"}},
+    "SERVIDOR_LOG_RELATORIO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor gerar log e relatório"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "gerar", "c1": "", "c2": "cair"}},
+    "ROBO_CAIXA_ETIQUETA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "robô localizar caixa e etiqueta"}, {"citacao": "a esteira parar"}], "ancoras_segmentos": {"c0": "localizar", "c1": "", "c2": "parar"}},
+    "PORTA_VENTO_LUZ": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "porta abrir"}, {"citacao": "o vento soprar"}, {"citacao": "a luz apagar"}], "ancoras_segmentos": {"c0": "abrir", "c1": "soprar", "c2": "apagar"}},
+    "SERVIDOR_SENSORES_A_B": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor responder"}, {"citacao": "os sensores C e D detectarem fumaça"}], "ancoras_segmentos": {"c0": "responder", "c1": "", "c2": "detectarem"}},
+    "MOTOR_VALVULA_BATERIA": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a válvula fechar"}, {"citacao": "a bateria acabar"}], "ancoras_segmentos": {"c0": "parar", "c1": "fechar", "c2": "acabar"}}
+  }
+}

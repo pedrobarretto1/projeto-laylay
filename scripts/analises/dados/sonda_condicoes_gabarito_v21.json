@@ -1,0 +1,11 @@
+{
+  "versao": 21,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CAMERA_PORTAO_MOTOR_BOMBA_PRESENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera observa o portão"}, {"citacao": "o motor e a bomba param"}], "ancoras_segmentos": {"c0": "observa", "c1": "", "c2": "param"}},
+    "APP_DADO_API_BANCO_PRESENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo registra o dado"}, {"citacao": "a API e o banco falham"}], "ancoras_segmentos": {"c0": "registra", "c1": "", "c2": "falham"}},
+    "SENSOR_PACOTE_SELO_REDE_PRESENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor registra o pacote e o selo"}, {"citacao": "a rede cai"}], "ancoras_segmentos": {"c0": "registra", "c1": "", "c2": "cai"}},
+    "ROBO_PECA_ETIQUETA_MOTORES_PRESENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "robô coleta a peça e a etiqueta"}, {"citacao": "os motores param"}], "ancoras_segmentos": {"c0": "coleta", "c1": "", "c2": "param"}},
+    "APP_LOG_RELATORIO_SERVIDORES_PRESENTE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo envia o log e o relatório"}, {"citacao": "os servidores falham"}], "ancoras_segmentos": {"c0": "envia", "c1": "", "c2": "falham"}}
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "versao": 5,
+  "casos": {
+    "ESTUFA_QUENTE": {"estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "estufa", "atributo": "temperatura da estufa", "operador": ">", "limiar": "24", "unidade": "°C", "direcao_implicacao": "condicoes_suficientes", "citacao_condicao": "a temperatura da estufa ficar acima de 24 °C"},
+    "COMPRESSOR_ESTAVEL": {"estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "compressor", "atributo": "vibração do compressor", "operador": "<", "limiar": "4", "unidade": "mm/s", "direcao_implicacao": "condicoes_suficientes", "citacao_condicao": "a vibração do compressor ficar abaixo de 4 mm/s"},
+    "CANAL_CONTAGEM": {"estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "canal", "atributo": "contagem de pacotes do canal", "operador": ">", "limiar": "7", "unidade": "", "direcao_implicacao": "condicoes_suficientes", "citacao_condicao": "a contagem de pacotes do canal ficar acima de 7"},
+    "FONTE_DECIMAL": {"estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "fonte", "atributo": "tensão da fonte", "operador": "<", "limiar": "4,8", "unidade": "V", "direcao_implicacao": "condicoes_suficientes", "citacao_condicao": "a tensão da fonte ficar abaixo de 4,8 V"},
+    "SERVIDOR_NECESSARIO": {"estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "servidor", "atributo": "latência do servidor", "operador": ">", "limiar": "150", "unidade": "ms", "direcao_implicacao": "condicoes_necessarias", "citacao_condicao": "a latência do servidor ficar acima de 150 ms"},
+    "ESTUFA_OUTRO_SUJEITO": {"estado": "abster", "motivo": "outro_indeterminado"},
+    "COMPRESSOR_NEGADO": {"estado": "abster", "motivo": "rotulo_nao_declarado"},
+    "FONTE_ACAO": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "CANAL_COMPOSTO": {"estado": "abster", "motivo": "regra_composta"}
+  }
+}

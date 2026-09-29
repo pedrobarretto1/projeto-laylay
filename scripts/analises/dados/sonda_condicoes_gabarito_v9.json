@@ -1,0 +1,14 @@
+{
+  "versao": 9,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "CAMERA_RELATIVA_OBJETO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera que observa a sala e o corredor captar movimento"}]},
+    "CONTROLADOR_RELATIVA_OBJETO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "controlador que verifica o cabo e a bateria detectar falha"}]},
+    "TECNICO_RELATIVA_OBJETO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "técnico que conhece o motor e a bomba encontrar vazamento"}]},
+    "PESSOA_RELATIVA_DOIS_VERBOS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "pessoa que lê e escreve confirmar"}]},
+    "SENSOR_RELATIVA_E_PREMISSA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que monitora a porta detectar fumaça"}, {"citacao": "a bateria acabar"}]},
+    "TECNICO_RELATIVA_OU_PREMISSA": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "técnico que examina o motor encontrar vazamento"}, {"citacao": "a bomba falhar"}]},
+    "CAMERA_SENSOR_PREMISSAS": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera observar a sala"}, {"citacao": "o sensor detectar movimento"}]},
+    "MOTOR_BOMBA_PREMISSAS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a bomba falhar"}]}
+  }
+}

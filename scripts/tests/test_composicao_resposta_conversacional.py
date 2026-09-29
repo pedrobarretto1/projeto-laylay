@@ -4,6 +4,7 @@ import pytest
 import time
 
 from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
+from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
 from mente_laylay.integracao.politicas_composicao import construir_estado_visual
 from mente_laylay.personalidade.resposta_conversacional_runtime import (
     RespostaConversacionalRuntime,
@@ -109,10 +110,7 @@ def test_resposta_curta_herda_nivel_do_episodio_para_voz() -> None:
         permite_expressao=True, emocao="brava", nivel=3,
         ts=time.time(),
     )
-    estado.conversacional.update({
-        "current_emotion": "brava", "emotion_level": 3,
-        "episodio_emocional": evento,
-    })
+    estado.conversacional = aplicar_evento_emocional(estado.conversacional, evento)
     falas = []
 
     class Memoria:
@@ -176,10 +174,7 @@ def test_resposta_curta_nao_usa_tom_explicito_sem_causa_compartilhada() -> None:
         permite_expressao=True, emocao="brava", nivel=3,
         ts=time.time(),
     )
-    estado.conversacional.update({
-        "current_emotion": "brava", "emotion_level": 3,
-        "episodio_emocional": evento,
-    })
+    estado.conversacional = aplicar_evento_emocional(estado.conversacional, evento)
     assert runtime.emitir_resposta_curta(
         "Tudo bem", "Entendi.", emocao="envergonhada", nivel=2,
     )

@@ -1,0 +1,10 @@
+{
+  "versao": 21,
+  "casos": [
+    {"id": "CAMERA_PORTAO_MOTOR_BOMBA_PRESENTE", "dominio": "alarme_hipotetico", "escopo": "sonda:v21:sujeito1", "fonte": "Se a câmera observa o portão e o motor e a bomba param, o aviso toca."},
+    {"id": "APP_DADO_API_BANCO_PRESENTE", "dominio": "sistema_hipotetico", "escopo": "sonda:v21:sujeito2", "fonte": "Se o aplicativo registra o dado e a API e o banco falham, o alerta toca."},
+    {"id": "SENSOR_PACOTE_SELO_REDE_PRESENTE", "dominio": "rede_hipotetica", "escopo": "sonda:v21:objeto1", "fonte": "Se o sensor registra o pacote e o selo e a rede cai, o painel avisa."},
+    {"id": "ROBO_PECA_ETIQUETA_MOTORES_PRESENTE", "dominio": "fabrica_hipotetica", "escopo": "sonda:v21:objeto2", "fonte": "Se o robô coleta a peça e a etiqueta e os motores param, o painel avisa."},
+    {"id": "APP_LOG_RELATORIO_SERVIDORES_PRESENTE", "dominio": "registro_hipotetico", "escopo": "sonda:v21:objeto3", "fonte": "Se o aplicativo envia o log e o relatório e os servidores falham, o alerta toca."}
+  ]
+}

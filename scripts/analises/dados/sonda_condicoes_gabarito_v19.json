@@ -1,0 +1,13 @@
+{
+  "versao": 19,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "IMPRESSORA_RELATORIO_RECIBO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "impressora emitir relatório e recibo"}, {"citacao": "a fila encerrar"}], "ancoras_segmentos": {"c0": "emitir", "c1": "", "c2": "encerrar"}},
+    "APP_LOG_COPIA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo criar log e cópia"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "criar", "c1": "", "c2": "cair"}},
+    "CAMERA_PORTA_VENTO_CHUVA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera registrar a porta"}, {"citacao": "o vento e a chuva pararem"}], "ancoras_segmentos": {"c0": "registrar", "c1": "", "c2": "pararem"}},
+    "ROBO_FUMACA_SENSOR_SIRENE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "robô detectar a fumaça"}, {"citacao": "o sensor e a sirene falharem"}], "ancoras_segmentos": {"c0": "detectar", "c1": "", "c2": "falharem"}},
+    "APP_FOTO_CAMERA_DRONE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo registrar a foto"}, {"citacao": "a câmera e o drone pararem"}], "ancoras_segmentos": {"c0": "registrar", "c1": "", "c2": "pararem"}},
+    "SENSOR_DETECTAR_SUBORDINADA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor detectar que a câmera registrou foto e vídeo"}, {"citacao": "a bateria acabar"}], "ancoras_segmentos": {"c0": "detectar", "c1": "", "c2": "acabar"}},
+    "APP_PEDIR_EXPORTACAO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo pedir para exportar foto e vídeo"}, {"citacao": "o usuário confirmar"}], "ancoras_segmentos": {"c0": "pedir", "c1": "", "c2": "confirmar"}}
+  }
+}

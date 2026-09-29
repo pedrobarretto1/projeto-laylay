@@ -832,7 +832,7 @@ class VozRuntime:
                 self.ducking_volume(False)
 
             if fallback_restante and not interrompida:
-                sucesso = bool(self.fallback_pyttsx(fallback_restante, emocao))
+                sucesso = bool(self.fallback_pyttsx(fallback_restante, emocao, nivel))
 
         except Exception as e:
             cancelar_restante.set()
@@ -845,7 +845,7 @@ class VozRuntime:
                     fallback="tts_local_pyttsx",
                 )
             try:
-                self.fallback_pyttsx(texto, emocao)
+                sucesso = bool(self.fallback_pyttsx(texto, emocao, nivel))
             except Exception as erro_fallback:
                 self.log(
                     f"❌ [FALA:FALLBACK] {type(erro_fallback).__name__}: {erro_fallback}"
@@ -1739,24 +1739,45 @@ class VozRuntime:
             self.ducking_volume(False)
         return True
 
-    def fallback_pyttsx(self, texto: str, emocao_atual: str):
+    def _velocidades_fallback_local(
+        self, emocao: str, nivel: int,
+    ) -> tuple[int, int]:
+        """Converte o ritmo do perfil canônico para pyttsx3 e SAPI."""
+        try:
+            nivel_limpo = max(1, min(3, int(nivel)))
+            rate, _pitch, _volume = self.modular_audio_params(
+                emocao, nivel_limpo,
+            )
+            percentual = int(self._normalizar_percentual_edge(rate)[:-1])
+        except (TypeError, ValueError, OverflowError):
+            percentual = 0
+        percentual = max(-20, min(20, percentual))
+        pyttsx_rate = max(120, min(190, round(150 * (1 + percentual / 100))))
+        sapi_rate = max(-3, min(3, round(percentual / 4) - 1))
+        return pyttsx_rate, sapi_rate
+
+    def fallback_pyttsx(
+        self, texto: str, emocao_atual: str, nivel: int = 1,
+    ):
         if not self._fallback_tts_disponivel:
             return False
         caminho = None
+        pyttsx_rate, velocidade = self._velocidades_fallback_local(
+            emocao_atual, nivel,
+        )
         try:
             texto_voz = self.limpar_para_voz(texto) or self.fallback_fala
             if self._fallback_tts_sapi_windows:
                 temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
                 caminho = temp.name
                 temp.close()
-                velocidade = -1 if "calma" in str(emocao_atual).lower() else 0
                 if not self._sintetizar_sapi_windows(
                     texto_voz, caminho, velocidade=velocidade,
                 ):
                     raise RuntimeError("sintetizador nativo do Windows indisponível")
                 return self._reproduzir_wav_local(caminho)
             engine = self.pyttsx3.init()
-            engine.setProperty("rate", 150 if "calma" in str(emocao_atual).lower() else 170)
+            engine.setProperty("rate", pyttsx_rate)
             temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
             caminho = temp.name
             temp.close()
@@ -1767,7 +1788,6 @@ class VozRuntime:
             # Alguns ambientes Windows ficam com o cache COM gerado inválido
             # (por exemplo, um arquivo SpeechLib com IndentationError). Não
             # tente importar o mesmo fallback quebrado a cada fala.
-            velocidade = -1 if "calma" in str(emocao_atual).lower() else 0
             if not caminho:
                 temp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
                 caminho = temp.name

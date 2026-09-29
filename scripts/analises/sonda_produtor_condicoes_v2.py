@@ -33,14 +33,14 @@ def _mesma_condicao_em_superficie(observado: str, esperado: str) -> bool:
     if not observado.endswith(esperado):
         return False
     prefixo = observado[:-len(esperado)]
-    return bool(re.fullmatch(r"\s*(?:se\s+)?(?:(?:o|a|os|as)\s+)?",
+    return bool(re.fullmatch(r"\s*(?:se\s+)?(?:(?:o|a|os|as|um|uma|uns|umas)\s+)?",
                              prefixo, flags=re.IGNORECASE))
 
 
 def carregar_painel(
     versao: int = 2,
 ) -> tuple[list[dict[str, object]], dict[str, dict[str, object]]]:
-    if versao not in {2, 3}:
+    if versao not in {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}:
         raise ValueError("painel desconhecido")
     entradas_arquivo = DADOS / f"sonda_condicoes_entradas_v{versao}.json"
     gabarito_arquivo = DADOS / f"sonda_condicoes_gabarito_v{versao}.json"

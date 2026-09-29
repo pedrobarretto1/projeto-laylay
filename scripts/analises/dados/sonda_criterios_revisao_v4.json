@@ -1,0 +1,40 @@
+{
+  "versao": 4,
+  "casos": {
+    "POMAR_CRITERIO_SECO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "solo",
+      "atributo": "umidade do solo do pomar", "operador": "<", "limiar": "25",
+      "unidade": "%", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "umidade do solo do pomar ficar abaixo de 25%"
+    },
+    "EMPILHADEIRA_BATERIA_FRACA": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "bateria",
+      "atributo": "carga da bateria da empilhadeira", "operador": "<", "limiar": "30",
+      "unidade": "%", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "carga da bateria da empilhadeira ficar abaixo de 30%"
+    },
+    "SERVICO_APENAS_SE": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "servico",
+      "atributo": "latência do serviço", "operador": ">", "limiar": "300",
+      "unidade": "ms", "direcao_implicacao": "condicoes_necessarias",
+      "citacao_condicao": "latência do serviço ficar acima de 300 ms"
+    },
+    "IMPRESSORA_CRITERIO_LENTA": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "impressora",
+      "atributo": "tempo de impressão da impressora", "operador": ">", "limiar": "10",
+      "unidade": "s", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "tempo de impressão da impressora ficar acima de 10 s"
+    },
+    "CAFETEIRA_AGUA_QUENTE": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "agua",
+      "atributo": "temperatura da água da cafeteira", "operador": ">", "limiar": "90",
+      "unidade": "°C", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "temperatura da água da cafeteira ficar acima de 90 °C"
+    },
+    "CAIXA_ROTULO_NA_LEITURA": {"estado": "abster", "motivo": "criterio_ausente"},
+    "POMAR_REGRA_COMPOSTA": {"estado": "abster", "motivo": "regra_composta"},
+    "CIRCUITO_ACAO_COM_ROTULO": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "TERMOSTATO_OUTRO_ROTULO": {"estado": "abster", "motivo": "rotulo_nao_declarado"},
+    "PORTA_EFEITO_NEGADO": {"estado": "abster", "motivo": "rotulo_nao_declarado"}
+  }
+}

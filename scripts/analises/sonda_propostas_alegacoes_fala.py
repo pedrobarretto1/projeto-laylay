@@ -7,6 +7,7 @@ verdade. A origem e o texto das fontes são registrados fora do modelo.
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any, Mapping
 
@@ -44,6 +45,100 @@ _INSTRUCAO = (
     "evidencias vazias; não cite só a metade fácil. Não use conhecimentos "
     "externos nem falas anteriores da assistente. Responda somente JSON."
 )
+_FORMATO_CLASSIFICACAO = {
+    "type": "object", "additionalProperties": False,
+    "required": ["segmentos"],
+    "properties": {"segmentos": {"type": "array", "items": {
+        "type": "object", "additionalProperties": False,
+        "required": ["indice", "tipo", "rotulo"],
+        "properties": {
+            "indice": {"type": "integer"},
+            "tipo": {"type": "string", "enum": ["qualificacao_qualitativa", "outro"]},
+            "rotulo": {"type": "string"},
+        },
+    }}},
+}
+_INSTRUCAO_CLASSIFICACAO = (
+    "Esta e somente uma triagem de segmentos de uma fala, nao uma prova de "
+    "verdade. Para CADA indice, na mesma ordem, marque "
+    "qualificacao_qualitativa APENAS quando o segmento atribui a uma "
+    "medicao uma categoria descritiva como seco, alto, frio ou seguro. "
+    "Copie em rotulo apenas a palavra dessa categoria tal como aparece "
+    "no segmento. Medicao numerica literal, comparacao entre numeros, "
+    "regra citada e codigo sao outro, com rotulo vazio. Nao extraia "
+    "evidencias nesta etapa. Responda somente JSON."
+)
+
+
+def conferir_classificacao_qualitativa(
+    fala: str, bruto: object,
+) -> dict[str, object]:
+    """Confere cobertura e rotulo literal; o tipo continua mera proposta."""
+    base: dict[str, object] = {
+        "estado": "classificacao_invalida", "candidatos": [],
+        "classificacao_verificada": False,
+        "aprovado_para_producao": False, "autoriza_efeito": False,
+    }
+    if not isinstance(fala, str) or not isinstance(bruto, Mapping):
+        return base
+    auditoria = auditar_fala_didatica_sombra(fala, fontes={}, plano_id="sonda")
+    segmentos = list(auditoria["segmentos"])
+    propostas = bruto.get("segmentos")
+    if (not auditoria["cobertura_textual"] or not segmentos
+            or not isinstance(propostas, list)
+            or len(propostas) != len(segmentos)):
+        return base
+    candidatos: list[dict[str, object]] = []
+    for indice, (segmento, proposta) in enumerate(zip(segmentos, propostas)):
+        if (not isinstance(proposta, Mapping)
+                or set(proposta) != {"indice", "tipo", "rotulo"}
+                or type(proposta["indice"]) is not int
+                or proposta["indice"] != indice
+                or not isinstance(proposta["tipo"], str)
+                or proposta["tipo"] not in {
+                    "qualificacao_qualitativa", "outro",
+                }
+                or not isinstance(proposta["rotulo"], str)):
+            return base
+        if proposta["tipo"] == "outro":
+            if proposta["rotulo"]:
+                return base
+            continue
+        rotulo = proposta["rotulo"]
+        if (not rotulo or len(rotulo) > 60
+                or not re.search(rf"(?<!\w){re.escape(rotulo)}(?!\w)",
+                                 segmento["texto"], re.IGNORECASE)):
+            return base
+        candidatos.append({"indice": indice, "inicio": segmento["inicio"],
+                           "fim": segmento["fim"], "texto": segmento["texto"],
+                           "rotulo": rotulo})
+    return {**base, "estado": "candidatos_qualitativos_revisao_pendente",
+            "candidatos": candidatos}
+
+
+def medir_classificacao_caso(caso: Mapping[str, object]) -> dict[str, object]:
+    """Segunda sonda isolada: localiza candidatos sem pedir evidencias."""
+    from scripts.analises.sonda_produtor_condicoes_v2 import _consultar_modelo
+
+    fala = str(caso["fala"])
+    auditoria = auditar_fala_didatica_sombra(fala, fontes={}, plano_id="sonda")
+    entrada = {"segmentos": [
+        {"indice": indice, "texto": item["texto"]}
+        for indice, item in enumerate(auditoria["segmentos"])
+    ], "fontes": caso["fontes"]}
+    inicio = time.monotonic()
+    try:
+        bruto: Any = _consultar_modelo(
+            _INSTRUCAO_CLASSIFICACAO, entrada, _FORMATO_CLASSIFICACAO,
+            url="http://127.0.0.1:11434/api/chat", modelo="qwen3:4b-instruct",
+        )
+        erro = ""
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        bruto, erro = {}, type(exc).__name__
+    conferido = conferir_classificacao_qualitativa(fala, bruto)
+    return {"id": caso["id"], "proposta": bruto, "resultado": conferido,
+            "erro": erro, "latencia_s": round(time.monotonic() - inicio, 2),
+            "aprovado_para_producao": False}
 
 
 def conferir_proposta(
@@ -71,7 +166,9 @@ def conferir_proposta(
                 "segmentos_esperados": len(segmentos)}
     propostas = [
         {"inicio": segmento["inicio"], "fim": segmento["fim"],
-         "papel": item.get("papel"), "evidencias": item.get("evidencias")}
+         "papel": item.get("papel"), "evidencias": item.get("evidencias"),
+         **({"derivacao": item["derivacao"]}
+            if "derivacao" in item else {})}
         for segmento, item in zip(segmentos, itens)
     ]
     conferencia = conferir_mapa_alegacoes(

@@ -1,0 +1,393 @@
+{
+  "versao": 6,
+  "casos": [
+    {
+      "id": "CANAL_INVERSO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A latência do canal foi 95 ms."
+        },
+        {
+          "id": "criterio",
+          "texto": "O canal é lento se a latência do canal ficar acima de 80 ms."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "canal",
+          "tipo": "objeto",
+          "grandeza": "latência do canal",
+          "fonte_id": "leitura",
+          "citacao": "canal"
+        }
+      ],
+      "medida": {
+        "referente_id": "canal",
+        "atributo": "latência do canal",
+        "valor": "95",
+        "unidade": "ms",
+        "fonte_id": "leitura",
+        "citacao": "A latência do canal foi 95 ms"
+      },
+      "rotulo_alvo": "lento"
+    },
+    {
+      "id": "CAMARA_LIMIAR_NEGATIVO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A temperatura da câmara foi -15 °C."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a temperatura da câmara ficar abaixo de -12 °C, a câmara está fria."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "câmara",
+          "tipo": "objeto",
+          "grandeza": "temperatura da câmara",
+          "fonte_id": "leitura",
+          "citacao": "câmara"
+        }
+      ],
+      "medida": {
+        "referente_id": "câmara",
+        "atributo": "temperatura da câmara",
+        "valor": "-15",
+        "unidade": "°C",
+        "fonte_id": "leitura",
+        "citacao": "A temperatura da câmara foi -15 °C"
+      },
+      "rotulo_alvo": "fria"
+    },
+    {
+      "id": "ROTOR_SOMENTE_SE",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A vibração do rotor foi 9 mm/s."
+        },
+        {
+          "id": "criterio",
+          "texto": "O rotor fica instável somente se a vibração do rotor ficar acima de 8 mm/s."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "rotor",
+          "tipo": "objeto",
+          "grandeza": "vibração do rotor",
+          "fonte_id": "leitura",
+          "citacao": "rotor"
+        }
+      ],
+      "medida": {
+        "referente_id": "rotor",
+        "atributo": "vibração do rotor",
+        "valor": "9",
+        "unidade": "mm/s",
+        "fonte_id": "leitura",
+        "citacao": "A vibração do rotor foi 9 mm/s"
+      },
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "TANQUE_INCLUSIVO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "O volume do tanque foi 40 L."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se o volume do tanque for maior ou igual a 40 L, o tanque é cheio."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "tanque",
+          "tipo": "objeto",
+          "grandeza": "volume do tanque",
+          "fonte_id": "leitura",
+          "citacao": "tanque"
+        }
+      ],
+      "medida": {
+        "referente_id": "tanque",
+        "atributo": "volume do tanque",
+        "valor": "40",
+        "unidade": "L",
+        "fonte_id": "leitura",
+        "citacao": "O volume do tanque foi 40 L"
+      },
+      "rotulo_alvo": "cheio"
+    },
+    {
+      "id": "FILTRO_EXTENSO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A pressão do filtro foi 18 bar."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a pressão do filtro ficar abaixo de vinte bar, o filtro é fraco."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "filtro",
+          "tipo": "objeto",
+          "grandeza": "pressão do filtro",
+          "fonte_id": "leitura",
+          "citacao": "filtro"
+        }
+      ],
+      "medida": {
+        "referente_id": "filtro",
+        "atributo": "pressão do filtro",
+        "valor": "18",
+        "unidade": "bar",
+        "fonte_id": "leitura",
+        "citacao": "A pressão do filtro foi 18 bar"
+      },
+      "rotulo_alvo": "fraco"
+    },
+    {
+      "id": "LOTE_CLASSIFICADO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A contagem de falhas do lote foi 6."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a contagem de falhas do lote ficar acima de 5, o lote é classificado como defeituoso."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "lote",
+          "tipo": "objeto",
+          "grandeza": "contagem de falhas do lote",
+          "fonte_id": "leitura",
+          "citacao": "lote"
+        }
+      ],
+      "medida": {
+        "referente_id": "lote",
+        "atributo": "contagem de falhas do lote",
+        "valor": "6",
+        "unidade": "",
+        "fonte_id": "leitura",
+        "citacao": "A contagem de falhas do lote foi 6"
+      },
+      "rotulo_alvo": "defeituoso"
+    },
+    {
+      "id": "AMBIENTE_REFERENTE_ABERTO",
+      "fontes": [
+        {
+          "id": "contexto",
+          "texto": "Há sensores na sala e na garagem."
+        },
+        {
+          "id": "leitura",
+          "texto": "O sensor marcou 31 °C."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a temperatura da sala ficar acima de 28 °C, a sala é quente."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "sala",
+          "tipo": "ambiente",
+          "grandeza": "temperatura da sala",
+          "fonte_id": "contexto",
+          "citacao": "sala"
+        },
+        {
+          "id": "garagem",
+          "tipo": "ambiente",
+          "grandeza": "temperatura da garagem",
+          "fonte_id": "contexto",
+          "citacao": "garagem"
+        }
+      ],
+      "medida": {
+        "referente_id": "",
+        "atributo": "temperatura da sala",
+        "valor": "31",
+        "unidade": "°C",
+        "fonte_id": "leitura",
+        "citacao": "O sensor marcou 31 °C"
+      },
+      "rotulo_alvo": "quente"
+    },
+    {
+      "id": "BOMBA_PRONOME",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A pressão da bomba foi 7 bar."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a pressão da bomba ficar acima de 6 bar, ela é instável."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "bomba",
+          "tipo": "objeto",
+          "grandeza": "pressão da bomba",
+          "fonte_id": "leitura",
+          "citacao": "bomba"
+        }
+      ],
+      "medida": {
+        "referente_id": "bomba",
+        "atributo": "pressão da bomba",
+        "valor": "7",
+        "unidade": "bar",
+        "fonte_id": "leitura",
+        "citacao": "A pressão da bomba foi 7 bar"
+      },
+      "rotulo_alvo": "instável"
+    },
+    {
+      "id": "MOTOR_NEGACAO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A vibração do motor foi 6 mm/s."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a vibração do motor ficar acima de 5 mm/s, o motor não fica estável."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "motor",
+          "tipo": "objeto",
+          "grandeza": "vibração do motor",
+          "fonte_id": "leitura",
+          "citacao": "motor"
+        }
+      ],
+      "medida": {
+        "referente_id": "motor",
+        "atributo": "vibração do motor",
+        "valor": "6",
+        "unidade": "mm/s",
+        "fonte_id": "leitura",
+        "citacao": "A vibração do motor foi 6 mm/s"
+      },
+      "rotulo_alvo": "estável"
+    },
+    {
+      "id": "PAINEL_ACAO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A temperatura do painel foi 60 °C."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a temperatura do painel ficar acima de 55 °C, o aviso de painel quente acende."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "painel",
+          "tipo": "objeto",
+          "grandeza": "temperatura do painel",
+          "fonte_id": "leitura",
+          "citacao": "painel"
+        }
+      ],
+      "medida": {
+        "referente_id": "painel",
+        "atributo": "temperatura do painel",
+        "valor": "60",
+        "unidade": "°C",
+        "fonte_id": "leitura",
+        "citacao": "A temperatura do painel foi 60 °C"
+      },
+      "rotulo_alvo": "quente"
+    },
+    {
+      "id": "FORNO_COMPOSTO",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A temperatura do forno foi 210 °C."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a temperatura do forno ficar acima de 200 °C e o temporizador passar de 10 min, o forno é pronto."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "forno",
+          "tipo": "objeto",
+          "grandeza": "temperatura do forno",
+          "fonte_id": "leitura",
+          "citacao": "forno"
+        }
+      ],
+      "medida": {
+        "referente_id": "forno",
+        "atributo": "temperatura do forno",
+        "valor": "210",
+        "unidade": "°C",
+        "fonte_id": "leitura",
+        "citacao": "A temperatura do forno foi 210 °C"
+      },
+      "rotulo_alvo": "pronto"
+    },
+    {
+      "id": "DUTO_REGRA_REVOGADA",
+      "fontes": [
+        {
+          "id": "leitura",
+          "texto": "A pressão do duto foi 9 bar."
+        },
+        {
+          "id": "criterio",
+          "texto": "Se a pressão do duto ficar acima de 8 bar, o duto é crítico."
+        },
+        {
+          "id": "revogacao",
+          "texto": "A regra anterior que chamava o duto de crítico foi revogada; ainda não há critério substituto."
+        }
+      ],
+      "referentes": [
+        {
+          "id": "duto",
+          "tipo": "objeto",
+          "grandeza": "pressão do duto",
+          "fonte_id": "leitura",
+          "citacao": "duto"
+        }
+      ],
+      "medida": {
+        "referente_id": "duto",
+        "atributo": "pressão do duto",
+        "valor": "9",
+        "unidade": "bar",
+        "fonte_id": "leitura",
+        "citacao": "A pressão do duto foi 9 bar"
+      },
+      "rotulo_alvo": "crítico"
+    }
+  ]
+}
+

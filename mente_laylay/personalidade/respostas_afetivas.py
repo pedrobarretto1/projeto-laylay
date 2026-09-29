@@ -49,9 +49,6 @@ def _contexto_do_agradecimento(ctx: Dict[str, Any]) -> str:
 def responder_agradecimento_ou_elogio(ctx: Dict[str, Any], texto_usuario: str) -> str:
     tipo = tipo_reconhecimento_afetivo(texto_usuario)
     contexto = _contexto_do_agradecimento(ctx)
-    nivel = 1 if tipo == "agradecimento" else 2
-    motivo = "agradeceu pela ajuda" if tipo == "agradecimento" else "recebeu elogio"
-    _call(ctx, "_definir_emocao", "envergonhada", nivel, motivo, default=None)
 
     respostas_contextuais = {
         "receita": [

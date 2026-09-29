@@ -30,6 +30,8 @@ from mente_laylay.cognicao.reacao_social_curta import (
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 from mente_laylay.personalidade.contingencia_natural import fala_falha_geracao
 from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala
+from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 
 
 def montar_mensagens_pedido_fonte_textual(
@@ -126,6 +128,27 @@ _CONSELHO_LIMPEZA_ESPECIFICO = re.compile(
     r"detergente|sab[aã]o|produto|marca)\b",
     re.IGNORECASE,
 )
+_MINIMIZACAO_CONQUISTA = re.compile(
+    r"\b(?:foi|[ée]|era)\s+"
+    r"(?:s[oó]|apenas|somente|meramente)\s+"
+    r"(?:(?:um|uma|o|a)\s+)?"
+    r"(?:passo|etapa|come[cç]o|in[ií]cio|detalhe|projeto|conquista|"
+    r"isso(?!\s+que\s+(?:eu|a\s+gente)\b))\b|"
+    r"\b(?:s[oó]|apenas|somente)\s+isso\s+que\s+"
+    r"(?:voc[eê]\s+fez|me\s+deixou\s+feliz)\b|"
+    r"\b(?:s[oó]|apenas|somente)\s+isso\?\s+(?:achei|parece)\s+pouco\b",
+    re.IGNORECASE,
+)
+_CITACAO_CONQUISTA = re.compile(r'"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’')
+
+
+def _minimiza_conquista_sem_base(fala: str) -> bool:
+    texto = _CITACAO_CONQUISTA.sub("", fala)
+    for frase in re.split(r"(?<=[.!?])\s+", texto):
+        for ocorrencia in _MINIMIZACAO_CONQUISTA.finditer(frase):
+            if not re.search(r"\bn[aã]o\s+$", frase[:ocorrencia.start()], re.I):
+                return True
+    return False
 _MARCADORES_MUSICA = re.compile(
     r"\b(?:m[uú]sica|faixa|som|banda|artista|cantor|cantora|[aá]lbum|rock|"
     r"metal|grunge|guitarra|vocal|refr[aã]o|discografia)\b",
@@ -265,6 +288,10 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "preferencia_de_terceiro_atribuida_ao_usuario",
     "relacao_pessoal_nao_reconhecida",
     "relacao_pessoal_perspectiva_invertida",
+    "alivio_autoria_usuario_invertida",
+    "autopercepcao_emocional_sem_causa",
+    "alivio_resposta_desproporcional",
+    "conquista_minimizada_sem_base",
     "relacao_pessoal_sexualizada",
     "relacao_pessoal_abriu_pergunta",
     "relacao_pessoal_formulacao_artificial",
@@ -320,6 +347,22 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
 
 def _normalizar(texto: Any) -> str:
     return re.sub(r"\s+", " ", str(texto or "")).strip()
+
+
+_AUTOPERCEPCAO_EMOCIONAL = re.compile(
+    r"\b(?:o\s+que\s+(?:eu\s+)?(?:realmente\s+)?sinto\s+agora|"
+    r"(?:eu\s+)?sinto\s+(?:um|uma)\s+(?:al[ií]vio|leveza)|"
+    r"me\s+sinto\s+aliviad[oa]|estou\s+aliviad[oa])\b",
+    re.IGNORECASE,
+)
+
+
+def remover_autopercepcao_emocional_sem_evento(fala: str) -> str:
+    """Descarta frases de emoção própria sem tocar na resposta factual vizinha."""
+    frases = re.split(r"(?<=[.!?])\s+", _normalizar(fala))
+    return " ".join(
+        frase for frase in frases if frase and not _AUTOPERCEPCAO_EMOCIONAL.search(frase)
+    ).strip()
 
 
 def _opcoes_preferencia(texto_usuario: str) -> list[str]:
@@ -430,6 +473,14 @@ def avaliar_qualidade_comunicacao(
     if not resposta:
         problemas.append("fala_vazia")
     else:
+        if (
+            _AUTOPERCEPCAO_EMOCIONAL.search(resposta)
+            and not (
+                evento_pode_alterar_estado(plano_atual.get("evento_emocional_causal"))
+                and str(dict(plano_atual.get("evento_emocional_causal") or {}).get("arco") or "") == "alivio"
+            )
+        ):
+            problemas.append("autopercepcao_emocional_sem_causa")
         palavras = re.findall(r"[\wÀ-ÿ]+", resposta, flags=re.UNICODE)
         if (
             entrada_usuario_repetida
@@ -460,6 +511,36 @@ def avaliar_qualidade_comunicacao(
             and _CONSELHO_LIMPEZA_ESPECIFICO.search(resposta)
         ):
             problemas.append("conselho_especifico_nao_solicitado")
+
+        contrato_turno = dict(plano_atual.get("contrato_fala") or {})
+        if (
+            contrato_turno.get("funcao") == "conquista"
+            and not _MINIMIZACAO_CONQUISTA.search(usuario)
+            and _minimiza_conquista_sem_base(resposta)
+        ):
+            problemas.append("conquista_minimizada_sem_base")
+        if contrato_turno.get("funcao") == "alivio" and not plano_atual.get("requer_execucao"):
+            limite_frases = max(1, min(3, int(contrato_turno.get("max_frases") or 3)))
+            frases = [parte for parte in re.split(r"(?<=[.!?])\s+", resposta) if parte.strip()]
+            if len(frases) > limite_frases or len(palavras) > 48:
+                problemas.append("alivio_resposta_desproporcional")
+        if (
+            contrato_turno.get("funcao") == "alivio"
+            and str(plano_atual.get("texto_usuario") or "").strip() == usuario
+            and not plano_atual.get("requer_execucao")
+        ):
+            leitura_alivio = analisar_intencao_emocional(usuario)
+            verbo_autoral = str(leitura_alivio.get("verbo_conclusao") or "").strip()
+            resposta_sem_citacoes = re.sub(
+                r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’',
+                " ", resposta,
+            )
+            if (
+                leitura_alivio.get("emocao") == "alivio"
+                and verbo_autoral
+                and re.search(rf"\b{re.escape(verbo_autoral)}\b", resposta_sem_citacoes, re.IGNORECASE)
+            ):
+                problemas.append("alivio_autoria_usuario_invertida")
 
         tipo_foco = str(foco.get("tipo") or "")
         dominio_foco = str(foco.get("dominio") or "")

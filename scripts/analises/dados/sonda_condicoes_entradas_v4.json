@@ -1,0 +1,74 @@
+{
+  "versao": 4,
+  "casos": [
+    {
+      "id": "ESTUFA_E", "dominio": "cultivo", "escopo": "sonda:v4:estufa",
+      "fonte": "Se a ventilação estiver ligada e a umidade ficar abaixo de 60%, a estufa emite aviso.",
+      "referentes": [
+        {"identificador": "ventilacao", "tipo": "equipamento", "grandeza": "estado", "citacao": "ventilação"},
+        {"identificador": "umidade", "tipo": "medicao", "grandeza": "umidade", "citacao": "umidade"},
+        {"identificador": "estufa", "tipo": "ambiente", "grandeza": "aviso", "citacao": "estufa"}
+      ],
+      "efeito": {"referente_id": "estufa", "atributo": "estado", "valor": "emite aviso"}
+    },
+    {
+      "id": "ARQUIVO_ONLY", "dominio": "publicacao", "escopo": "sonda:v4:arquivo",
+      "fonte": "O arquivo é publicado apenas se o checksum coincidir e a licença estiver válida.",
+      "referentes": [
+        {"identificador": "arquivo", "tipo": "documento", "grandeza": "publicacao", "citacao": "arquivo"},
+        {"identificador": "checksum", "tipo": "verificacao", "grandeza": "coincidencia", "citacao": "checksum"},
+        {"identificador": "licenca", "tipo": "permissao", "grandeza": "validade", "citacao": "licença"}
+      ],
+      "efeito": {"referente_id": "arquivo", "atributo": "estado", "valor": "publicado"}
+    },
+    {
+      "id": "BOMBA_OU", "dominio": "engenharia_hipotetica", "escopo": "sonda:v4:bomba",
+      "fonte": "Se o nível passar de 80 cm ou a pressão superar 3 bar, a bomba para.",
+      "referentes": [
+        {"identificador": "nivel", "tipo": "medicao", "grandeza": "nivel", "citacao": "nível"},
+        {"identificador": "pressao", "tipo": "medicao", "grandeza": "pressao", "citacao": "pressão"},
+        {"identificador": "bomba", "tipo": "atuador", "grandeza": "estado", "citacao": "bomba"}
+      ],
+      "efeito": {"referente_id": "bomba", "atributo": "estado", "valor": "para"}
+    },
+    {
+      "id": "STATUS_IFF", "dominio": "programacao", "escopo": "sonda:v4:status",
+      "fonte": "O indicador fica azul se e somente se a calibração terminar.",
+      "referentes": [
+        {"identificador": "indicador", "tipo": "interface", "grandeza": "cor", "citacao": "indicador"},
+        {"identificador": "calibracao", "tipo": "processo", "grandeza": "estado", "citacao": "calibração"}
+      ],
+      "efeito": {"referente_id": "indicador", "atributo": "cor", "valor": "azul"}
+    },
+    {
+      "id": "MEDIDOR_RESERVATORIO", "dominio": "monitoramento", "escopo": "sonda:v4:reservatorio",
+      "fonte": "Há um medidor no tanque e um no reservatório. Se o medidor do reservatório marcar 7 litros, o aviso aparece.",
+      "referentes": [
+        {"identificador": "tanque", "tipo": "medidor", "grandeza": "volume", "citacao": "medidor no tanque"},
+        {"identificador": "reservatorio", "tipo": "medidor", "grandeza": "volume", "citacao": "medidor do reservatório"},
+        {"identificador": "aviso", "tipo": "sinal", "grandeza": "estado", "citacao": "aviso"}
+      ],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "aparece"}
+    },
+    {
+      "id": "TRAVA_MISTA", "dominio": "automacao_hipotetica", "escopo": "sonda:v4:trava",
+      "fonte": "Se a tampa estiver fechada e o cabo estiver conectado, ou se a trava manual for acionada, o motor inicia.",
+      "referentes": [
+        {"identificador": "tampa", "tipo": "componente", "grandeza": "estado", "citacao": "tampa"},
+        {"identificador": "cabo", "tipo": "componente", "grandeza": "estado", "citacao": "cabo"},
+        {"identificador": "trava", "tipo": "controle", "grandeza": "estado", "citacao": "trava manual"},
+        {"identificador": "motor", "tipo": "atuador", "grandeza": "estado", "citacao": "motor"}
+      ],
+      "efeito": {"referente_id": "motor", "atributo": "estado", "valor": "inicia"}
+    },
+    {
+      "id": "SOLO_QUANDO", "dominio": "cultivo", "escopo": "sonda:v4:solo_quando",
+      "fonte": "Quando o solo atingir 40% de umidade, o irrigador liga.",
+      "referentes": [
+        {"identificador": "solo", "tipo": "substrato", "grandeza": "umidade", "citacao": "solo"},
+        {"identificador": "irrigador", "tipo": "atuador", "grandeza": "estado", "citacao": "irrigador"}
+      ],
+      "efeito": {"referente_id": "irrigador", "atributo": "estado", "valor": "liga"}
+    }
+  ]
+}

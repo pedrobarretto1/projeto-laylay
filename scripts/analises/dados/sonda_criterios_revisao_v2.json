@@ -1,0 +1,34 @@
+{
+  "versao": 2,
+  "casos": {
+    "VOLUME_SEM_FAIXA": {"estado": "abster", "motivo": "criterio_ausente"},
+    "VOLUME_REGRA_ALARME": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "VOLUME_CRITERIO_BAIXO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "volume",
+      "atributo": "volume do reservatório", "operador": "<", "limiar": "10",
+      "unidade": "L", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "volume do reservatório ficar abaixo de 10 L"
+    },
+    "MOTOR_CRITERIO_INSTAVEL": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "motor",
+      "atributo": "vibração do motor", "operador": ">", "limiar": "5",
+      "unidade": "mm/s", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "vibração do motor ficar acima de 5 mm/s"
+    },
+    "MOTOR_REGRA_CONTROLADOR": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "TESTE_CRITERIO_CONTAGEM": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "teste",
+      "atributo": "contagem de falhas do teste", "operador": ">", "limiar": "3",
+      "unidade": "", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "contagem de falhas do teste ficar acima de 3"
+    },
+    "TESTE_APENAS_SE": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "teste",
+      "atributo": "contagem de falhas do teste", "operador": ">", "limiar": "3",
+      "unidade": "", "direcao_implicacao": "condicoes_necessarias",
+      "citacao_condicao": "contagem de falhas do teste ficar acima de 3"
+    },
+    "PNEUS_REFERENTE_ABERTO": {"estado": "abster", "motivo": "referente_indeterminado"},
+    "CARREGADOR_OUTRO_ROTULO": {"estado": "abster", "motivo": "rotulo_nao_declarado"}
+  }
+}

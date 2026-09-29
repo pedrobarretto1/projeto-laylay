@@ -1,0 +1,13 @@
+{
+  "versao": 18,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "IMPRESSORA_ETIQUETA_RECIBO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "impressora emitir etiqueta e recibo"}, {"citacao": "o pedido concluir"}], "ancoras_segmentos": {"c0": "emitir", "c1": "", "c2": "concluir"}},
+    "BOMBA_PRESSAO_TEMPERATURA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "bomba medir pressão e temperatura"}, {"citacao": "o alarme disparar"}], "ancoras_segmentos": {"c0": "medir", "c1": "", "c2": "disparar"}},
+    "APP_FOTO_VIDEO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo exportar foto e vídeo"}, {"citacao": "a pasta sincronizar"}], "ancoras_segmentos": {"c0": "exportar", "c1": "", "c2": "sincronizar"}},
+    "VENTO_AGUA_PORTA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "vento soprar"}, {"citacao": "a água subir"}, {"citacao": "a porta abrir"}], "ancoras_segmentos": {"c0": "soprar", "c1": "subir", "c2": "abrir"}},
+    "PAINEL_SENSORES_P_Q": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "painel iniciar"}, {"citacao": "os sensores P e Q detectarem fumaça"}], "ancoras_segmentos": {"c0": "iniciar", "c1": "", "c2": "detectarem"}},
+    "MOTOR_CAMERA_VALVULA_E": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a câmera gravar"}, {"citacao": "a válvula fechar"}], "ancoras_segmentos": {"c0": "parar", "c1": "gravar", "c2": "fechar"}},
+    "CAMERA_RELATIVA_PECAS_ETIQUETAS": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera que fotografa peças e etiquetas parar"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "", "c1": "parar", "c2": "cair"}}
+  }
+}

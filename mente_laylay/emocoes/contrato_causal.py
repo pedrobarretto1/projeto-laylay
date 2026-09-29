@@ -190,6 +190,37 @@ def evento_pode_alterar_estado(
     )
 
 
+def criar_evento_reconhecimento_social_usuario(
+    *, turno_id: str | int, confianca: float, tipo: str,
+) -> dict[str, Any]:
+    """Registra elogio direto sem transformar gratidão comum em episódio."""
+    referencia = str(turno_id or "").strip()
+    if str(tipo or "").strip().casefold() != "elogio_pessoal" or not referencia:
+        return {}
+    confianca_limpa = _proporcao(confianca)
+    if confianca_limpa < 0.90:
+        return {}
+    return criar_evento_emocional_causal(
+        origem="reconhecimento_social_usuario",
+        causa="elogio pessoal explícito dirigido à Laylay",
+        evidencia_ref=f"turno:{referencia}:texto_usuario",
+        natureza_evidencia="leitura_social",
+        responsabilidade="usuario",
+        confianca=confianca_limpa,
+        relevancia=0.65,
+        novidade=0.65,
+        intensidade=2,
+        sensibilidade="normal",
+        alvo="laylay",
+        validade_s=60.0,
+        permite_expressao=True,
+        emocao="envergonhada",
+        nivel=2,
+        motivo_expressao="elogio_pessoal_direto",
+        arco="reconhecimento_social",
+    )
+
+
 def criar_evento_leitura_emocional_usuario(
     leitura: Mapping[str, Any] | None,
     *,

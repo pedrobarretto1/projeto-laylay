@@ -1,0 +1,34 @@
+{
+  "versao": 5,
+  "origem": "revisao_manual_local_separada; nao autenticada como revisao externa",
+  "casos": {
+    "BACKUP_SOMENTE_QUANDO": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [{"citacao": "disco estiver montado"}, {"citacao": "chave estiver presente"}]
+    },
+    "VASO_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "vaso receber luz difusa"}, {"citacao": "lâmpada auxiliar estiver ligada"}]
+    },
+    "ICONE_SE_E_SO_SE": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia",
+      "condicoes": [{"citacao": "autoteste passar"}]
+    },
+    "NIVEL_QUANDO": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "nível alcançar 70 cm"}]
+    },
+    "BRACO_SE_MOVE": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [{"citacao": "energia estiver estável"}]
+    },
+    "SENSORES_SUJEITO_COMPOSTO": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "sensores A e B detectarem fumaça"}]
+    },
+    "ACESSO_MISTO": {
+      "representavel": false,
+      "motivo": "(porta e camera) ou supervisor exige arvore, nao conectivo plano"
+    }
+  }
+}

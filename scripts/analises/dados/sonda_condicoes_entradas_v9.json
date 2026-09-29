@@ -1,0 +1,13 @@
+{
+  "versao": 9,
+  "casos": [
+    {"id": "CAMERA_RELATIVA_OBJETO", "dominio": "video_hipotetico", "escopo": "sonda:v9:camera", "fonte": "Se a câmera que observa a sala e o corredor captar movimento, o gravador acende."},
+    {"id": "CONTROLADOR_RELATIVA_OBJETO", "dominio": "eletronica_hipotetica", "escopo": "sonda:v9:controlador", "fonte": "Se o controlador que verifica o cabo e a bateria detectar falha, o aviso toca."},
+    {"id": "TECNICO_RELATIVA_OBJETO", "dominio": "manutencao_hipotetica", "escopo": "sonda:v9:tecnico", "fonte": "Se o técnico que conhece o motor e a bomba encontrar vazamento, o painel avisa."},
+    {"id": "PESSOA_RELATIVA_DOIS_VERBOS", "dominio": "acesso_hipotetico", "escopo": "sonda:v9:pessoa", "fonte": "Se a pessoa que lê e escreve confirmar, o acesso inicia."},
+    {"id": "SENSOR_RELATIVA_E_PREMISSA", "dominio": "alarme_hipotetico", "escopo": "sonda:v9:sensor", "fonte": "Se o sensor que monitora a porta detectar fumaça e a bateria acabar, o alarme toca."},
+    {"id": "TECNICO_RELATIVA_OU_PREMISSA", "dominio": "manutencao_hipotetica", "escopo": "sonda:v9:alternativa", "fonte": "Se o técnico que examina o motor encontrar vazamento ou a bomba falhar, o painel avisa."},
+    {"id": "CAMERA_SENSOR_PREMISSAS", "dominio": "video_hipotetico", "escopo": "sonda:v9:controle_e", "fonte": "Se a câmera observar a sala e o sensor detectar movimento, o gravador acende."},
+    {"id": "MOTOR_BOMBA_PREMISSAS", "dominio": "manutencao_hipotetica", "escopo": "sonda:v9:controle_ou", "fonte": "Se o motor parar ou a bomba falhar, o painel avisa."}
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "versao": 1,
+  "escopo": "condicao_curta; numero superficial sujeito-verbo; sem semantica",
+  "casos": [
+    {"id": "PADERIA_FOREM", "trecho": "o padeiro e a confeiteira forem"},
+    {"id": "OBRA_CONSTRUIREM", "trecho": "a engenheira e o arquiteto construírem"},
+    {"id": "SENSORES_FALHAREM", "trecho": "os sensores e as câmeras falharem"},
+    {"id": "JARDIM_CRESCEREM", "trecho": "a roseira e o arbusto crescerem"},
+    {"id": "TRANSITO_CHEGAR", "trecho": "o motorista e a guia chegar"},
+    {"id": "OFICINA_ABRIR", "trecho": "a válvula e o filtro abrir"},
+    {"id": "ESCOLA_SAIR", "trecho": "o professor e a aluna sair"},
+    {"id": "SERVICO_VOLTAR", "trecho": "os guardas e os técnicos voltar"},
+    {"id": "COSTURA_VOLTAR", "trecho": "a costureira voltar"},
+    {"id": "IOT_FALHAR", "trecho": "o dispositivo falhar"},
+    {"id": "ARTE_CHEGAREM", "trecho": "os pintores chegarem"},
+    {"id": "NATUREZA_SAIREM", "trecho": "as abelhas saírem"},
+    {"id": "PORTA_ABRIREM", "trecho": "a porta abrirem"},
+    {"id": "CLIENTES_CHEGAR", "trecho": "os clientes chegar"},
+    {"id": "ROBO_PARAREM", "trecho": "o robô pararem"},
+    {"id": "MOTOS_SAIR", "trecho": "as motos sair"},
+    {"id": "ADJETIVO_LONGO", "trecho": "o professor experiente e a aluna chegarem"},
+    {"id": "FORMA_INVENTADA", "trecho": "a guia e o motorista trubarem"},
+    {"id": "MARCADORES_EXTRA", "trecho": "quando a guia e o motorista chegarem"},
+    {"id": "ARTIGO_INDEFINIDO", "trecho": "uma guia e um motorista chegarem"},
+    {"id": "NOMES_PROPRIOS", "trecho": "Pedro e Ana chegarem"}
+  ]
+}

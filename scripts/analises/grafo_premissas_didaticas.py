@@ -4,8 +4,17 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from decimal import Decimal
+from typing import Sequence
 
+from mente_laylay.cognicao.auditoria_alegacoes_didaticas import (
+    fontes_usuario_da_conversa,
+)
 from mente_laylay.cognicao.contrato_inventario_contextual import ReferenteContextual
+from scripts.analises.sinal_relacao_condicional import (
+    analisar_efeito_qualificativo, confrontar_direcao_marcador,
+    encontrar_comparadores_inclusivos,
+)
 
 
 @dataclass(frozen=True)
@@ -112,7 +121,8 @@ def conferir_grafo_premissas(
     for fonte in fontes:
         if fonte.escopo != escopo:
             return falha("escopo_divergente")
-        if fonte.origem not in {"usuario", "pesquisa_verificada"}:
+        if (not isinstance(fonte.origem, str)
+                or fonte.origem not in {"usuario", "pesquisa_verificada"}):
             return falha("origem_sem_autoridade")
         if not texto(fonte.texto):
             return falha("estrutura_invalida")
@@ -120,7 +130,7 @@ def conferir_grafo_premissas(
     por_referente = {}
 
     def citacao_valida(fonte_id: str, citacao: str) -> str:
-        if fonte_id not in por_fonte:
+        if not texto(fonte_id) or fonte_id not in por_fonte:
             return "fonte_desconhecida"
         if not texto(citacao) or citacao not in por_fonte[fonte_id].texto:
             return "citacao_invalida"
@@ -143,12 +153,16 @@ def conferir_grafo_premissas(
             return False
         # Delimitar tokens numéricos evita validar 20 com uma citação de 120.
         if re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", valor):
-            padrao = rf"(?<![\d.,]){re.escape(valor)}\s*{re.escape(unidade)}(?![\d.,])"
+            # A pontuacao depois de uma unidade encerra o trecho ("20%,");
+            # sem unidade, virgula/ponto so continuam o decimal com digito.
+            sufixo = r"(?![\w/])" if unidade else r"(?!\d|[.,]\d)"
+            padrao = rf"(?<![\d.,]){re.escape(valor)}\s*{re.escape(unidade)}{sufixo}"
             return bool(re.search(padrao, citacao))
         return valor.casefold() in citacao.casefold()
 
     for premissa in premissas:
-        if premissa.referente_id not in por_referente:
+        if (not texto(premissa.referente_id)
+                or premissa.referente_id not in por_referente):
             return falha("referente_desconhecido")
         erro = citacao_valida(premissa.fonte_id, premissa.citacao)
         if erro:
@@ -160,7 +174,8 @@ def conferir_grafo_premissas(
 
     por_regra: dict[str, int] = {}
     for regra in regras:
-        if regra.efeito_referente_id not in por_referente:
+        if (not texto(regra.efeito_referente_id)
+                or regra.efeito_referente_id not in por_referente):
             return falha("referente_desconhecido")
         erro = citacao_valida(regra.fonte_id, regra.citacao)
         if erro:
@@ -168,9 +183,11 @@ def conferir_grafo_premissas(
         if (not isinstance(regra.condicoes, tuple) or not regra.condicoes
                 or not texto(regra.efeito_atributo)
                 or not valor_ancorado(regra.efeito_valor, "", regra.citacao)
+                or not isinstance(regra.conectivo_condicoes, str)
                 or regra.conectivo_condicoes not in {
                     "indeterminado", "unico", "e", "ou",
                 }
+                or not isinstance(regra.direcao_implicacao, str)
                 or regra.direcao_implicacao not in {
                     "indeterminado", "condicoes_suficientes",
                     "condicoes_necessarias", "equivalencia",
@@ -183,13 +200,15 @@ def conferir_grafo_premissas(
         for condicao in regra.condicoes:
             if not isinstance(condicao, CondicaoDidatica):
                 return falha("regra_invalida")
-            if condicao.referente_id not in por_referente:
+            if (not texto(condicao.referente_id)
+                    or condicao.referente_id not in por_referente):
                 return falha("referente_desconhecido")
             erro = citacao_valida(condicao.fonte_id, condicao.citacao)
             if erro:
                 return falha(erro)
             if (condicao.fonte_id != regra.fonte_id
                     or condicao.citacao not in regra.citacao
+                    or not isinstance(condicao.operador, str)
                     or condicao.operador not in {"<", "<=", ">", ">=", "=", "!="}
                     or not texto(condicao.atributo)):
                 return falha("regra_invalida")
@@ -242,17 +261,22 @@ def auditar_vinculos_literais(
         unidade = re.escape(condicao.unidade.casefold())
         numero = re.escape(condicao.valor)
         trecho = condicao.citacao.casefold()
+        sufixo = r"(?![\w/])" if condicao.unidade else r"(?!\d|[.,]\d)"
         if re.search(r"\b(?:não|nao|nunca)\b", trecho):
             return "direcao_indeterminada"
         operadores = set()
+        for comparador in encontrar_comparadores_inclusivos(trecho):
+            if (comparador["numero"] == condicao.valor
+                    and re.match(rf"\s*{unidade}{sufixo}", trecho[comparador.end():])):
+                operadores.add(">=" if comparador["direcao"] == "maior" else "<=")
         for palavra, operador in (("abaixo de", "<"), ("acima de", ">")):
             for _ in re.finditer(
-                rf"\b{palavra}\s+{numero}\s*{unidade}(?![\d.,])", trecho,
+                rf"\b{palavra}\s+{numero}\s*{unidade}{sufixo}", trecho,
             ):
                 operadores.add(operador)
         for operador in ("<", ">"):
             if re.search(
-                rf"(?<![<>=]){re.escape(operador)}\s*{numero}\s*{unidade}(?![\d.,])",
+                rf"(?<![<>=]){re.escape(operador)}\s*{numero}\s*{unidade}{sufixo}",
                 trecho,
             ):
                 operadores.add(operador)
@@ -284,3 +308,179 @@ def auditar_vinculos_literais(
         "condicoes": condicoes_auditadas,
         "efeitos": efeitos_auditados,
     }
+
+
+def conferir_vinculo_qualificacao(
+    fontes: tuple[FonteDidatica, ...],
+    referentes: tuple[ReferenteAncorado, ...],
+    premissas: tuple[PremissaDidatica, ...],
+    regras: tuple[RegraDidatica, ...],
+    *, escopo: str, premissa_id: str, regra_id: str, rotulo: str,
+) -> dict[str, object]:
+    """Confere o encadeamento tipado, sem transformar texto em prova semantica.
+
+    Identidade/atributo vêm do grafo ancorado, não de nova inferência aqui.
+    Mesmo quando a condição é satisfeita, a relação textual regra→rótulo
+    requer revisão independente antes de qualquer composição de fala.
+    """
+    base: dict[str, object] = {
+        "estado": "vinculo_pendente",
+        "comparacao_numerica": False,
+        "relacao_semantica_verificada": False,
+        "aprovado_para_compor": False,
+        "autoriza_efeito": False,
+    }
+
+    def falha(estado: str) -> dict[str, object]:
+        return {**base, "estado": estado}
+
+    estrutura = conferir_grafo_premissas(
+        fontes, referentes, premissas, regras, escopo=escopo,
+    )
+    if estrutura["estado"] != "estrutura_ancorada_revisao_pendente":
+        return falha("grafo_invalido")
+    if (not isinstance(premissa_id, str) or not isinstance(regra_id, str)
+            or not isinstance(rotulo, str) or not rotulo.strip()):
+        return falha("selecao_invalida")
+    premissa = next((item for item in premissas
+                     if item.identificador == premissa_id), None)
+    regra = next((item for item in regras
+                  if item.identificador == regra_id), None)
+    if premissa is None or regra is None:
+        return falha("selecao_invalida")
+    if regra.efeito_valor.casefold() != rotulo.casefold():
+        return falha("rotulo_divergente")
+    if (len(regra.condicoes) != 1
+            or regra.conectivo_condicoes != "unico"):
+        return falha("regra_composta_pendente")
+    if regra.direcao_implicacao != "condicoes_suficientes":
+        return falha("direcao_implicacao_pendente")
+    direcao_fonte = confrontar_direcao_marcador(
+        regra.citacao, regra.direcao_implicacao,
+    )
+    if direcao_fonte["estado"] == "direcao_divergente_marcador":
+        return falha("direcao_literal_divergente")
+    if direcao_fonte["estado"] \
+            != "direcao_compativel_marcador_revisao_pendente":
+        return falha("direcao_literal_pendente")
+    condicao = regra.condicoes[0]
+    if (premissa.referente_id != condicao.referente_id
+            or premissa.referente_id != regra.efeito_referente_id
+            or premissa.atributo != condicao.atributo
+            or premissa.unidade.casefold() != condicao.unidade.casefold()):
+        return falha("referente_atributo_unidade_divergente")
+    # O rótulo tipado pode ter vindo da pergunta, não do efeito da fonte.
+    # Conferir a fonte integral impede que o proponente recorte uma negação
+    # ou ressalva; a identidade do sujeito ainda exige revisão semântica.
+    fonte_regra = next(item for item in fontes if item.identificador == regra.fonte_id)
+    efeito = analisar_efeito_qualificativo(fonte_regra.texto, regra.efeito_valor)
+    base["efeito_literal"] = efeito
+    if efeito["estado"] != "efeito_qualificativo_literal_revisao_pendente":
+        return falha("efeito_qualificativo_pendente")
+    # Compatibilidade literal, não resolução semântica: a descrição inteira
+    # deve corresponder a um único item ancorado. Grandeza, ID, substring e
+    # menção na condição não substituem a descrição do sujeito do efeito.
+    def nome_literal(texto: str) -> str:
+        normalizado = re.sub(r"\s+", " ", texto.casefold()).strip()
+        return re.sub(r"^(?:o|a|os|as)\s+", "", normalizado)
+
+    sujeito = nome_literal(efeito["sujeito_literal"])
+    candidatos = [item.referente.identificador for item in referentes
+                  if nome_literal(item.citacao) == sujeito]
+    base["sujeito_efeito"] = {
+        "estado": "sujeito_efeito_pendente",
+        "referentes_candidatos": candidatos,
+        "identidade_verificada": False,
+    }
+    if candidatos != [regra.efeito_referente_id]:
+        return falha("sujeito_efeito_pendente")
+    base["sujeito_efeito"]["estado"] = "sujeito_literal_compativel_revisao_pendente"
+    vinculos = auditar_vinculos_literais(
+        fontes, referentes, premissas, regras, escopo=escopo,
+    )
+    if (vinculos["premissas"].get(premissa_id)
+            != "referente_literal_localizado"
+            or vinculos["condicoes"][regra_id][0]["referente"]
+            != "referente_literal_localizado"
+            or vinculos["efeitos"].get(regra_id)
+            != "referente_literal_localizado"):
+        return falha("vinculo_literal_pendente")
+    if vinculos["condicoes"][regra_id][0]["direcao"] \
+            != "direcao_literal_coerente":
+        return falha("direcao_literal_pendente")
+    if (not re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", premissa.valor)
+            or not re.fullmatch(r"[+-]?\d+(?:[.,]\d+)?", condicao.valor)
+            or condicao.operador not in {"<", ">", "<=", ">="}):
+        return falha("comparacao_indeterminada")
+    observado = Decimal(premissa.valor.replace(",", "."))
+    limite = Decimal(condicao.valor.replace(",", "."))
+    satisfeita = {"<": observado < limite, ">": observado > limite,
+                  "<=": observado <= limite, ">=": observado >= limite}[condicao.operador]
+    if not satisfeita:
+        return falha("condicao_numerica_nao_satisfeita")
+    return {**base,
+            "estado": "condicao_numerica_satisfeita_relacao_pendente",
+            "comparacao_numerica": True}
+
+
+def conferir_qualificacao_na_conversa(
+    fontes: tuple[FonteDidatica, ...],
+    referentes: tuple[ReferenteAncorado, ...],
+    premissas: tuple[PremissaDidatica, ...],
+    regras: tuple[RegraDidatica, ...],
+    *, escopo: str, premissa_id: str, regra_id: str, rotulo: str,
+    texto_atual: str, mensagens: Sequence[object], registro_vigencia: object = None,
+) -> dict[str, object]:
+    """Ancora fontes propostas na fala real da sessão, sem aprovar a alegação.
+
+    O grafo pode ser proposto por um modelo. Seu campo ``origem=usuario`` não
+    prova autoria; a comparação usa mensagens recebidas pelo runtime. Uma
+    fonte abreviada não substitui a fala integral, pois poderia omitir uma
+    negação, exceção ou outra condição da regra.
+    """
+    base = {
+        "estado": "fonte_pendente", "comparacao_numerica": False,
+        "relacao_semantica_verificada": False,
+        "aprovado_para_compor": False, "autoriza_efeito": False,
+    }
+    if (not isinstance(fontes, tuple) or not isinstance(regras, tuple)
+            or not isinstance(texto_atual, str)
+            or not isinstance(mensagens, Sequence)
+            or isinstance(mensagens, (str, bytes))):
+        return {**base, "estado": "entrada_invalida"}
+    if not regras:
+        return {**base, "estado": "qualificacao_sem_criterio_observado"}
+    if any(not isinstance(fonte, FonteDidatica)
+           or not isinstance(fonte.texto, str)
+           or not isinstance(fonte.origem, str)
+           for fonte in fontes):
+        return {**base, "estado": "entrada_invalida"}
+    observadas = set(fontes_usuario_da_conversa(
+        texto_atual, mensagens,
+    ).values())
+    for fonte in fontes:
+        if fonte.origem != "usuario":
+            # Pesquisa demanda registro/validação próprios, não uma declaração
+            # textual do proponente; este adaptador só confere fala do usuário.
+            return {**base, "estado": "fonte_sem_registro_confiavel"}
+        if fonte.texto not in observadas:
+            return {**base, "estado": "fonte_nao_observada"}
+    from scripts.analises.contrato_vigencia_criterios import conferir_contexto_criterio
+
+    estrutura = conferir_grafo_premissas(
+        fontes, referentes, premissas, regras, escopo=escopo,
+    )
+    if estrutura["estado"] != "estrutura_ancorada_revisao_pendente":
+        return {**base, "estado": "grafo_invalido"}
+    contexto = conferir_contexto_criterio(
+        fontes, referentes, premissas, regras, escopo=escopo,
+        premissa_id=premissa_id, regra_id=regra_id,
+        texto_atual=texto_atual, mensagens=mensagens, registro=registro_vigencia,
+    )
+    if contexto["estado"] != "contexto_conferido":
+        return contexto
+    resultado = conferir_vinculo_qualificacao(
+        fontes, referentes, premissas, regras, escopo=escopo,
+        premissa_id=premissa_id, regra_id=regra_id, rotulo=rotulo,
+    )
+    return {**resultado, "vigencia": contexto["vigencia"]}

@@ -1,0 +1,13 @@
+{
+  "versao": 13,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "SINO_VENTO_PORTA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sino tocar"}, {"citacao": "o vento soprar"}, {"citacao": "a porta abrir"}], "ancoras_segmentos": {"c0": "tocar", "c1": "soprar", "c2": "abrir"}},
+    "SINO_SIRENE_PORTA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sino tocar"}, {"citacao": "a sirene soar"}, {"citacao": "a porta abrir"}], "ancoras_segmentos": {"c0": "tocar", "c1": "soar", "c2": "abrir"}},
+    "CRIANCAS_TRES_ADJETIVOS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "criança alta e a baixa e a tímida chegarem"}], "ancoras_segmentos": {"c0": "", "c1": "", "c2": "chegarem"}},
+    "CAIXA_MAPAS_FOTOS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "caixa de mapas ou fotografias estiver vazia"}], "ancoras_segmentos": {"c0": "", "c1": "estiver"}},
+    "VALVULA_RELATIVA_AR": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "válvula que controla água e ar fechar"}], "ancoras_segmentos": {"c0": "", "c1": "fechar"}},
+    "CHUVA_CAMPO_BOMBA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "chuva cessar"}, {"citacao": "o campo secar"}, {"citacao": "a bomba falhar"}], "ancoras_segmentos": {"c0": "cessar", "c1": "secar", "c2": "falhar"}},
+    "MOTOR_HELICE_BATERIA_OU": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a hélice girar"}, {"citacao": "a bateria acabar"}], "ancoras_segmentos": {"c0": "parar", "c1": "girar", "c2": "acabar"}}
+  }
+}

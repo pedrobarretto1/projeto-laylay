@@ -1,0 +1,33 @@
+{
+  "versao": 25,
+  "origem": "revisao_manual_local_previa; tres controles por classe; sem validacao externa",
+  "casos": {
+    "PROFESSORA_PROVA_MONITOR_DIRETORA": {"relacao": "sujeito_seguinte"},
+    "TECNICO_ROTEADOR_GERENTE_ASSISTENTE": {"relacao": "sujeito_seguinte"},
+    "JUIZA_PROCESSO_PROMOTOR_DEFENSORA": {"relacao": "sujeito_seguinte"},
+    "FERREIRO_MARTELO_ALICATE_APRENDIZ": {"relacao": "objeto_anterior"},
+    "FLORISTA_SAMAMBAIA_ORQUIDEA_CLIENTE": {"relacao": "objeto_anterior"},
+    "PROGRAMADOR_SERVIDOR_BANCO_USUARIO": {"relacao": "objeto_anterior"},
+    "PESCADOR_SALMAO_TRUTA_GOLFINHOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o pescador observar o salmão e a truta", "os golfinhos saltarem"],
+        "sujeito_seguinte": ["o pescador observar o salmão", "a truta e os golfinhos saltarem"]
+      }
+    },
+    "PROFESSORA_ALUNO_ALUNA_COLEGAS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a professora chamar o aluno e a aluna", "os colegas entrarem"],
+        "sujeito_seguinte": ["a professora chamar o aluno", "a aluna e os colegas entrarem"]
+      }
+    },
+    "FOTOGRAFO_TREM_BONDE_ONIBUS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o fotógrafo registrar o trem e o bonde", "os ônibus passarem"],
+        "sujeito_seguinte": ["o fotógrafo registrar o trem", "o bonde e os ônibus passarem"]
+      }
+    }
+  }
+}

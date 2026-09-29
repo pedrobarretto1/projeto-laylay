@@ -1,0 +1,34 @@
+{
+  "versao": 4,
+  "origem": "revisao_manual_local_separada; nao autenticada como revisao externa",
+  "casos": {
+    "ESTUFA_E": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "ventilação estiver ligada"}, {"citacao": "umidade ficar abaixo de 60%"}]
+    },
+    "ARQUIVO_ONLY": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [{"citacao": "checksum coincidir"}, {"citacao": "licença estiver válida"}]
+    },
+    "BOMBA_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "nível passar de 80 cm"}, {"citacao": "pressão superar 3 bar"}]
+    },
+    "STATUS_IFF": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "equivalencia",
+      "condicoes": [{"citacao": "calibração terminar"}]
+    },
+    "MEDIDOR_RESERVATORIO": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "medidor do reservatório marcar 7 litros"}]
+    },
+    "TRAVA_MISTA": {
+      "representavel": false,
+      "motivo": "(tampa e cabo) ou trava requer arvore, nao conectivo plano"
+    },
+    "SOLO_QUANDO": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "solo atingir 40% de umidade"}]
+    }
+  }
+}

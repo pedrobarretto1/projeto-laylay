@@ -1,0 +1,14 @@
+{
+  "versao": 11,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "ALUNA_RELATIVA_COORDENADA": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aluna que canta e dança responder"}], "ancoras_segmentos": {"c0": "", "c1": "responder"}},
+    "ARTISTA_RELATIVA_COORDENADA": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "artista que desenha e pinta confirmar"}], "ancoras_segmentos": {"c0": "", "c1": "confirmar"}},
+    "VALVULA_RELATIVA_OBJETO": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "válvula que controla água e vapor fechar"}], "ancoras_segmentos": {"c0": "", "c1": "fechar"}},
+    "CAMERA_RELATIVA_E_PREMISSA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "câmera que observa o corredor detectar movimento"}, {"citacao": "o sensor apitar"}], "ancoras_segmentos": {"c0": "detectar", "c1": "apitar"}},
+    "TECNICO_VERBOS_EM_CADEIA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "técnico tentar reparar o motor"}, {"citacao": "a bomba parar"}], "ancoras_segmentos": {"c0": "tentar", "c1": "parar"}},
+    "RELATORIO_COMPLEMENTO_QUE": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "relatório indicar que o motor falhou"}, {"citacao": "a bomba parar"}], "ancoras_segmentos": {"c0": "indicar", "c1": "parar"}},
+    "SENSOR_RELATIVA_GRANDEZAS": {"representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "sensor que mede pressão e temperatura registrar alteração"}], "ancoras_segmentos": {"c0": "", "c1": "registrar"}},
+    "SERVIDOR_CLIENTE_ALTERNATIVOS": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor verificar a chave"}, {"citacao": "o cliente autenticar"}], "ancoras_segmentos": {"c0": "verificar", "c1": "autenticar"}}
+  }
+}

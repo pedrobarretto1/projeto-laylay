@@ -1,0 +1,28 @@
+{
+  "versao": 1,
+  "casos": {
+    "SOLO_SOMENTE_MEDIDA": {"estado": "abster", "motivo": "criterio_ausente"},
+    "SOLO_REGRA_BOMBA": {"estado": "abster", "motivo": "efeito_eh_acao"},
+    "SOLO_CRITERIO_EXPLICITO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "solo",
+      "atributo": "umidade do solo", "operador": "<", "limiar": "20",
+      "unidade": "%", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "umidade do solo ficar abaixo de 20%"
+    },
+    "DOIS_SENSORES_REFERENTE_ABERTO": {"estado": "abster", "motivo": "referente_indeterminado"},
+    "BATERIA_CRITERIO_EXPLICITO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "bateria",
+      "atributo": "tensão da bateria", "operador": "<", "limiar": "12",
+      "unidade": "V", "direcao_implicacao": "condicoes_suficientes",
+      "citacao_condicao": "tensão da bateria ficar abaixo de 12 V"
+    },
+    "BATERIA_ROTULO_DIFERENTE": {"estado": "abster", "motivo": "rotulo_nao_declarado"},
+    "SALA_CRITERIO_NECESSARIO": {
+      "estado": "criterio_candidato", "fonte_id": "criterio", "referente_id": "sala",
+      "atributo": "temperatura da sala", "operador": "<", "limiar": "20",
+      "unidade": "°C", "direcao_implicacao": "condicoes_necessarias",
+      "citacao_condicao": "temperatura da sala estiver abaixo de 20°C"
+    },
+    "SALA_REGRA_TERMOSTATO": {"estado": "abster", "motivo": "efeito_eh_acao"}
+  }
+}

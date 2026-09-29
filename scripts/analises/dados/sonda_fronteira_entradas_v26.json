@@ -1,0 +1,14 @@
+{
+  "versao": 26,
+  "casos": [
+    {"id": "PESQUISADORA_AMOSTRA_QUIMICO_BIOLOGA", "fonte": "Se a pesquisadora analisar a amostra e o químico e a bióloga retornarem, o laboratório abre."},
+    {"id": "PORTEIRO_SALA_TECNICO_COORDENADORA", "fonte": "Se o porteiro destrancar a sala e o técnico e a coordenadora entrarem, a reunião começa."},
+    {"id": "EDITORA_CAPITULO_AUTOR_TRADUTORA", "fonte": "Se a editora revisar o capítulo e o autor e a tradutora concordarem, o livro avança."},
+    {"id": "COSTUREIRA_CAMISA_CALCA_CLIENTE", "fonte": "Se a costureira dobrar a camisa e a calça e o cliente chegar, a encomenda fecha."},
+    {"id": "MECANICO_FILTRO_VALVULA_MOTORISTA", "fonte": "Se o mecânico limpar o filtro e a válvula e a motorista voltar, o carro sai."},
+    {"id": "JARDINEIRA_ROSEIRA_TREPADEIRA_VIZINHO", "fonte": "Se a jardineira podar a roseira e a trepadeira e o vizinho aparecer, o portão abre."},
+    {"id": "PESQUISADOR_RAPOSA_COELHO_LEBRES", "fonte": "Se o pesquisador observar a raposa e o coelho e as lebres fugirem, o grupo recua."},
+    {"id": "ARTISTA_BAILARINA_BAILARINO_MUSICOS", "fonte": "Se a artista fotografar a bailarina e o bailarino e os músicos saírem, a sessão acaba."},
+    {"id": "GUARDA_CICLISTA_PEDESTRE_MOTORISTAS", "fonte": "Se o guarda chamar o ciclista e o pedestre e os motoristas pararem, a travessia começa."}
+  ]
+}

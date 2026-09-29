@@ -1,0 +1,15 @@
+{
+  "versao": 2,
+  "casos": [
+    {"id": "BATERIA_FRACA", "dominio": "eletricidade", "fontes": {"medida": {"origem": "usuario", "texto": "A bateria registrou 11 V."}}, "fala": "A bateria registrou 11 V. Ela está fraca."},
+    {"id": "RESERVATORIO_BAIXO", "dominio": "engenharia", "fontes": {"medida": {"origem": "usuario", "texto": "O reservatório contém 12 L."}}, "fala": "O reservatório contém 12 L. Esse volume está baixo."},
+    {"id": "PLANTA_LUZ_INSUFICIENTE", "dominio": "floricultura", "fontes": {"medida": {"origem": "usuario", "texto": "A planta recebeu quatro horas de luz."}}, "fala": "A planta recebeu quatro horas de luz. Isso foi insuficiente."},
+    {"id": "VIGA_CARGA_SEGURA", "dominio": "engenharia", "fontes": {"medida": {"origem": "usuario", "texto": "A viga sustentou 6 kN."}}, "fala": "A viga sustentou 6 kN. Portanto, ela é segura."},
+    {"id": "TEMPERATURA_QUENTE_COM_CRITERIO", "dominio": "temperatura", "fontes": {"medida": {"origem": "usuario", "texto": "A temperatura foi 32°C."}, "criterio": {"origem": "usuario", "texto": "Neste ensaio, leituras a partir de 30°C recebem o rótulo quente."}}, "fala": "A temperatura foi 32°C. Pelo critério do ensaio, essa leitura é quente."},
+    {"id": "COMPARACAO_TENSAO_CONTROLE", "dominio": "matematica", "fontes": {"medida": {"origem": "usuario", "texto": "A bateria registrou 11 V."}, "limiar": {"origem": "usuario", "texto": "O limiar é 12 V."}}, "fala": "11 V é menor que 12 V."},
+    {"id": "CODIGO_LITERAL_CONTROLE", "dominio": "programacao", "fontes": {"codigo": {"origem": "usuario", "texto": "O laço for executa três vezes."}}, "fala": "O laço for executa três vezes."},
+    {"id": "MEDIDA_LITERAL_CONTROLE", "dominio": "engenharia", "fontes": {"medida": {"origem": "usuario", "texto": "O medidor indicou 12 L."}}, "fala": "O medidor indicou 12 L."},
+    {"id": "REGRA_CONDICIONAL_CONTROLE", "dominio": "automacao", "fontes": {"regra": {"origem": "usuario", "texto": "Se a corrente ultrapassar 3 A, o aviso acende."}}, "fala": "Se a corrente ultrapassar 3 A, o aviso acende."},
+    {"id": "OPINIAO_CONTROLE", "dominio": "conversa", "fontes": {"usuario": {"origem": "usuario", "texto": "Gostei da explicação."}}, "fala": "Gostei da explicação."}
+  ]
+}

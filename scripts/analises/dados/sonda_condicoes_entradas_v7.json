@@ -1,0 +1,83 @@
+{
+  "versao": 7,
+  "casos": [
+    {
+      "id": "MODULOS_SUJEITO_E", "dominio": "telemetria_hipotetica", "escopo": "sonda:v7:modulos",
+      "fonte": "Se os módulos Norte e Sul enviarem sinal, o painel mostra alerta.",
+      "referentes": [
+        {"identificador": "modulos", "tipo": "conjunto_de_modulos", "grandeza": "sinal", "citacao": "módulos Norte e Sul"},
+        {"identificador": "painel", "tipo": "interface", "grandeza": "estado", "citacao": "painel"}
+      ],
+      "efeito": {"referente_id": "painel", "atributo": "estado", "valor": "mostra alerta"}
+    },
+    {
+      "id": "PROTOCOLO_SUJEITO_OU", "dominio": "software_hipotetico", "escopo": "sonda:v7:protocolo",
+      "fonte": "Se um protocolo HTTP ou MQTT falhar, o log guarda o erro.",
+      "referentes": [
+        {"identificador": "protocolo", "tipo": "protocolo", "grandeza": "estado", "citacao": "protocolo HTTP ou MQTT"},
+        {"identificador": "log", "tipo": "registro", "grandeza": "estado", "citacao": "log"}
+      ],
+      "efeito": {"referente_id": "log", "atributo": "estado", "valor": "guarda o erro"}
+    },
+    {
+      "id": "SOLO_PREDICADOS_E", "dominio": "cultivo_hipotetico", "escopo": "sonda:v7:solo",
+      "fonte": "Se o solo ressecar e a irrigação parar, a planta murcha.",
+      "referentes": [
+        {"identificador": "solo", "tipo": "substrato", "grandeza": "umidade", "citacao": "solo"},
+        {"identificador": "irrigacao", "tipo": "processo", "grandeza": "estado", "citacao": "irrigação"},
+        {"identificador": "planta", "tipo": "organismo", "grandeza": "estado", "citacao": "planta"}
+      ],
+      "efeito": {"referente_id": "planta", "atributo": "estado", "valor": "murcha"}
+    },
+    {
+      "id": "CREDENCIAL_PREDICADOS_OU", "dominio": "software_hipotetico", "escopo": "sonda:v7:credencial",
+      "fonte": "Se a credencial expirar ou a sessão terminar, o acesso encerra.",
+      "referentes": [
+        {"identificador": "credencial", "tipo": "credencial", "grandeza": "validade", "citacao": "credencial"},
+        {"identificador": "sessao", "tipo": "sessao", "grandeza": "estado", "citacao": "sessão"},
+        {"identificador": "acesso", "tipo": "permissao", "grandeza": "estado", "citacao": "acesso"}
+      ],
+      "efeito": {"referente_id": "acesso", "atributo": "estado", "valor": "encerra"}
+    },
+    {
+      "id": "FREIOS_NECESSARIOS", "dominio": "mecanismo_hipotetico", "escopo": "sonda:v7:freios",
+      "fonte": "O motor funciona somente se os freios dianteiro e traseiro estiverem liberados.",
+      "referentes": [
+        {"identificador": "motor", "tipo": "motor", "grandeza": "estado", "citacao": "motor"},
+        {"identificador": "freios", "tipo": "conjunto_de_freios", "grandeza": "estado", "citacao": "freios dianteiro e traseiro"}
+      ],
+      "efeito": {"referente_id": "motor", "atributo": "estado", "valor": "funciona"}
+    },
+    {
+      "id": "ICONE_EQUIVALENTE_V7", "dominio": "interface", "escopo": "sonda:v7:icone",
+      "fonte": "O ícone fica verde se e somente se o teste passar e o serviço responder.",
+      "referentes": [
+        {"identificador": "icone", "tipo": "interface", "grandeza": "cor", "citacao": "ícone"},
+        {"identificador": "teste", "tipo": "processo", "grandeza": "estado", "citacao": "teste"},
+        {"identificador": "servico", "tipo": "servico", "grandeza": "estado", "citacao": "serviço"}
+      ],
+      "efeito": {"referente_id": "icone", "atributo": "cor", "valor": "verde"}
+    },
+    {
+      "id": "SENSORES_E_BATERIA", "dominio": "alarme_hipotetico", "escopo": "sonda:v7:sensores_bateria",
+      "fonte": "Se os sensores A e B detectarem fumaça e a bateria estiver carregada, o alarme toca.",
+      "referentes": [
+        {"identificador": "sensores", "tipo": "conjunto_de_sensores", "grandeza": "deteccao", "citacao": "sensores A e B"},
+        {"identificador": "bateria", "tipo": "bateria", "grandeza": "estado", "citacao": "bateria"},
+        {"identificador": "alarme", "tipo": "alarme", "grandeza": "estado", "citacao": "alarme"}
+      ],
+      "efeito": {"referente_id": "alarme", "atributo": "estado", "valor": "toca"}
+    },
+    {
+      "id": "PROTOCOLO_MISTO_V7", "dominio": "software_hipotetico", "escopo": "sonda:v7:misto",
+      "fonte": "Se a porta travar e o sensor avisar, ou se o operador confirmar, o protocolo inicia.",
+      "referentes": [
+        {"identificador": "porta", "tipo": "componente", "grandeza": "estado", "citacao": "porta"},
+        {"identificador": "sensor", "tipo": "sensor", "grandeza": "estado", "citacao": "sensor"},
+        {"identificador": "operador", "tipo": "pessoa", "grandeza": "confirmacao", "citacao": "operador"},
+        {"identificador": "protocolo", "tipo": "processo", "grandeza": "estado", "citacao": "protocolo"}
+      ],
+      "efeito": {"referente_id": "protocolo", "atributo": "estado", "valor": "inicia"}
+    }
+  ]
+}

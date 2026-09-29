@@ -7,6 +7,10 @@ import os
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
+from mente_laylay.emocoes.estado_emocional import (
+    restaurar_estado_emocional_persistido,
+    retrato_emocional_expressavel,
+)
 from mente_laylay.memoria_mental.identidade_usuario import (
     normalizar_nome_usuario,
     reconciliar_nome_usuario_confirmado,
@@ -147,6 +151,9 @@ def carregar_memoria(memoria_sqlite, base_system_prompt: str):
         "emotion_interactions_total": data.get("emotion_interactions_total", 0),
         "emotion_interactions_left": data.get("emotion_interactions_left", 0),
         "emotion_last_decay_at": data.get("emotion_last_decay_at", 0.0),
+        "episodio_emocional": data.get("episodio_emocional", {}),
+        "humor_level": data.get("humor_level", 0),
+        "humor_last_update": data.get("humor_last_update", 0.0),
         "autoaprimoramento_estado": estado_auto if isinstance(estado_auto, dict) else None,
         "topicos_conversa_recente": topicos_conversa_recente,
         "ultimo_topico_conversa": ultimo_topico_conversa,
@@ -307,8 +314,21 @@ class PersistenciaMemoriaRuntime:
     def _atualizar(self, dominio: str, **campos: Any) -> None:
         self.estado_atualizar(dominio, **campos)
 
+    def _episodio_emocional_persistivel(self) -> Dict[str, Any]:
+        estado = {
+            "current_emotion": self._obter("conversacional", "current_emotion", "calma"),
+            "emotion_level": self._obter("conversacional", "emotion_level", 1),
+            "emotion_started_at": self._obter("conversacional", "emotion_started_at", 0.0),
+            "emotion_duration_s": self._obter("conversacional", "emotion_duration_s", 0.0),
+            "emotion_interactions_left": self._obter("conversacional", "emotion_interactions_left", 0),
+            "episodio_emocional": self._obter("conversacional", "episodio_emocional", {}),
+        }
+        emocao, _nivel = retrato_emocional_expressavel(estado)
+        return dict(estado["episodio_emocional"] or {}) if emocao != "calma" else {}
+
     def carregar(self) -> tuple:
         data = carregar_memoria(self.memoria_sqlite, self.base_system_prompt)
+        data = restaurar_estado_emocional_persistido(data)
         if self.conversas_runtime is not None:
             try:
                 conversa = self.conversas_runtime.inicializar_legado(
@@ -373,6 +393,9 @@ class PersistenciaMemoriaRuntime:
             emotion_interactions_total=int(data.get("emotion_interactions_total") or 0),
             emotion_interactions_left=int(data.get("emotion_interactions_left") or 0),
             emotion_last_decay_at=float(data.get("emotion_last_decay_at") or 0.0),
+            episodio_emocional=dict(data.get("episodio_emocional") or {}),
+            humor_level=int(data.get("humor_level") or 0),
+            humor_last_update=float(data.get("humor_last_update") or 0.0),
             topicos_conversa_recente=list(data.get("topicos_conversa_recente") or []),
             ultimo_topico_conversa=str(data.get("ultimo_topico_conversa") or "").strip(),
             ultimo_topico_ts=float(data.get("ultimo_topico_ts") or 0.0),
@@ -432,7 +455,9 @@ class PersistenciaMemoriaRuntime:
             "emotion_interactions_total": self._obter("conversacional", "emotion_interactions_total", 0),
             "emotion_interactions_left": self._obter("conversacional", "emotion_interactions_left", 0),
             "emotion_last_decay_at": self._obter("conversacional", "emotion_last_decay_at", 0.0),
+            "episodio_emocional": self._episodio_emocional_persistivel(),
             "humor_level": self._obter("conversacional", "humor_level", 0),
+            "humor_last_update": self._obter("conversacional", "humor_last_update", 0.0),
             "topicos_conversa_recente": self._obter("conversacional", "topicos_conversa_recente", []),
             "ultimo_topico_conversa": self._obter("conversacional", "ultimo_topico_conversa", ""),
             "ultimo_topico_ts": self._obter("conversacional", "ultimo_topico_ts", 0.0),

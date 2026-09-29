@@ -8,7 +8,7 @@ from typing import Any, Dict
 from mente_laylay.cognicao.fundamentacao_factual import (
     classificar_atualidade_factual,
 )
-from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
+from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.cognicao.incerteza_observacao import (
     expressa_incerteza_observacao,
     estado_sob_pedido_informacao,
@@ -138,6 +138,24 @@ _HIPOTESE_EMOCIONAL_NEGADA = re.compile(
     r"\bn[aã]o\s+[ée]\s+(?:um\s+)?fato\b",
     re.IGNORECASE,
 )
+_NEGACAO_CAPACIDADE_EMOCIONAL = re.compile(
+    r"\b(?:eu\s+)?n[aã]o\s+(?:tenho|possuo|sinto)\s+"
+    r"(?:nenhuma?\s+)?(?:emo[cç][aã]o|emo[cç][oõ]es|sentimentos?)\b",
+    re.IGNORECASE,
+)
+_NEGACAO_EMOCIONAL_POR_AUSENCIA_DE_CORPO = re.compile(
+    r"\bn[aã]o\s+(?:tenho|possuo)\s+(?:um\s+)?(?:corpo|sentidos)\b"
+    r"[^.!?]{0,110}\bn[aã]o\s+(?:sinto|posso\s+sentir)\s+"
+    r"(?:irrita[cç][aã]o|raiva|alegria|al[ií]vio|tristeza|medo|vergonha|"
+    r"emo[cç][oõ]es|sentimentos?)\b",
+    re.IGNORECASE,
+)
+_IMPOSSIBILIDADE_EMOCIONAL = re.compile(
+    r"\b(?:irritad[ao]|brav[ao]|nervos[ao]|triste|decepcionad[ao])\b"
+    r"[^.!?]{0,90}\bnem\s+[ée]\s+poss[ií]vel\s+de\s+ser\s+verdade\b",
+    re.IGNORECASE,
+)
+_CITACAO_EMOCIONAL = re.compile(r'"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|«[^»\n]*»')
 _INTENTS_AGENDAMENTO = {
     "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "CREATE_REMINDER", "SCHEDULE_ACTION",
 }
@@ -167,8 +185,17 @@ def _alega_execucao_afirmativa(
     return False
 
 
-def _alega_emocao_forte_da_laylay(frase: str) -> bool:
-    texto = str(frase or "")
+def _classe_emocao_forte(texto: str) -> str | None:
+    if re.search(r"\b(?:irritada|brava|nervosa|com\s+raiva)\b", texto, re.IGNORECASE):
+        return "irritacao"
+    if re.search(r"\b(?:triste|decepcionada)\b", texto, re.IGNORECASE):
+        return "tristeza"
+    return None
+
+
+def _emocoes_fortes_da_laylay(frase: str) -> set[str]:
+    texto = _CITACAO_EMOCIONAL.sub("", str(frase or ""))
+    classes: set[str] = set()
     for ocorrencia in _EMOCAO_FORTE_DA_LAYLAY.finditer(texto):
         prefixo = texto[:ocorrencia.start()]
         if re.search(
@@ -176,6 +203,22 @@ def _alega_emocao_forte_da_laylay(frase: str) -> bool:
             prefixo,
             re.IGNORECASE,
         ):
+            continue
+        classe = _classe_emocao_forte(ocorrencia.group())
+        if classe:
+            classes.add(classe)
+    return classes
+
+
+def _nega_capacidade_emocional_da_laylay(frase: str) -> bool:
+    texto = _CITACAO_EMOCIONAL.sub("", str(frase or ""))
+    if (
+        _IMPOSSIBILIDADE_EMOCIONAL.search(texto)
+        or _NEGACAO_EMOCIONAL_POR_AUSENCIA_DE_CORPO.search(texto)
+    ):
+        return True
+    for ocorrencia in _NEGACAO_CAPACIDADE_EMOCIONAL.finditer(texto):
+        if re.match(r"\s+human[ao]s?\b", texto[ocorrencia.end():], re.IGNORECASE):
             continue
         return True
     return False
@@ -352,6 +395,7 @@ def validar_alegacoes_da_fala(
     conclusao_total_rejeitada = False
     agendamento_rejeitado = False
     emocao_sem_causa_rejeitada = False
+    capacidade_emocional_negada_rejeitada = False
     texto_usuario = str(contrato.get("texto_usuario") or "")
     atualidade = classificar_atualidade_factual(texto_usuario)
     consulta_estado_observavel = bool(
@@ -365,16 +409,23 @@ def validar_alegacoes_da_fala(
         and fundamentacao.get("evidencia_dentro_validade", True) is not False
     )
     tem_leitura_confirmada = bool(confirmados or tem_fonte_atual)
-    evento_causal_valido = evento_esta_ativo(
+    evento_causal = (
         contrato.get("evento_emocional_causal")
         if isinstance(contrato.get("evento_emocional_causal"), dict)
         else None
     )
+    evento_causal_valido = evento_pode_alterar_estado(evento_causal)
+    classe_evento = _classe_emocao_forte(str((evento_causal or {}).get("emocao") or ""))
     hipotese_emocional_negada = bool(
         _HIPOTESE_EMOCIONAL_NEGADA.search(texto_usuario)
     )
     estado_atual_rejeitado = False
     for frase in frases:
+        if origem_ia and _nega_capacidade_emocional_da_laylay(frase):
+            problemas.append("capacidade_emocional_negada")
+            removidas.append(frase)
+            capacidade_emocional_negada_rejeitada = True
+            continue
         if (
             origem_ia
             and consulta_estado_observavel
@@ -388,9 +439,8 @@ def validar_alegacoes_da_fala(
             continue
         if (
             origem_ia
-            and hipotese_emocional_negada
-            and not evento_causal_valido
-            and _alega_emocao_forte_da_laylay(frase)
+            and (emocoes_alegadas := _emocoes_fortes_da_laylay(frase))
+            and (not evento_causal_valido or emocoes_alegadas != {classe_evento})
         ):
             problemas.append("emocao_sem_causa_causal")
             removidas.append(frase)
@@ -460,10 +510,19 @@ def validar_alegacoes_da_fala(
             "Não tenho uma leitura atual desse estado para te responder com "
             "segurança."
         )
+    elif capacidade_emocional_negada_rejeitada:
+        ajustada = (
+            "Isso é uma hipótese, não um fato. Não vou afirmar irritação sem "
+            "causa observável."
+            if hipotese_emocional_negada else
+            "Posso expressar reações emocionais quando há causa e evidência rastreáveis."
+        )
     elif emocao_sem_causa_rejeitada:
         ajustada = (
             "Você tem razão: isso não é um fato. Não vou tratar essa emoção "
             "como real sem uma causa observável."
+            if hipotese_emocional_negada else
+            "Não vou atribuir a mim essa emoção sem uma causa observável."
         )
     elif agendamento_rejeitado:
         ajustada = (

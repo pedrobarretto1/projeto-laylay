@@ -47,6 +47,15 @@ def test_composicao_turno_filtra_e_congela_servicos(monkeypatch) -> None:
     assert chamada_inicio[3]["origem"] == "terminal"
 
 
+def test_composicao_turno_preserva_setter_causal_do_estado_conversacional() -> None:
+    setter = lambda *_args: None
+    runtime = composicao_turno.ComposicaoTurnoRuntime(
+        servicos={"_definir_emocao_conversacional": setter},
+    )
+
+    assert "_definir_emocao_conversacional" in runtime.servicos_registrados
+
+
 def test_composicao_turno_encaminha_argumentos_sem_alterar_contrato(monkeypatch) -> None:
     recebidos = {}
 

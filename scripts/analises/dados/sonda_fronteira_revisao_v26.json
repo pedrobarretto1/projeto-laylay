@@ -1,0 +1,33 @@
+{
+  "versao": 26,
+  "origem": "revisao_manual_local_previa; tres controles por classe; sem validacao externa",
+  "casos": {
+    "PESQUISADORA_AMOSTRA_QUIMICO_BIOLOGA": {"relacao": "sujeito_seguinte"},
+    "PORTEIRO_SALA_TECNICO_COORDENADORA": {"relacao": "sujeito_seguinte"},
+    "EDITORA_CAPITULO_AUTOR_TRADUTORA": {"relacao": "sujeito_seguinte"},
+    "COSTUREIRA_CAMISA_CALCA_CLIENTE": {"relacao": "objeto_anterior"},
+    "MECANICO_FILTRO_VALVULA_MOTORISTA": {"relacao": "objeto_anterior"},
+    "JARDINEIRA_ROSEIRA_TREPADEIRA_VIZINHO": {"relacao": "objeto_anterior"},
+    "PESQUISADOR_RAPOSA_COELHO_LEBRES": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o pesquisador observar a raposa e o coelho", "as lebres fugirem"],
+        "sujeito_seguinte": ["o pesquisador observar a raposa", "o coelho e as lebres fugirem"]
+      }
+    },
+    "ARTISTA_BAILARINA_BAILARINO_MUSICOS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["a artista fotografar a bailarina e o bailarino", "os músicos saírem"],
+        "sujeito_seguinte": ["a artista fotografar a bailarina", "o bailarino e os músicos saírem"]
+      }
+    },
+    "GUARDA_CICLISTA_PEDESTRE_MOTORISTAS": {
+      "relacao": "indeterminado",
+      "leituras_plausiveis": {
+        "objeto_anterior": ["o guarda chamar o ciclista e o pedestre", "os motoristas pararem"],
+        "sujeito_seguinte": ["o guarda chamar o ciclista", "o pedestre e os motoristas pararem"]
+      }
+    }
+  }
+}

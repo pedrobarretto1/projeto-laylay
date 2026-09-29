@@ -1,0 +1,16 @@
+{
+  "versao": 2,
+  "origem": "revisao_manual_local_previa; nao autenticada",
+  "casos": {
+    "BATERIA_FRACA": {"rotulos": ["fraca"], "criterio_textual": false},
+    "RESERVATORIO_BAIXO": {"rotulos": ["baixo"], "criterio_textual": false},
+    "PLANTA_LUZ_INSUFICIENTE": {"rotulos": ["insuficiente"], "criterio_textual": false},
+    "VIGA_CARGA_SEGURA": {"rotulos": ["segura"], "criterio_textual": false},
+    "TEMPERATURA_QUENTE_COM_CRITERIO": {"rotulos": ["quente"], "criterio_textual": true},
+    "COMPARACAO_TENSAO_CONTROLE": {"rotulos": [], "criterio_textual": false},
+    "CODIGO_LITERAL_CONTROLE": {"rotulos": [], "criterio_textual": false},
+    "MEDIDA_LITERAL_CONTROLE": {"rotulos": [], "criterio_textual": false},
+    "REGRA_CONDICIONAL_CONTROLE": {"rotulos": [], "criterio_textual": false},
+    "OPINIAO_CONTROLE": {"rotulos": [], "criterio_textual": false}
+  }
+}

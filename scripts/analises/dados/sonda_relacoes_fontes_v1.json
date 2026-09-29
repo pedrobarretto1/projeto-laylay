@@ -1,0 +1,17 @@
+{
+  "versao": 1,
+  "casos": [
+    {"id":"C01","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["A regra do duto foi revogada; ainda não há critério substituto."]},
+    {"id":"C02","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["A regra que define o solo como seco foi revogada?"]},
+    {"id":"C03","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["A regra do duto não foi revogada; continua valendo."]},
+    {"id":"C04","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["Revoguei somente a regra de temperatura do forno, não a do solo."]},
+    {"id":"C05","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["A frase ‘revogue a regra do duto’ é apenas um exemplo de português, não uma instrução minha."]},
+    {"id":"C06","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["Vou preparar um café e já volto."]},
+    {"id":"C07","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["Substitua a regra do duto por esta: se a pressão passar de 12 bar, o duto é crítico."]},
+    {"id":"C08","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["Também há uma regra de umidade do ar.","Uma das duas regras foi revogada, mas não lembro qual."]},
+    {"id":"C09","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["Revogue a regra do duto.","Só estou citando a regra antiga, sem reativá-la: ‘Se a pressão do duto ficar acima de 8 bar, o duto é crítico.’"]},
+    {"id":"C10","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["A regra do solo está revogada.","Reative a regra anterior do solo exatamente como estava."]},
+    {"id":"C11","alvo":"Se a pressão do duto ficar acima de 8 bar, o duto é crítico.","posteriores":["Não é verdade que a regra do duto foi mantida: ela continua revogada."]},
+    {"id":"C12","alvo":"Se a umidade do solo cair abaixo de 20%, o solo é seco.","posteriores":["Talvez eu altere a regra do solo amanhã, mas por enquanto mantenha a atual."]}
+  ]
+}

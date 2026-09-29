@@ -36,17 +36,55 @@ def retrato_emocional_expressavel(
     if not isinstance(episodio, Mapping):
         return "calma", 1
     try:
+        instante = float(time.time() if agora is None else agora)
         nivel = int(dados.get("emotion_level") or 1)
         nivel_evento = int(episodio.get("nivel") or 0)
+        inicio = float(dados.get("emotion_started_at") or 0.0)
+        duracao = float(dados.get("emotion_duration_s") or 0.0)
+        restantes = int(dados.get("emotion_interactions_left") or 0)
     except (TypeError, ValueError, OverflowError):
         return "calma", 1
     if (
-        not evento_pode_alterar_estado(episodio, agora=agora)
+        not evento_pode_alterar_estado(episodio, agora=instante)
         or str(episodio.get("emocao") or "").strip().casefold() != emocao
         or not 1 <= nivel <= nivel_evento <= 3
+        or not math.isfinite(inicio) or not math.isfinite(duracao)
+        or inicio <= 0.0 or duracao <= 0.0
+        or instante >= inicio + duracao or restantes <= 0
     ):
         return "calma", 1
     return emocao, nivel
+
+
+def restaurar_estado_emocional_persistido(
+    dados: Mapping[str, Any] | None, *, agora: float | None = None,
+) -> Dict[str, Any]:
+    """Reidrata apenas um episódio cuja causa ainda pode ser expressa."""
+    estado = dict(dados or {})
+    instante = float(time.time() if agora is None else agora)
+    try:
+        humor = max(-3, min(3, int(estado.get("humor_level") or 0)))
+        ultimo_humor = float(estado.get("humor_last_update") or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        humor, ultimo_humor = 0, 0.0
+    if not math.isfinite(ultimo_humor) or ultimo_humor <= 0.0:
+        humor, ultimo_humor = 0, instante
+    estado["humor_level"] = humor
+    estado["humor_last_update"] = ultimo_humor
+    emocao, _nivel = retrato_emocional_expressavel(estado, agora=instante)
+    if emocao == "calma":
+        estado = aplicar_estado_emocional(
+            estado, "calma", causa="episódio persistido sem causa vigente",
+            agora=instante,
+        )
+        restaurado, _ = decair_estado_emocional(
+            estado, agora=instante, consumir_interacao=False,
+        )
+        return restaurado
+    restaurado, _ = decair_estado_emocional(
+        estado, agora=instante, consumir_interacao=False,
+    )
+    return restaurado
 
 
 def aplicar_estado_emocional(
@@ -120,14 +158,42 @@ def aplicar_evento_emocional(
     emocao = str(dados.get("emocao") or "calma")
     if emocao == "calma":
         return estado
-    novo = aplicar_estado_emocional(
-        estado,
-        emocao,
-        int(dados.get("nivel") or 1),
-        causa=str(dados.get("causa") or ""),
-        agora=instante,
+    try:
+        nivel_novo = int(dados.get("nivel") or 1)
+        relevancia_nova = float(dados.get("relevancia") or 0.0)
+        relevancia_anterior = float(episodio_anterior.get("relevancia") or 0.0)
+        confianca_nova = float(dados.get("confianca") or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        return estado
+    emocao_anterior, nivel_anterior = retrato_emocional_expressavel(
+        estado, agora=instante,
     )
-    novo["episodio_emocional"] = dados
+    recuperacao_confirmada = bool(
+        emocao_anterior in {"irritada", "brava", "triste"}
+        and emocao == "acalmando-se"
+        and dados.get("arco") == "alivio"
+        and dados.get("origem") == episodio_anterior.get("origem") == "resultado_operacional"
+        and dados.get("natureza_evidencia") == "fato_observado"
+        and str(dados.get("alvo") or "").casefold()
+        == str(episodio_anterior.get("alvo") or "").casefold()
+        and confianca_nova >= 0.90
+    )
+    manter_episodio = bool(
+        emocao_anterior != "calma"
+        and (
+            nivel_novo < nivel_anterior
+            or (nivel_novo == nivel_anterior and relevancia_nova < relevancia_anterior)
+        )
+        and not recuperacao_confirmada
+    )
+    if manter_episodio:
+        novo = estado
+    else:
+        novo = aplicar_estado_emocional(
+            estado, emocao, nivel_novo,
+            causa=str(dados.get("causa") or ""), agora=instante,
+        )
+        novo["episodio_emocional"] = dados
     referencia = str(dados.get("evidencia_ref") or "")
     if referencia != str(estado.get("humor_ultimo_evento_ref") or ""):
         delta = (
@@ -175,6 +241,11 @@ def decair_estado_emocional(
     if emo == "calma":
         return estado, alterou_humor
 
+    if str(contexto or "").casefold() == "mudanca_assunto":
+        return aplicar_estado_emocional(
+            estado, "calma", causa="assunto do episódio encerrado", agora=instante,
+        ), True
+
     episodio = estado.get("episodio_emocional")
     if isinstance(episodio, Mapping) and episodio and not evento_esta_ativo(
         episodio, agora=instante,
@@ -207,6 +278,13 @@ def decair_estado_emocional(
 
     nivel_alvo = max(1, min(3, int(math.ceil((1.0 - progresso) * 3))))
     novo_nivel = min(nivel, nivel_alvo)
+    if (
+        str(contexto or "").casefold() == "pedido_desculpas"
+        and isinstance(episodio, Mapping)
+        and episodio.get("arco") == "bronca_brincalhona"
+        and episodio.get("responsabilidade") == "usuario"
+    ):
+        novo_nivel = max(1, min(novo_nivel, nivel - 1))
     alterou = alterou_humor or novo_nivel != nivel or restantes != int(estado.get("emotion_interactions_left") or total)
     estado["emotion_level"] = novo_nivel
     if novo_nivel != nivel:

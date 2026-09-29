@@ -595,7 +595,7 @@ def construir_contrato_semantico_fala(
 
     atos = _atos_base(planejamento)
     relato_explicito = bool(
-        texto_delimita_relato_explicito(texto)
+        (texto_delimita_relato_explicito(texto) or funcao == "alivio")
         and set(atos).issubset({"conversa", "relato"})
         and not (metalinguagem or opiniao or esclarecimento)
         and not planejamento.get("requer_execucao")
@@ -778,7 +778,7 @@ def construir_contrato_semantico_fala(
         max_frases = 6
     if pedido_ensino_anterior:
         max_frases = max(max_frases, 7)
-    vulneravel = funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"}
+    vulneravel = funcao in {"alivio", "desabafo", "inseguranca", "decepcao", "frustracao"}
     deliberacao = dict(planejamento.get("deliberacao_habilidades") or {})
 
     documentacao_capacidades = ""

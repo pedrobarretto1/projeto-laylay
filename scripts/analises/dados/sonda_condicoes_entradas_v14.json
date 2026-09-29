@@ -1,0 +1,11 @@
+{
+  "versao": 14,
+  "casos": [
+    {"id": "PORTA_VENTO_MOTOR_OU", "dominio": "aviso_hipotetico", "escopo": "sonda:v14:vento", "fonte": "Se a porta abrir ou o vento soprar ou o motor parar, o aviso toca."},
+    {"id": "ALARME_SIRENE_LUZ_OU", "dominio": "painel_hipotetico", "escopo": "sonda:v14:sirene", "fonte": "Se o alarme tocar ou a sirene soar ou a luz apagar, o painel avisa."},
+    {"id": "MOTOR_BOMBA_SENSOR_OU", "dominio": "maquina_hipotetica", "escopo": "sonda:v14:controle_tres", "fonte": "Se o motor parar ou a bomba falhar ou o sensor apitar, o painel avisa."},
+    {"id": "VALVULAS_TRES_CORES", "dominio": "valvula_hipotetica", "escopo": "sonda:v14:cores", "fonte": "Se a válvula azul e a vermelha e a branca abrirem, o aviso aparece."},
+    {"id": "CAIXA_TRES_CATEGORIAS", "dominio": "caixa_hipotetica", "escopo": "sonda:v14:categorias", "fonte": "Se a caixa de fotos ou vídeos ou mapas estiver vazia, o alerta aparece."},
+    {"id": "SENSOR_RELATIVA_LUZ_CALOR", "dominio": "telemetria_hipotetica", "escopo": "sonda:v14:relativa", "fonte": "Se o sensor que mede luz e calor registrar falha, o aviso toca."}
+  ]
+}

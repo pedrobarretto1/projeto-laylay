@@ -1,0 +1,73 @@
+{
+  "versao": 6,
+  "casos": [
+    {
+      "id": "VALVULAS_SUJEITO_E", "dominio": "automacao_hipotetica", "escopo": "sonda:v6:valvulas",
+      "fonte": "Se as válvulas A e B estiverem fechadas, o circuito isola a linha.",
+      "referentes": [
+        {"identificador": "valvulas", "tipo": "conjunto_de_valvulas", "grandeza": "estado", "citacao": "válvulas A e B"},
+        {"identificador": "circuito", "tipo": "circuito", "grandeza": "estado", "citacao": "circuito"}
+      ],
+      "efeito": {"referente_id": "circuito", "atributo": "estado", "valor": "isola a linha"}
+    },
+    {
+      "id": "CODIGO_SUJEITO_OU", "dominio": "software_hipotetico", "escopo": "sonda:v6:codigo",
+      "fonte": "Se um código A ou B aparecer, o registro recebe uma marca.",
+      "referentes": [
+        {"identificador": "codigo", "tipo": "codigo", "grandeza": "ocorrencia", "citacao": "código A ou B"},
+        {"identificador": "registro", "tipo": "registro", "grandeza": "marca", "citacao": "registro"}
+      ],
+      "efeito": {"referente_id": "registro", "atributo": "marca", "valor": "recebe"}
+    },
+    {
+      "id": "ESTUFA_PREDICADOS_E", "dominio": "cultivo_hipotetico", "escopo": "sonda:v6:estufa",
+      "fonte": "Se a janela estiver fechada e o exaustor estiver ligado, a estufa mantém o fluxo.",
+      "referentes": [
+        {"identificador": "janela", "tipo": "abertura", "grandeza": "estado", "citacao": "janela"},
+        {"identificador": "exaustor", "tipo": "equipamento", "grandeza": "estado", "citacao": "exaustor"},
+        {"identificador": "estufa", "tipo": "ambiente", "grandeza": "fluxo", "citacao": "estufa"}
+      ],
+      "efeito": {"referente_id": "estufa", "atributo": "fluxo", "valor": "mantém"}
+    },
+    {
+      "id": "FILA_PREDICADOS_OU", "dominio": "software_hipotetico", "escopo": "sonda:v6:fila",
+      "fonte": "Se a fila atingir o limite ou o temporizador expirar, o aviso aparece.",
+      "referentes": [
+        {"identificador": "fila", "tipo": "fila", "grandeza": "ocupacao", "citacao": "fila"},
+        {"identificador": "temporizador", "tipo": "temporizador", "grandeza": "estado", "citacao": "temporizador"},
+        {"identificador": "aviso", "tipo": "interface", "grandeza": "estado", "citacao": "aviso"}
+      ],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "aparece"}
+    },
+    {
+      "id": "PORTAS_NECESSARIAS", "dominio": "controle_hipotetico", "escopo": "sonda:v6:portas",
+      "fonte": "O mecanismo gira apenas se as portas A e B estiverem travadas.",
+      "referentes": [
+        {"identificador": "mecanismo", "tipo": "mecanismo", "grandeza": "movimento", "citacao": "mecanismo"},
+        {"identificador": "portas", "tipo": "conjunto_de_portas", "grandeza": "estado", "citacao": "portas A e B"}
+      ],
+      "efeito": {"referente_id": "mecanismo", "atributo": "estado", "valor": "gira"}
+    },
+    {
+      "id": "PAINEL_EQUIVALENTE", "dominio": "interface", "escopo": "sonda:v6:painel",
+      "fonte": "O painel mostra pronto se e somente se o teste terminar e o arquivo existir.",
+      "referentes": [
+        {"identificador": "painel", "tipo": "interface", "grandeza": "estado", "citacao": "painel"},
+        {"identificador": "teste", "tipo": "processo", "grandeza": "estado", "citacao": "teste"},
+        {"identificador": "arquivo", "tipo": "arquivo", "grandeza": "existencia", "citacao": "arquivo"}
+      ],
+      "efeito": {"referente_id": "painel", "atributo": "estado", "valor": "pronto"}
+    },
+    {
+      "id": "TRAVA_MISTA_V6", "dominio": "controle_hipotetico", "escopo": "sonda:v6:misto",
+      "fonte": "Se o pino estiver inserido e a tampa estiver fechada, ou se o supervisor aprovar, a trava abre.",
+      "referentes": [
+        {"identificador": "pino", "tipo": "componente", "grandeza": "estado", "citacao": "pino"},
+        {"identificador": "tampa", "tipo": "componente", "grandeza": "estado", "citacao": "tampa"},
+        {"identificador": "supervisor", "tipo": "pessoa", "grandeza": "aprovacao", "citacao": "supervisor"},
+        {"identificador": "trava", "tipo": "mecanismo", "grandeza": "estado", "citacao": "trava"}
+      ],
+      "efeito": {"referente_id": "trava", "atributo": "estado", "valor": "abre"}
+    }
+  ]
+}

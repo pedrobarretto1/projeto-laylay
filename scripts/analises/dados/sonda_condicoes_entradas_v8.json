@@ -1,0 +1,89 @@
+{
+  "versao": 8,
+  "casos": [
+    {
+      "id": "APLICATIVO_NOME_E", "dominio": "software_hipotetico", "escopo": "sonda:v8:aplicativo",
+      "fonte": "Se o aplicativo Sal e Pimenta iniciar, o painel atualiza.",
+      "referentes": [{"identificador": "aplicativo", "tipo": "aplicativo", "grandeza": "estado", "citacao": "aplicativo Sal e Pimenta"}, {"identificador": "painel", "tipo": "interface", "grandeza": "estado", "citacao": "painel"}],
+      "efeito": {"referente_id": "painel", "atributo": "estado", "valor": "atualiza"}
+    },
+    {
+      "id": "PASTA_CATEGORIA_OU", "dominio": "arquivos_hipoteticos", "escopo": "sonda:v8:pasta",
+      "fonte": "Se uma pasta de fotos ou vídeos estiver vazia, o aviso aparece.",
+      "referentes": [{"identificador": "pasta", "tipo": "pasta", "grandeza": "conteudo", "citacao": "pasta de fotos ou vídeos"}, {"identificador": "aviso", "tipo": "interface", "grandeza": "estado", "citacao": "aviso"}],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "aparece"}
+    },
+    {
+      "id": "PESSOAS_SUJEITO_E", "dominio": "fluxo_hipotetico", "escopo": "sonda:v8:pessoas",
+      "fonte": "Se Maria e João aprovarem, o processo continua.",
+      "referentes": [{"identificador": "pessoas", "tipo": "grupo", "grandeza": "aprovacao", "citacao": "Maria e João"}, {"identificador": "processo", "tipo": "processo", "grandeza": "estado", "citacao": "processo"}],
+      "efeito": {"referente_id": "processo", "atributo": "estado", "valor": "continua"}
+    },
+    {
+      "id": "SERVIDOR_CLIENTE_E", "dominio": "software_hipotetico", "escopo": "sonda:v8:servidor",
+      "fonte": "Se o servidor responder e o cliente autenticar, a sessão começa.",
+      "referentes": [{"identificador": "servidor", "tipo": "servico", "grandeza": "resposta", "citacao": "servidor"}, {"identificador": "cliente", "tipo": "cliente", "grandeza": "autenticacao", "citacao": "cliente"}, {"identificador": "sessao", "tipo": "sessao", "grandeza": "estado", "citacao": "sessão"}],
+      "efeito": {"referente_id": "sessao", "atributo": "estado", "valor": "começa"}
+    },
+    {
+      "id": "CHUVA_VENTO_OU", "dominio": "clima_hipotetico", "escopo": "sonda:v8:clima",
+      "fonte": "Se a chuva cessar ou o vento diminuir, a corrida começa.",
+      "referentes": [{"identificador": "chuva", "tipo": "clima", "grandeza": "estado", "citacao": "chuva"}, {"identificador": "vento", "tipo": "clima", "grandeza": "intensidade", "citacao": "vento"}, {"identificador": "corrida", "tipo": "atividade", "grandeza": "estado", "citacao": "corrida"}],
+      "efeito": {"referente_id": "corrida", "atributo": "estado", "valor": "começa"}
+    },
+    {
+      "id": "SENSORES_REDE_E", "dominio": "telemetria_hipotetica", "escopo": "sonda:v8:sensores_rede",
+      "fonte": "Se os sensores de luz e temperatura registrarem mudança e a rede estiver ativa, o log salva a leitura.",
+      "referentes": [{"identificador": "sensores", "tipo": "conjunto_de_sensores", "grandeza": "mudanca", "citacao": "sensores de luz e temperatura"}, {"identificador": "rede", "tipo": "rede", "grandeza": "estado", "citacao": "rede"}, {"identificador": "log", "tipo": "registro", "grandeza": "estado", "citacao": "log"}],
+      "efeito": {"referente_id": "log", "atributo": "estado", "valor": "salva a leitura"}
+    },
+    {
+      "id": "CHAVE_BOTAO_NECESSIDADE", "dominio": "mecanismo_hipotetico", "escopo": "sonda:v8:chave",
+      "fonte": "A máquina inicia somente se a chave estiver presente e o botão estiver pressionado.",
+      "referentes": [{"identificador": "maquina", "tipo": "maquina", "grandeza": "estado", "citacao": "máquina"}, {"identificador": "chave", "tipo": "componente", "grandeza": "presenca", "citacao": "chave"}, {"identificador": "botao", "tipo": "componente", "grandeza": "estado", "citacao": "botão"}],
+      "efeito": {"referente_id": "maquina", "atributo": "estado", "valor": "inicia"}
+    },
+    {
+      "id": "BOTOES_EQUIVALENCIA", "dominio": "interface", "escopo": "sonda:v8:botoes",
+      "fonte": "O indicador muda se e somente se os botões A e B forem pressionados.",
+      "referentes": [{"identificador": "indicador", "tipo": "interface", "grandeza": "estado", "citacao": "indicador"}, {"identificador": "botoes", "tipo": "conjunto_de_botoes", "grandeza": "estado", "citacao": "botões A e B"}],
+      "efeito": {"referente_id": "indicador", "atributo": "estado", "valor": "muda"}
+    },
+    {
+      "id": "SENSOR_NEGADO_E", "dominio": "alarme_hipotetico", "escopo": "sonda:v8:negacao",
+      "fonte": "Se o sensor não responder e a bateria acabar, o aviso toca.",
+      "referentes": [{"identificador": "sensor", "tipo": "sensor", "grandeza": "resposta", "citacao": "sensor"}, {"identificador": "bateria", "tipo": "bateria", "grandeza": "energia", "citacao": "bateria"}, {"identificador": "aviso", "tipo": "sinal", "grandeza": "estado", "citacao": "aviso"}],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "toca"}
+    },
+    {
+      "id": "CAMERA_DOIS_VERBOS", "dominio": "arquivo_hipotetico", "escopo": "sonda:v8:camera",
+      "fonte": "Se a câmera captar imagem e registrar movimento, o arquivo é salvo.",
+      "referentes": [{"identificador": "camera", "tipo": "camera", "grandeza": "captura", "citacao": "câmera"}, {"identificador": "arquivo", "tipo": "arquivo", "grandeza": "estado", "citacao": "arquivo"}],
+      "efeito": {"referente_id": "arquivo", "atributo": "estado", "valor": "salvo"}
+    },
+    {
+      "id": "LED_ELIPSE", "dominio": "dispositivo_hipotetico", "escopo": "sonda:v8:led",
+      "fonte": "Se a porta estiver fechada e o LED verde, o aparelho espera.",
+      "referentes": [{"identificador": "porta", "tipo": "componente", "grandeza": "estado", "citacao": "porta"}, {"identificador": "led", "tipo": "indicador", "grandeza": "cor", "citacao": "LED"}, {"identificador": "aparelho", "tipo": "dispositivo", "grandeza": "estado", "citacao": "aparelho"}],
+      "efeito": {"referente_id": "aparelho", "atributo": "estado", "valor": "espera"}
+    },
+    {
+      "id": "RELATIVA_OBJETO_COMPOSTO", "dominio": "alarme_hipotetico", "escopo": "sonda:v8:relativa",
+      "fonte": "Se o sensor que monitora a porta e a janela detectar fumaça, o alarme soa.",
+      "referentes": [{"identificador": "sensor", "tipo": "sensor", "grandeza": "deteccao", "citacao": "sensor"}, {"identificador": "porta", "tipo": "abertura", "grandeza": "estado", "citacao": "porta"}, {"identificador": "janela", "tipo": "abertura", "grandeza": "estado", "citacao": "janela"}, {"identificador": "alarme", "tipo": "alarme", "grandeza": "estado", "citacao": "alarme"}],
+      "efeito": {"referente_id": "alarme", "atributo": "estado", "valor": "soa"}
+    },
+    {
+      "id": "MISTO_ARVORE_V8", "dominio": "controle_hipotetico", "escopo": "sonda:v8:arvore",
+      "fonte": "Se a porta travar e a câmera gravar, ou se o operador confirmar, o acesso inicia.",
+      "referentes": [{"identificador": "porta", "tipo": "componente", "grandeza": "estado", "citacao": "porta"}, {"identificador": "camera", "tipo": "camera", "grandeza": "estado", "citacao": "câmera"}, {"identificador": "operador", "tipo": "pessoa", "grandeza": "confirmacao", "citacao": "operador"}, {"identificador": "acesso", "tipo": "permissao", "grandeza": "estado", "citacao": "acesso"}],
+      "efeito": {"referente_id": "acesso", "atributo": "estado", "valor": "inicia"}
+    },
+    {
+      "id": "MISTO_SUJEITO_OU", "dominio": "alarme_hipotetico", "escopo": "sonda:v8:misto_superficial",
+      "fonte": "Se os sensores A e B detectarem falha ou a bateria acabar, o aviso toca.",
+      "referentes": [{"identificador": "sensores", "tipo": "conjunto_de_sensores", "grandeza": "deteccao", "citacao": "sensores A e B"}, {"identificador": "bateria", "tipo": "bateria", "grandeza": "energia", "citacao": "bateria"}, {"identificador": "aviso", "tipo": "sinal", "grandeza": "estado", "citacao": "aviso"}],
+      "efeito": {"referente_id": "aviso", "atributo": "estado", "valor": "toca"}
+    }
+  ]
+}

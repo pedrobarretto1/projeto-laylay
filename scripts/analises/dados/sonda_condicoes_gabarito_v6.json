@@ -1,0 +1,34 @@
+{
+  "versao": 6,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "VALVULAS_SUJEITO_E": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "válvulas A e B estiverem fechadas"}]
+    },
+    "CODIGO_SUJEITO_OU": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "código A ou B aparecer"}]
+    },
+    "ESTUFA_PREDICADOS_E": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "janela estiver fechada"}, {"citacao": "exaustor estiver ligado"}]
+    },
+    "FILA_PREDICADOS_OU": {
+      "representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes",
+      "condicoes": [{"citacao": "fila atingir o limite"}, {"citacao": "temporizador expirar"}]
+    },
+    "PORTAS_NECESSARIAS": {
+      "representavel": true, "conectivo_condicoes": "unico", "direcao_implicacao": "condicoes_necessarias",
+      "condicoes": [{"citacao": "portas A e B estiverem travadas"}]
+    },
+    "PAINEL_EQUIVALENTE": {
+      "representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "equivalencia",
+      "condicoes": [{"citacao": "teste terminar"}, {"citacao": "arquivo existir"}]
+    },
+    "TRAVA_MISTA_V6": {
+      "representavel": false,
+      "motivo": "(pino e tampa) ou supervisor exige arvore, nao conectivo plano"
+    }
+  }
+}

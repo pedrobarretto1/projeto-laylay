@@ -1,0 +1,12 @@
+{
+  "versao": 17,
+  "origem": "revisao_manual_local_previa; nao autenticada como revisao externa",
+  "casos": {
+    "DRONE_FOTO_VIDEO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "drone registrar foto e vídeo"}, {"citacao": "o arquivo salvar"}], "ancoras_segmentos": {"c0": "registrar", "c1": "", "c2": "salvar"}},
+    "APP_LOG_RELATORIO": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "aplicativo gerar log e relatório"}, {"citacao": "a rede cair"}], "ancoras_segmentos": {"c0": "gerar", "c1": "", "c2": "cair"}},
+    "ROBO_PECA_ETIQUETA": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "robô localizar peça e etiqueta"}, {"citacao": "a esteira parar"}], "ancoras_segmentos": {"c0": "localizar", "c1": "", "c2": "parar"}},
+    "PORTA_VENTO_BATERIA": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "porta abrir"}, {"citacao": "o vento soprar"}, {"citacao": "a bateria acabar"}], "ancoras_segmentos": {"c0": "abrir", "c1": "soprar", "c2": "acabar"}},
+    "SERVIDOR_SENSORES_K_L": {"representavel": true, "conectivo_condicoes": "e", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "servidor responder"}, {"citacao": "os sensores K e L detectarem fumaça"}], "ancoras_segmentos": {"c0": "responder", "c1": "", "c2": "detectarem"}},
+    "MOTOR_CAMERA_VALVULA": {"representavel": true, "conectivo_condicoes": "ou", "direcao_implicacao": "condicoes_suficientes", "condicoes": [{"citacao": "motor parar"}, {"citacao": "a câmera gravar"}, {"citacao": "a válvula fechar"}], "ancoras_segmentos": {"c0": "parar", "c1": "gravar", "c2": "fechar"}}
+  }
+}

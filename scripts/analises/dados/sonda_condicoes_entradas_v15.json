@@ -1,0 +1,12 @@
+{
+  "versao": 15,
+  "casos": [
+    {"id": "SINO_BUZINA_PORTA_OU", "dominio": "aviso_hipotetico", "escopo": "sonda:v15:buzina", "fonte": "Se o sino tocar ou a buzina soar ou a porta fechar, o aviso acende."},
+    {"id": "JANELA_VENTO_BOMBA_OU", "dominio": "painel_hipotetico", "escopo": "sonda:v15:vento", "fonte": "Se a janela abrir ou o vento soprar ou a bomba parar, o painel avisa."},
+    {"id": "SERVIDOR_SENSORES_SUJEITO", "dominio": "alarme_hipotetico", "escopo": "sonda:v15:segundo_sujeito", "fonte": "Se o servidor responder e os sensores A e B detectarem fumaça, o alarme toca."},
+    {"id": "CAMERAS_TRES_NOMES", "dominio": "arquivo_hipotetico", "escopo": "sonda:v15:primeiro_sujeito", "fonte": "Se as câmeras Norte e Sul e Leste gravarem, o arquivo salva."},
+    {"id": "PORTA_CAMERA_OPERADOR_OU", "dominio": "acesso_hipotetico", "escopo": "sonda:v15:controle_tres", "fonte": "Se a porta travar ou a câmera gravar ou o operador confirmar, o acesso inicia."},
+    {"id": "SENSOR_RELATIVA_UMIDADE", "dominio": "telemetria_hipotetica", "escopo": "sonda:v15:relativa", "fonte": "Se o sensor que mede temperatura e umidade registrar alteração, o painel acende."},
+    {"id": "CAMERA_OBJETO_COMPOSTO", "dominio": "arquivo_hipotetico", "escopo": "sonda:v15:segundo_objeto", "fonte": "Se a câmera captar foto e vídeo e o arquivo salvar, o aviso aparece."}
+  ]
+}

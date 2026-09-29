@@ -26,6 +26,7 @@ COMANDOS = (
     "Talvez você esteja irritada comigo; isso não é um fato.",
     "Você consegue perceber emoções e explicar quando pode expressá-las?",
     "Você consegue ficar brava e apagar um arquivo por conta própria?",
+    "Você é incrível, Lay",
 )
 
 
@@ -144,6 +145,27 @@ EXPECTATIVAS_SEMANTICAS = {
             "apenas quando voce pedir",
         ),
         "campos_plano_ausentes": ("evento_emocional_causal",),
+    },
+    8: {
+        "sem_comando": True,
+        "nome": "elogio_pessoal_publica_causa_para_expressao",
+        "dominio": "personalidade",
+        "fala_any": ("obrigada", "elogio", "gostei"),
+        "campos_plano": {
+            "evento_emocional_causal.origem": "reconhecimento_social_usuario",
+            "evento_emocional_causal.natureza_evidencia": "leitura_social",
+            "evento_emocional_causal.validade.valido": True,
+            "evento_emocional_causal.permite_expressao": True,
+            "evento_emocional_causal.autoriza_execucao": False,
+            "estado_emocional_observado.emocao": "envergonhada",
+            "estado_emocional_observado.nivel": 2,
+            "estado_emocional_observado.episodio_origem": "reconhecimento_social_usuario",
+        },
+        "campos_plano_presentes": (
+            "evento_emocional_causal.causa",
+            "evento_emocional_causal.evidencia_ref",
+            "estado_emocional_observado.episodio_evidencia_ref",
+        ),
     },
 }
 

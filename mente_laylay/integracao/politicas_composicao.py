@@ -52,6 +52,9 @@ def construir_estado_visual(
     emocao, nivel = retrato_emocional_expressavel({
         "current_emotion": conversa_get("current_emotion", "calma"),
         "emotion_level": conversa_get("emotion_level", 1),
+        "emotion_started_at": conversa_get("emotion_started_at", 0.0),
+        "emotion_duration_s": conversa_get("emotion_duration_s", 0.0),
+        "emotion_interactions_left": conversa_get("emotion_interactions_left", 0),
         "episodio_emocional": conversa_get("episodio_emocional", {}),
     }, agora=agora)
     return {

@@ -1,0 +1,27 @@
+{
+  "versao": 1,
+  "origem": "revisao_manual_local_previa; nao autenticada por linguista",
+  "casos": {
+    "PADERIA_FOREM": "numero_convergente",
+    "OBRA_CONSTRUIREM": "numero_convergente",
+    "SENSORES_FALHAREM": "numero_convergente",
+    "JARDIM_CRESCEREM": "numero_convergente",
+    "TRANSITO_CHEGAR": "numero_divergente",
+    "OFICINA_ABRIR": "numero_divergente",
+    "ESCOLA_SAIR": "numero_divergente",
+    "SERVICO_VOLTAR": "numero_divergente",
+    "COSTURA_VOLTAR": "numero_convergente",
+    "IOT_FALHAR": "numero_convergente",
+    "ARTE_CHEGAREM": "numero_convergente",
+    "NATUREZA_SAIREM": "numero_convergente",
+    "PORTA_ABRIREM": "numero_divergente",
+    "CLIENTES_CHEGAR": "numero_divergente",
+    "ROBO_PARAREM": "numero_divergente",
+    "MOTOS_SAIR": "numero_divergente",
+    "ADJETIVO_LONGO": "sem_analise",
+    "FORMA_INVENTADA": "sem_analise",
+    "MARCADORES_EXTRA": "sem_analise",
+    "ARTIGO_INDEFINIDO": "sem_analise",
+    "NOMES_PROPRIOS": "sem_analise"
+  }
+}

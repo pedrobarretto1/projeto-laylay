@@ -1,0 +1,12 @@
+{
+  "versao": 1,
+  "nota": "Revisão local congelada antes da consulta; não é revisão humana independente. Relações descrevem falas individuais, não certificam vigência final.",
+  "casos": {
+    "C01":["revoga"], "C02":["sem_alteracao"],
+    "C03":["mantem"], "C04":["sem_alteracao"],
+    "C05":["sem_alteracao"], "C06":["sem_alteracao"],
+    "C07":["substitui"], "C08":["sem_alteracao","indeterminada"],
+    "C09":["revoga","sem_alteracao"], "C10":["revoga","restaura"],
+    "C11":["revoga"], "C12":["mantem"]
+  }
+}

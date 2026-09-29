@@ -22,6 +22,87 @@ from mente_laylay.personalidade.proporcao_resposta import (
     parece_pedido_reexplicacao,
 )
 from mente_laylay.personalidade.voz_runtime import VozRuntime
+from mente_laylay.emocoes.perfil_emocional import modular_audio_params
+
+
+def test_fallback_local_preserva_intensidade_emocional_na_velocidade() -> None:
+    velocidades = []
+    metricas = []
+
+    class Engine:
+        def setProperty(self, nome, valor):
+            if nome == "rate":
+                velocidades.append(valor)
+
+        def save_to_file(self, *_args):
+            pass
+
+        def runAndWait(self):
+            pass
+
+    class Pyttsx:
+        @staticmethod
+        def init():
+            return Engine()
+
+    runtime = VozRuntime(
+        fallback_fala="fallback", voice="voz",
+        edge_tts_mod=None, sounddevice_mod=None, soundfile_mod=None,
+        pyttsx3_mod=Pyttsx,
+        limpar_para_voz_cb=lambda texto: texto,
+        formatar_mensagem_cb=lambda texto, **_kwargs: texto,
+        ducking_volume_cb=lambda _ativo: None,
+        modular_audio_params_cb=modular_audio_params,
+        compor_fala_proativa_cb=lambda _itens: ("", "calma", 1),
+        ajustar_estado_fala_cb=lambda *_args: None,
+        interrupt_event=threading.Event(),
+        registrar_metrica_cb=lambda nome, _valor, ok: metricas.append((nome, ok)),
+        log=lambda *_args: None,
+    )
+    runtime._reproduzir_wav_local = lambda _caminho: True
+
+    assert runtime.fallback_pyttsx("Uma irritação leve.", "irritada", 1) is True
+    assert runtime.fallback_pyttsx("Uma bronca forte.", "brava", 3) is True
+    assert velocidades[0] < velocidades[1]
+
+    def falhar_edge(*_args, **_kwargs):
+        raise RuntimeError("TTS neural indisponível")
+
+    runtime._sintetizar_edge = falhar_edge
+    runtime.reproduzir_fala("Uma bronca forte.", "brava", 3)
+    assert velocidades[-1] == velocidades[1]
+    assert ("tts_total", True) in metricas
+
+    runtime._reproduzir_wav_local = lambda _caminho: False
+    metricas.clear()
+    runtime.reproduzir_fala("Uma bronca forte.", "brava", 3)
+    assert ("tts_total", False) in metricas
+
+
+def test_fallback_sapi_usa_a_intensidade_do_mesmo_perfil() -> None:
+    velocidades = []
+    runtime = VozRuntime(
+        fallback_fala="fallback", voice="voz",
+        edge_tts_mod=None, sounddevice_mod=object(), soundfile_mod=object(),
+        pyttsx3_mod=object(),
+        limpar_para_voz_cb=lambda texto: texto,
+        formatar_mensagem_cb=lambda texto, **_kwargs: texto,
+        ducking_volume_cb=lambda _ativo: None,
+        modular_audio_params_cb=modular_audio_params,
+        compor_fala_proativa_cb=lambda _itens: ("", "calma", 1),
+        ajustar_estado_fala_cb=lambda *_args: None,
+        interrupt_event=threading.Event(),
+        log=lambda *_args: None,
+    )
+    runtime._fallback_tts_sapi_windows = True
+    runtime._sintetizar_sapi_windows = lambda _texto, _caminho, *, velocidade: (
+        velocidades.append(velocidade) or True
+    )
+    runtime._reproduzir_wav_local = lambda _caminho: True
+
+    assert runtime.fallback_pyttsx("Irritação leve.", "irritada", 1) is True
+    assert runtime.fallback_pyttsx("Braveza forte.", "brava", 3) is True
+    assert velocidades[0] < velocidades[1]
 
 
 def test_promessa_de_acompanhamento_sem_mecanismo_e_corrigida() -> None:
