@@ -417,6 +417,11 @@ def pesquisar_recomendacoes_tema(
         ),
         "candidatos": candidatos,
         "fonte": "wikipedia_pt",
+        "fontes": [{
+            "titulo": f"Candidatos de {bruto}", "url": url,
+            "dominio": "pt.wikipedia.org", "alvo": bruto,
+            "trecho": "; ".join(candidatos),
+        }],
         "confianca": 0.92,
         "evidencia_obtida_em": agora,
         "evidencia_obtida_em_iso": datetime.fromtimestamp(

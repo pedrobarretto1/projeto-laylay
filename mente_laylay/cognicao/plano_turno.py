@@ -11,6 +11,8 @@ from mente_laylay.cognicao.fundamentacao_factual import (
     contem_citacao_destacada,
     reparar_recomendacao_com_evidencia,
     validar_fala_com_fundamentacao,
+    texto_pede_recomendacao,
+    validar_resposta_recomendacao,
 )
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
@@ -24,6 +26,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
 )
+from mente_laylay.cognicao.validacao_contrato_fala import validar_aderencia_contrato_fala
 from mente_laylay.cognicao.decisao_turno import criar_contrato_decisao
 from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
@@ -123,6 +126,8 @@ def _dominio_turno(
     if re.search(r"\b(?:abre|fecha|maximiza|janela|programa|app)\b", t):
         return "sistema"
     if bool(dict(turno or {}).get("continuidade_recomendacao")):
+        return "recomendacao"
+    if texto_pede_recomendacao(texto):
         return "recomendacao"
     pendencia = mente.get("pendencia_atual") if isinstance(mente, dict) else {}
     if isinstance(pendencia, dict) and pendencia.get("status") == "ativa":
@@ -350,7 +355,7 @@ def verificar_fala_turno(
     ultima_resposta: str = "",
     origem: str = "conversa",
 ) -> Dict[str, Any]:
-    """Valida segurança e fatos sem editar escolhas de comunicação da LLM."""
+    """Valida segurança e restringe a resposta ao alcance da evidência do turno."""
     contrato = dict(plano or {})
     texto_usuario = str(contrato.get("texto_usuario") or "")
     ajustada = re.sub(r"\s+", " ", str(fala or "")).strip()
@@ -415,6 +420,33 @@ def verificar_fala_turno(
         }
 
     fundamentacao = contrato.get("fundamentacao_factual")
+    comparacao_recomendacao = []
+    recomendacao = bool(
+        (contrato.get("dominio") == "recomendacao" or (
+            contrato.get("dominio") != "musica" and texto_pede_recomendacao(texto_usuario)
+        ))
+        and not contrato.get("requer_execucao")
+        and not contrato.get("comandos")
+    )
+    if recomendacao:
+        validacao_recomendacao = validar_resposta_recomendacao(
+            ajustada, fundamentacao=fundamentacao, texto_usuario=texto_usuario,
+        )
+        ajustada = str(validacao_recomendacao["fala"])
+        problemas.extend(validacao_recomendacao["problemas"])
+        comparacao_recomendacao = validacao_recomendacao["comparacao"]
+        # Atos sociais já classificados pela mente; o rascunho não é fonte.
+        atos_sociais = dict(contrato.get("contrato_fala") or {}).get("atos") or []
+        if "estado_pessoal" in atos_sociais:
+            leitura_social = validar_aderencia_contrato_fala(
+                texto_usuario, ajustada, contrato_fala=contrato.get("contrato_fala"),
+                turno_id=contrato.get("id"),
+            )
+            estado_informado = dict(dict(leitura_social.get("contrato_reparo") or {}).get("estado_pessoal_informado") or {})
+            if estado_informado.get("falante") == "usuario":
+                ajustada = f"Entendo, você está {estado_informado['estado']}. " + ajustada
+        if "saudacao" in atos_sociais:
+            ajustada = "Oi! " + ajustada
     # Ensinar um enunciado não cria um título pesquisável, mas também não
     # dispensa validar fatos independentes que apareçam ao redor da citação.
     citacao_na_fala = contem_citacao_destacada(ajustada)
@@ -441,7 +473,7 @@ def verificar_fala_turno(
             "resumo": "",
             "confiavel": False,
         }
-    if isinstance(fundamentacao, dict) and fundamentacao.get("tema"):
+    if not recomendacao and isinstance(fundamentacao, dict) and fundamentacao.get("tema"):
         contrato_fala = dict(contrato.get("contrato_fala") or {})
         roteiro_fala = dict(contrato_fala.get("roteiro_concreto") or {})
         documentacao_capacidades = ""
@@ -596,4 +628,5 @@ def verificar_fala_turno(
         "problemas": problemas,
         "pontuacao": round(max(0.0, 1.0 - (0.18 * len(problemas))), 2),
         "aderencia_contrato": aderencia_contrato,
+        **({"comparacao_recomendacao": comparacao_recomendacao} if recomendacao else {}),
     }

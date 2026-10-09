@@ -102,7 +102,8 @@ def test_coordenador_envia_sugestao_fundamentada_ao_diretor_de_presenca() -> Non
     evento = diretor.eventos[0]
     assert evento["dominio"] == "jogo"
     assert evento["fundamentada"] is True
-    assert len(evento["evidencias"]) == 3
+    assert evento["evidencias"] == ["Bota da Tempestade", "botas"]
+    assert evento["motivo"] == "mais resistência"
     assert dados["falas"] == []
 
 

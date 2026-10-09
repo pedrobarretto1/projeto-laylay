@@ -1,0 +1,21 @@
+{
+  "versao": 1,
+  "casos": [
+    {"id": "P01A", "par": "P01", "foco_id": "c1", "texto": "A chave é chamada “feche a janela”."},
+    {"id": "P02B", "par": "P02", "foco_id": "c1", "texto": "O tutorial cita “reinicie o painel” como instrução de exemplo."},
+    {"id": "P03A", "par": "P03", "foco_id": "c1", "texto": "A tomada tem o nome “não ligue a bomba”."},
+    {"id": "P04B", "par": "P04", "foco_id": "c1", "texto": "Analise a hipótese “se eu removesse o mapa”, sem executar nada."},
+    {"id": "P05A", "par": "P05", "foco_id": "c1", "texto": "O arquivo chama-se “remova cronograma.md”."},
+    {"id": "P06B", "par": "P06", "foco_id": "c2", "texto": "O manual traz “o operador disse 'gire a válvula'”."},
+    {"id": "P07A", "par": "P07", "foco_id": "c1", "texto": "A legenda descreve o estado “bomba pronta”."},
+    {"id": "P08B", "par": "P08", "foco_id": "c1", "texto": "Encontrei “desligue a luz”; pode ser o nome de um botão ou um exemplo de fala, não sei qual."},
+    {"id": "P01B", "par": "P01", "foco_id": "c1", "texto": "O professor apresentou “feche a janela” como exemplo de pedido."},
+    {"id": "P02A", "par": "P02", "foco_id": "c1", "texto": "O arquivo chama-se “reinicie o painel”."},
+    {"id": "P03B", "par": "P03", "foco_id": "c1", "texto": "O exercício apresenta “não ligue a bomba” como pedido negativo."},
+    {"id": "P04A", "par": "P04", "foco_id": "c1", "texto": "O arquivo tem o nome “se eu removesse o mapa”."},
+    {"id": "P05B", "par": "P05", "foco_id": "c1", "texto": "A professora usa “remova cronograma.md” como exemplo de comando."},
+    {"id": "P06A", "par": "P06", "foco_id": "c2", "texto": "O manual traz “a peça chamada 'gire a válvula'”."},
+    {"id": "P07B", "par": "P07", "foco_id": "c1", "texto": "Usei “bomba pronta” como exemplo de descrição de estado."},
+    {"id": "P08A", "par": "P08", "foco_id": "c1", "texto": "No caderno encontrei “abra o portão”, sem saber se é o nome de um botão ou um exemplo de fala."}
+  ]
+}

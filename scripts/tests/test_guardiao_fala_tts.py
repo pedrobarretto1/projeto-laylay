@@ -865,7 +865,8 @@ def test_fallback_tts_quebrado_e_desativado_apos_primeira_falha() -> None:
     assert sum("fallback local desativado" in log for log in logs) == 1
 
 
-def test_cache_com_quebrado_migra_para_sapi_nativo_sem_repetir_pyttsx() -> None:
+@pytest.mark.parametrize("receipt_disponivel", [True, False], ids=["concluido", "sem-receipt"])
+def test_cache_com_quebrado_migra_para_sapi_nativo_sem_repetir_pyttsx(receipt_disponivel: bool) -> None:
     chamadas: list[str] = []
 
     class PyttsxQuebrado:
@@ -879,14 +880,20 @@ def test_cache_com_quebrado_migra_para_sapi_nativo_sem_repetir_pyttsx() -> None:
         def read(_caminho):
             return [0.0], 16000
 
+    class Stream:
+        active = False
+
     class SoundDevice:
         @staticmethod
         def play(*_args, **_kwargs):
             chamadas.append("play")
 
         @staticmethod
-        def wait():
-            return None
+        def get_stream():
+            chamadas.append("receipt")
+            if not receipt_disponivel:
+                raise RuntimeError("stream indisponível; reprodução não confirmada")
+            return Stream()
 
     runtime = VozRuntime(
         fallback_fala="fallback", voice="voz",
@@ -904,10 +911,12 @@ def test_cache_com_quebrado_migra_para_sapi_nativo_sem_repetir_pyttsx() -> None:
     runtime._sintetizar_sapi_windows = lambda *_args, **_kwargs: True
     runtime._selecionar_saida_audio = lambda: 0
 
-    assert runtime.fallback_pyttsx("Oi", "calma") is True
-    assert runtime.fallback_pyttsx("Oi de novo", "calma") is True
+    assert runtime.fallback_pyttsx("Oi", "calma") is receipt_disponivel
+    assert runtime.fallback_pyttsx("Oi de novo", "calma") is receipt_disponivel
     assert chamadas.count("pyttsx") == 1
-    assert chamadas.count("play") == 2
+    assert chamadas.count("play") == (2 if receipt_disponivel else 1)
+    assert chamadas.count("receipt") == (2 if receipt_disponivel else 1)
+    assert runtime._fallback_tts_sapi_windows is receipt_disponivel
 
 
 def test_fala_inicial_pendente_e_cancelada_se_conversa_comecou() -> None:

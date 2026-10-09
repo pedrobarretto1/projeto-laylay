@@ -191,7 +191,7 @@ def test_iot_control_repetido_com_ids_diferentes_nao_colapsa() -> None:
     assert [item["id_solicitacao"] for item in comandos] == ["iot-1", "iot-2", "iot-3"]
 
 
-def test_resultado_legado_sem_id_mantem_deduplicacao_por_intent() -> None:
+def test_resultados_legados_sem_id_nao_compartilham_ocorrencia_por_intent() -> None:
     runtime, estado, _logs = _runtime()
     primeiro = _resultado("", "SEARCH", "resultados_web_encontrados", {"query": "a"})
     segundo = _resultado("", "SEARCH", "resultado_web_aberto", {"query": "b"})
@@ -199,9 +199,11 @@ def test_resultado_legado_sem_id_mantem_deduplicacao_por_intent() -> None:
     runtime.registrar_resultado_execucao(segundo, "pesquisa b", True)
 
     comandos = estado.mental["plano_turno_atual"]["comandos"]
-    assert len(comandos) == 1
-    assert comandos[0]["status"] == "resultado_web_aberto"
-    assert comandos[0]["params"]["query"] == "b"
+    assert len(comandos) == 2
+    assert [item["status"] for item in comandos] == [
+        "resultados_web_encontrados", "resultado_web_aberto",
+    ]
+    assert [item["params"]["query"] for item in comandos] == ["a", "b"]
 
 
 def test_plano_preserva_identidade_params_e_continua_serializavel() -> None:

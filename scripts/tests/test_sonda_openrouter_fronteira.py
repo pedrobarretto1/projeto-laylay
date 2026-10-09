@@ -1,7 +1,9 @@
 """A API externa so propoe um julgamento offline; nao recebe gabarito."""
 
+import builtins
 import json
 import sys
+import threading
 
 import pytest
 import requests
@@ -11,6 +13,7 @@ from scripts.analises.sonda_avaliador_fronteira_independente import (
     FORMATO,
     preparar_entrada,
 )
+from mente_laylay.personalidade.terminal_laylay import criar_print_filtrado
 
 
 class Resposta:
@@ -222,6 +225,33 @@ def test_cli_usa_um_caso_sintetico_e_nao_publica_chave(monkeypatch, capsys):
     assert resultado["resultado"]["estado"] \
         == "julgamento_ancorado_revisao_pendente"
     assert resultado["autoriza_efeito"] is False
+
+
+def test_saida_json_da_cli_sobrevive_ao_filtro_global_de_logs(monkeypatch, capsys):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "segredo-local")
+    monkeypatch.setattr(sys, "argv", [
+        "sonda_openrouter_fronteira", "--modelo", "outro/modelo",
+    ])
+    monkeypatch.setattr(sonda, "consultar_openrouter", lambda *_args, **_kwargs: (
+        {"relacao": "sujeito_seguinte", "citacao": "o cliente e o gerente chegarem"}, {},
+    ))
+    ocultos: list[str] = []
+    filtrado = criar_print_filtrado(
+        should_log=lambda _texto: False, raw_print=builtins.print,
+        print_lock=threading.RLock(),
+        observador_oculto=lambda texto, **_kwargs: ocultos.append(texto),
+    )
+    monkeypatch.setattr(builtins, "print", filtrado)
+    print("diagnóstico dispensável")
+    assert capsys.readouterr().out == ""
+    assert ocultos
+
+    sonda.main()
+
+    saida = capsys.readouterr().out
+    assert saida.strip(), "JSON é saída da ferramenta, não uma linha de log"
+    assert json.loads(saida)["autoriza_efeito"] is False
+    assert "segredo-local" not in saida
 
 
 def test_cli_reutiliza_credencial_protegida_sem_pedir_input(monkeypatch, capsys):

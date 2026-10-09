@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 import math
 from typing import Any, Callable, Dict
+from mente_laylay.cognicao.preferencia_humor import (
+    PESOS_FEEDBACK_HUMOR, TTL_TOLERANCIA_HUMOR_S, validar_amostra_humor,
+)
 
 
 _MEIA_VIDA_DIAS = {
@@ -179,3 +182,55 @@ class MaturidadeAprendizadoRuntime:
             "excecao_ativa": excecao_ativa,
             "hipotese": hipotese,
         }
+
+    def avaliar_tolerancia_humor(self, contexto: str) -> Dict[str, Any]:
+        """Reavalia evidências de estilo a cada uso, sem renovar sua idade.
+
+        A hipótese SQL genérica não decide esta preferência: direção negativa
+        de estilo é evidência para tom leve, não falha de uma preferência.
+        """
+        chave = f"personalidade:tolerancia_humor_implicita:{contexto}"
+        agora = self.agora().timestamp()
+        amostras = {}
+        for evento in self.memoria.listar_eventos_aprendizado(chave, limit=200):
+            fonte = evento.get("contexto", {}).get("proveniencia", {})
+            identidade = str(fonte.get("id_entrega") or "")
+            valor = evento.get("valor")
+            if not isinstance(valor, dict):
+                continue
+            tipo = str(valor.get("evento") or "")
+            qualificada = validar_amostra_humor(
+                str(evento.get("evidencia") or ""), tipo, identidade, fonte)
+            if not qualificada:
+                continue
+            instante = float(fonte["observado_ts"])
+            peso = PESOS_FEEDBACK_HUMOR.get(tipo, 0.0)
+            if not (
+                fonte["contexto_humor"] == contexto
+                and evento.get("id_evento") == f"tolerancia_humor:{identidade}"
+                and evento.get("tipo") == "tolerancia_humor"
+                and evento.get("origem") == "feedback_humor_entrega"
+                and evento.get("confirmado_usuario") is False
+                and valor.get("direcao") == qualificada["direcao"]
+                and evento.get("sinal") == peso
+                and 0 <= agora - instante < TTL_TOLERANCIA_HUMOR_S
+            ):
+                continue
+            amostras[identidade] = (peso * 0.5 ** ((agora - instante) / (7 * 86400.0)),
+                                    instante, evento["id_evento"], tipo)
+        valores = [v for v in amostras.values() if v[3] != "silencio"]
+        silencios = sum(1 for v in amostras.values() if v[3] == "silencio")
+        positivos = sum(max(0.0, v[0]) for v in valores)
+        negativos = sum(max(0.0, -v[0]) for v in valores)
+        total = positivos + negativos
+        predominancia = max(positivos, negativos) / total if total else 0.0
+        influencia_media = (total / len(valores)) * (0.9 ** min(silencios, 10)) if valores else 0.0
+        suficiente = len(valores) >= 3 and predominancia >= 0.75 and influencia_media >= 0.30
+        inicio = max((v[1] for v in valores), default=0.0)
+        return {"chave": chave, "contexto": contexto, "aplicavel": suficiente,
+            "amostras_distintas": len(valores), "predominancia": round(predominancia, 3),
+            "silencios_qualificados": silencios,
+            "influencia_media": round(influencia_media, 3),
+            "direcao": "mais_humor" if positivos > negativos else "leve",
+            "inicio_ts": inicio, "expira_ts": inicio + TTL_TOLERANCIA_HUMOR_S,
+            "evidencias_refs": [v[2] for v in valores], "autoriza_execucao": False}

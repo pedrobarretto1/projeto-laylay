@@ -173,7 +173,9 @@ class LinguagemAprendidaRuntime:
 
         padroes = [
             r"^(?:meu|minha|o|a|um|uma|esse|essa|esse aqui|essa aqui)?\s*(?:apelido|alias)\s+(?P<alias>.+?)\s+(?:e|eh|é|quer dizer|significa|vira|chama|chamado de|apelido de)\s+(?P<alvo>.+)$",
-            r"^(?P<alias>.+?)\s+(?:quer dizer|significa|vira|chama|é chamado de|eh chamado de|apelido de)\s+(?P<alvo>.+)$",
+            # "X se chama Y" apresenta uma entidade; não ensina substituir
+            # "X se" por "Y" na linguagem. Vale para pessoas e outros alvos.
+            r"^(?P<alias>.+?)\s+(?:quer dizer|significa|vira|(?<!\bse )chama|é chamado de|eh chamado de|apelido de)\s+(?P<alvo>.+)$",
             r"^(?:quando eu falar|quando eu disser)\s+(?P<alias>.+?)\s+(?:e|eh|é)\s+(?P<alvo>.+)$",
         ]
         for padrao in padroes:

@@ -58,6 +58,20 @@ def test_replay_estrito_nao_declara_equivalencia_apos_mudanca_real():
         r.carregar_perfil_revalidado()
 
 
+def test_revisao_p06_preserva_referencia_v2_e_exige_hash_exato(perfil):
+    nome = "mente_laylay/cognicao/modalidade_turno.py"
+    antigo, anterior = r.REPROJECAO_REVISADA[nome]
+    assert anterior == "7dbe01fbc8f5090e30307c41003739fcc45f7e1849d0704632e80895783b6a56"
+    revisado_antigo, atual = r.REPROJECAO_SEGMENTACAO_P06_REVISADA[nome]
+    assert revisado_antigo == antigo
+    dependencias = {caminho.replace("\\", "/"): dados
+        for caminho, dados in perfil[2]["dependencias_alteradas"].items()}
+    assert dependencias[nome] == {"historico": antigo, "atual": atual}
+    assert all(lote["divergencias_sha256"] == r.SHA_DIVERGENCIAS_REVISADAS for lote in perfil[2]["lotes"])
+    with pytest.raises(ValueError, match="sem revisão"):
+        r.conferir_dependencias({nome: antigo}, {str((r.BASE / nome).resolve()): "outra_mudanca"}, reprojetar=True)
+
+
 def test_reprojecao_preserva_gold_e_nao_muta_historico():
     cs = json.loads((r.FONTE / "lote.json").read_text(encoding="utf-8"))["casos"]
     c = next(c for c in cs if c["id"] == "rel_v4_necessidade_apps_e0_t0_q0_recusa_pedido")

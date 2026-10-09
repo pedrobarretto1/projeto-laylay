@@ -69,9 +69,9 @@ def test_primeiro_executor_que_trata_interrompe_a_cadeia(monkeypatch) -> None:
     ]
 
 
-def test_bloqueio_emocional_acontece_antes_de_qualquer_executor(monkeypatch) -> None:
+def test_porta_emocional_legada_nao_interrompe_executores(monkeypatch) -> None:
     chamadas: list[str] = []
-    _substituir_executores(monkeypatch, chamadas)
+    _substituir_executores(monkeypatch, chamadas, tratado="sistema")
 
     retorno = roteador.executar_intencao(
         {"intent": "MUSIC_SEARCH", "params": {"query": "Duality"}},
@@ -83,4 +83,21 @@ def test_bloqueio_emocional_acontece_antes_de_qualquer_executor(monkeypatch) -> 
     )
 
     assert retorno is True
-    assert chamadas == []
+    assert chamadas == EXECUTORES_NA_ORDEM[:6]
+
+
+def test_porta_emocional_legada_nao_consume_pedido_sem_conclusao(monkeypatch) -> None:
+    chamadas: list[str] = []
+    _substituir_executores(monkeypatch, chamadas, tratado="sistema")
+
+    retorno = roteador.executar_intencao(
+        {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}},
+        "abre a Calculadora",
+        {
+            "_target_from_params": lambda *_args: "pc_a",
+            "_bloqueio_por_emocao": lambda *_args: True,
+        },
+    )
+
+    assert retorno is True
+    assert chamadas == EXECUTORES_NA_ORDEM[:6]

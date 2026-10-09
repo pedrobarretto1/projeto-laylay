@@ -14,6 +14,7 @@ import getpass
 import hashlib
 import json
 import os
+import sys
 from typing import Callable, Mapping
 
 import requests
@@ -189,7 +190,9 @@ def main() -> None:
     except ErroConsultaOpenRouter as erro:
         resultado = {"estado": "erro_consulta", "motivo": str(erro),
                      "aprovado_para_producao": False, "autoriza_efeito": False}
-    print(json.dumps({
+    # O JSON é o resultado consumível da CLI; o filtro global de logs da
+    # aplicação pode ocultar print e não possui autoridade sobre esse canal.
+    sys.stdout.write(json.dumps({
         "caso": id_caso,
         "painel": {
             22: "v22_diagnostico_nao_holdout",
@@ -216,7 +219,7 @@ def main() -> None:
         "resultado": resultado,
         "aprovado_para_producao": False,
         "autoriza_efeito": False,
-    }, ensure_ascii=False, indent=2))
+    }, ensure_ascii=False, indent=2) + "\n")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,8 @@ from typing import Any, Callable, Mapping
 
 from mente_laylay.autonomia.higiene_resposta_ia import limpar_resposta_da_ia
 from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
+from mente_laylay.emocoes.contrato_causal import evento_corresponde_direcao_social_observada
+from mente_laylay.personalidade.compositor_evento_local import compor_reacao_evento_local
 
 
 class RespostaEventoRuntime:
@@ -50,12 +52,14 @@ class RespostaEventoRuntime:
             return False
         return bool(
             turno.get("natureza_entrada") == "evento"
+            and turno.get("publicacao_evento_confirmada") is not False
             and turno.get("autoridade_usuario") is False
             and turno.get("permissao_execucao") is False
             and turno.get("autoriza_execucao") is False
             and evento.get("natureza") == "evento"
             and evento.get("autoridade_usuario") is False
             and evento.get("permissao_execucao") is False
+            and not bool(evento.get("autoriza_execucao"))
             and contrato.get("natureza_entrada") == "evento"
             and contrato.get("funcao") == "reacao_evento"
             and contrato.get("autoriza_execucao") is False
@@ -122,6 +126,18 @@ class RespostaEventoRuntime:
             }
 
         contrato_fala = dict(leitura.get("contrato_fala") or {})
+        if contrato_fala.get("motivo_supressao_reacao"):
+            # A cognição conteve a oportunidade. Isso vale também para os
+            # demais domínios: outra autora não deve compensar a ausência de
+            # acontecimento com uma fala genérica.
+            return {
+                "status": "fala_vazia",
+                "motivo": contrato_fala["motivo_supressao_reacao"],
+                "agendada": False,
+                "emissao_fisica": False,
+                "autoriza_execucao": False,
+                "comandos_descartados": 0,
+            }
         direcao_social = (
             dict(contrato_fala.get("direcao_social") or {})
             if isinstance(contrato_fala.get("direcao_social"), Mapping)
@@ -133,69 +149,83 @@ class RespostaEventoRuntime:
             and direcao_social.get("permissao_execucao") is False
             and direcao_social.get("autoriza_execucao") is False
         )
-        if direcao_social_valida:
-            emocoes_validas = {
-                "calma", "debochada", "envergonhada", "irritada", "brava",
-                "alegre", "triste", "surpresa", "acalmando-se",
-            }
-            emocao_cognitiva = str(
-                direcao_social.get("emocao") or "calma"
-            ).strip().casefold()
-            emocao = emocao_cognitiva if emocao_cognitiva in emocoes_validas else "calma"
-            try:
-                nivel = max(1, min(3, int(direcao_social.get("nivel") or 1)))
-            except (TypeError, ValueError):
-                nivel = 1
-
-        try:
-            pacote = self.preparacao_prompt.preparar_pacote("")
-            mensagens = [
-                dict(item) for item in pacote.mensagens
-                if isinstance(item, Mapping)
-            ]
-            mensagens.append(self._mensagem_evento(
-                leitura,
-                dominio=dominio,
-                categoria=categoria,
-            ))
-            pedido = PedidoModelo.criar(
-                mensagens,
-                com_tools=False,
-                max_tokens=180,
-                modo_rapido=True,
-                permitir_conversa_modo_jogo=(
-                    str(dominio or "").strip().casefold() == "jogo"
-                ),
-                prioridade_interativa=False,
-                permitir_durante_interacao=False,
-                tipo_chamada="presenca_evento",
-                classe_timeout="rapida",
+        causal = contrato_fala.get("evento_emocional_causal")
+        causa_vigente = bool(
+            direcao_social_valida
+            and evento_corresponde_direcao_social_observada(
+                causal, dict(leitura.get("entrada_cognitiva") or {}), direcao_social,
+                turno_id=str(contrato_fala.get("turno_id") or ""),
             )
-            resultado_modelo = self.modelo_llm.executar(pedido)
-        except Exception as erro:
-            self._falha("falha_geracao", erro)
-            return {
-                "status": "falha_geracao",
-                "agendada": False,
-                "emissao_fisica": False,
-                "autoriza_execucao": False,
-                "comandos_descartados": 0,
-            }
-
-        if not bool(getattr(resultado_modelo, "sucesso", False)):
-            return {
-                "status": "modelo_indisponivel",
-                "agendada": False,
-                "emissao_fisica": False,
-                "autoriza_execucao": False,
-                "comandos_descartados": 0,
-            }
-
-        fala, comandos = limpar_resposta_da_ia(
-            getattr(resultado_modelo, "texto", ""),
-            limpar_texto_fala_cb=self.limpar_texto_fala,
-            fallback_fala="",
         )
+        emocao, nivel = "calma", 1
+        if causa_vigente:
+            emocao, nivel = str(causal["emocao"]), int(causal["nivel"])
+
+        if str(dominio or "").strip().casefold() == "jogo":
+            # P18: a visão e a cognição já resolveram o acontecimento. A
+            # materialização de sua reação não pede outra autoria ao modelo.
+            try:
+                fala = compor_reacao_evento_local(contrato_fala)
+                comandos: list[Any] = []
+                if callable(self.limpar_texto_fala):
+                    fala = self.limpar_texto_fala(fala)
+            except Exception as erro:
+                self._falha("falha_composicao_local", erro)
+                return {
+                    "status": "falha_composicao_local",
+                    "agendada": False,
+                    "emissao_fisica": False,
+                    "autoriza_execucao": False,
+                    "comandos_descartados": 0,
+                }
+        else:
+            try:
+                pacote = self.preparacao_prompt.preparar_pacote("")
+                mensagens = [
+                    dict(item) for item in pacote.mensagens
+                    if isinstance(item, Mapping)
+                ]
+                mensagens.append(self._mensagem_evento(
+                    leitura,
+                    dominio=dominio,
+                    categoria=categoria,
+                ))
+                pedido = PedidoModelo.criar(
+                    mensagens,
+                    com_tools=False,
+                    max_tokens=180,
+                    modo_rapido=True,
+                    permitir_conversa_modo_jogo=False,
+                    prioridade_interativa=False,
+                    permitir_durante_interacao=False,
+                    tipo_chamada="presenca_evento",
+                    classe_timeout="rapida",
+                )
+                resultado_modelo = self.modelo_llm.executar(pedido)
+            except Exception as erro:
+                self._falha("falha_geracao", erro)
+                return {
+                    "status": "falha_geracao",
+                    "agendada": False,
+                    "emissao_fisica": False,
+                    "autoriza_execucao": False,
+                    "comandos_descartados": 0,
+                }
+
+            if not bool(getattr(resultado_modelo, "sucesso", False)):
+                return {
+                    "status": "modelo_indisponivel",
+                    "agendada": False,
+                    "emissao_fisica": False,
+                    "autoriza_execucao": False,
+                    "comandos_descartados": 0,
+                }
+
+            fala, comandos = limpar_resposta_da_ia(
+                getattr(resultado_modelo, "texto", ""),
+                limpar_texto_fala_cb=self.limpar_texto_fala,
+                fallback_fala="",
+            )
         fala = str(fala or "").strip()
         if not fala:
             return {
@@ -262,6 +292,13 @@ class RespostaEventoRuntime:
                 if str(dominio).casefold() == "jogo"
                 else "observacao"
             )
+        # A autoria cotidiana e o callback de materialização podem demorar.
+        # Validade na entrada não substitui a validade no envio à voz.
+        if causa_vigente and not evento_corresponde_direcao_social_observada(
+            causal, dict(leitura.get("entrada_cognitiva") or {}), direcao_social,
+            turno_id=str(contrato_fala.get("turno_id") or ""),
+        ):
+            emocao, nivel = "calma", 1
         try:
             agendada = bool(self.agendar_fala_proativa(
                 tipo_porteiro,

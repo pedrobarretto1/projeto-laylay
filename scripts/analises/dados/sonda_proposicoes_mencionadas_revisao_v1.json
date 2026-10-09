@@ -1,0 +1,34 @@
+{
+  "versao": 1,
+  "natureza": "Revisão local congelada antes da primeira geração, não revisão humana independente. Uma operação principal de mudança por fonte. Estado e polaridade negada ainda não aferidos neste piloto.",
+  "casos": {
+    "F01": {"predicado": "Remova", "objeto": "o arquivo croqui.md", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "Remova o arquivo croqui.md", "escopo": "Remova o arquivo croqui.md."}
+    ]},
+    "F02": {"predicado": "remova", "objeto": "o arquivo croqui.md", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "remova o arquivo croqui.md", "escopo": "remova o arquivo croqui.md"},
+      {"tipo": "metalinguagem", "trecho_minimo": "Usei “remova o arquivo croqui.md” apenas como exemplo de frase", "escopo": "Usei “remova o arquivo croqui.md” apenas como exemplo de frase."}
+    ]},
+    "F03": {"predicado": "removesse", "objeto": "o arquivo croqui.md", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "hipotese", "trecho_minimo": "Se eu removesse o arquivo croqui.md", "escopo": "Se eu removesse o arquivo croqui.md"},
+      {"tipo": "pergunta", "trecho_minimo": "Se eu removesse o arquivo croqui.md, o que mudaria", "escopo": "Se eu removesse o arquivo croqui.md, o que mudaria?"}
+    ]},
+    "F04": {"predicado": "Remova", "objeto": "o texto que apresenta o arquivo croqui.md", "papel_objeto": "texto", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "Remova o texto que apresenta o arquivo croqui.md", "escopo": "Remova o texto que apresenta o arquivo croqui.md."}
+    ]},
+    "I01": {"predicado": "Desative", "objeto": "a tomada da bancada", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "Desative a tomada da bancada", "escopo": "Desative a tomada da bancada."}
+    ]},
+    "I02": {"predicado": "desative", "objeto": "a tomada da bancada", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "desative a tomada da bancada", "escopo": "desative a tomada da bancada"},
+      {"tipo": "metalinguagem", "trecho_minimo": "Usei “desative a tomada da bancada” apenas como exemplo de frase", "escopo": "Usei “desative a tomada da bancada” apenas como exemplo de frase."}
+    ]},
+    "I03": {"predicado": "desativasse", "objeto": "a tomada da bancada", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "hipotese", "trecho_minimo": "Se eu desativasse a tomada da bancada", "escopo": "Se eu desativasse a tomada da bancada"},
+      {"tipo": "pergunta", "trecho_minimo": "Se eu desativasse a tomada da bancada, o que mudaria", "escopo": "Se eu desativasse a tomada da bancada, o que mudaria?"}
+    ]},
+    "I04": {"predicado": "Desative", "objeto": "a automação que menciona a tomada da bancada", "papel_objeto": "entidade", "polaridade": "positiva", "molduras": [
+      {"tipo": "pedido", "trecho_minimo": "Desative a automação que menciona a tomada da bancada", "escopo": "Desative a automação que menciona a tomada da bancada."}
+    ]}
+  }
+}

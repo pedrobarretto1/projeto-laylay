@@ -249,7 +249,14 @@ def normalizar_confirmacao_texto(texto: str) -> str:
     return re.sub(r"\s+", " ", sem_acento).strip()
 
 
-def classificar_confirmacao_local(texto: str) -> Optional[bool]:
+def classificar_confirmacao_local(
+    texto: str, *, somente_aceite_generico: bool = False,
+) -> Optional[bool]:
+    """Aceite genérico pode ser separado dos verbos de uma ação de domínio.
+
+    Ofertas tipadas validam seus próprios verbos. O modo legado conserva os
+    aceites operacionais para os consumidores que ainda dependem deles.
+    """
     t = normalizar_confirmacao_texto(texto)
     if not t:
         return None
@@ -274,11 +281,13 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
         return None
     sim_frases = {
         "sim", "sim pode", "pode", "pode sim", "quero", "quero sim", "eu quero",
-        "eu quero sim", "quero ouvir", "quero ver", "quero essa", "quero ele",
+        "eu quero sim", "quero essa", "quero ele",
         "claro", "bora", "vai", "vai la", "manda", "manda ver",
         "ok", "beleza", "blz", "confirmo", "isso", "isso mesmo", "pode ser",
         "fechado", "aham", "uhum", "exato", "correto", "foi isso",
-        "coloca", "toca", "da play", "play",
+    }
+    sim_operacionais = {
+        "quero ouvir", "quero ver", "coloca", "toca", "da play", "play",
         "abre", "abre sim", "pode abrir", "pode colocar",
         "pode falar", "pode fala", "pode me falar", "pode me fala",
         "fala", "fala sim", "me fala", "me fala sim",
@@ -292,6 +301,8 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
         "errado", "nao foi",
     }
     if t in sim_frases:
+        return True
+    if not somente_aceite_generico and t in sim_operacionais:
         return True
     if t in nao_frases:
         return False
@@ -310,7 +321,9 @@ def classificar_confirmacao_local(texto: str) -> Optional[bool]:
     ):
         return False
     tokens = set(t.split())
-    if {"quero", "sim"} <= tokens or {"pode", "sim"} <= tokens:
+    if not somente_aceite_generico and (
+        {"quero", "sim"} <= tokens or {"pode", "sim"} <= tokens
+    ):
         return True
     if "nao" in tokens and ("agora" in tokens or "precisa" in tokens or "quero" in tokens):
         return False

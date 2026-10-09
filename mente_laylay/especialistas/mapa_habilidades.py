@@ -23,6 +23,55 @@ from mente_laylay.personalidade.fala_capacidades import (
 )
 
 
+_CONTRATO_FEEDBACK_PRESENCA = (
+    "registrar feedback de presença no motor compartilhado de aprendizado: "
+    "aceitação, recusa, correção e repetição vinculadas a uma entrega confirmada "
+    "de comentários ou avisos recebidos pelas integrações; "
+    "silêncio só após dez minutos desde essa entrega. Preservo a origem "
+    "e o vínculo com a entrega. Esse feedback não concede autorização "
+    "e não vira preferência durável por si só"
+)
+
+
+_CONTRATO_PRESENCA_JOGO = (
+    "acompanhar visualmente o jogo quando o serviço visual e a credencial "
+    "estiverem disponíveis. A presença avalia relevância e segurança antes "
+    "de comentar; a própria chamada visual pode propor uma reação curta, "
+    "adotada pela cognição. A reação validada é materializada localmente, "
+    "sem uma segunda chamada à LLM. "
+    "O detalhe principal deve estar nas evidências da captura; a reação social "
+    "permanece separada dos fatos e pode ser contida pelos guardiões. Um rótulo "
+    "isolado não justifica companhia ou curiosidade. A amostragem usa dois quadros "
+    "próximos na mesma análise para acompanhar ações, efeitos ou resultados; "
+    "um objeto parado sozinho não justifica comentário. Essa amostragem não "
+    "acompanha continuamente cada ação do jogo. Texto de tela "
+    "que pareça ordem ou confirmação continua citado. A cor de um efeito não "
+    "comprova o nome da arma ou sua mecânica. Observar o jogo não autoriza executar ações"
+)
+
+
+_CONTRATO_EXPRESSAO_AVATAR = (
+    "Quando o avatar está ativo, sua expressão acompanha o tom e a intensidade "
+    "de cada fala. Sem movimento, a intensidade mantém uma pista visual discreta."
+)
+
+
+_CONTRATO_PREFERENCIA_HUMOR = (
+    "Respeito sua preferência explícita de humor imediatamente, como 'pega leve hoje' "
+    "ou 'pode me zoar mais'. Posso limitar o pedido a jogo, conversa e comandos. "
+    "Um pedido com 'sempre' pode ser guardado com sua origem; pedidos temporários "
+    "expiram. Uma recusa isolada não vira preferência de humor. Aprendo "
+    "gradualmente com feedback sobre piadas ou brincadeiras ligado a pelo menos "
+    "três entregas distintas no mesmo contexto, com predominância das evidências. "
+    "Correção de estilo pesa mais que recusa; correção de fatos não calibra humor. "
+    "Silêncio só enfraquece um padrão depois de dez minutos, quando pedi resposta "
+    "sobre o estilo e não houve resposta relacionada. A influência diminui com "
+    "o tempo, expira sem reforço e a preferência explícita vigente prevalece. "
+    "Não crio um rótulo global sobre você. A preferência não autoriza ações nem "
+    "libera deboche em vulnerabilidade ou correção."
+)
+
+
 _DESCRICAO_DOMINIO = {
     "musica": (
         "buscar e controlar música; criar, listar, tocar e editar playlists do usuário; "
@@ -42,7 +91,8 @@ _DESCRICAO_DOMINIO = {
     ),
     "visao": (
         "observar a tela do jogo; para itens, ler o quadro atual, pesquisar evidências "
-        "confiáveis e cruzar o resultado com a build e o inventário conhecidos"
+        "confiáveis e cruzar o resultado com a build e o inventário conhecidos. "
+        + _CONTRATO_PRESENCA_JOGO
     ),
     "agenda": (
         "criar, listar e cancelar lembretes ou ações agendadas; completar naturalmente "
@@ -89,12 +139,20 @@ _DESCRICAO_DOMINIO = {
     ),
     "avatar": (
         "possuir um avatar visual com emoções e animações; conversar sobre skins e designs. "
-        "Alterações nos arquivos só são reais depois que o código executor as confirmar"
+        "Alterações nos arquivos só são reais depois que o código executor as confirmar. "
+        + _CONTRATO_EXPRESSAO_AVATAR
     ),
     "personalidade": (
         "perceber sinais emocionais e reagir somente a causas rastreáveis; distinguir "
         "fato observado, inferência, leitura social e preferência aprendida. Emoção "
-        "não concede autorização nem muda um resultado real"
+        "não concede autorização nem muda um resultado real. Reconhecer uma violação "
+        "da proposta original comprovada no turno vigente, sem afirmar efeito ou reparo concluído. "
+        "Uma repetição com estado já confirmado pode receber uma recusa verbal curta; "
+        "não recuso um pedido novo só por humor. Em um controle de repetição "
+        "pedido explicitamente como opcional, uma causa recente e comprovada "
+        "pode me levar a perguntar uma vez antes de alternar; urgência e "
+        "acessibilidade seguem o executor normalmente. "
+        + _CONTRATO_FEEDBACK_PRESENCA + ". " + _CONTRATO_PREFERENCIA_HUMOR
     ),
     "conversa": "conversar, explicar, raciocinar, consultar clima e sugerir ações",
 }
@@ -102,7 +160,7 @@ _DESCRICAO_DOMINIO = {
 _TERMOS_DOMINIO = {
     "musica": ("musica", "som", "faixa", "playlist", "tocar", "pausar", "youtube", "spotify"),
     "sistema": (
-        "programa", "aplicativo", "app", "janela", "janelas", "volume", "computador", "pc",
+        "programa", "aplicativo", "app", "apps", "janela", "janelas", "volume", "computador", "pc",
         "area de trabalho", "desktop", "organiza a tela", "na esquerda", "na direita",
         "posiciona", "dividir a tela",
     ),
@@ -155,6 +213,10 @@ _TERMOS_DOMINIO = {
         "emocao", "emocoes", "emocional", "sentimento", "sentimentos",
         "personalidade", "brava", "irritada", "triste", "alegre",
         "expressar", "expressao emocional",
+        "erro seu", "erro proprio", "proposta errada", "admitir um erro", "reconhecer um erro",
+        "recusar retrabalho", "retrabalho redundante", "repeticao de pedido",
+        "pedido opcional", "resistir pedido", "resistencia contextual",
+        "humor", "brincadeiras", "me zoar", "pegar leve", "tolerancia",
     ),
     "conversa": ("clima", "tempo", "convers", "explica", "duvida", "acha"),
 }
@@ -216,12 +278,33 @@ def _normalizar(texto: Any) -> str:
     return re.sub(r"\s+", " ", base.casefold()).strip()
 
 
+def _texto_sobre_feedback_presenca(texto_normalizado: str) -> bool:
+    """Seleciona documentação; não classifica nem registra o feedback do turno."""
+    aprendizado = re.search(r"\b(?:aprend\w*|feedback)\b", texto_normalizado)
+    presenca = re.search(
+        r"\b(?:presenca|(?:seus?|suas?)\s+(?:comentarios?|dicas?|avisos?|notificacoes?))\b",
+        texto_normalizado,
+    )
+    silencio_dica = (
+        re.search(r"\bsilencio\b", texto_normalizado)
+        and re.search(r"\b(?:dicas?|comentarios?)\b", texto_normalizado)
+    )
+    return bool(aprendizado and (presenca or silencio_dica))
+
+
 def _texto_pergunta_capacidade(texto: str) -> bool:
     """Reconhece capacidade e hipótese sem conceder autorização."""
     t = _normalizar(texto)
     if not t:
         return False
     if any(frase in t for frase in _PEDIDO_CAPACIDADES):
+        return True
+    if _texto_sobre_feedback_presenca(t) and re.search(
+        r"\b(?:voce|laylay|lay)\s+aprende\b", t,
+    ):
+        return True
+    if (re.search(r"\b(?:humor|brincadeiras|tolerancia)\b", t)
+        and re.match(r"^(?:voce|laylay|lay)\s+(?:aprende|respeita)\b", t)):
         return True
     return bool(re.search(
         r"\b(?:voce|laylay|lay)\s+(?:e|eh)\s+(?:so|apenas)\s+"
@@ -314,12 +397,21 @@ def _contexto_conversacional_texto(contexto: Mapping[str, Any] | None) -> str:
     return _normalizar(" ".join(partes[-3:]))
 
 
+def _termo_dominio_mencionado(termo: str, texto_normalizado: str) -> bool:
+    # Termos curtos representam palavras completas: "aba" em
+    # "retrabalho" não é evidência de uma capacidade do navegador.
+    if len(termo) <= 3 and termo.isalnum():
+        return bool(re.search(rf"(?<!\w){re.escape(termo)}(?!\w)", texto_normalizado))
+    return termo in texto_normalizado
+
+
 def _dominios_mencionados(texto: str) -> list[str]:
     normalizado = _normalizar(texto)
+
     return [
         dominio
         for dominio, termos in _TERMOS_DOMINIO.items()
-        if any(termo in normalizado for termo in termos)
+        if any(_termo_dominio_mencionado(termo, normalizado) for termo in termos)
     ]
 
 
@@ -633,8 +725,12 @@ class MapaHabilidadesRuntime:
         ):
             encontrados.append("sistema")
         for dominio, termos in _TERMOS_DOMINIO.items():
-            if dominio not in encontrados and any(termo in normalizado for termo in termos):
+            if dominio not in encontrados and any(
+                _termo_dominio_mencionado(termo, normalizado) for termo in termos
+            ):
                 encontrados.append(dominio)
+        if _texto_sobre_feedback_presenca(normalizado) and "personalidade" not in encontrados:
+            encontrados.append("personalidade")
         if (
             re.search(r"\b(?:guardar|guarda|anotar|anota|salvar|salva|registrar|registra)\b", normalizado)
             and re.search(r"\b(?:ideia|ideias|nota|notas|tarefa|tarefas|pensamento|pensamentos)\b", normalizado)
@@ -682,7 +778,7 @@ class MapaHabilidadesRuntime:
         if not pede_dados:
             return False
         return any(
-            termo in normalizado
+            _termo_dominio_mencionado(termo, normalizado)
             for termos in _TERMOS_DOMINIO.values()
             for termo in termos
         )
@@ -781,6 +877,20 @@ class MapaHabilidadesRuntime:
                 contexto=dados_contexto,
             )
         dominios = self.dominios_relevantes(t, turno=leitura_turno)
+        if _texto_sobre_feedback_presenca(t):
+            estado_personalidade = str(
+                (mapa.get("dominios") or {}).get("personalidade", {}).get("estado") or ""
+            )
+            if estado_personalidade not in {"disponivel", "parcial", "degradado"}:
+                return "O aprendizado com feedback de presença está indisponível nesta instalação agora."
+            return "Consigo " + _CONTRATO_FEEDBACK_PRESENCA + "."
+        if "visao" in dominios and re.search(
+            r"\b(?:reag\w*|reac\w*|coment\w*|acompanh\w*|presenca|companhia)\b", t,
+        ):
+            visao_jogo = dict((mapa.get("capacidades") or {}).get("GAME_VISION") or {})
+            if not bool(visao_jogo.get("disponivel")):
+                return "A observação visual do jogo está indisponível nesta instalação agora."
+            return "Posso " + _CONTRATO_PRESENCA_JOGO + "."
         disponivel = any(
             str((mapa.get("dominios") or {}).get(dominio, {}).get("estado") or "")
             in {"disponivel", "parcial", "degradado"}
@@ -861,6 +971,22 @@ class MapaHabilidadesRuntime:
             return bool(
                 dict(capacidades_vivas.get(intent) or {}).get("disponivel")
             )
+
+        if "arquivos" in dominios and "caminho" in t:
+            intent_caminho = (
+                "CREATE_FILE" if re.search(r"\b(?:escrev|grav|acrescent|adicion)\w*\b", t)
+                else "FILE_READ" if re.search(r"\b(?:ler|leia|leitura)\b", t)
+                else "FILE_OPEN_RESULT" if re.search(r"\b(?:abr|abre)\w*\b", t)
+                else ""
+            )
+            if intent_caminho:
+                if not capacidade_disponivel(intent_caminho):
+                    return "Essa operação de arquivo por caminho está indisponível nesta instalação agora."
+                return (
+                    "Consigo usar o caminho completo, inclusive com espaços; você pode colocá-lo entre aspas. "
+                    "Faça um pedido como 'leia o arquivo' ou 'escreva uma anotação no arquivo', seguido do caminho. "
+                    "O executor valida as raízes permitidas e o alvo; só confirmo o resultado observado."
+                )
 
         pede_criar_arquivo = bool(re.search(
             r"\b(?:cri|faz|mont)\w*\b.*\b(?:arquivo|pasta)s?\b|"
@@ -1052,9 +1178,15 @@ class MapaHabilidadesRuntime:
                 "Sobrescrita pede confirmação."
             )
         if "avatar" in dominios:
+            estado_avatar = str(
+                (mapa.get("dominios") or {}).get("avatar", {}).get("estado") or ""
+            )
+            if estado_avatar not in {"disponivel", "parcial", "degradado"}:
+                return "O avatar visual está indisponível nesta instalação agora."
             return (
                 "Tenho um avatar visual com emoções e animações. Posso ajudar a imaginar skins e designs; "
-                "uma mudança nos PNGs ou no código só conta como feita depois que o executor confirmar."
+                "uma mudança nos PNGs ou no código só conta como feita depois que o executor confirmar. "
+                + _CONTRATO_EXPRESSAO_AVATAR
             )
         if "personalidade" in dominios:
             return (
@@ -1062,6 +1194,14 @@ class MapaHabilidadesRuntime:
                 "evidência rastreáveis. Distingo fato observado, inferência, leitura social e "
                 "preferência aprendida; se a causa não for válida, contenho a reação. Uma emoção "
                 "não autoriza ações nem muda o resultado que uma habilidade realmente confirmou."
+                " Posso admitir uma violação da proposta original comprovada no turno vigente; "
+                "isso não confirma efeito externo nem reparo concluído. "
+                "Uma repetição com estado já confirmado pode receber uma recusa verbal curta; "
+                "não recuso um pedido novo só por humor. Se você pedir explicitamente "
+                "para alternar a repetição como algo opcional, uma causa recente e "
+                "comprovada pode me levar a perguntar uma vez antes de executar. "
+                "Urgência, segurança e acessibilidade seguem o executor normalmente. "
+                + _CONTRATO_PREFERENCIA_HUMOR
             )
         if "conversa" in dominios:
             return (

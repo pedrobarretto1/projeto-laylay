@@ -3,9 +3,16 @@ from __future__ import annotations
 from types import SimpleNamespace
 import time
 
+import pytest
+
 import mente_laylay.autonomia.adaptador_resultado as modulo
+from mente_laylay.emocoes.avaliador_eventos import AvaliadorEventosEmocionaisRuntime
 from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
 from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperacional
+from mente_laylay.integracao.adaptadores_composicao import avaliar_evento_emocional_operacional
+from mente_laylay.integracao.estado_contexto_runtime import EstadoContextoRuntime
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+from mente_laylay.personalidade.resposta_conversacional_runtime import RespostaConversacionalRuntime
 
 
 def _adaptador(ctx: dict | None = None, **params) -> AdaptadorResultadoOperacional:
@@ -106,6 +113,8 @@ def test_contexto_de_fala_consulta_a_mesma_mente_do_turno() -> None:
         "ultima_resposta": "",
         "falas_recentes": [],
         "modo_jogo_ativo": False,
+        "preferencias_humor_contextuais": {},
+        "preferencia_humor_contextual": {},
     }
 
 
@@ -137,6 +146,7 @@ def test_fala_por_status_repassa_resultado_ao_planejador(monkeypatch) -> None:
     assert preferencias == {
         "emocao_preferida": "debochada",
         "nivel_preferido": 2,
+        "contexto": adaptador.contexto_fala(),
     }
     assert falas == [("Chrome aberto.", "feliz", 2)]
 
@@ -177,13 +187,15 @@ def test_status_calmo_nao_forca_personalidade_agitada(monkeypatch) -> None:
         return SimpleNamespace(fala="Volume ajustado.", emocao="calma", nivel=1)
 
     monkeypatch.setattr(modulo, "planejar_resposta_acao", planejar)
-    _adaptador({"falar_com_lipsync": lambda *_args: None}).falar_por_status(
+    adaptador = _adaptador({"falar_com_lipsync": lambda *_args: None})
+    adaptador.falar_por_status(
         "VOLUME_AJUSTADO", "Volume ajustado.", alvo="volume"
     )
 
     assert preferencias == [{
         "emocao_preferida": "calma",
         "nivel_preferido": 1,
+        "contexto": adaptador.contexto_fala(),
     }]
 
 
@@ -213,6 +225,7 @@ def test_resultado_visivel_recebe_deboche_causal_sem_mudar_o_fato(monkeypatch) -
     adaptador = _adaptador({
         "falar_com_lipsync": lambda *args: falas.append(args),
         "modo_jogo_ativo": lambda: True,
+            "_registrar_resultado_execucao": lambda *_args, **_kwargs: None,
             "_avaliar_evento_emocional_operacional": lambda _resultado: {
                 **criar_evento_emocional_causal(
                     origem="resultado_operacional", causa="Opera já estava em foco",
@@ -228,6 +241,7 @@ def test_resultado_visivel_recebe_deboche_causal_sem_mudar_o_fato(monkeypatch) -
             },
     }, nome_app="Opera")
 
+    adaptador.marcar_resultado("ja_aberto_focado", False, confirmado=True)
     adaptador.falar_por_status(
         "ja_aberto_focado", "Opera já estava aberto.", alvo="Opera",
     )
@@ -464,7 +478,7 @@ def test_autoria_varia_abertura_que_acabou_de_usar() -> None:
         "ultima_resposta": f"{abertura} Não vou abrir de novo.",
         "falar_com_lipsync": lambda *_args: None,
         "enviar_mensagem": lambda *_args, **_kwargs: (
-            '{"fala":"O Opera já está aberto e em foco. Não vou abrir de novo só porque seus olhos tiraram férias.",'
+            '{"fala":"O Opera já está aberto e em foco. Não vou abrir de novo porque o Opera já está aberto e em foco.",'
             '"emocao":"debochada","nivel":2,'
             '"status":"sem_acao","alvo":"Opera"}'
         ),
@@ -688,3 +702,241 @@ def test_fala_por_status_nao_transforma_sem_receipt_em_sucesso() -> None:
     assert contrato.confirmado is None
     assert "não consegui confirmar" in fala.casefold()
     assert "pronto, abri" not in fala.casefold()
+
+
+def _adaptador_com_receipts_compartilhados(
+    resultado: dict | None = None,
+    params: dict | None = None,
+) -> tuple[AdaptadorResultadoOperacional, EstadoCompartilhadoRuntime, list, list]:
+    estado = EstadoCompartilhadoRuntime(conversacional={"current_emotion": "calma"})
+    namespace = {}
+    contexto = EstadoContextoRuntime(
+        namespace_getter=lambda: namespace, estado_runtime_getter=lambda: estado,
+    )
+    namespace.update({
+        "_normalizar_texto_com_apelidos": lambda texto: texto.casefold(),
+        "_atualizar_foco_vivo": contexto.atualizar_foco_vivo,
+    })
+    conversa = RespostaConversacionalRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+        fallback_fala="", log=lambda *_args: None,
+    )
+    avaliador = AvaliadorEventosEmocionaisRuntime(log=lambda *_args: None)
+    publicados = []
+    entregas = []
+
+    def registrar(contrato, *args, **kwargs):
+        contexto.registrar_resultado_execucao(contrato, *args, **kwargs)
+        publicados.append(contrato)
+
+    def avaliar(contrato):
+        return avaliar_evento_emocional_operacional(
+            contrato, avaliador=avaliador,
+            publicar_evento=contexto.publicar_evento_emocional_causal,
+            definir_emocao=conversa.definir_emocao, log=lambda *_args: None,
+        )
+
+    adaptador = AdaptadorResultadoOperacional(
+        resultado if resultado is not None else {"intent": "APP_OPEN"},
+        params if params is not None else {"nome_app": "chrome"},
+        "abre o chrome", "pc_a",
+        {
+            "_registrar_resultado_execucao": registrar,
+            "_avaliar_evento_emocional_operacional": avaliar,
+            "_falar_resultado_operacional": lambda *args: entregas.append(args),
+            "falar_com_lipsync": lambda *_args: None,
+            "print": lambda *_args: None,
+        },
+    )
+    return adaptador, estado, publicados, entregas
+
+
+@pytest.mark.parametrize("intent, params, alvo", [
+    ("APP_OPEN", {"nome_app": "chrome"}, "chrome"),
+    ("IOT_CONTROL", {"alvo": "lampada_quarto"}, "lampada_quarto"),
+])
+def test_fala_preserva_contexto_do_receipt_publicado_da_mesma_ocorrencia(
+    intent: str, params: dict, alvo: str,
+) -> None:
+    adaptador, estado, publicados, entregas = _adaptador_com_receipts_compartilhados(
+        {"intent": intent}, params,
+    )
+    contexto_receipt = {
+        "responsabilidade": "laylay", "confianca_responsabilidade": 0.98,
+        "evidencia_atribuicao": {"origem": "diagnostico_observado"},
+    }
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado=contexto_receipt,
+    )
+    assert publicados[0].contexto == contexto_receipt
+    assert estado.mental["ultima_acao_contrato"]["id_solicitacao"] == adaptador.id_solicitacao
+
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo=alvo)
+
+    contrato = entregas[0][0]
+    assert contrato.id_solicitacao == publicados[0].id_solicitacao
+    assert contrato.contexto["responsabilidade"] == "laylay"
+    assert contrato.contexto["evidencia_atribuicao"] == contexto_receipt["evidencia_atribuicao"]
+    assert contrato.contexto["avaliacao_evento"]["arco"] == "autorreparo"
+    assert contrato.contexto["avaliacao_evento"]["permite_expressao"] is True
+    assert estado.conversacional["current_emotion"] == "envergonhada"
+    assert contrato.executou is False and contrato.confirmado is False
+
+
+@pytest.mark.parametrize("divergencia", ["id", "id_resultado", "request_id", "intent", "status", "alvo", "marcador"])
+def test_receipt_de_outra_ocorrencia_nao_atribui_responsabilidade_a_fala(
+    divergencia: str,
+) -> None:
+    adaptador, _estado, _publicados, entregas = _adaptador_com_receipts_compartilhados()
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    status, alvo = "alvo_ausente", "chrome"
+    if divergencia == "id":
+        adaptador.id_solicitacao = "outra_ocorrencia"
+    elif divergencia in {"id_resultado", "request_id"}:
+        chave = "id_solicitacao" if divergencia == "id_resultado" else "request_id"
+        adaptador.resultado[chave] = "outra_ocorrencia"
+    elif divergencia == "intent":
+        adaptador.resultado["intent"] = "IOT_CONTROL"
+    elif divergencia == "status":
+        status = "acao_invalida"
+    elif divergencia == "alvo":
+        alvo = "Opera"
+    else:
+        adaptador.resultado[modulo.CHAVE_RESULTADO_OPERACIONAL_PUBLICADO] = "outra_ocorrencia"
+
+    adaptador.falar_por_status(status, "Não encontrei o alvo.", alvo=alvo)
+
+    assert "responsabilidade" not in entregas[0][0].contexto
+    # Fala sem o receipt correspondente não cria sequer uma avaliação incerta.
+    assert "avaliacao_evento" not in entregas[0][0].contexto
+    assert entregas[0][0].origem != "executor"
+
+
+def test_falha_de_publicacao_nao_transporta_contexto_nem_receipt_anterior() -> None:
+    adaptador, _estado, publicados, entregas = _adaptador_com_receipts_compartilhados()
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+
+    def falhar(*_args, **_kwargs):
+        raise RuntimeError("publicação indisponível")
+
+    adaptador.ctx["_registrar_resultado_execucao"] = falhar
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado={"responsabilidade": "usuario", "confianca_responsabilidade": 0.98},
+    )
+    assert len(publicados) == 1
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    assert "responsabilidade" not in entregas[0][0].contexto
+
+
+def test_republicacao_na_mesma_instancia_substitui_contexto_do_receipt() -> None:
+    adaptador, _estado, publicados, entregas = _adaptador_com_receipts_compartilhados()
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    adaptador.marcar_resultado("alvo_ausente", executou=False, confirmado=False)
+    assert publicados[-1].contexto == {}
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    assert "responsabilidade" not in entregas[0][0].contexto
+
+
+def test_reuso_do_dict_em_outra_instancia_nao_herda_receipt() -> None:
+    resultado = {"intent": "APP_OPEN"}
+    anterior, _estado, _publicados, entregas_anteriores = _adaptador_com_receipts_compartilhados(resultado)
+    anterior.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    novo, _estado_novo, _publicados_novo, entregas_novas = _adaptador_com_receipts_compartilhados(resultado)
+    anterior.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+    novo.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    assert anterior.id_solicitacao != novo.id_solicitacao
+    assert "responsabilidade" not in entregas_anteriores[0][0].contexto
+    assert "responsabilidade" not in entregas_novas[0][0].contexto
+
+
+def test_receipt_transportado_isola_mutacoes_do_contexto_original_e_da_fala() -> None:
+    adaptador, _estado, publicados, entregas = _adaptador_com_receipts_compartilhados()
+    contexto_receipt = {
+        "responsabilidade": "laylay", "confianca_responsabilidade": 0.98,
+        "evidencia_atribuicao": {"origem": "diagnostico_observado"},
+    }
+    adaptador.marcar_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto_resultado=contexto_receipt,
+    )
+    contexto_receipt["responsabilidade"] = "usuario"
+    contexto_receipt["evidencia_atribuicao"]["origem"] = "texto_do_usuario"
+    publicados[0].contexto["responsabilidade"] = "sistema"
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    contrato_primeira_fala = entregas[0][0]
+    assert contrato_primeira_fala.contexto["responsabilidade"] == "laylay"
+    assert contrato_primeira_fala.contexto["evidencia_atribuicao"]["origem"] == "diagnostico_observado"
+    assert "avaliacao_evento" not in publicados[0].contexto
+    contrato_primeira_fala.contexto["evidencia_atribuicao"]["origem"] = "alterado_pelo_consumidor"
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    assert entregas[1][0].contexto["evidencia_atribuicao"]["origem"] == "diagnostico_observado"
+
+
+def test_params_da_ia_e_ultima_acao_global_nao_substituem_contexto_do_receipt() -> None:
+    adaptador, estado, _publicados, entregas = _adaptador_com_receipts_compartilhados(
+        params={"nome_app": "chrome", "responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    estado.mental["ultima_acao_contrato"] = {
+        "id_solicitacao": adaptador.id_solicitacao, "intent": "APP_OPEN",
+        "status": "alvo_ausente", "alvo": "chrome",
+        "contexto": {"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    }
+    adaptador.falar_por_status("alvo_ausente", "Não encontrei o alvo.", alvo="chrome")
+
+    assert "responsabilidade" not in entregas[0][0].contexto
+    assert "avaliacao_evento" not in entregas[0][0].contexto
+
+
+@pytest.mark.parametrize("executou, confirmado", [(False, True), (True, False), (True, None)])
+def test_flags_modernas_divergentes_nao_sao_combinadas_com_contexto_do_receipt(
+    executou: bool, confirmado: bool | None,
+) -> None:
+    adaptador, _estado, _publicados, entregas = _adaptador_com_receipts_compartilhados()
+    adaptador.marcar_resultado(
+        "app_aberto", executou=True, confirmado=True,
+        contexto_resultado={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    modulo.marcar_tratamento_operacional(
+        adaptador.resultado, tratado=True, executou=executou,
+        confirmado=confirmado, status="app_aberto", resultado_publicado=True,
+        retorno_legado=executou,
+    )
+    adaptador.falar_por_status("app_aberto", "Abri o Chrome.", alvo="chrome")
+
+    contrato = entregas[0][0]
+    assert contrato.executou is executou and contrato.confirmado is confirmado
+    assert "responsabilidade" not in contrato.contexto
+    assert contrato.origem != "executor"
+
+
+def test_receipt_redundante_transporta_origem_sem_inventar_responsabilidade_explicita() -> None:
+    adaptador, estado, publicados, entregas = _adaptador_com_receipts_compartilhados()
+    adaptador.marcar_resultado("ja_aberto_focado", executou=False, confirmado=True)
+    assert publicados[0].contexto == {}
+    adaptador.falar_por_status("ja_aberto_focado", "Chrome já está aberto.", alvo="chrome")
+
+    contrato = entregas[0][0]
+    assert contrato.origem == "executor"
+    assert "responsabilidade" not in contrato.contexto
+    assert contrato.contexto["avaliacao_evento"]["permite_expressao"] is True
+    assert contrato.contexto["avaliacao_evento"]["responsabilidade"] == "usuario"
+    assert estado.conversacional["current_emotion"] == "debochada"

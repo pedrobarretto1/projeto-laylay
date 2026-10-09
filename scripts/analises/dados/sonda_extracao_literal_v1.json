@@ -1,0 +1,12 @@
+{
+  "versao": 1,
+  "natureza": "Calibração estrutural offline de alvo literal explícito, não avaliação semântica nem treino. Esperado só é conferido pelo host, nunca enviado ao modelo.",
+  "casos": [
+    {"id": "L01", "tipo": "positivo_antes", "texto": "lume “centro” saida", "foco_id": "c1", "alvo_literal_solicitado": "lume", "esperado": {"evidencias": [{"inicio": 0, "fim": 1}]}},
+    {"id": "L02", "tipo": "positivo_depois", "texto": "entrada “centro” lume", "foco_id": "c1", "alvo_literal_solicitado": "lume", "esperado": {"evidencias": [{"inicio": 4, "fim": 5}]}},
+    {"id": "L03", "tipo": "positivo_multitoken", "texto": "bruma clara “centro” saida", "foco_id": "c1", "alvo_literal_solicitado": "bruma clara", "esperado": {"evidencias": [{"inicio": 0, "fim": 2}]}},
+    {"id": "L04", "tipo": "negativo_ausente", "texto": "entrada “centro” saida", "foco_id": "c1", "alvo_literal_solicitado": "lume", "esperado": {"evidencias": []}},
+    {"id": "L05", "tipo": "negativo_foco", "texto": "entrada “lume” saida", "foco_id": "c1", "alvo_literal_solicitado": "lume", "esperado": {"evidencias": []}},
+    {"id": "L06", "tipo": "negativo_ambiguo", "texto": "lume “centro” lume", "foco_id": "c1", "alvo_literal_solicitado": "lume", "esperado": {"evidencias": []}}
+  ]
+}

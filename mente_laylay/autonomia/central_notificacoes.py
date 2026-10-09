@@ -17,6 +17,8 @@ import unicodedata
 from collections import Counter
 from typing import Any, Callable, Iterable, Mapping
 
+from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
+
 
 _MODOS = frozenset({"interromper", "resumir", "silenciar"})
 _CATEGORIAS = {
@@ -66,6 +68,8 @@ class CentralNotificacoesRuntime:
         is_speaking_getter: Callable[[], bool] | None = None,
         contexto_atualizar_cb: Callable[..., Any] | None = None,
         registrar_aprendizado_cb: Callable[..., Any] | None = None,
+        registrar_entrega_cb: Callable[..., Any] | None = None,
+        publicar_evento_emocional_cb: Callable[..., Any] | None = None,
         time_cb: Callable[[], float] = time.time,
         log: Callable[[str], Any] = print,
     ) -> None:
@@ -78,6 +82,8 @@ class CentralNotificacoesRuntime:
         self.is_speaking_getter = is_speaking_getter
         self.contexto_atualizar_cb = contexto_atualizar_cb
         self.registrar_aprendizado_cb = registrar_aprendizado_cb
+        self.registrar_entrega_cb = registrar_entrega_cb
+        self.publicar_evento_emocional_cb = publicar_evento_emocional_cb
         self.time_cb = time_cb
         self.log = log
         self._lock = threading.RLock()
@@ -315,6 +321,7 @@ class CentralNotificacoesRuntime:
         chaves: tuple[str, ...],
         entregue: bool,
         motivo: str,
+        *, id_entrega: str = "", fala: str = "", categoria: str = "geral",
     ) -> None:
         """Materializa o receipt da voz sem confundir fila com entrega."""
         if not entregue:
@@ -336,6 +343,15 @@ class CentralNotificacoesRuntime:
                     alterou = True
             if alterou:
                 self._salvar()
+        if alterou and id_entrega and callable(self.registrar_entrega_cb):
+            try:
+                self.registrar_entrega_cb(
+                    id_entrega=id_entrega, entregue=True, motivo=motivo, fala=fala,
+                    dominio="notificacoes", categoria=categoria,
+                    chave="|".join(chaves), origem="central_notificacoes",
+                )
+            except Exception as erro:
+                self.log(f"⚠️ [NOTIFICAÇÕES] vínculo da entrega falhou: {type(erro).__name__}")
 
     def ingerir(self, eventos: Iterable[Mapping[str, Any]]) -> set[str]:
         """Guarda uma leva e devolve os IDs externos aceitos pela central."""
@@ -389,35 +405,48 @@ class CentralNotificacoesRuntime:
                 else "emails" if apenas_emails
                 else "notificacoes"
             )
-            prioridade_critica = any(
-                evento["prioridade"] == "critica" for evento in escolhidos
+            id_entrega = "notificacao:" + hashlib.sha256(
+                (repr(float(agora)) + "|" + "|".join(chaves)).encode("utf-8")
+            ).hexdigest()[:24]
+            # Prioridade organiza o aviso, não atribui irritação à Laylay ou
+            # culpa ao usuário. A causa registrada é receber o lote local.
+            evento_emocional = criar_evento_emocional_causal(
+                origem="central_notificacoes", causa="lote de avisos recebido pelas integrações",
+                evidencia_ref=id_entrega, natureza_evidencia="fato_observado",
+                responsabilidade="ambigua", confianca=1.0, relevancia=1.0 if tem_seguranca else 0.6,
+                novidade=1.0, intensidade=0, alvo="|".join(chaves),
+                permite_expressao=False, emocao="calma", nivel=1,
+                motivo_expressao="prioridade_de_aviso_nao_atribui_emocao", ts=float(agora),
             )
+            if callable(self.publicar_evento_emocional_cb):
+                try:
+                    self.publicar_evento_emocional_cb(evento_emocional)
+                except Exception as erro:
+                    self.log(f"⚠️ [NOTIFICAÇÕES] causa não publicada: {type(erro).__name__}")
 
             def concluir(entregue: bool, motivo: str) -> None:
-                self._concluir_anuncio(chaves, entregue, motivo)
+                self._concluir_anuncio(
+                    chaves, entregue, motivo, id_entrega=id_entrega, fala=texto,
+                    categoria="seguranca" if tem_seguranca else "notificacoes",
+                )
 
             try:
                 try:
                     agendou = bool(self.agendar_fala_cb(
                         tipo_fala,
                         texto,
-                        "irritada" if tem_seguranca else "calma",
-                        2 if prioridade_critica else 1,
+                        "calma", 1,
                         ao_concluir=concluir,
                         preservar_ate_entrega=True,
                     ))
                 except TypeError:
-                    # Adaptadores antigos não expõem receipt. Conservamos a
-                    # compatibilidade, mas somente esse caminho legado trata
-                    # a aceitação da fila como conclusão.
+                    # Adaptadores antigos podem agendar, mas não comprovam
+                    # entrega. O aviso permanece pendente sem esse receipt.
                     agendou = bool(self.agendar_fala_cb(
                         tipo_fala,
                         texto,
-                        "irritada" if tem_seguranca else "calma",
-                        2 if prioridade_critica else 1,
+                        "calma", 1,
                     ))
-                    if agendou:
-                        concluir(True, "fila_legada_sem_callback")
             except Exception as erro:
                 self.log(f"⚠️ [NOTIFICAÇÕES] fala não entrou na fila: {type(erro).__name__}")
                 agendou = False

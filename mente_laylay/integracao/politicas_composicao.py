@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable, Mapping, Sequence
 
 from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
+from mente_laylay.personalidade.retrato_entrega import ler_retrato_entrega_fala
 
 def construir_estado_visual(
     *,
@@ -57,6 +58,11 @@ def construir_estado_visual(
         "emotion_interactions_left": conversa_get("emotion_interactions_left", 0),
         "episodio_emocional": conversa_get("episodio_emocional", {}),
     }, agora=agora)
+    retrato_entrega = ler_retrato_entrega_fala(
+        conversa_get("retrato_entrega_fala", {}),
+    ) if falando or preparando_fala else None
+    if retrato_entrega is not None:
+        emocao, nivel = retrato_entrega.emocao, retrato_entrega.nivel
     return {
         "emotion": emocao,
         "level": nivel,

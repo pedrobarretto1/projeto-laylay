@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
+from mente_laylay.emocoes import avaliador_eventos
 from mente_laylay.emocoes.avaliador_eventos import (
     AvaliadorEventosEmocionaisRuntime,
     contextualizar_fala_evento,
@@ -20,6 +23,7 @@ def _resultado(
     texto: str = "abre o opera",
     params: dict | None = None,
     contexto: dict | None = None,
+    origem: str = "executor",
 ) -> ResultadoAcao:
     return ResultadoAcao(
         intent=intent,
@@ -30,6 +34,7 @@ def _resultado(
         texto_usuario=texto,
         params=params or {},
         contexto=contexto or {},
+        origem=origem,
     )
 
 
@@ -202,6 +207,145 @@ def test_responsabilidade_explicita_da_laylay_produz_autorreparo() -> None:
     assert avaliacao["permite_expressao"] is True
 
 
+@pytest.mark.parametrize("responsabilidade", ["laylay", "usuario"])
+@pytest.mark.parametrize("contexto_confianca", [
+    {},
+    {"confianca_responsabilidade": None},
+    {"confianca_responsabilidade": 0},
+    {"confianca_responsabilidade": False},
+    {"confianca_responsabilidade": True},
+    {"confianca_responsabilidade": "inválida"},
+    {"confianca_responsabilidade": float("nan")},
+    {"confianca_responsabilidade": float("inf")},
+    {"confianca_responsabilidade": -0.1},
+    {"confianca_responsabilidade": 1.1},
+])
+def test_atribuicao_explicita_sem_confianca_valida_nao_autoriza_expressao(
+    responsabilidade: str, contexto_confianca: dict,
+) -> None:
+    avaliacao = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto={"responsabilidade": responsabilidade, **contexto_confianca},
+    ))
+
+    assert avaliacao["permite_expressao"] is False
+    assert avaliacao["responsabilidade"] == "ambigua"
+    assert avaliacao["confianca"] < 0.90
+
+
+@pytest.mark.parametrize("origem", ["llm", "contexto_usuario", ""])
+@pytest.mark.parametrize("responsabilidade", ["laylay", "usuario"])
+def test_metadata_sem_receipt_do_executor_nao_comprova_autoria(
+    origem: str, responsabilidade: str,
+) -> None:
+    avaliacao = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        "alvo_ausente", executou=False, confirmado=False, origem=origem,
+        contexto={"responsabilidade": responsabilidade, "confianca_responsabilidade": 0.98},
+    ))
+
+    assert avaliacao["permite_expressao"] is False
+    assert avaliacao["responsabilidade"] == "ambigua"
+
+
+@pytest.mark.parametrize("origem", ["llm", "contexto_usuario", ""])
+@pytest.mark.parametrize("status, executou, confirmado", [
+    ("alvo_ausente", False, False),
+    ("app_iniciado_focado", True, True),
+    ("ja_aberto_focado", False, True),
+])
+def test_resultado_sem_receipt_nao_publica_fato_observado(
+    origem: str, status: str, executou: bool, confirmado: bool,
+) -> None:
+    evento = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        status, executou=executou, confirmado=confirmado, origem=origem,
+        contexto={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    ))
+
+    assert evento["natureza_evidencia"] == "inferencia"
+    assert "sem confirmação do executor" in evento["causa"]
+    assert "observado" not in evento["causa"]
+    assert evento["responsabilidade"] == "ambigua"
+    assert evento["confianca"] == 0.0
+    assert evento["permite_expressao"] is False
+
+
+@pytest.mark.parametrize("confianca", [0, 0.7, None, True, float("nan")])
+def test_redundancia_nao_promove_atribuicao_explicita_incerta(confianca: object) -> None:
+    avaliacao = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        "ja_aberto_focado", executou=False, confirmado=True,
+        contexto={"responsabilidade": "usuario", "confianca_responsabilidade": confianca},
+    ))
+
+    assert avaliacao["permite_expressao"] is False
+    assert avaliacao["provocacao_usuario"] == 0
+    assert avaliacao["responsabilidade"] == "ambigua"
+
+
+@pytest.mark.parametrize("origem", ["llm", "contexto_usuario", ""])
+def test_estado_ja_satisfeito_fora_do_executor_nao_prova_redundancia(origem: str) -> None:
+    avaliacao = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        "ja_aberto_focado", executou=False, confirmado=True, origem=origem,
+    ))
+
+    assert avaliacao["permite_expressao"] is False
+    assert avaliacao["provocacao_usuario"] == 0
+    assert avaliacao["responsabilidade"] == "ambigua"
+
+
+@pytest.mark.parametrize("responsabilidade", ["laylay", "usuario"])
+@pytest.mark.parametrize("confianca", [0.90, 0.98, 1.0])
+def test_receipt_do_executor_preserva_atribuicao_explicita_confiavel(
+    responsabilidade: str, confianca: float,
+) -> None:
+    avaliacao = AvaliadorEventosEmocionaisRuntime().avaliar(_resultado(
+        "alvo_ausente", executou=False, confirmado=False,
+        contexto={"responsabilidade": responsabilidade, "confianca_responsabilidade": confianca},
+    ))
+
+    assert avaliacao["responsabilidade"] == responsabilidade
+    assert avaliacao["confianca"] == confianca
+    assert avaliacao["permite_expressao"] is True
+
+
+@pytest.mark.parametrize("confianca", [None, 0.7, float("nan")])
+def test_falhas_repetidas_nao_promovem_atribuicao_explicita_incerta_ao_sistema(
+    confianca: object,
+) -> None:
+    runtime = AvaliadorEventosEmocionaisRuntime()
+    falha = _resultado(
+        "indisponivel", executou=False, confirmado=False,
+        contexto={"responsabilidade": "sistema", "confianca_responsabilidade": confianca},
+    )
+    runtime.avaliar(falha)
+    avaliacao = runtime.avaliar(falha)
+
+    assert avaliacao["permite_expressao"] is False
+    assert avaliacao["responsabilidade"] == "ambigua"
+
+
+@pytest.mark.parametrize("indice", range(3))
+@pytest.mark.parametrize("intent, alvo", [("APP_OPEN", "Opera"), ("IOT_CONTROL", "lâmpada")])
+def test_admissao_de_erro_sem_receipt_nao_anuncia_reparo(
+    monkeypatch: pytest.MonkeyPatch, indice: int, intent: str, alvo: str,
+) -> None:
+    runtime = AvaliadorEventosEmocionaisRuntime()
+    resultado = _resultado(
+        "alvo_ausente", intent=intent, alvo=alvo, executou=False, confirmado=False,
+        contexto={"responsabilidade": "laylay", "confianca_responsabilidade": 0.98},
+    )
+    evento = runtime.avaliar(resultado)
+    assert evento["arco"] == "autorreparo"
+    assert evento["permite_expressao"] is True
+    monkeypatch.setattr(avaliador_eventos, "escolher_variacao", lambda opcoes: opcoes[indice])
+
+    factual = f"Não localizei {alvo}."
+    fala = contextualizar_fala_evento(factual, evento, alvo=alvo)
+
+    assert fala.startswith(factual)
+    assert fala != factual
+    assert "corrigi" not in fala.casefold(), "admissão de falha não comprova reparo"
+
+
 def test_expressao_preserva_resultado_e_acrescenta_uma_unica_tirada() -> None:
     fala = contextualizar_fala_evento(
         "Opera já estava aberto e em foco.",
@@ -223,3 +367,29 @@ def test_nao_acao_confirmada_continua_sendo_redundancia_e_nao_falha() -> None:
     assert avaliacao["responsabilidade"] == "usuario"
     assert avaliacao["arco"] == "provocacao_afetuosa"
     assert avaliacao["permite_expressao"] is True
+
+
+@pytest.mark.parametrize("origem", ["llm", "contexto_usuario", ""])
+@pytest.mark.parametrize("status, intent, alvo, confirmado", [
+    ("ja_aberto_focado", "APP_OPEN", "Opera", True),
+    ("timeout", "IOT_CONTROL", "lâmpada", False),
+])
+def test_proposta_sem_receipt_nao_interrompe_historico_causal_confirmado(
+    origem: str, status: str, intent: str, alvo: str, confirmado: bool,
+) -> None:
+    runtime = AvaliadorEventosEmocionaisRuntime(time_cb=lambda: 100.0)
+    receipt = _resultado(status, intent=intent, alvo=alvo, executou=False, confirmado=confirmado)
+    primeiro = runtime.avaliar(receipt)
+    assert primeiro["repeticoes"] == 1
+    proposta = runtime.avaliar(_resultado(
+        status, intent=intent, alvo=alvo, executou=False,
+        confirmado=confirmado, origem=origem,
+    ))
+    assert proposta["permite_expressao"] is False
+    assert proposta["natureza_evidencia"] == "inferencia"
+
+    segundo = runtime.avaliar(receipt)
+
+    assert segundo["repeticoes"] == 2
+    assert segundo["permite_expressao"] is True
+    assert runtime.diagnostico()["historico_efemero"] == 2

@@ -1,0 +1,22 @@
+{
+  "versao": 1,
+  "natureza": "Revisão local congelada antes da geração, não humana independente. Papel do foco no contexto, não presença de toda operação na fonte, seleção da operação principal, identidade, autorização ou efeito. Conteúdo usado como nome não vira ordem pelo seu formato interno.",
+  "casos": {
+    "P01A": "nome_designacao",
+    "P01B": "operacao_mencionada",
+    "P02A": "nome_designacao",
+    "P02B": "operacao_mencionada",
+    "P03A": "nome_designacao",
+    "P03B": "operacao_mencionada",
+    "P04A": "nome_designacao",
+    "P04B": "operacao_mencionada",
+    "P05A": "nome_designacao",
+    "P05B": "operacao_mencionada",
+    "P06A": "nome_designacao",
+    "P06B": "operacao_mencionada",
+    "P07A": "expressao_sem_operacao",
+    "P07B": "expressao_sem_operacao",
+    "P08A": "indeterminado",
+    "P08B": "indeterminado"
+  }
+}

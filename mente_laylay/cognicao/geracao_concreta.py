@@ -12,6 +12,9 @@ from dataclasses import asdict, dataclass
 import re
 from typing import Any, Iterable, Mapping
 from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual
+from mente_laylay.cognicao.fundamentacao_factual import (
+    avaliar_candidatos_recomendacao, texto_pede_recomendacao,
+)
 from mente_laylay.personalidade.proporcao_resposta import classificar_proporcao
 
 
@@ -284,11 +287,11 @@ def construir_roteiro_geracao_concreta(
     declaracao_estado_observavel = texto_declara_estado_observavel(bruto)
     recomendacao = bool(
         str(planejamento.get("dominio") or "").casefold() == "recomendacao"
-        or re.search(
-            r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b",
-            bruto,
-            flags=re.IGNORECASE,
-        )
+        or texto_pede_recomendacao(bruto)
+    )
+    base_recomendacao = dict(fundamentacao_factual or {})
+    candidatos_recomendacao = avaliar_candidatos_recomendacao(
+        base_recomendacao, agora=base_recomendacao.get("ts"),
     )
 
     base_permitida = ["fala atual do usuário"]
@@ -440,6 +443,18 @@ def construir_roteiro_geracao_concreta(
             "acrescentar uma observação concreta ou uma tirada curta sobre o próprio código",
             "não interromper a conversa para explicar que Laylay é texto, regras ou um sistema sem vida",
         )
+    elif recomendacao and not candidatos_recomendacao:
+        estrategia = "resposta_multiacto" if len(especiais) > 1 else "preparacao_recomendacao"
+        ancora = referente or bruto
+        nucleo = (
+            "nenhum candidato verificado neste turno; reconhecer o pedido e "
+            "preparar a comparação dos requisitos sem escolher uma opção"
+        )
+        sequencia = (_sequencia_multiacto(especiais) if len(especiais) > 1 else ()) + (
+            "explicar que ainda falta uma opção concreta verificada para comparar",
+            "pedir no máximo uma opção ou uma fonte relevante ao pedido",
+        )
+        exigencias.append("ausência de evidência neste turno não comprova incapacidade permanente")
     elif recomendacao and len(especiais) > 1:
         estrategia = "resposta_multiacto"
         ancora = bruto

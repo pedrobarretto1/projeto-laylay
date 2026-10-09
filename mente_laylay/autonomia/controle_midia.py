@@ -11,6 +11,7 @@ import re
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 from mente_laylay.personalidade.falas_variadas import (
     escolher as _escolher_fala_variada,
     fala_de_confirmacao as _fala_de_confirmacao_variada,
@@ -425,14 +426,17 @@ def executar_media_control(
         ok = bool(musica_operacoes.avancar_proxima())
         _log_midia("RESULTADO", f"playlist_next ok={ok}")
         if callable(falar):
-            fala = _escolher_fala_variada([
-                "Próxima faixa. Bora.",
-                "Pulando pra seguinte.",
-                "Trocando a música agora.",
-            ]) if ok else _escolher_fala_variada([
-                "Tentei puxar a próxima da playlist, mas ela não foi.",
-                "A próxima faixa não respondeu agora.",
-            ])
+            if humor_bloqueado_por_preferencia(ctx_fala()):
+                fala = "Pedi a próxima faixa da playlist." if ok else "Não consegui avançar a playlist."
+            else:
+                fala = _escolher_fala_variada([
+                    "Próxima faixa. Bora.",
+                    "Pulando pra seguinte.",
+                    "Trocando a música agora.",
+                ]) if ok else _escolher_fala_variada([
+                    "Tentei puxar a próxima da playlist, mas ela não foi.",
+                    "A próxima faixa não respondeu agora.",
+                ])
             falar(fala, "debochada" if ok else "irritada", 2)
         marcar_resultado("midia_next_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
@@ -442,14 +446,17 @@ def executar_media_control(
         ok = bool(musica_operacoes.voltar_anterior())
         _log_midia("RESULTADO", f"playlist_prev ok={ok}")
         if callable(falar):
-            fala = _escolher_fala_variada([
-                "Voltando uma faixa.",
-                "Dei um passo atrás na playlist.",
-                "Faixa anterior voltando agora.",
-            ]) if ok else _escolher_fala_variada([
-                "Tentei voltar a playlist, mas ela não cedeu.",
-                "Não consegui confirmar a faixa anterior agora.",
-            ])
+            if humor_bloqueado_por_preferencia(ctx_fala()):
+                fala = "Pedi a faixa anterior da playlist." if ok else "Não consegui voltar na playlist."
+            else:
+                fala = _escolher_fala_variada([
+                    "Voltando uma faixa.",
+                    "Dei um passo atrás na playlist.",
+                    "Faixa anterior voltando agora.",
+                ]) if ok else _escolher_fala_variada([
+                    "Tentei voltar a playlist, mas ela não cedeu.",
+                    "Não consegui confirmar a faixa anterior agora.",
+                ])
             falar(fala, "debochada" if ok else "irritada", 2)
         marcar_resultado("midia_prev_playlist" if ok else "falha_execucao", ok)
         return bool(ok)
@@ -502,14 +509,24 @@ def executar_media_control(
         else:
             chave_midia = (
                 "prev" if cmd == "prev"
-                else "replay" if cmd in {"replay", "repeat_toggle"}
+                else "replay" if cmd == "replay"
                 else cmd
             )
         if ok_execucao:
             if confirmado_execucao is True:
+                fala_factual = {
+                    "pause": "Pausei a música.",
+                    "play": "Retomei a música.",
+                    "pause_play": "A reprodução da música foi alternada.",
+                    "prev": "Voltei para a faixa anterior.",
+                    "next": "Passei para a próxima faixa.",
+                    "replay": "Recomecei a música.",
+                    "repeat_toggle": "A repetição da música foi alternada.",
+                    "skip_ad": "Pulei o anúncio.",
+                }.get(cmd, "O controle da música foi confirmado.")
                 fala_midia = _fala_de_confirmacao_variada(
                     chave_midia,
-                    fallback="Feito.",
+                    fallback=fala_factual,
                     contexto=ctx_fala(),
                     texto_usuario=texto_original,
                 )
@@ -544,6 +561,7 @@ def executar_media_control(
                 fala_midia,
                 emocao_preferida="debochada",
                 nivel_preferido=2,
+                contexto=ctx_fala(),
             )
             confirmacao = personalizar_confirmacao_llm(
                 contrato,
@@ -572,6 +590,7 @@ def executar_media_control(
                     if detalhe_execucao
                     else "Tentei mexer na mídia, mas não consegui confirmar o caminho."
                 ),
+                contexto=ctx_fala(),
             )
             confirmacao = personalizar_confirmacao_llm(
                 contrato_falha,

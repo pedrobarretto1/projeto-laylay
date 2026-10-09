@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Dict
 from mente_laylay.personalidade.falas_variadas import escolher as _escolher_fala_variada
+from mente_laylay.personalidade.politica_resistencia import (
+    avaliar_resistencia_contextual,
+    mesma_identidade_pedido_resistencia,
+    projetar_pedido_resistencia,
+)
 from mente_laylay.autonomia.executor_janelas import (
     DependenciasExecutorJanelas,
     executar_intencao_janelas as _executar_intencao_janelas,
@@ -52,7 +57,10 @@ from mente_laylay.autonomia.classificacao_habilidade import (
     extrair_alvo_mental,
 )
 from mente_laylay.percepcao.modo_jogo import pedido_foco_explicito
+from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
 from mente_laylay.memoria_mental.resultado_acao import (
+    CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
+    ResultadoAcao,
     interpretar_tratamento_operacional,
     marcar_tratamento_operacional,
 )
@@ -75,7 +83,6 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
 
     destino = _get(ctx, "_target_from_params", lambda p, t="": "pc_a")
     registrar_mente_curta = _get(ctx, "_registrar_mente_curta")
-    bloqueio = _get(ctx, "_bloqueio_por_emocao")
     falar = _get(ctx, "falar_com_lipsync")
 
     def _reg(*args, **kwargs):
@@ -128,17 +135,158 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     habilidade = classificar_habilidade_intent(intent)
     _reg(texto_original, "", intent, alvo_mental, destino_val, habilidade)
 
-    if callable(bloqueio) and bloqueio(intent, texto_original, ctx):
-        marcar_tratamento_operacional(
-            resultado,
-            tratado=True,
-            executou=False,
-            confirmado=False,
-            status="nao_executado_por_politica",
-            resultado_publicado=False,
-            retorno_legado=True,
-        )
-        return True
+    pendencias = ctx.get("_pendencia_acao_runtime")
+    pedido_resistido = projetar_pedido_resistencia(
+        intent=intent, params=params, destino_resolvido=destino_val,
+    )
+    if (
+        intent == "MEDIA_CONTROL"
+        and params.get("acao") == "repeat_toggle"
+        and autoriza_execucao_efetiva(ctx.get("turno_atual"))
+    ):
+        try:
+            anterior = pendencias.obter() if callable(getattr(pendencias, "obter", None)) else None
+        except Exception:
+            anterior = None
+        metadados_anteriores = anterior.get("metadados") if isinstance(anterior, dict) else None
+        pedido_anterior = metadados_anteriores.get("pedido") if isinstance(metadados_anteriores, dict) else None
+        if (
+            isinstance(anterior, dict)
+            and anterior.get("origem") == "resistencia_personalidade"
+            and mesma_identidade_pedido_resistencia(pedido_anterior, pedido_resistido)
+        ):
+            encerrada = False
+            if anterior.get("status") == "ativa":
+                try:
+                    encerrada = pendencias.concluir(
+                        str(anterior.get("id") or ""),
+                        "substituida_por_novo_pedido",
+                        status_esperado="ativa",
+                    )
+                except Exception:
+                    encerrada = False
+            if anterior.get("status") == "em_processamento" or not encerrada:
+                if callable(falar):
+                    falar("Já estou tratando esse controle de repetição.", "calma", 1)
+                    marcar_tratamento_operacional(
+                        resultado,
+                        tratado=True,
+                        executou=False,
+                        confirmado=False,
+                        status="pendencia_em_processamento",
+                        resultado_publicado=False,
+                        retorno_legado=True,
+                    )
+                    return True
+                return False
+
+    decisao_resistencia = avaliar_resistencia_contextual(
+        intent=intent,
+        params=params,
+        texto_usuario=texto_original,
+        estado_emocional={
+            "current_emotion": ctx.get("current_emotion"),
+            "emotion_level": ctx.get("emotion_level"),
+            "episodio_emocional": ctx.get("episodio_emocional"),
+        },
+        turno=ctx.get("turno_atual"),
+        ultima_referencia_resistida=str(ctx.get("resistencia_p17_ref") or ""),
+        referencias_resistidas=ctx.get("resistencias_p17_refs") or (),
+    )
+    if decisao_resistencia.resistir:
+        registrar_resistencia = ctx.get("registrar_resistencia_p17")
+        try:
+            sem_pendencia = callable(getattr(pendencias, "obter", None)) and not pendencias.obter()
+        except Exception:
+            sem_pendencia = False
+        if (
+            callable(falar)
+            and callable(getattr(pendencias, "registrar", None))
+            and callable(registrar_resistencia)
+            and sem_pendencia
+            and pedido_resistido is not None
+        ):
+            pergunta = (
+                "Vou segurar essa mudança opcional por um instante. "
+                "Quer que eu altere a repetição mesmo assim?"
+            )
+            try:
+                pendencia = pendencias.registrar(
+                    origem="resistencia_personalidade",
+                    acao="retomar_controle_midia",
+                    pergunta=pergunta,
+                    referencia=decisao_resistencia.evidencia_ref,
+                    dominio=decisao_resistencia.dominio,
+                    metadados={
+                        "intent": intent,
+                        "acao": decisao_resistencia.acao,
+                        "id_solicitacao": adaptador_resultado.id_solicitacao,
+                        "pedido": pedido_resistido,
+                        "evento_ref": decisao_resistencia.evidencia_ref,
+                        "sobrevive_comando_independente": True,
+                    },
+                    motivo=decisao_resistencia.motivo,
+                    ttl_s=90.0,
+                )
+            except Exception:
+                pendencia = None
+            if pendencia:
+                adiamento_publicado = False
+                try:
+                    if registrar_resistencia(decisao_resistencia.evidencia_ref) is not True:
+                        raise RuntimeError("registro_resistencia_recusado")
+                    registrar_resultado = ctx.get("_registrar_resultado_execucao")
+                    if callable(registrar_resultado):
+                        # A política confirma somente a criação da pendência.
+                        # Não existe receipt de mídia nem evento emocional de
+                        # efeito nesta transição; o aceite usará o executor.
+                        contrato_adiamento = ResultadoAcao(
+                            intent=intent,
+                            status="aguardando_confirmacao",
+                            params=dict(pedido_resistido["params"]),
+                            executou=False,
+                            confirmado=False,
+                            origem="politica",
+                            texto_usuario=texto_original,
+                            id_solicitacao=adaptador_resultado.id_solicitacao,
+                            detalhe=decisao_resistencia.motivo,
+                            contexto={
+                                "pendencia_id": str(pendencia.get("id") or ""),
+                                "evento_ref": decisao_resistencia.evidencia_ref,
+                            },
+                            evidencia_confirmacao=(
+                                "Pendência canônica registrada: "
+                                f"{pendencia.get('id')}; causa={decisao_resistencia.evidencia_ref}"
+                            ),
+                        )
+                        if registrar_resultado(
+                            contrato_adiamento,
+                            texto_original,
+                            False,
+                            origem="politica",
+                            status="aguardando_confirmacao",
+                        ) is False:
+                            raise RuntimeError("publicacao_adiamento_recusada")
+                        adiamento_publicado = True
+                    falar(pergunta, "brava", 3)
+                except Exception:
+                    try:
+                        pendencias.concluir(str(pendencia.get("id") or ""), "resistencia_indisponivel")
+                    except Exception:
+                        pass
+                else:
+                    if adiamento_publicado:
+                        resultado[CHAVE_RESULTADO_OPERACIONAL_PUBLICADO] = adaptador_resultado.id_solicitacao
+                    marcar_tratamento_operacional(
+                        resultado,
+                        tratado=True,
+                        executou=False,
+                        confirmado=False,
+                        status="aguardando_confirmacao" if adiamento_publicado else "aguardando_insistencia",
+                        resultado_publicado=adiamento_publicado,
+                        retorno_legado=True,
+                    )
+                    return True
 
     despacho_janelas = _executar_intencao_janelas(
         intent,

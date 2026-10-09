@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import hashlib
+import math
 import time
 from typing import Any, Mapping
 
@@ -190,6 +191,152 @@ def evento_pode_alterar_estado(
     )
 
 
+def criar_evento_feedback_comunicativo(
+    tipo: str,
+    proveniencia: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Registra feedback já classificado e validado, sem escolher uma emoção."""
+    if tipo not in {"aceitacao", "recusa", "correcao", "repeticao", "silencio"}:
+        return {}
+    fonte = dict(proveniencia or {})
+    campos = ("id_entrega", "dominio", "origem_produtor", "categoria", "alvo")
+    if fonte.get("entregue") is not True or any(
+        not str(fonte.get(campo) or "").strip() for campo in campos
+    ):
+        return {}
+    referencia = f"feedback:{str(fonte['id_entrega']).strip()}:{tipo}"
+    # O contrato base limita referências: uma ocorrência não pode ser truncada
+    # e colidir com outra entrega.
+    if len(referencia) > 240:
+        return {}
+    try:
+        entrega_ts = float(fonte.get("entrega_ts") or 0.0)
+        observado_ts = float(fonte.get("observado_ts") or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        return {}
+    if (
+        not all(math.isfinite(valor) for valor in (entrega_ts, observado_ts))
+        or entrega_ts <= 0.0 or observado_ts < entrega_ts
+    ):
+        return {}
+    evento = criar_evento_emocional_causal(
+        origem="feedback_comunicativo",
+        causa=f"feedback_{tipo}_da_emissao_entregue",
+        evidencia_ref=referencia,
+        natureza_evidencia="inferencia" if tipo == "silencio" else "leitura_social",
+        confianca=1.0, intensidade=0, alvo=str(fonte["alvo"]),
+        permite_expressao=False, emocao="calma", nivel=1, ts=observado_ts,
+        motivo_expressao="feedback_observado_sem_emocao_inferida",
+    )
+    evento["tipo_feedback"] = tipo
+    evento["proveniencia"] = {campo: fonte.get(campo) for campo in (
+        *campos, "entrega_ts", "observado_ts", "entregue",
+    )}
+    return evento
+
+
+def criar_evento_direcao_social_observada(
+    evento: Mapping[str, Any],
+    direcao: Mapping[str, Any],
+    *,
+    turno_id: str,
+    ancora_factual: str,
+    agora: float | None = None,
+) -> dict[str, Any]:
+    """Transporta uma decisão social já tomada, sem selecionar outra emoção."""
+    observado, social = dict(evento), dict(direcao)
+    referencia = str(observado.get("trace_id") or "").strip()
+    identidade_turno = str(turno_id or "").strip()
+    if not (
+        observado.get("natureza") == "evento"
+        and observado.get("autoridade_usuario") is False
+        and observado.get("permissao_execucao") is False
+        and not bool(observado.get("autoriza_execucao"))
+        and all(social.get(campo) is False for campo in (
+            "autoridade_usuario", "permissao_execucao", "autoriza_execucao"))
+        and referencia and identidade_turno and str(ancora_factual or "").strip()
+        and str(observado.get("origem") or "").strip()
+        and str(social.get("motivo") or "").strip()
+    ):
+        return {}
+    try:
+        instante = float(time.time() if agora is None else agora)
+        inicio = float(observado.get("timestamp", observado.get("ts", instante)))
+        duracao = min(120.0, max(0.0, float(observado.get("validade_s", 120.0))))
+        confianca_observada = float(observado.get("confianca") or 0.0)
+        confianca_social = float(social.get("confianca") or 0.0)
+        nivel = int(social.get("nivel") or 1)
+    except (TypeError, ValueError, OverflowError):
+        return {}
+    if not all(math.isfinite(valor) for valor in (
+        instante, inicio, duracao, confianca_observada, confianca_social)):
+        return {}
+    if not 1 <= nivel <= 3:
+        return {}
+    if social.get("emocao") not in {
+        "calma", "debochada", "envergonhada", "irritada", "brava", "alegre",
+        "triste", "surpresa", "acalmando-se",
+    }:
+        return {}
+    confianca = min(_proporcao(confianca_observada), _proporcao(confianca_social))
+    permite = bool(confianca >= 0.90 and inicio <= instante < inicio + duracao)
+    identidade = hashlib.sha256(f"{referencia}\0{identidade_turno}".encode("utf-8")).hexdigest()[:24]
+    causal = criar_evento_emocional_causal(
+        origem="direcao_social_evento_observado",
+        causa=str(social["motivo"]), evidencia_ref=f"evento_social:{identidade}",
+        natureza_evidencia="leitura_social", responsabilidade="ambigua",
+        confianca=confianca, relevancia=confianca, novidade=0.0,
+        intensidade=nivel if permite else 0,
+        sensibilidade="vulneravel" if social.get("objetivo") == "acompanhar_sem_deboche" else "normal",
+        alvo=str(social.get("alvo") or ""), validade_s=duracao, ts=inicio,
+        permite_expressao=permite, emocao=str(social.get("emocao") or "calma"),
+        nivel=nivel, motivo_expressao="direcao_social_com_evidencia" if permite else "evidencia_social_insuficiente",
+        arco=str(social.get("objetivo") or "reacao_evento"),
+    )
+    causal.update(evento_ref=referencia, turno_id=identidade_turno, direcao_social=social)
+    return causal
+
+
+def evento_corresponde_direcao_social_observada(
+    causal: Mapping[str, Any] | None,
+    observado: Mapping[str, Any],
+    direcao: Mapping[str, Any],
+    *,
+    turno_id: str,
+    agora: float | None = None,
+) -> bool:
+    """Revalida a ocorrência selecionada; um rótulo livre não é causa."""
+    if not isinstance(causal, Mapping):
+        return False
+    try:
+        confiancas = [float(fonte.get("confianca") or 0.0) for fonte in (causal, observado, direcao)]
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if not all(math.isfinite(valor) and _proporcao(valor) >= 0.90 for valor in confiancas):
+        return False
+    referencia = str(observado.get("trace_id") or "").strip()
+    identidade_turno = str(turno_id or "").strip()
+    identidade = hashlib.sha256(f"{referencia}\0{identidade_turno}".encode("utf-8")).hexdigest()[:24]
+    return bool(
+        referencia and identidade_turno
+        and causal.get("origem") == "direcao_social_evento_observado"
+        and causal.get("evento_ref") == referencia
+        and causal.get("turno_id") == identidade_turno
+        and causal.get("evidencia_ref") == f"evento_social:{identidade}"
+        and causal.get("direcao_social") == dict(direcao)
+        and causal.get("emocao") == direcao.get("emocao")
+        and causal.get("nivel") == direcao.get("nivel")
+        and causal.get("persistencia_pessoal") is False
+        and observado.get("natureza") == "evento"
+        and observado.get("autoridade_usuario") is False
+        and observado.get("permissao_execucao") is False
+        and not bool(observado.get("autoriza_execucao"))
+        and all(direcao.get(campo) is False for campo in (
+            "autoridade_usuario", "permissao_execucao", "autoriza_execucao"))
+        and evento_pode_alterar_estado(causal, agora=agora)
+    )
+
+
 def criar_evento_reconhecimento_social_usuario(
     *, turno_id: str | int, confianca: float, tipo: str,
 ) -> dict[str, Any]:
@@ -278,6 +425,8 @@ def criar_evento_leitura_semantica_usuario(
 ) -> dict[str, Any]:
     """Converte somente leitura semântica validada em evento causal."""
     semantica = dict(leitura_semantica or {})
+    if semantica.get("origem") == "resposta_reparada":
+        return {}
     leitura = (
         dict(semantica.get("leitura_emocional") or {})
         if isinstance(semantica.get("leitura_emocional"), Mapping)

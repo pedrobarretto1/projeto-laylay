@@ -14,7 +14,10 @@ from collections import deque
 from queue import Empty, Queue
 from typing import Any, Callable, Mapping, Optional
 
-from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
+from mente_laylay.personalidade.retrato_entrega import (
+    RetratoEntregaFala,
+    criar_retrato_entrega_fala,
+)
 from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
@@ -59,7 +62,7 @@ class VozRuntime:
         chave_turno_cb: Callable[[], float] | None = None,
         interrupt_event: Any,
         registrar_fala_emitida_cb: Callable[[str, list], Any] | None = None,
-        publicar_texto_proativo_cb: Callable[[str, str, int], Any] | None = None,
+        publicar_texto_proativo_cb: Callable[..., Any] | None = None,
         estado_emocional_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_metrica_cb: Callable[[str, float, bool], Any] | None = None,
         trace_context_getter: Callable[[], Mapping[str, Any]] | None = None,
@@ -630,7 +633,17 @@ class VozRuntime:
         texto_final = re.sub(r"\s+", " ", " ".join(falas)).strip()
         return texto_final, emo, nivel
 
-    def reproduzir_fala(self, texto: str, emocao: str, nivel: int):
+    def _aguardar_audio(self) -> bool:
+        """Mesmo cancelamento e receipt para voz neural e fallback local."""
+        while self.sd.get_stream().active:
+            if self.interrupt_event.is_set():
+                self.sd.stop()
+                self.log("🛑 [BARGE-IN] Fala interrompida pelo usuário!")
+                return False
+            time.sleep(0.03)
+        return not self.interrupt_event.is_set()
+
+    def reproduzir_fala(self, texto: str, emocao: str, nivel: int) -> bool:
         arquivos_temporarios: list[str] = []
         thread_restante: threading.Thread | None = None
         cancelar_restante = threading.Event()
@@ -763,13 +776,7 @@ class VozRuntime:
                     # A boca acompanha somente o áudio já entregue ao player.
                     self.ajustar_estado_fala_cb("audio_playing", True)
                     inicio_trecho = time.perf_counter()
-                    while self.sd.get_stream().active:
-                        if self.interrupt_event.is_set():
-                            self.sd.stop()
-                            self.log("🛑 [BARGE-IN] Fala interrompida pelo usuário!")
-                            interrompida = True
-                            break
-                        time.sleep(0.03)
+                    interrompida = not self._aguardar_audio()
                     reproducao_ms += (
                         time.perf_counter() - inicio_trecho
                     ) * 1000.0
@@ -803,7 +810,7 @@ class VozRuntime:
                                 )
                 if interrompida:
                     cancelar_restante.set()
-                sucesso = externo_ok and not fallback_restante
+                sucesso = externo_ok and not fallback_restante and not interrompida
             finally:
                 fim_sintese = (
                     time.monotonic()
@@ -877,6 +884,7 @@ class VozRuntime:
                         # Limpeza best-effort: o áudio pode continuar bloqueado
                         # por alguns instantes depois do encerramento.
                         pass
+        return sucesso
 
     def worker_de_falas(self):
         while not self.stop_event.is_set():
@@ -923,53 +931,67 @@ class VozRuntime:
                 )
 
             texto_final, emocao, nivel = self.combinar_falas_batch(lote)
-            for pedido in lote:
-                if isinstance(pedido, dict):
-                    self._iniciar_itens_proativos(
-                        list(pedido.get("proativas_mescladas") or []), self.log,
-                    )
-            self.ajustar_estado_fala_cb("current_emotion", emocao)
-            self.ajustar_estado_fala_cb("emotion_level", nivel)
-            self.ajustar_estado_fala_cb("is_speaking", True)
-            proativa = bool(lote) and all(
-                bool(pedido.get("proativa"))
-                for pedido in lote
-                if isinstance(pedido, dict)
+            retrato_entrega = (
+                item.get("retrato_entrega") if isinstance(item, dict) else None
             )
-            publicada_antecipada = bool(lote) and all(
-                bool(pedido.get("texto_publicado_antecipado"))
-                for pedido in lote
-                if isinstance(pedido, dict)
-            )
-            if not publicada_antecipada:
-                self._notificar_inicio_fala(
-                    texto_final, emocao, nivel, proativa=proativa,
-                )
             enfileirado = float(
                 lote[0].get("enfileirado_monotonic") or 0.0
             ) if lote and isinstance(lote[0], dict) else 0.0
             trace_context = dict(
                 lote[0].get("trace_context") or {}
             ) if lote and isinstance(lote[0], dict) else {}
-            if enfileirado > 0.0 and not publicada_antecipada:
-                self._registrar_metrica_voz(
-                    "tts_texto_visivel",
-                    max(0.0, (time.monotonic() - enfileirado) * 1000.0),
-                    True,
-                    trace_context,
-                )
+            entregue = False
             try:
+                if isinstance(retrato_entrega, RetratoEntregaFala):
+                    self.ajustar_estado_fala_cb("retrato_entrega_fala", retrato_entrega)
+                for pedido in lote:
+                    if isinstance(pedido, dict):
+                        self._iniciar_itens_proativos(
+                            list(pedido.get("proativas_mescladas") or []), self.log,
+                        )
+                self.ajustar_estado_fala_cb("current_emotion", emocao)
+                self.ajustar_estado_fala_cb("emotion_level", nivel)
+                self.ajustar_estado_fala_cb("is_speaking", True)
+                proativa = bool(lote) and all(
+                    bool(pedido.get("proativa"))
+                    for pedido in lote
+                    if isinstance(pedido, dict)
+                )
+                publicada_antecipada = bool(lote) and all(
+                    bool(pedido.get("texto_publicado_antecipado"))
+                    for pedido in lote
+                    if isinstance(pedido, dict)
+                )
+                if not publicada_antecipada:
+                    self._notificar_inicio_fala(
+                        texto_final, emocao, nivel, proativa=proativa,
+                    )
+                if enfileirado > 0.0 and not publicada_antecipada:
+                    self._registrar_metrica_voz(
+                        "tts_texto_visivel",
+                        max(0.0, (time.monotonic() - enfileirado) * 1000.0),
+                        True,
+                        trace_context,
+                    )
                 self._trace_reproducao_atual = trace_context
                 self._texto_pronto_reproducao_atual = enfileirado
-                self.reproduzir_fala(texto_final, emocao, nivel)
+                entregue = self.reproduzir_fala(texto_final, emocao, nivel) is True
             finally:
+                self.ajustar_estado_fala_cb("retrato_entrega_fala", None)
                 self._trace_reproducao_atual = {}
                 self._texto_pronto_reproducao_atual = 0.0
                 for pedido in lote:
                     if isinstance(pedido, dict):
+                        pedido["entregue"] = entregue
+                        callback_entrega = pedido.get("ao_concluir_entrega")
+                        if callable(callback_entrega):
+                            try:
+                                callback_entrega(entregue, texto_final)
+                            except Exception as erro:
+                                self.log(f"⚠️ [ENTREGA:FEEDBACK] callback isolado: {type(erro).__name__}")
                         itens_mesclados = list(pedido.get("proativas_mescladas") or [])
                         if itens_mesclados:
-                            if callable(self.registrar_fala_emitida_cb):
+                            if entregue and callable(self.registrar_fala_emitida_cb):
                                 try:
                                     self.registrar_fala_emitida_cb(pedido.get("texto", ""), itens_mesclados)
                                 except Exception as erro_registro:
@@ -981,7 +1003,11 @@ class VozRuntime:
                                         fallback="fala_entregue_sem_registro",
                                         fase="finalizar_fala",
                                     )
-                            self._concluir_itens_proativos(itens_mesclados, True, "mesclada_ao_turno", self.log)
+                            self._concluir_itens_proativos(
+                                itens_mesclados, entregue,
+                                "mesclada_ao_turno" if entregue else "entrega_nao_confirmada",
+                                self.log,
+                            )
                         with self._turno_lock:
                             if pedido is self._pedido_turno_pendente:
                                 self._pedido_turno_pendente = None
@@ -1353,7 +1379,10 @@ class VozRuntime:
                 if callable(self.estado_emocional_getter)
                 else {}
             )
-            emocao, nivel = retrato_emocional_expressavel(estado_emocional)
+            retrato_entrega = criar_retrato_entrega_fala(
+                estado_emocional, mensagem_id=f"proativa:{time.time_ns()}",
+            )
+            emocao, nivel = retrato_entrega.emocao, retrato_entrega.nivel
         except Exception as erro:
             self._relatar_falha(
                 "falha_retrato_emocional_proativo",
@@ -1362,17 +1391,23 @@ class VozRuntime:
                 fase="publicar_fala_proativa",
             )
             emocao, nivel = "calma", 1
+            retrato_entrega = criar_retrato_entrega_fala({})
         try:
             if callable(self.publicar_texto_proativo_cb):
                 try:
-                    self.publicar_texto_proativo_cb(texto, emocao, nivel)
+                    self.publicar_texto_proativo_cb(
+                        texto, emocao, nivel, _retrato_entrega=retrato_entrega,
+                    )
                 except Exception as erro_publicacao:
                     self.log(
                         "⚠️ [FALA PROATIVA] canal textual indisponível: "
                         f"{type(erro_publicacao).__name__}"
                     )
             self._iniciar_itens_proativos(itens, self.log)
-            entregue = bool(self.falar(texto, emocao, nivel, wait=True, _proativa=True))
+            entregue = bool(self.falar(
+                texto, emocao, nivel, wait=True, _proativa=True,
+                _retrato_entrega=retrato_entrega,
+            ))
             if entregue:
                 # Uma fala unificada também ocupa o espaço conversacional.
                 # Sem isso, outra habilidade proativa poderia falar logo após
@@ -1570,7 +1605,13 @@ class VozRuntime:
         wait: bool = False,
         _proativa: bool = False,
         _texto_publicado_antecipado: bool = False,
+        _retrato_entrega: RetratoEntregaFala | None = None,
+        _ao_concluir_entrega: Callable[[bool, str], Any] | None = None,
     ) -> bool:
+        if _retrato_entrega is None and callable(self.estado_emocional_getter):
+            _retrato_entrega = criar_retrato_entrega_fala(self.estado_emocional_getter())
+        if isinstance(_retrato_entrega, RetratoEntregaFala):
+            emocao, nivel = _retrato_entrega.emocao, _retrato_entrega.nivel
         if self.modo_silencioso_ativo():
             # A publicação textual ocorre no orquestrador antes desta chamada.
             # Proatividade não audível não deve ser contabilizada como fala
@@ -1608,8 +1649,16 @@ class VozRuntime:
                 )
                 chave = 0.0
             if chave > 0:
-                itens_mesclados = self._retirar_proativas_do_turno(chave)
                 with self._turno_lock:
+                    if chave == self._ultima_chave_turno_emitida and (
+                        not isinstance(self._pedido_turno_pendente, dict)
+                        or self._pedido_turno_pendente.get("em_reproducao")
+                    ):
+                        # A voz já congelou texto e emoção desta ocorrência.
+                        # Itens proativos tardios permanecem na própria fila.
+                        self.log("🧠 [FALA] candidato após início da entrega descartado")
+                        return False
+                    itens_mesclados = self._retirar_proativas_do_turno(chave)
                     if chave == self._ultima_chave_turno_emitida:
                         pedido_existente = self._pedido_turno_pendente
                         if isinstance(pedido_existente, dict):
@@ -1622,6 +1671,8 @@ class VozRuntime:
                                     "texto": texto,
                                     "emocao": emocao,
                                     "nivel": nivel if nivel is not None else 1,
+                                    "retrato_entrega": _retrato_entrega,
+                                    "ao_concluir_entrega": _ao_concluir_entrega,
                                     "prioridade": prioridade_nova,
                                     "texto_publicado_antecipado": bool(
                                         _texto_publicado_antecipado
@@ -1641,12 +1692,17 @@ class VozRuntime:
                         else:
                             self.log("🧠 [FALA] resposta tardia do mesmo turno descartada")
                             return False
-                        return True
                     self._ultima_chave_turno_emitida = chave
             else:
                 itens_mesclados = self._retirar_proativas_do_turno(chave)
         else:
             itens_mesclados = []
+        if isinstance(pedido_existente, dict):
+            if wait:
+                # Esperar fora do lock permite que o worker conclua o pedido.
+                pedido_existente["done_event"].wait()
+                return pedido_existente.get("entregue") is True
+            return True
         if itens_mesclados:
             texto = self._mesclar_fala_do_turno(texto, itens_mesclados)
             self.log(f"🧠 [FALA] {len(itens_mesclados)} observação(ões) da autonomia mesclada(s) ao turno")
@@ -1659,6 +1715,8 @@ class VozRuntime:
             "texto": texto,
             "emocao": emocao,
             "nivel": nivel_final,
+            "retrato_entrega": _retrato_entrega,
+            "ao_concluir_entrega": _ao_concluir_entrega,
             "done_event": done_event,
             "dinamizar": True,
             "prioridade": self._prioridade_candidato_fala(texto),
@@ -1676,6 +1734,7 @@ class VozRuntime:
         self.fila.put(pedido)
         if wait:
             done_event.wait()
+            return pedido.get("entregue") is True
         return True
 
     @staticmethod
@@ -1733,12 +1792,10 @@ class VozRuntime:
         try:
             self.sd.play(data, sr_val, device=self._selecionar_saida_audio())
             self.ajustar_estado_fala_cb("audio_playing", True)
-            self.sd.wait()
+            return self._aguardar_audio()
         finally:
             self.ajustar_estado_fala_cb("audio_playing", False)
             self.ducking_volume(False)
-        return True
-
     def _velocidades_fallback_local(
         self, emocao: str, nivel: int,
     ) -> tuple[int, int]:

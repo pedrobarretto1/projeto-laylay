@@ -8,10 +8,12 @@ diagnósticos, além de escolher a postura social proporcional ao turno.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any, Mapping
 
-from mente_laylay.cognicao.preferencia_humor import selecionar_preferencia_humor
+from mente_laylay.cognicao.preferencia_humor import (
+    contexto_humor_turno, selecionar_preferencia_humor,
+)
 from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_curta
 
 
@@ -158,7 +160,17 @@ def selecionar_postura_amizade(
     especialistas = dict(mente.get("especialistas_turno_atual") or {})
     social = dict(especialistas.get("social") or {})
     operacional = bool(operacional or dict(especialistas.get("operacional") or {}).get("ativo"))
+    contexto_humor = contexto_humor_turno(
+        modo_jogo_ativo=bool(mente.get("modo_jogo_ativo")), operacional=operacional,
+    )
+    preferencias = dict(mente.get("preferencias_humor_contextuais") or {})
+    preferencia = selecionar_preferencia_humor(
+        {**preferencias, "atual": mente.get("preferencia_humor_contextual")},
+        contexto=contexto_humor,
+    )
     if operacional:
+        if preferencia.get("direcao") == "leve":
+            return replace(POSTURAS["operacional_amigavel"], humor="bloqueado", max_tirada=0)
         return POSTURAS["operacional_amigavel"]
 
     texto = _texto_normalizado(texto_usuario)
@@ -176,12 +188,6 @@ def selecionar_postura_amizade(
         return POSTURAS["acolhedora"]
     if funcao == "correcao" or re.match(r"^(?:n[aã]o,?\s+lay|eu quis dizer|na verdade)", texto):
         return POSTURAS["receptiva"]
-    contexto_humor = "jogo" if mente.get("modo_jogo_ativo") else "conversa"
-    preferencias = dict(mente.get("preferencias_humor_contextuais") or {})
-    preferencia = selecionar_preferencia_humor(
-        {**preferencias, "atual": mente.get("preferencia_humor_contextual")},
-        contexto=contexto_humor,
-    )
     if preferencia.get("direcao") == "leve":
         return POSTURAS["amiga_suave"]
     provocacao = classificar_provocacao_curta(texto)

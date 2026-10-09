@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from mente_laylay.memoria_mental.ciclo_vida_contexto import aplicar_ciclo_vida_contexto
 from mente_laylay.memoria_mental.pendencia_acao import (
     CHAVE_PENDENCIA_ACAO,
@@ -34,6 +36,24 @@ def _runtime_pendencia(estado: dict, agora=lambda: 100.0) -> PendenciaAcaoRuntim
         agora=agora,
         log=lambda *_args: None,
     )
+
+
+def test_conclusao_condicional_nao_remove_pendencia_ja_em_processamento() -> None:
+    estado: dict = {}
+    pendencias = _runtime_pendencia(estado)
+    criada = pendencias.registrar(
+        origem="resistencia_personalidade", acao="retomar_controle_midia",
+        pergunta="Quer continuar?", referencia="evento-1", dominio="musica",
+    )
+    assert criada is not None
+    assert pendencias.resolver("sim")["status"] == "aceitar"
+    assert pendencias.concluir(
+        criada["id"], "substituida_por_novo_pedido", status_esperado="ativa",
+    ) is False
+    assert pendencias.obter()["status"] == "em_processamento"
+    assert pendencias.concluir(
+        criada["id"], "executada", status_esperado="em_processamento",
+    ) is True
 
 
 def test_renovar_sessao_descarta_pendencia_canonica_sem_apagar_fatos() -> None:
@@ -110,16 +130,22 @@ def test_clipboard_publica_so_referencia_hash_operacao_e_ttl() -> None:
     assert "segredo pessoal" not in str(desfazer).casefold()
 
 
-def test_troca_de_dominio_encerra_pendencia_musical_generica() -> None:
+@pytest.mark.parametrize("origem,metadados,sobrevive", [
+    ("musica_conversacional", {"titulo": "Faixa 1"}, False),
+    ("resistencia_personalidade", {"sobrevive_comando_independente": True}, True),
+])
+def test_troca_de_dominio_respeita_ciclo_de_vida_da_pendencia(
+    origem: str, metadados: dict, sobrevive: bool,
+) -> None:
     estado: dict = {}
     pendencias = _runtime_pendencia(estado)
     pendencias.registrar(
-        origem="musica_conversacional",
+        origem=origem,
         dominio="musica",
         acao="confirmar_sugestao_musical",
         pergunta="Quer que eu toque?",
         referencia="faixa-1",
-        metadados={"titulo": "Faixa 1"},
+        metadados=metadados,
     )
 
     class Contexto:
@@ -170,5 +196,6 @@ def test_troca_de_dominio_encerra_pendencia_musical_generica() -> None:
     resultado, _rota = ciclo.resolver_comando_natural("abre o opera", "terminal")
 
     assert resultado and resultado["intent"] == "APP_OPEN"
-    assert pendencias.obter() is None
-    assert estado["ultima_pendencia_acao"]["status"] == "substituida_por_troca_dominio"
+    assert (pendencias.obter() is not None) is sobrevive
+    if not sobrevive:
+        assert estado["ultima_pendencia_acao"]["status"] == "substituida_por_troca_dominio"

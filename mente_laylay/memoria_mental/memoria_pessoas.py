@@ -468,9 +468,6 @@ class MemoriaPessoasRuntime:
         padroes = (
             rf"\b(?:a |o |outra |outro )?(?P<nome>[a-z][a-z' -]{{1,80}}?) (?:e|eh) (?:a |o )?(?:minha|meu) (?P<rel>{_RELACOES_RE})\b",
             rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) (?:se chama|chama|e|eh) (?P<nome>[a-z][a-z' -]{{1,80}}?)(?:\s*(?:,| e | mas | que |$))",
-            rf"\b(?:minha|meu) (?P<rel>{_RELACOES_RE}) "
-            rf"(?P<nome>(?!(?:gosta|trabalha|mora|estuda|joga|prefere|odeia)\b)"
-            rf"[a-z][a-z'-]{{1,35}})(?:\s|,|$)",
             rf"\b(?:tenho|conheco) (?:uma|um) (?P<rel>{_RELACOES_RE}) (?:chamada|chamado) (?P<nome>[a-z][a-z' -]{{1,80}}?)(?:\s*(?:,| e | mas | que |$))",
             # Forma conversacional comum: "tenho uma namorada e o nome dela é
             # Nanda". O vínculo e o nome estão explícitos; não é inferência da
@@ -479,6 +476,10 @@ class MemoriaPessoasRuntime:
             rf"(?:e )?(?:(?:o|a) nome (?:dela|dele) (?:e|eh)|que (?:se )?chama) "
             rf"(?P<nome>[a-z][a-z' -]{{1,80}}?)(?:\s*(?:,| e | mas | que |$))",
         )
+        # A palavra justaposta à relação pode ser verbo, qualidade ou nome.
+        # Só as molduras de apresentação/nomeação acima criam identidade;
+        # menções sem nome apresentado continuam no fluxo conversacional.
+        # Isso também impede "se chama Ana" de ser sobrescrito por "Se".
         # Correções costumam trazer a relação nova depois de "na verdade".
         correcao = bool(re.search(r"\b(?:na verdade|corrigindo|me enganei|retificando)\b", t))
         encontrados: list[dict[str, str]] = []

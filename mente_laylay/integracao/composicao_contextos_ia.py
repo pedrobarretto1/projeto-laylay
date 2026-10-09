@@ -177,6 +177,10 @@ class ComposicaoContextosIARuntime:
             nome: self._grupo(chaves)
             for nome, chaves in _DISPATCHER_GRUPOS.items()
         }
+        agrupar = self._servicos.get("_agrupar_resultados_operacionais")
+        if callable(agrupar):
+            grupos["execucao"]["_agrupar_resultados_operacionais"] = agrupar
+            grupos["execucao"]["enviar_mensagem"] = self.modelo_llm.enviar
         grupos["navegacao"]["_registro_navegador_leitura_runtime"] = self.navegador_leitura
         grupos["navegacao"]["_registro_navegador_operacoes_runtime"] = self.navegador_operacoes
         grupos["percepcao"] = {
@@ -206,6 +210,7 @@ class ComposicaoContextosIARuntime:
         usados = {
             "_resumo_mente_integrada_para_prompt",
             "get_status_humor_prompt", "_executar_captura_tela_intent",
+            "_agrupar_resultados_operacionais",
         }
         usados.update(_EXECUCAO)
         for grupo in (*_DISPATCHER_GRUPOS.values(), *_FINALIZACAO_GRUPOS.values()):

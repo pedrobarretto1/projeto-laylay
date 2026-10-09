@@ -7,11 +7,13 @@ responsabilidade apenas quando o contrato do executor oferece evidência suficie
 
 from __future__ import annotations
 
+import math
 import re
 import threading
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Mapping
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
@@ -98,6 +100,10 @@ class AvaliadorEventosEmocionaisRuntime:
 
     @staticmethod
     def _classe(resultado: ResultadoAcao) -> str:
+        # Propostas e contexto não são receipts. Só o publicador operacional
+        # canônico identifica resultados do executor com esta origem.
+        if _normalizar(resultado.origem) != "executor":
+            return "incerto"
         status = _normalizar(resultado.status).replace(" ", "_")
         # Um estado já satisfeito é uma não-ação confirmada, não uma falha.
         if (
@@ -133,6 +139,8 @@ class AvaliadorEventosEmocionaisRuntime:
 
     @staticmethod
     def _responsabilidade_explicita(resultado: ResultadoAcao) -> tuple[str, float]:
+        if _normalizar(resultado.origem) != "executor":
+            return "ambigua", 0.0
         contexto = dict(resultado.contexto or {})
         responsabilidade = _normalizar(
             contexto.get("responsabilidade") or contexto.get("origem_falha")
@@ -145,11 +153,16 @@ class AvaliadorEventosEmocionaisRuntime:
         resolvida = aliases.get(responsabilidade, "")
         if not resolvida:
             return "", 0.0
+        valor = contexto.get("confianca_responsabilidade")
+        if isinstance(valor, bool) or valor is None:
+            return resolvida, 0.0
         try:
-            confianca = float(contexto.get("confianca_responsabilidade") or 0.98)
-        except (TypeError, ValueError):
-            confianca = 0.98
-        return resolvida, max(0.0, min(1.0, confianca))
+            confianca = float(valor)
+        except (TypeError, ValueError, OverflowError):
+            return resolvida, 0.0
+        if not math.isfinite(confianca) or not 0.0 <= confianca <= 1.0:
+            return resolvida, 0.0
+        return resolvida, confianca
 
     def _recentes(self, assinatura: str, agora: float) -> list[dict[str, Any]]:
         limite = agora - self.janela_s
@@ -171,6 +184,7 @@ class AvaliadorEventosEmocionaisRuntime:
     def avaliar(self, resultado: ResultadoAcao) -> dict[str, Any]:
         agora = float(self.time_cb())
         assinatura = self._assinatura(resultado)
+        receipt_do_executor = _normalizar(resultado.origem) == "executor"
         classe = self._classe(resultado)
         status = _normalizar(resultado.status).replace(" ", "_")
         intent = str(resultado.intent or "").strip().upper()
@@ -190,7 +204,11 @@ class AvaliadorEventosEmocionaisRuntime:
             permite, arco = False, "neutro"
             motivo_expressao = "evento_neutro_sem_expressao"
             repeticoes = 1
-            causa = f"resultado {status or classe} observado"
+            causa = (
+                f"resultado {status or classe} observado"
+                if receipt_do_executor
+                else f"resultado {status or classe} sem confirmação do executor"
+            )
 
             if classe == "sucesso" and falhas_anteriores >= 2:
                 responsabilidade = str(recentes[-1].get("responsabilidade") or "sistema")
@@ -201,8 +219,9 @@ class AvaliadorEventosEmocionaisRuntime:
                 self._metricas["recuperacoes"] += 1
                 motivo_expressao = "alivio_causal_confirmado"
             elif classe == "redundancia_visivel":
-                responsabilidade = responsabilidade or "usuario"
-                confianca = max(confianca, 0.94 if entrada_confiavel else 0.70)
+                if not responsabilidade:
+                    responsabilidade = "usuario"
+                    confianca = 0.94 if entrada_confiavel else 0.70
                 repeticoes = redundancias_anteriores + 1
                 permite = bool(confianca >= 0.90 and entrada_confiavel and not sensivel)
                 provocacao = min(3, repeticoes) if permite else 0
@@ -239,7 +258,7 @@ class AvaliadorEventosEmocionaisRuntime:
                     else:
                         responsabilidade, confianca = "ambigua", 0.55
 
-                if responsabilidade == "sistema" and repeticoes >= 2:
+                if responsabilidade == "sistema" and confianca >= 0.90 and repeticoes >= 2:
                     emocao = "irritada" if repeticoes < 4 else "brava"
                     nivel = 1 if repeticoes == 2 else 2
                     permite = not sensivel
@@ -294,7 +313,9 @@ class AvaliadorEventosEmocionaisRuntime:
                 origem="resultado_operacional",
                 causa=causa,
                 evidencia_ref=evidencia_ref,
-                natureza_evidencia="fato_observado",
+                natureza_evidencia=(
+                    "fato_observado" if receipt_do_executor else "inferencia"
+                ),
                 responsabilidade=responsabilidade or "ambigua",
                 confianca=confianca,
                 relevancia=(
@@ -316,13 +337,16 @@ class AvaliadorEventosEmocionaisRuntime:
                 "repeticoes": avaliacao_base["repeticoes"],
                 "provocacao_usuario": avaliacao_base["provocacao_usuario"],
             })
-            self._historico.append({
-                "assinatura": assinatura,
-                "classe": classe,
-                "status": status,
-                "responsabilidade": avaliacao["responsabilidade"],
-                "ts": agora,
-            })
+            # Proposta incerta permanece observável no diagnóstico, mas não
+            # interrompe nem alimenta a sequência de receipts do executor.
+            if receipt_do_executor:
+                self._historico.append({
+                    "assinatura": assinatura,
+                    "classe": classe,
+                    "status": status,
+                    "responsabilidade": avaliacao["responsabilidade"],
+                    "ts": agora,
+                })
             self._historico = self._historico[-80:]
             self._metricas["avaliados"] += 1
             chave_metrica = f"responsabilidade_{avaliacao['responsabilidade']}"
@@ -363,9 +387,12 @@ def contextualizar_fala_evento(
     avaliacao: Mapping[str, Any] | None,
     *,
     alvo: str = "",
+    contexto: Mapping[str, Any] | None = None,
 ) -> str:
     """Acrescenta uma reação curta sem alterar o resultado operacional."""
     texto = re.sub(r"\s+", " ", str(fala or "")).strip()
+    if humor_bloqueado_por_preferencia(contexto):
+        return texto
     evento = dict(avaliacao or {})
     if not texto or not evento_pode_alterar_estado(evento) or len(texto) > 210:
         return texto
@@ -438,9 +465,9 @@ def contextualizar_fala_evento(
         ])
     elif arco == "autorreparo":
         complemento = escolher_variacao([
-            "Essa foi minha; precisão cirúrgica, só que ao contrário. Já corrigi o rumo.",
+            "Essa foi minha; precisão cirúrgica, só que ao contrário.",
             "Eu errei essa leitura. Não vou terceirizar a culpa só para preservar minha pose.",
-            "Essa conta veio no meu nome. Corrigi sem inventar desculpa bonita.",
+            "Essa conta veio no meu nome. Sem inventar desculpa bonita.",
         ])
     elif arco == "alivio":
         complemento = escolher_variacao([

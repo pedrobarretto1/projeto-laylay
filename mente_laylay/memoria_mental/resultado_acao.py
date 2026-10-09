@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict
+from uuid import uuid4
 
 # P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815
 # Marcador transitório no dict que originou uma execução. Ele nunca integra
@@ -14,6 +16,66 @@ CHAVE_RESULTADO_OPERACIONAL_PUBLICADO = "_laylay_resultado_operacional_publicado
 # também representa "tratei, mas não executei" sem transformar tratamento em
 # efeito. Nunca deve ser persistido como parte do ResultadoAcao.
 CHAVE_TRATAMENTO_OPERACIONAL = "_laylay_tratamento_operacional"
+
+def obter_id_solicitacao(dados: Mapping[str, Any]) -> str:
+    """Lê a ocorrência local, recusando coerção e aliases contraditórios.
+
+    ``request_id`` é somente o alias legado deste envelope. Identidades de
+    transporte guardadas no contexto ou em payloads não são consultadas.
+    """
+    if not isinstance(dados, Mapping):
+        raise TypeError("Identidade de solicitação exige um mapping.")
+    identidades = []
+    for chave in ("id_solicitacao", "request_id"):
+        if chave not in dados:
+            continue
+        valor = dados[chave]
+        if not isinstance(valor, str):
+            raise ValueError(f"{chave} deve ser textual.")
+        identidade = valor.strip()
+        if identidade:
+            identidades.append(identidade)
+    if len(set(identidades)) > 1:
+        raise ValueError("Aliases de solicitação identificam ocorrências distintas.")
+    return identidades[0] if identidades else ""
+
+
+def identificar_solicitacao_execucao(
+    dados: Mapping[str, Any], *, nova_identidade: bool = False,
+) -> dict[str, Any]:
+    """Isola o pedido e cria/preserva sua identidade antes da publicação.
+
+    A proposta da LLM recebe uma ocorrência nova somente após validação. Seus
+    campos de receipt não são evidência do executor; payloads de domínio e
+    contexto remoto permanecem intactos na cópia.
+    """
+    if not isinstance(dados, Mapping):
+        raise TypeError("Identificação de solicitação exige um mapping.")
+    identidade = "" if nova_identidade else obter_id_solicitacao(dados)
+    # Valores vivos do estado usam contêineres sincronizados. Reutilizar sua
+    # cópia canônica evita tentar serializar o lock e mantém o pedido isolado.
+    from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+
+    identificado = EstadoCompartilhadoRuntime._copiar_valor(dict(dados))
+    identificado.pop("request_id", None)
+    identificado["id_solicitacao"] = identidade or uuid4().hex
+    if nova_identidade:
+        for campo in (
+            "status", "executou", "confirmado", "origem", "ok",
+            "evidencia_confirmacao", "confirmacao_oferecida",
+            "estado_final", "estado_confirmacao", "tratado",
+            "resultado_publicado", "retorno_legado", "legado",
+            CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, CHAVE_TRATAMENTO_OPERACIONAL,
+        ):
+            identificado.pop(campo, None)
+        params = identificado.get("params")
+        if isinstance(params, Mapping):
+            params = dict(params)
+            params.pop("id_solicitacao", None)
+            params.pop("request_id", None)
+            identificado["params"] = params
+    return identificado
+
 
 STATUS_RESULTADO_JA_SATISFEITO = {
     "ja_aberto_focado", "site_ja_aberto_focado",

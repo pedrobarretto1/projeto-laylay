@@ -138,16 +138,22 @@ class PendenciaAcaoRuntime:
         self,
         texto: str,
         *,
+        id_esperado: str = "",
         classificar_dominio: Callable[[str, str], str] | None = None,
         classificar_contextual: Callable[[str, str], Any] | None = None,
+        somente_aceite_generico: bool = False,
     ) -> dict[str, Any]:
         item = self.obter(incluir_processando=True)
         if not item:
             return {"tratado": False, "status": "sem_pendencia"}
+        if id_esperado and str(item.get("id") or "") != str(id_esperado):
+            return {"tratado": True, "status": "concorrente", "pendencia": item}
         if item.get("status") == "em_processamento":
             return {"tratado": True, "status": "em_processamento", "pendencia": item}
 
-        local = classificar_confirmacao_local(texto)
+        local = classificar_confirmacao_local(
+            texto, somente_aceite_generico=somente_aceite_generico,
+        )
         if local is True:
             decisao = "aceitar"
         elif local is False:
@@ -187,12 +193,18 @@ class PendenciaAcaoRuntime:
         self._emitir(decisao, {**item, "status": decisao})
         return {"tratado": True, "status": decisao, "pendencia": {**item, "status": decisao}}
 
-    def concluir(self, pendencia_id: str, status: str) -> bool:
+    def concluir(
+        self, pendencia_id: str, status: str, *, status_esperado: str = "",
+    ) -> bool:
         concluida: dict[str, Any] = {"valor": False, "item": {}}
 
         def _atualizar(estado: dict) -> dict:
             atual = dict(estado.get(CHAVE_PENDENCIA_ACAO) or {})
-            if not atual or (pendencia_id and str(atual.get("id") or "") != pendencia_id):
+            if (
+                not atual
+                or (pendencia_id and str(atual.get("id") or "") != pendencia_id)
+                or (status_esperado and str(atual.get("status") or "") != status_esperado)
+            ):
                 return estado
             atual["status"] = str(status or "concluida")
             atual["encerrada_em"] = float(self._agora())

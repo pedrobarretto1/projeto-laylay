@@ -115,6 +115,11 @@ def conteudo_fallback_modo_jogo(data: dict) -> str:
     return FALHA_LLM_OCUPADA
 
 
+def _tem_schema_saida(data: dict) -> bool:
+    formato = (data or {}).get("response_format")
+    return isinstance(formato, dict) and formato.get("type") == "json_schema"
+
+
 def compactar_payload_llm_local(data: dict) -> dict:
     """Reduz o payload sem separar a identidade do fio da conversa.
 
@@ -125,10 +130,23 @@ def compactar_payload_llm_local(data: dict) -> dict:
     2.500 caracteres removia metade do contrato atual.
     """
     novo = dict(data or {})
-    novo.pop("response_format", None)
+    if not _tem_schema_saida(novo):
+        novo.pop("response_format", None)
     novo.pop("tools", None)
     novo.pop("tool_choice", None)
     novo["stream"] = False
+    # O schema é parte do contrato negociado. Compactar instruções ou retirá-lo
+    # transformaria uma consulta tipada em uma consulta diferente.
+    if _tem_schema_saida(novo):
+        return novo
+    # Pixels são conteúdo estruturado. Stringificar ou truncar a base64
+    # remove a imagem da requisição e pode gerar uma descrição sem percepção.
+    # As portas visuais já limitam sua pergunta e seu orçamento de saída.
+    if any(
+        isinstance(msg, dict) and isinstance(msg.get("content"), list)
+        for msg in list(novo.get("messages") or [])
+    ):
+        return novo
     normalizadas = []
     for msg in list(novo.get("messages") or []):
         if not isinstance(msg, dict):
@@ -401,6 +419,9 @@ def post_chat_llm(
                 pass
         resp = _post(payload_envio)
         if resp.status_code == 400:
+            if _tem_schema_saida(payload_envio):
+                print_fn("⚠️ [IA] 400 em saída estruturada; contrato preservado, sem retry permissivo.")
+                return resp, float(bad_request_until or 0.0)
             print_fn(f"⚠️ [IA] 400 do modelo local. Corpo: {str(resp.text or '')[:500]}")
             retry_data = compactar_payload_llm_local(payload_envio)
             if callable(registrar_orcamento_prompt):
@@ -620,9 +641,10 @@ class LLMHttpRuntime:
     def post(self, headers: dict, data: dict, timeout: int | None = None):
         dados_envio = dict(data or {})
         permitir_conversa_jogo = bool(dados_envio.pop("_laylay_conversa_modo_jogo", False))
+        percepcao_visual = bool(dados_envio.pop("_laylay_percepcao_visual", False))
         prioridade_interativa = dados_envio.pop("_laylay_prioridade_interativa", None)
         local_em_jogo = self.endpoint_eh_local() and self.modo_jogo_ativo
-        if local_em_jogo and not permitir_conversa_jogo:
+        if local_em_jogo and not (permitir_conversa_jogo or percepcao_visual):
             return RespostaLLMFallback(
                 conteudo_fallback_modo_jogo(dados_envio),
                 motivo="economia_modo_jogo",
@@ -631,7 +653,7 @@ class LLMHttpRuntime:
                 fallback="bloqueio_modelo_local_em_jogo",
             )
 
-        if local_em_jogo:
+        if local_em_jogo and not percepcao_visual:
             # A resposta principal pode acordar o modelo uma única vez, usando
             # menos contexto e menos tokens para reduzir o impacto na partida.
             dados_envio = compactar_payload_llm_local(dados_envio)

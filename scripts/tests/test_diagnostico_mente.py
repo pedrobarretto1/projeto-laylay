@@ -17,6 +17,45 @@ def test_detector_exige_pedido_interno_explicito():
     assert not detectar_pedido_diagnostico_mente("recebi um diagnóstico médico")
 
 
+def test_presenca_distingue_feedback_observado_de_persistencia_confirmada():
+    estado = {"mental": {"presenca_contextual": {
+        "contadores": {"feedbacks": 2, "feedbacks_compartilhados": 1},
+        "ultima_emissao": {"aprendizado_compartilhado": {
+            "status": "registrado", "id_evento": "presenca:jogo:dica:entrega-1"}},
+    }}}
+    diagnostico = construir_diagnostico_mente(estado, {})
+    presenca = diagnostico["iniciativa"]["presenca"]
+    assert presenca["feedbacks"] == 2
+    assert presenca["feedbacks_compartilhados"] == 1
+    assert presenca["aprendizado_compartilhado"]["status"] == "registrado"
+    assert presenca["aprendizado_compartilhado"]["id_evento"] == "presenca:jogo:dica:entrega-1"
+    texto = formatar_diagnostico_terminal(diagnostico)
+    assert "feedbacks_compartilhados=1" in texto and "aprendizado=registrado" in texto
+
+
+def test_feedback_local_com_falha_no_motor_nao_aparece_como_aprendizado_confirmado():
+    estado = {"mental": {"presenca_contextual": {
+        "contadores": {"feedbacks": 1},
+        "ultima_emissao": {"aprendizado_compartilhado": {
+            "status": "falha", "id_evento": "entrega-1", "erro": "segredo nao expor"}},
+    }}}
+    diagnostico = construir_diagnostico_mente(estado, {})
+    presenca = diagnostico["iniciativa"]["presenca"]
+    assert presenca["feedbacks_compartilhados"] == 0
+    assert presenca["aprendizado_compartilhado"]["status"] == "falha"
+    assert "segredo nao expor" not in str(diagnostico)
+
+
+def test_diagnostico_de_feedback_nao_expoe_caminho_ou_texto_pessoal_da_emissao():
+    estado = {"mental": {"presenca_contextual": {"ultima_emissao": {
+        "fala": "mensagem pessoal", "origem": "produtor pessoal",
+        "aprendizado_compartilhado": {"status": "registrado", "id_evento": "C:\\Users\\Pedro\\privado.txt"},
+    }}}}
+    diagnostico = construir_diagnostico_mente(estado, {})
+    assert diagnostico["iniciativa"]["presenca"]["aprendizado_compartilhado"]["id_evento"] == ""
+    assert "mensagem pessoal" not in str(diagnostico) and "privado.txt" not in str(diagnostico)
+
+
 def test_snapshot_resume_estado_sem_expor_historico_ou_segredos():
     estado = {
         "mental": {

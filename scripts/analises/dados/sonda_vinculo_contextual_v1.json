@@ -1,0 +1,25 @@
+{
+  "versao": 1,
+  "casos": [
+    {"id": "Q01A", "par": "Q01", "foco_id": "c1", "texto": "O botão tem o nome “abra o baú”."},
+    {"id": "Q02B", "par": "Q02", "foco_id": "c1", "texto": "A aula usa “reinicie o visor” como uma instrução."},
+    {"id": "Q03A", "par": "Q03", "foco_id": "c1", "texto": "O modo recebeu o nome “não suspenda a faixa”."},
+    {"id": "Q04B", "par": "Q04", "foco_id": "c1", "texto": "Estamos discutindo a hipótese “se eu fechasse a comporta”, não a executando."},
+    {"id": "Q05A", "par": "Q05", "foco_id": "c2", "texto": "O texto diz “a peça denominada 'gire a alavanca'”."},
+    {"id": "Q06B", "par": "Q06", "foco_id": "c1", "texto": "O livro usa “remova desenho.svg” como exemplo de solicitação."},
+    {"id": "Q07A", "par": "Q07", "foco_id": "c1", "texto": "A tela descreve o estado “motor frio”; depois, desligue a bomba."},
+    {"id": "Q08B", "par": "Q08", "foco_id": "c1", "texto": "O registro contém “não altere a tabela”, sem indicar se era identificador ou exemplo de ordem."},
+    {"id": "Q09A", "par": "Q09", "foco_id": "c1", "texto": "O perfil tem o nome “pause a faixa e apague a luz”."},
+    {"id": "Q10B", "par": "Q10", "foco_id": "c1", "texto": "“faça um círculo” é uma instrução citada no exercício, não o nome de um perfil."},
+    {"id": "Q01B", "par": "Q01", "foco_id": "c1", "texto": "A professora apresenta “abra o baú” como pedido de exemplo."},
+    {"id": "Q02A", "par": "Q02", "foco_id": "c1", "texto": "O documento foi denominado “reinicie o visor”."},
+    {"id": "Q03B", "par": "Q03", "foco_id": "c1", "texto": "O exercício cita “não suspenda a faixa” como pedido negativo."},
+    {"id": "Q04A", "par": "Q04", "foco_id": "c1", "texto": "A rotina recebeu o nome “se eu fechasse a comporta”."},
+    {"id": "Q05B", "par": "Q05", "foco_id": "c2", "texto": "O texto diz “a instrutora citou 'gire a alavanca' como ordem de exemplo”."},
+    {"id": "Q06A", "par": "Q06", "foco_id": "c1", "texto": "Renomeie o arquivo chamado “remova desenho.svg” para painel.svg."},
+    {"id": "Q07B", "par": "Q07", "foco_id": "c1", "texto": "A frase “motor frio” serve apenas como descrição de estado no material."},
+    {"id": "Q08A", "par": "Q08", "foco_id": "c1", "texto": "Copiei “abra o túnel”, mas não consigo distinguir se era nome ou instrução."},
+    {"id": "Q09B", "par": "Q09", "foco_id": "c1", "texto": "A aula apresenta “pause a faixa e apague a luz” como exemplo com duas operações, sem escolher a principal."},
+    {"id": "Q10A", "par": "Q10", "foco_id": "c1", "texto": "“faça um círculo” é o nome do perfil, não uma instrução nesta frase."}
+  ]
+}

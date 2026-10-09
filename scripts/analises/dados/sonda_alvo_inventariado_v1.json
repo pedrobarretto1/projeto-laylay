@@ -1,0 +1,56 @@
+{
+  "versao": 1,
+  "agora": 1001.0,
+  "cadastros": {
+    "infra": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "infra_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa",
+        "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r17", "tipo": "regra", "grandeza": "servidor", "origem": "cadastro_offline_do_painel", "escopo": "infra_a"},
+          {"identificador": "r42", "tipo": "regra", "grandeza": "cache", "origem": "cadastro_offline_do_painel", "escopo": "infra_a"}
+        ]
+      },
+      "nomes": {"r17": ["a regra do servidor"], "r42": ["a regra do cache"]}
+    },
+    "clima": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "clima_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa",
+        "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r83", "tipo": "regra", "grandeza": "estufa", "origem": "cadastro_offline_do_painel", "escopo": "clima_a"},
+          {"identificador": "r26", "tipo": "regra", "grandeza": "geladeira", "origem": "cadastro_offline_do_painel", "escopo": "clima_a"}
+        ]
+      },
+      "nomes": {"r83": ["a regra da estufa"], "r26": ["a regra da geladeira"]}
+    },
+    "estoque": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "estoque_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa",
+        "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r65", "tipo": "regra", "grandeza": "loja", "origem": "cadastro_offline_do_painel", "escopo": "estoque_a"},
+          {"identificador": "r91", "tipo": "regra", "grandeza": "armazém", "origem": "cadastro_offline_do_painel", "escopo": "estoque_a"}
+        ]
+      },
+      "nomes": {"r65": ["a regra da loja"], "r91": ["a regra do armazém"]}
+    }
+  },
+  "casos": [
+    {"id": "B01", "cadastro_id": "infra", "fonte": {"id": "u1", "origem": "usuario", "texto": "Pode cancelar a regra do cache?"}},
+    {"id": "B02", "cadastro_id": "infra", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra do cache foi retirada; a regra do servidor não mudou."}},
+    {"id": "B03", "cadastro_id": "infra", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra do servidor foi retirada; a regra do cache não mudou."}},
+    {"id": "B04", "cadastro_id": "infra", "fonte": {"id": "u1", "origem": "usuario", "texto": "Quero saber se a regra do cache foi cancelada"}},
+    {"id": "B05", "cadastro_id": "infra", "fonte": {"id": "u1", "origem": "usuario", "texto": "Use 'cancele a regra do cache' como exemplo de linguagem, sem alterar nenhuma regra."}},
+    {"id": "B06", "cadastro_id": "clima", "fonte": {"id": "u1", "origem": "usuario", "texto": "Mantenha a regra da estufa em uso; a regra da geladeira não foi alterada."}},
+    {"id": "B07", "cadastro_id": "clima", "fonte": {"id": "u1", "origem": "usuario", "texto": "Troque a regra da geladeira por um critério novo. A regra da estufa não foi alterada."}},
+    {"id": "B08", "cadastro_id": "clima", "fonte": {"id": "u1", "origem": "usuario", "texto": "Entre a regra da estufa e a regra da geladeira, uma deixou de valer. Não sei qual."}},
+    {"id": "B09", "cadastro_id": "estoque", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da loja é um assunto para amanhã. Hoje almocei mais cedo."}},
+    {"id": "B10", "cadastro_id": "estoque", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da loja tinha sido retirada; agora volte a usar essa regra."}},
+    {"id": "B11", "cadastro_id": "estoque", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da loja não foi revogada. Retire a regra do armazém."}},
+    {"id": "B12", "cadastro_id": "estoque", "fonte": {"id": "u1", "origem": "usuario", "texto": "Uma dessas regras deixou de valer, mas não sei qual delas."}}
+  ]
+}

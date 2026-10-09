@@ -58,6 +58,7 @@ class JanelaAvatar:
         self._reacao_id = ""
         self._inicio_reacao = 0.0
         self._emocao_pendente = ""
+        self._intensidade_pendente: float | None = None
         self._troca_emocao_agendada: str | None = None
         self._frame_atual = ""
         self._inicio_animacao = time.monotonic()
@@ -180,14 +181,17 @@ class JanelaAvatar:
 
     def _mostrar_frame(self, *, forcar: bool = False) -> None:
         caminho = self._arquivo_frame()
-        chave_frame = f"{caminho}:{self.tamanho}"
+        # Intensidade é peso da expressão recebida, nunca outra escolha de
+        # emoção. O ajuste contido permanece visível com movimento desligado.
+        tamanho_visual = max(1, round(self.tamanho * (0.97 + self.intensidade * 0.03)))
+        chave_frame = f"{caminho}:{tamanho_visual}"
         if not forcar and chave_frame == self._frame_atual:
             return
-        chave_cache = (str(caminho), self.tamanho)
+        chave_cache = (str(caminho), tamanho_visual)
         imagem_tk = self._imagens_tk.get(chave_cache)
         if imagem_tk is None:
             imagem = self.Image.open(caminho).convert("RGBA")
-            imagem.thumbnail((self.tamanho, self.tamanho), self.Image.Resampling.LANCZOS)
+            imagem.thumbnail((tamanho_visual, tamanho_visual), self.Image.Resampling.LANCZOS)
             imagem_tk = self.ImageTk.PhotoImage(imagem)
             self._imagens_tk[chave_cache] = imagem_tk
         self.canvas.itemconfigure(self.item_imagem, image=imagem_tk)
@@ -196,25 +200,30 @@ class JanelaAvatar:
     def _animar_movimento(self) -> None:
         try:
             agora = time.monotonic()
+            peso_expressao = 0.4 + self.intensidade * 0.6 if self.intensidade > 0 else 0.0
             deslocamento = calcular_deslocamento_avatar(
                 agora - self._inicio_animacao,
                 falando=self.falando,
                 movimento_ativo=bool(self.movimento_sutil.get()),
+                intensidade=self.intensidade,
             )
             deslocamento_x = 0
             if self.movimento_sutil.get():
                 tempo = agora - self._inicio_animacao
                 if self.atividade == "listening":
-                    deslocamento += round(abs(math.sin(tempo * 3.0)) * 1.5)
+                    deslocamento += round(abs(math.sin(tempo * 3.0)) * 1.5 * peso_expressao)
                 elif self.atividade == "thinking":
-                    deslocamento_x = round(math.sin(tempo * 2.1) * 1.4)
+                    deslocamento_x = round(math.sin(tempo * 2.1) * 1.4 * peso_expressao)
                 elif self.atividade == "executing":
-                    deslocamento += round(math.sin(tempo * 8.0) * 1.8)
+                    deslocamento += round(math.sin(tempo * 8.0) * 1.8 * peso_expressao)
                 idade_reacao = agora - self._inicio_reacao
                 if self.atividade == "success" and idade_reacao < 0.75:
-                    deslocamento -= round(abs(math.sin(idade_reacao * 8.4)) * 7)
+                    deslocamento -= round(abs(math.sin(idade_reacao * 8.4)) * 7 * peso_expressao)
                 elif self.atividade == "error" and idade_reacao < 0.7:
-                    deslocamento_x += round(math.sin(idade_reacao * 38.0) * 5 * (1 - idade_reacao / 0.7))
+                    deslocamento_x += round(
+                        math.sin(idade_reacao * 38.0) * 5
+                        * (1 - idade_reacao / 0.7) * peso_expressao,
+                    )
             self.canvas.coords(
                 self.item_imagem,
                 self.tamanho // 2 + deslocamento_x,
@@ -238,7 +247,10 @@ class JanelaAvatar:
             self.canvas.itemconfigure(self.item_aura, outline="")
             self.canvas.itemconfigure(self.item_estado, fill="")
             return
-        pulso = (math.sin((agora - self._inicio_animacao) * 5.0) + 1.0) / 2.0
+        pulso = (
+            (math.sin((agora - self._inicio_animacao) * 5.0) + 1.0) / 2.0
+            if self.movimento_sutil.get() else 0.5
+        )
         margem = 8 + round(pulso * 2)
         self.canvas.coords(self.item_aura, margem, margem, self.tamanho - margem, self.tamanho - margem)
         self.canvas.itemconfigure(self.item_aura, outline=cor, width=1 + round(pulso * 2))
@@ -265,9 +277,13 @@ class JanelaAvatar:
             self._inicio_reacao = time.monotonic()
         self.atividade = "speaking" if falando else atividade
         try:
-            self.intensidade = max(0.0, min(1.0, float(intensidade)))
+            intensidade_limpa = float(intensidade)
+            intensidade_limpa = (
+                max(0.0, min(1.0, intensidade_limpa))
+                if math.isfinite(intensidade_limpa) else 0.0
+            )
         except (TypeError, ValueError):
-            self.intensidade = 0.33
+            intensidade_limpa = 0.0
         if falando:
             # A emoção da voz tem prioridade e precisa aparecer junto do áudio.
             if self._troca_emocao_agendada is not None:
@@ -277,7 +293,9 @@ class JanelaAvatar:
                     pass
                 self._troca_emocao_agendada = None
             self._emocao_pendente = ""
+            self._intensidade_pendente = None
             self.emocao = emocao
+            self.intensidade = intensidade_limpa
             self.falando = True
             self._mostrar_frame()
             return
@@ -287,6 +305,8 @@ class JanelaAvatar:
         self.falando = False
         self._mostrar_frame()
         if emocao == self.emocao:
+            self.intensidade = intensidade_limpa
+            self._mostrar_frame()
             if self._troca_emocao_agendada is not None:
                 try:
                     self.root.after_cancel(self._troca_emocao_agendada)
@@ -294,8 +314,10 @@ class JanelaAvatar:
                     pass
                 self._troca_emocao_agendada = None
             self._emocao_pendente = ""
+            self._intensidade_pendente = None
             return
         self._emocao_pendente = emocao
+        self._intensidade_pendente = intensidade_limpa
         if self._troca_emocao_agendada is not None:
             try:
                 self.root.after_cancel(self._troca_emocao_agendada)
@@ -308,7 +330,9 @@ class JanelaAvatar:
         if not self._emocao_pendente or self.falando:
             return
         self.emocao = self._emocao_pendente
+        self.intensidade = self._intensidade_pendente or 0.0
         self._emocao_pendente = ""
+        self._intensidade_pendente = None
         self._mostrar_frame()
 
     def _ler_eventos(self) -> None:

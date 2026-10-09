@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+import pytest
+
 from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.autonomia.porteiro_proatividade import (
     PorteiroProatividadeRuntime,
@@ -80,7 +82,8 @@ class _ModeloQueAbreCorrida:
         )
 
 
-def test_red_p1h2_utterance_nova_preempta_presenca_ja_em_cognicao() -> None:
+@pytest.mark.parametrize("dominio", ["cotidiano", "jogo"])
+def test_red_p1h2_utterance_nova_preempta_presenca_ja_em_cognicao(dominio: str) -> None:
     _TimerControlado.criados = []
 
     contexto = {
@@ -146,11 +149,19 @@ def test_red_p1h2_utterance_nova_preempta_presenca_ja_em_cognicao() -> None:
 
     modelo = _ModeloQueAbreCorrida(contexto)
 
+    def limpar_fala(texto: str) -> str:
+        if dominio == "jogo":
+            # P18 não abre a janela dentro da LLM. A mesma corrida existe
+            # entre a materialização local e a admissão pelo porteiro.
+            assert contexto["usuario_falando"] is False
+            contexto["usuario_falando"] = True
+        return texto
+
     resposta_evento = RespostaEventoRuntime(
         preparacao_prompt=_PromptEvento(),
         modelo_llm=modelo,
         agendar_fala_proativa=voz.agendar_fala_proativa,
-        limpar_texto_fala=lambda texto: texto,
+        limpar_texto_fala=limpar_fala,
         log=lambda _texto: None,
     )
 
@@ -177,7 +188,7 @@ def test_red_p1h2_utterance_nova_preempta_presenca_ja_em_cognicao() -> None:
     resultado = diretor.considerar(
         {
             "origem": "observador_jogo",
-            "dominio": "jogo",
+            "dominio": dominio,
             "categoria": "celebracao",
             "confianca": 0.98,
             "momento_seguro": True,
@@ -194,7 +205,7 @@ def test_red_p1h2_utterance_nova_preempta_presenca_ja_em_cognicao() -> None:
     )
 
     # Prova de que realmente atravessamos a janela temporal desejada.
-    assert modelo.chamadas == 1
+    assert modelo.chamadas == (0 if dominio == "jogo" else 1)
     assert contexto["usuario_falando"] is True
     assert decisoes_porteiro
 

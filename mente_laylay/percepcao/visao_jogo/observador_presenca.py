@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable, Mapping
 
 from .observador_inventario import assinatura_perceptual, distancia_assinaturas
+from mente_laylay.percepcao.imagens_multimodais import empacotar_imagens
 
 
 class ObservadorPresencaJogoRuntime:
@@ -20,7 +21,7 @@ class ObservadorPresencaJogoRuntime:
         interacao_iniciada: Callable[[], bool] = lambda: True,
         habilitado: bool = True, intervalo_s: float = 45.0,
         max_analises_sessao: int = 8, limiar_mudanca: int = 18,
-        janela_analises_s: float = 900.0,
+        janela_analises_s: float = 900.0, intervalo_quadros_s: float = 0.6,
         clock: Callable[[], float] = time.time,
         sleep: Callable[[float], Any] = time.sleep,
         log: Callable[[str], Any] = print,
@@ -34,10 +35,13 @@ class ObservadorPresencaJogoRuntime:
         self.permitido = permitido
         self.interacao_iniciada = interacao_iniciada
         self.habilitado = bool(habilitado)
-        self.intervalo_s = max(30.0, float(intervalo_s))
+        # Dois quadros custam mais tokens na mesma análise. Evitar que a
+        # própria cadência gere duas chamadas dentro de um minuto.
+        self.intervalo_s = max(60.0, float(intervalo_s))
         self.max_analises_sessao = max(1, int(max_analises_sessao))
         self.limiar_mudanca = max(1, int(limiar_mudanca))
         self.janela_analises_s = max(300.0, float(janela_analises_s))
+        self.intervalo_quadros_s = max(0.2, min(1.0, float(intervalo_quadros_s)))
         self.clock = clock
         self.sleep = sleep
         self.log = log
@@ -76,7 +80,29 @@ class ObservadorPresencaJogoRuntime:
             distancia = distancia_assinaturas(self._assinatura, assinatura)
             if self._assinatura and distancia < self.limiar_mudanca:
                 return False
-            self._assinatura = assinatura
+        # Uma diferença perceptual não prova uma ação. Dois quadros próximos
+        # dão à mesma chamada visual uma sequência; não reutilizar foto antiga
+        # de outra análise nem tratar dois recortes simultâneos como movimento.
+        self.sleep(self.intervalo_quadros_s)
+        atual = dict(self.contexto_jogo() or {})
+        if (self.stop_event.is_set() or not atual.get("ativo")
+            or str(self.jogo_chave_atual(atual) or "") != jogo
+            or any(atual.get(campo) != contexto.get(campo) for campo in ("hwnd", "pid"))
+            or self.visao_ocupada() or not self.permitido()):
+            return False
+        segunda = str(self.capturar(atual) or "")
+        segunda_assinatura = assinatura_perceptual(segunda)
+        if not segunda_assinatura:
+            return False
+        final = dict(self.contexto_jogo() or {})
+        if (not final.get("ativo") or str(self.jogo_chave_atual(final) or "") != jogo
+            or any(final.get(campo) != contexto.get(campo) for campo in ("hwnd", "pid"))
+            or self.stop_event.is_set() or self.visao_ocupada() or not self.permitido()):
+            return False
+        with self._lock:
+            if self._jogo != jogo or self._analises >= self.max_analises_sessao:
+                return False
+            self._assinatura = segunda_assinatura
             self._analises += 1
             numero = self._analises
         self.log(
@@ -86,15 +112,19 @@ class ObservadorPresencaJogoRuntime:
         )
         return bool(self.executar_visao({
             "pergunta": (
-                "Você ficou curiosa sobre o que está acontecendo no jogo. Observe esta captura nova "
-                "em silêncio e decida por conta própria se vale acompanhar o momento, perguntar algo "
-                "curto sem cobrar resposta, dar uma dica realmente fundamentada, comemorar, motivar "
-                "ou recomendar algo. Se não houver valor real, apenas continue observando."
+                "Acompanhe o acontecimento nestes dois quadros novos, em ordem temporal. "
+                "Decida por conta própria se existe uma ação, efeito ou resultado marcante que "
+                "justifique uma reação curta agora. Não comente um objeto só por ele aparecer. "
+                "Se não houver valor real ou momento seguro, apenas continue observando."
             ),
             "tipo": "observacao_presenca_proativa",
             "_proativo": True,
             "_origem_presenca": "curiosidade_visual",
-            "_imagem_pre_capturada": imagem,
+            "_imagem_pre_capturada": empacotar_imagens([
+                {"label": "Quadro temporal 1 — início da amostra", "data": imagem},
+                {"label": "Quadro temporal 2 — fim da amostra", "data": segunda},
+            ]),
+            "_intervalo_quadros_s": self.intervalo_quadros_s,
         }))
 
     def executar(self) -> None:

@@ -154,6 +154,7 @@ def test_avaliador_operacional_publica_o_mesmo_contrato_causal() -> None:
         executou=False,
         confirmado=False,
         texto_usuario="liga a lâmpada",
+        origem="executor",
     )
 
     evento = runtime.avaliar(resultado)

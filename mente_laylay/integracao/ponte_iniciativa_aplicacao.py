@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import math
 import time
-from typing import Any, Callable
+from threading import RLock
+from typing import Any, Callable, Mapping
+
+from mente_laylay.autonomia.diretor_presenca import JANELA_FEEDBACK_PRESENCA_S
+from mente_laylay.cognicao.interpretador_continuidade import qualificar_feedback_humor
+from mente_laylay.emocoes.contrato_causal import criar_evento_feedback_comunicativo
 
 
 class PonteIniciativaAplicacaoRuntime:
@@ -45,6 +51,9 @@ class PonteIniciativaAplicacaoRuntime:
         self._porteiro: Any | None = None
         self._coordenador: Any | None = None
         self._rede: Any | None = None
+        self._registrar_feedback_compartilhado: Callable[..., Any] | None = None
+        self._publicar_evento_emocional_feedback: Callable[[dict[str, Any]], Any] | None = None
+        self._lock_publicacao_feedback = RLock()
 
     def conectar(
         self, *, motor: Any, porteiro: Any, coordenador: Any, rede: Any,
@@ -58,6 +67,19 @@ class PonteIniciativaAplicacaoRuntime:
         if not callable(getter):
             raise ValueError("getter de fala do usuário deve ser callable")
         self._usuario_falando_getter = getter
+
+    def conectar_aprendizado(
+        self, *, registrar_feedback: Callable[..., Any],
+        publicar_evento_emocional: Callable[[dict[str, Any]], Any] | None = None,
+    ) -> None:
+        """Recebe a porta compartilhada após a inicialização do motor."""
+        if not callable(registrar_feedback):
+            raise ValueError("registrar_feedback compartilhado deve ser callable")
+        if publicar_evento_emocional is not None and not callable(publicar_evento_emocional):
+            raise ValueError("publicar_evento_emocional compartilhado deve ser callable")
+        self._registrar_feedback_compartilhado = registrar_feedback
+        if publicar_evento_emocional is not None:
+            self._publicar_evento_emocional_feedback = publicar_evento_emocional
 
     def _exigir_conexao(self) -> tuple[Any, Any, Any, Any]:
         if any(item is None for item in (
@@ -147,6 +169,121 @@ class PonteIniciativaAplicacaoRuntime:
                 + ",".join(ativados)
             )
 
+    def _publicar_feedback_emocional(self, tipo: str, proveniencia: Mapping[str, Any]) -> None:
+        evento = criar_evento_feedback_comunicativo(tipo, proveniencia)
+        if not evento or not callable(self._publicar_evento_emocional_feedback):
+            return
+        with self._lock_publicacao_feedback:
+            quadro = dict(self._estado_mental_getter().get("eventos_emocionais_causais") or {})
+            fontes = [quadro.get("atual"), *(quadro.get("historico") or [])]
+            mesmas = [item for item in fontes if isinstance(item, Mapping)
+                      and item.get("evidencia_ref") == evento["evidencia_ref"]]
+            if mesmas:
+                if not all(item == evento for item in mesmas):
+                    self._log("⚠️ [FEEDBACK:PRESENÇA] ocorrência causal divergente")
+                return
+            # O publisher faz a guarda transacional entre produtores distintos;
+            # este lock evita repetir o callback para a mesma ponte.
+            try:
+                if self._publicar_evento_emocional_feedback(evento) is False:
+                    self._log("⚠️ [FEEDBACK:PRESENÇA] publicação causal rejeitada")
+            except Exception as erro:
+                self._log(f"⚠️ [FEEDBACK:PRESENÇA] porta causal falhou: {type(erro).__name__}")
+
+    def _encaminhar_feedback_compartilhado(
+        self, resultado: str, aceito: Any, dados: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        evento = dados.get("evento_feedback")
+        if not isinstance(evento, Mapping):
+            return {"status": "sem_evento"}
+        tipos = {"aceita": "aceitacao", "recusa": "recusa", "correcao": "correcao",
+                 "repeticao": "repeticao", "silencio": "silencio"}
+        if resultado not in tipos:
+            return {"status": "rejeitado", "motivo": "tipo_feedback_invalido"}
+        mental = self._estado_mental_getter()
+        presenca = dict(mental.get("presenca_contextual") or {})
+        emissao = dict(presenca.get("ultima_emissao") or {})
+        id_entrega = str(evento.get("id_entrega") or "").strip()
+        if id_entrega and str(emissao.get("id_entrega") or "").strip() != id_entrega:
+            ocorrencias = [item for item in presenca.get("historico") or []
+                           if str(item.get("id_entrega") or "").strip() == id_entrega]
+            emissao = dict(ocorrencias[0]) if len(ocorrencias) == 1 else {}
+        if (
+            not id_entrega
+            or id_entrega != str(evento.get("id_evento") or "").strip()
+            or id_entrega != str(emissao.get("id_entrega") or "").strip()
+            or evento.get("entregue") is not True
+            or emissao.get("entregue") is not True
+        ):
+            return {"status": "rejeitado", "motivo": "entrega_nao_confirmada"}
+        campos = {"dominio": "dominio", "origem_produtor": "origem", "categoria": "categoria", "alvo": "chave"}
+        if any(
+            str(evento.get(campo) or "").strip() != str(emissao.get(atributo) or "").strip()
+            for campo, atributo in campos.items()
+        ):
+            return {"status": "rejeitado", "motivo": "proveniencia_divergente"}
+        if emissao.get("feedback_registrado") is not True or emissao.get("feedback") != resultado:
+            return {"status": "rejeitado", "motivo": "feedback_nao_observado"}
+        esperado = True if resultado == "aceita" else False if resultado == "recusa" else None
+        if aceito is not esperado:
+            return {"status": "rejeitado", "motivo": "aceitacao_divergente"}
+        try:
+            entrega_ts = float(evento.get("entrega_ts") or 0.0)
+            observado_ts = float(evento.get("observado_ts") or 0.0)
+            ts_emissao = float(emissao.get("ts") or 0.0)
+            ts_feedback = float(emissao.get("feedback_ts") or 0.0)
+        except (TypeError, ValueError, OverflowError):
+            return {"status": "rejeitado", "motivo": "tempo_feedback_invalido"}
+        idade = observado_ts - entrega_ts
+        if (
+            not all(math.isfinite(valor) for valor in (entrega_ts, observado_ts, ts_emissao, ts_feedback))
+            or entrega_ts <= 0.0 or entrega_ts != ts_emissao or idade < 0.0
+            or observado_ts != ts_feedback
+            or (resultado == "silencio" and idade < JANELA_FEEDBACK_PRESENCA_S)
+            or (resultado != "silencio" and idade > JANELA_FEEDBACK_PRESENCA_S)
+        ):
+            return {"status": "rejeitado", "motivo": "janela_feedback_invalida"}
+        proveniencia = {campo: evento.get(campo) for campo in (
+            "id_entrega", "dominio", "origem_produtor", "categoria", "alvo",
+            "entrega_ts", "observado_ts", "entregue",
+        )}
+        contexto_humor = str(emissao.get("contexto_humor") or "")
+        if contexto_humor or evento.get("contexto_humor"):
+            if (
+                contexto_humor not in {"jogo", "conversa", "comandos"}
+                or evento.get("contexto_humor") != contexto_humor
+            ):
+                return {"status": "rejeitado", "motivo": "contexto_entrega_divergente"}
+            proveniencia["contexto_humor"] = contexto_humor
+        humor = qualificar_feedback_humor(str(dados.get("texto_feedback") or ""))
+        if humor and contexto_humor and humor["tipo"] == tipos[resultado]:
+            proveniencia["feedback_humor"] = humor
+            proveniencia["canal_entrega"] = str(emissao.get("canal_entrega") or "")
+        elif (resultado == "silencio" and contexto_humor
+              and emissao.get("solicitacao_feedback_humor") is True):
+            proveniencia["solicitacao_feedback_humor"] = True
+            proveniencia["texto_solicitacao_humor"] = str(emissao.get("fala") or "")
+            proveniencia["feedback_humor"] = {
+                "alvo_feedback": "humor", "tipo": "silencio", "direcao": "neutro",
+                "evidencia_literal": "silencio",
+            }
+        self._publicar_feedback_emocional(tipos[resultado], proveniencia)
+        if not callable(self._registrar_feedback_compartilhado):
+            return {"status": "indisponivel", "id_evento": id_entrega}
+        try:
+            registro = self._registrar_feedback_compartilhado(
+                tipo=tipos[resultado], aceito=esperado,
+                resultado=str(dados.get("texto_feedback") or resultado),
+                origem="presenca", alvo=str(evento.get("alvo") or ""),
+                id_evento=id_entrega, proveniencia=proveniencia,
+            )
+        except Exception as erro:
+            self._log(f"⚠️ [APRENDIZADO:PRESENÇA] porta falhou: {type(erro).__name__}")
+            return {"status": "falha", "id_evento": id_entrega, "erro": type(erro).__name__}
+        if not isinstance(registro, Mapping) or not str(registro.get("chave") or "").strip():
+            return {"status": "sem_persistencia", "id_evento": id_entrega}
+        return {"status": "registrado", "id_evento": id_entrega, "chave": str(registro["chave"])}
+
     def registrar_feedback(self, tipo: Any, aceito: Any = None, **dados: Any) -> dict[str, Any]:
         _, porteiro, coordenador, rede = self._exigir_conexao()
         resultado = str(dados.get("resultado") or "").strip().casefold()
@@ -182,7 +319,11 @@ class PonteIniciativaAplicacaoRuntime:
                         f"{type(erro).__name__}"
                     )
             self._salvar_memoria()
-        return {"intervalo": perfil_intervalo, "contexto": perfil_contextual}
+        resultado_compartilhado = self._encaminhar_feedback_compartilhado(resultado, aceito, dados)
+        return {
+            "intervalo": perfil_intervalo, "contexto": perfil_contextual,
+            "aprendizado_compartilhado": resultado_compartilhado,
+        }
 
     def preparar_sugestoes_jogo(self) -> None:
         motor, _, _, _ = self._exigir_conexao()

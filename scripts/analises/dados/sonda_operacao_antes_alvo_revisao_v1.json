@@ -1,0 +1,22 @@
+{
+  "versao": 1,
+  "contrato": "Presença de operação central mencionada sobre regra, inclusive pergunta/citação/hipótese. Não verifica ato, adoção, execução ou vigência. Escopo permite contexto dentro da oração central, mas exige complemento e preservação da moldura relevante. Revisão local antes de coleta, não independente.",
+  "casos": {
+    "O01": {"presenca": "sem_operacao", "escopo": "", "trecho_minimo": "", "referente_id": "nenhum"},
+    "O02": {"presenca": "operacao_mencionada", "escopo": "Cancele a regra da oficina.", "trecho_minimo": "Cancele a regra da oficina", "referente_id": "r47"},
+    "O03": {"presenca": "operacao_mencionada", "escopo": "Quero saber se a regra do cofre foi retirada", "trecho_minimo": "a regra do cofre foi retirada", "referente_id": "r08"},
+    "O04": {"presenca": "operacao_mencionada", "escopo": "Pode retirar a regra do cofre?", "trecho_minimo": "Pode retirar a regra do cofre", "referente_id": "r08"},
+    "O05": {"presenca": "operacao_mencionada", "escopo": "A expressão 'retire a regra da oficina' é só um exemplo linguístico.", "trecho_minimo": "retire a regra da oficina", "referente_id": "r47"},
+    "O06": {"presenca": "operacao_mencionada", "escopo": "Se eu revogasse a regra da oficina, o que mudaria?", "trecho_minimo": "Se eu revogasse a regra da oficina", "referente_id": "r47"},
+    "O07": {"presenca": "operacao_mencionada", "escopo": "retire a regra do cofre.", "trecho_minimo": "retire a regra do cofre", "referente_id": "r08"},
+    "O08": {"presenca": "operacao_mencionada", "escopo": "retire a regra da oficina.", "trecho_minimo": "retire a regra da oficina", "referente_id": "r47"},
+    "O09": {"presenca": "sem_operacao", "escopo": "", "trecho_minimo": "", "referente_id": "nenhum"},
+    "O10": {"presenca": "sem_operacao", "escopo": "", "trecho_minimo": "", "referente_id": "nenhum"},
+    "O11": {"presenca": "operacao_mencionada", "escopo": "Troque a regra do museu por um critério novo.", "trecho_minimo": "Troque a regra do museu por um critério novo", "referente_id": "r72"},
+    "O12": {"presenca": "operacao_mencionada", "escopo": "Continue aplicando a regra da biblioteca.", "trecho_minimo": "Continue aplicando a regra da biblioteca", "referente_id": "r36"},
+    "O13": {"presenca": "operacao_mencionada", "escopo": "Entre a regra do museu e a regra da biblioteca, uma não vale mais. Não sei qual.", "trecho_minimo": "uma não vale mais", "referente_id": "indeterminado"},
+    "O14": {"presenca": "sem_operacao", "escopo": "", "trecho_minimo": "", "referente_id": "nenhum"},
+    "O15": {"presenca": "operacao_mencionada", "escopo": "agora volte a usar essa regra.", "trecho_minimo": "volte a usar essa regra", "referente_id": "r54"},
+    "O16": {"presenca": "operacao_mencionada", "escopo": "Uma dessas regras foi revogada, mas não sei qual delas.", "trecho_minimo": "Uma dessas regras foi revogada", "referente_id": "indeterminado"}
+  }
+}

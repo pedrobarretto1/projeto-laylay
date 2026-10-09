@@ -20,6 +20,7 @@ from mente_laylay.cognicao.gramatica_operacional import (
 from mente_laylay.arquivos.nome_natural import (
     aspas_globalmente_coerentes,
     marcador_negacao_em_filename_literal,
+    mapear_pares_aspas_globais,
 )
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
@@ -1265,11 +1266,20 @@ def _separar_primeira_fronteira_forte(
     *,
     normalizar_texto: Callable[[str], str] | None,
 ):
+    pares_aspas = mapear_pares_aspas_globais(bloco) or {}
     for m in re.finditer(
-        r"(?P<sep>[,;.!])\s*(?P<conj>(?:mas|e|entao)\s+)?",
+        r"(?P<sep>[,;!]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
         bloco,
         flags=re.IGNORECASE,
     ):
+        if any(inicio < m.start() < fim for inicio, fim in pares_aspas.items()):
+            continue
+        fim_sep = m.end("sep")
+        # Um ponto colado ao próximo caractere pertence ao átomo lexical
+        # (extensão, URL, número ou caminho). Não cria outro ato por causa
+        # de uma interrogação distante. Reticências são uma única fronteira.
+        if m.group("sep") == "." and fim_sep < len(bloco) and not bloco[fim_sep].isspace():
+            continue
         direita = _limpar_ato_semantico(bloco[m.end():])
         if not direita:
             continue

@@ -29,6 +29,7 @@ from mente_laylay.cognicao.reacao_social_curta import (
 )
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 from mente_laylay.personalidade.contingencia_natural import fala_falha_geracao
+from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
 from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
@@ -274,6 +275,7 @@ _CONSELHO_PRESCRITIVO = re.compile(
 # se perdeu. Os demais itens são observações de estilo: não justificam apagar uma
 # fala válida da LLM nem substituí-la por uma mensagem sobre o próprio sistema.
 _PROBLEMAS_BLOQUEANTES = frozenset({
+    "ataque_pessoal",
     "relato_explicito_abriu_pergunta",
     "fala_vazia",
     "resposta_incompleta",
@@ -473,6 +475,8 @@ def avaliar_qualidade_comunicacao(
     if not resposta:
         problemas.append("fala_vazia")
     else:
+        if contem_ataque_pessoal(resposta):
+            problemas.append("ataque_pessoal")
         if (
             _AUTOPERCEPCAO_EMOCIONAL.search(resposta)
             and not (

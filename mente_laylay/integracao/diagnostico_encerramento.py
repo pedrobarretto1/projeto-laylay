@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import threading
 import time
-from typing import Any, TextIO
+from typing import Any
 
 # P0_DIAGNOSTICO_ENCERRAMENTO_V1_20260815
 NOME_LOG_ENCERRAMENTO = "diagnostico_encerramento.log"
@@ -64,7 +64,9 @@ class SentinelaEncerramento:
     ) -> None:
         self.diretorio = Path(diretorio).expanduser().resolve()
         self.componente = str(componente or "laylay")[:64]
-        self._fault_file: TextIO | None = None
+        # Um fd não depende da destruição de um objeto TextIO. A captura fica
+        # disponível nos demais callbacks; o SO fecha o fd ao sair do processo.
+        self._fault_fd: int | None = None
         self._faulthandler_ativo = False
         self._atexit_registrado = False
         self.marcar("processo_observado", python=_versao_python())
@@ -84,37 +86,32 @@ class SentinelaEncerramento:
     def _habilitar_faulthandler(self) -> None:
         try:
             self.diretorio.mkdir(parents=True, exist_ok=True)
-            self._fault_file = open(
+            self._fault_fd = os.open(
                 self.diretorio / NOME_LOG_FALHAS_NATIVAS,
-                "a", encoding="utf-8", buffering=1,
+                os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0),
+                0o600,
             )
-            faulthandler.enable(file=self._fault_file, all_threads=True)
+            faulthandler.enable(file=self._fault_fd, all_threads=True)
             self._faulthandler_ativo = True
             self.marcar("faulthandler_ativo")
         except Exception as erro:
             self._faulthandler_ativo = False
             self.marcar("faulthandler_indisponivel", erro_tipo=type(erro).__name__)
             try:
-                if self._fault_file is not None:
-                    self._fault_file.close()
+                if self._fault_fd is not None:
+                    os.close(self._fault_fd)
             except Exception:
                 pass
-            self._fault_file = None
+            self._fault_fd = None
 
     def _ao_sair_normalmente(self) -> None:
         self.marcar("atexit_iniciado")
-        if self._faulthandler_ativo:
-            try:
-                faulthandler.disable()
-            except Exception:
-                pass
-            self._faulthandler_ativo = False
-        self.marcar("atexit_concluido")
+        # atexit usa ordem inversa. Esta marca conclui somente a sentinela;
+        # callbacks anteriores ainda podem falhar, portanto não desativar aqui.
+        self.marcar("atexit_concluido", alcance="callback_sentinela")
         try:
-            if self._fault_file is not None and not self._fault_file.closed:
-                self._fault_file.flush()
-                os.fsync(self._fault_file.fileno())
-                self._fault_file.close()
+            if self._fault_fd is not None:
+                os.fsync(self._fault_fd)
         except Exception:
             pass
 
@@ -132,10 +129,11 @@ class SentinelaEncerramento:
                 pass
             self._faulthandler_ativo = False
         try:
-            if self._fault_file is not None and not self._fault_file.closed:
-                self._fault_file.close()
+            if self._fault_fd is not None:
+                os.close(self._fault_fd)
         except Exception:
             pass
+        self._fault_fd = None
 
 
 def _versao_python() -> str:

@@ -10,6 +10,7 @@ from mente_laylay.autonomia.coordenador_intencao import (
 )
 from mente_laylay.integracao.contexto_execucao_ia import (
     DEPENDENCIAS_EXECUCAO_INTENCAO,
+    DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO,
     criar_contexto_intencao_runtime,
 )
 from mente_laylay.integracao.composicao_principal import RegistrosPrincipais
@@ -178,7 +179,7 @@ class ComposicaoCicloComandosRuntime:
             )
         self._visao_jogo_analise = registro_visao_analise
         permitidos = set(DEPENDENCIAS_EXECUCAO_INTENCAO).union(
-            DEPENDENCIAS_CICLO_COMANDOS
+            DEPENDENCIAS_CICLO_COMANDOS, DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO
         )
         self._servicos = {
             nome: servicos[nome]

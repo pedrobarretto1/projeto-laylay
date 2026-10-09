@@ -432,6 +432,7 @@ class MenteUnicaTests(unittest.TestCase):
         estado = estado_mental_inicial()
         preciso = ResultadoAcao(
             intent="IOT_CONTROL",
+            id_solicitacao="ligar-ventilador-confirmado",
             status="ligado",
             alvo="ventilador",
             params={"acao": "ligar", "alvo": "ventilador"},
@@ -450,7 +451,10 @@ class MenteUnicaTests(unittest.TestCase):
         )
         estado = registrar_resultado_execucao(
             estado,
-            {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "ventilador"}},
+            {
+                "intent": "IOT_CONTROL", "id_solicitacao": "ligar-ventilador-confirmado",
+                "params": {"acao": "ligar", "alvo": "ventilador"},
+            },
             "liga o ventilador",
             True,
             origem="roteador",
@@ -482,6 +486,7 @@ class MenteUnicaTests(unittest.TestCase):
         estado = estado_mental_inicial()
         falha = ResultadoAcao(
             intent="IOT_CONTROL",
+            id_solicitacao="ligar-ventilador-falhou",
             status="falha_validacao",
             alvo="ventilador",
             params={"acao": "ligar", "alvo": "ventilador"},
@@ -502,7 +507,10 @@ class MenteUnicaTests(unittest.TestCase):
         )
         estado = registrar_resultado_execucao(
             estado,
-            {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "ventilador"}},
+            {
+                "intent": "IOT_CONTROL", "id_solicitacao": "ligar-ventilador-falhou",
+                "params": {"acao": "ligar", "alvo": "ventilador"},
+            },
             "liga o ventilador",
             True,
             origem="roteador",

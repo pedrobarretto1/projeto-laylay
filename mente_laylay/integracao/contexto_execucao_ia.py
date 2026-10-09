@@ -181,6 +181,10 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
     "_avaliar_evento_emocional_operacional",
 )
 
+DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO = (
+    "_agrupar_resultados_operacionais", "_acumular_resultado_operacional",
+)
+
 
 class ContextoIntencaoRuntime:
     """Monta o contrato vivo entre o orquestrador e o roteador de intenção."""
@@ -218,7 +222,7 @@ class ContextoIntencaoRuntime:
         namespace = self.namespace_getter() or {}
         self._servicos_estaticos = {
             nome: namespace[nome]
-            for nome in DEPENDENCIAS_EXECUCAO_INTENCAO
+            for nome in (*DEPENDENCIAS_EXECUCAO_INTENCAO, *DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO)
             if nome not in self.dependencias_tardias and nome in namespace
         }
 
@@ -247,7 +251,7 @@ class ContextoIntencaoRuntime:
         self.validar_conexoes()
         contexto = {
             nome: servicos[nome]
-            for nome in DEPENDENCIAS_EXECUCAO_INTENCAO
+            for nome in (*DEPENDENCIAS_EXECUCAO_INTENCAO, *DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO)
             if nome in servicos
         }
         if self.iot is not None:

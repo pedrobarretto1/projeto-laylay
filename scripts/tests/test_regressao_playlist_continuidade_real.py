@@ -9,6 +9,7 @@ from mente_laylay.memoria_mental.contexto_compartilhado import estado_mental_ini
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
     EstadoCompartilhadoRuntime,
 )
+from mente_laylay.memoria_mental.resultado_acao import identificar_solicitacao_execucao
 
 
 class _OperacoesMusicaisVivas:
@@ -87,9 +88,10 @@ class _ComposicaoPlaylistReal:
 
     def executar_turno(self, comando: dict, texto: str) -> bool:
         """Reproduz executor detalhado seguido do registro externo do turno."""
-        executou = self._executar_executor(comando, texto)
+        pedido = identificar_solicitacao_execucao(comando)
+        executou = self._executar_executor(pedido, texto)
         self.contexto.registrar_resultado_execucao(
-            comando,
+            pedido,
             texto,
             executou,
             origem="prioritario_linguagem_natural:deterministico-explicito",

@@ -169,6 +169,19 @@ _REPETIR_ELIPTICA = re.compile(
     re.IGNORECASE,
 )
 
+# A operação é literalmente um toggle. A anotação final declara necessidade,
+# sem criar uma segunda ordem nem converter uma pergunta em autorização.
+_ALTERNAR_REPETICAO = re.compile(
+    r"^(?:por favor\s+)?(?:alterna|alterne)\s+(?:(?:a|o)\s+)?"
+    r"(?:repeticao|loop)"
+    r"(?:\s+(?:agora(?:,\s*e\s+urgente)?|por\s+seguranca|"
+    r"para\s+acessibilidade)|"
+    r"[.!]\s*e\s+opcional(?:,\s*mas\s+preciso\s+disso\s+agora|"
+    r"\s+(?:por\s+seguranca|para\s+acessibilidade))?)?"
+    r"[.!]*$",
+    re.IGNORECASE,
+)
+
 # REV3 — controle pronominal estreito.
 # A operação é dita na fala atual; apenas o referente fica pendente.
 _PRONOME_CONTROLE = r"(?:ela|ele|isso)"
@@ -414,6 +427,13 @@ def analisar_gramatica_musical(texto: str) -> AnaliseGramaticalMusical:
         )
 
     # 4) Formas explícitas.
+    if _ALTERNAR_REPETICAO.fullmatch(t):
+        return _resultado(
+            texto=t, classe="pedido_direto", operacao="alternar_repeticao",
+            evidencia_diretiva=True, dominio_explicito=True,
+            regra="alternar_repeticao_fullmatch",
+            motivo="controle de repetição com verbo diretivo e domínio explícito",
+        )
     if _PLAYLIST_PLAY.fullmatch(t):
         return _resultado(
             texto=t, classe="pedido_direto", operacao="tocar",

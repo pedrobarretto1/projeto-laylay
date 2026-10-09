@@ -1,0 +1,27 @@
+{
+  "versao": 1,
+  "natureza": "Revisão local antes da geração, não humana independente. Papel do foco e cobertura de pistas relacionais literais exteriores; cobertura lexical não prova suporte semântico, causalidade da explicação, seleção principal, autorização ou efeito. Cada alternativa de ancoras exige todos seus itens em spans individuais; não juntar pedaços para fabricar citacao.",
+  "pares_contextuais": ["Q01", "Q02", "Q03", "Q04", "Q05", "Q06", "Q09", "Q10"],
+  "casos": {
+    "Q01A": {"papel": "nome_designacao", "ancoras": [["tem o nome"]]},
+    "Q01B": {"papel": "operacao_mencionada", "ancoras": [["pedido de exemplo"]]},
+    "Q02A": {"papel": "nome_designacao", "ancoras": [["foi denominado"]]},
+    "Q02B": {"papel": "operacao_mencionada", "ancoras": [["uma instrução"]]},
+    "Q03A": {"papel": "nome_designacao", "ancoras": [["recebeu o nome"]]},
+    "Q03B": {"papel": "operacao_mencionada", "ancoras": [["pedido negativo"]]},
+    "Q04A": {"papel": "nome_designacao", "ancoras": [["recebeu o nome"]]},
+    "Q04B": {"papel": "operacao_mencionada", "ancoras": [["discutindo a hipótese"]]},
+    "Q05A": {"papel": "nome_designacao", "ancoras": [["denominada"]]},
+    "Q05B": {"papel": "operacao_mencionada", "ancoras": [["ordem de exemplo"], ["a instrutora citou"]]},
+    "Q06A": {"papel": "nome_designacao", "ancoras": [["arquivo chamado"], ["chamado"]]},
+    "Q06B": {"papel": "operacao_mencionada", "ancoras": [["exemplo de solicitação"]]},
+    "Q07A": {"papel": "expressao_sem_operacao", "ancoras": [["descreve o estado"]]},
+    "Q07B": {"papel": "expressao_sem_operacao", "ancoras": [["descrição de estado"]]},
+    "Q08A": {"papel": "indeterminado", "ancoras": [["não consigo distinguir", "nome", "instrução"]]},
+    "Q08B": {"papel": "indeterminado", "ancoras": [["sem indicar", "identificador", "exemplo de ordem"]]},
+    "Q09A": {"papel": "nome_designacao", "ancoras": [["tem o nome"]]},
+    "Q09B": {"papel": "operacao_mencionada", "ancoras": [["exemplo com duas operações"]]},
+    "Q10A": {"papel": "nome_designacao", "ancoras": [["é o nome do perfil"]]},
+    "Q10B": {"papel": "operacao_mencionada", "ancoras": [["é uma instrução citada"]]}
+  }
+}

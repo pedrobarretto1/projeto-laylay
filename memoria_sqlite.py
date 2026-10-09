@@ -38,6 +38,8 @@ class MemoriaSQLite:
         try:
             cur = conn.cursor()
             cur.execute("PRAGMA journal_mode = WAL")
+            # Serializa migrações concorrentes antes de consultar as colunas.
+            cur.execute("BEGIN IMMEDIATE")
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS estado (
@@ -225,6 +227,7 @@ class MemoriaSQLite:
                 """
                 CREATE TABLE IF NOT EXISTS aprendizado_eventos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id_evento TEXT,
                     chave TEXT NOT NULL,
                     tipo TEXT NOT NULL DEFAULT 'padrao',
                     escopo TEXT NOT NULL DEFAULT 'geral',
@@ -237,6 +240,15 @@ class MemoriaSQLite:
                     criado_em TEXT NOT NULL
                 )
                 """
+            )
+            colunas_eventos = {
+                row[1] for row in cur.execute("PRAGMA table_info(aprendizado_eventos)").fetchall()
+            }
+            if "id_evento" not in colunas_eventos:
+                cur.execute("ALTER TABLE aprendizado_eventos ADD COLUMN id_evento TEXT")
+            cur.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_aprendizado_eventos_identidade "
+                "ON aprendizado_eventos(id_evento) WHERE id_evento IS NOT NULL"
             )
             cur.execute(
                 """
@@ -1136,10 +1148,12 @@ class MemoriaSQLite:
         evidencia: str = "",
         contexto: Dict[str, Any] | None = None,
         confirmado_usuario: bool = False,
+        id_evento: str = "",
     ) -> Optional[Dict[str, Any]]:
         """Registra evidência e atualiza uma hipótese sem aprender da própria IA."""
         chave = str(chave or "").strip()
         origem_norm = self._normalizar_texto(origem).replace(" ", "_")
+        identidade = str(id_evento or "").strip()
         if not chave or origem_norm in {"ia", "assistente", "resposta_ia", "fala_ia"}:
             return None
         try:
@@ -1153,17 +1167,35 @@ class MemoriaSQLite:
         try:
             cur = conn.cursor()
             cur.execute("BEGIN IMMEDIATE")
+            if identidade:
+                anterior = cur.execute(
+                    "SELECT chave, tipo, escopo, valor_json, sinal, origem, confirmado_usuario, contexto_json "
+                    "FROM aprendizado_eventos WHERE id_evento = ?",
+                    (identidade,),
+                ).fetchone()
+                if anterior is not None:
+                    esperado = (
+                        chave, str(tipo or "padrao"), str(escopo or "geral"), valor_json,
+                        sinal, origem_norm, 1 if confirmado_usuario else 0,
+                    )
+                    fonte_anterior = json.loads(anterior[7]).get("proveniencia")
+                    fonte_atual = dict(contexto or {}).get("proveniencia")
+                    mesma_fonte = json.dumps(fonte_anterior, sort_keys=True) == json.dumps(fonte_atual, sort_keys=True)
+                    if tuple(anterior[:7]) != esperado or not mesma_fonte:
+                        raise ValueError("identidade de evidência reutilizada com outro contrato")
+                    conn.commit()
+                    return self.obter_hipotese_aprendizado(chave, _conn=conn)
             cur.execute(
                 """
                 INSERT INTO aprendizado_eventos(
                     chave, tipo, escopo, valor_json, contexto_json, evidencia,
-                    sinal, origem, confirmado_usuario, criado_em
-                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    sinal, origem, confirmado_usuario, criado_em, id_evento
+                ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     chave, str(tipo or "padrao"), str(escopo or "geral"), valor_json,
                     contexto_json, str(evidencia or "")[:1000], sinal, origem_norm,
-                    1 if confirmado_usuario else 0, agora,
+                    1 if confirmado_usuario else 0, agora, identidade or None,
                 ),
             )
             row = cur.execute(
@@ -1273,7 +1305,7 @@ class MemoriaSQLite:
             rows = conn.execute(
                 """
                 SELECT chave, tipo, escopo, valor_json, contexto_json, evidencia,
-                       sinal, origem, confirmado_usuario, criado_em
+                       sinal, origem, confirmado_usuario, criado_em, id_evento
                 FROM aprendizado_eventos
                 WHERE chave = ? ORDER BY id DESC LIMIT ?
                 """,
@@ -1295,6 +1327,7 @@ class MemoriaSQLite:
                     "evidencia": row[5], "sinal": float(row[6] or 0.0),
                     "origem": row[7], "confirmado_usuario": bool(row[8]),
                     "criado_em": row[9],
+                    "id_evento": str(row[10] or ""),
                 })
             return eventos
         finally:

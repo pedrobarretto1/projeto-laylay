@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import re
+import hashlib
 import time
 import unicodedata
 from typing import Any, Callable, Mapping
+from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
 
 from mente_laylay.emocoes.contrato_causal import (
     evento_esta_ativo,
@@ -132,13 +134,48 @@ def construir_diagnostico_mente(
     quadro_emocional = dict(mental.get("eventos_emocionais_causais") or {})
     evento_emocional = dict(quadro_emocional.get("atual") or {})
     episodio_emocional = dict(conversa.get("episodio_emocional") or {})
+    evento_observado = evento_emocional
+    emocao_expressavel, nivel_expressavel = retrato_emocional_expressavel(conversa)
+    # O quadro contém a última proposta, que pode não ter vencido a prioridade.
+    # A causa da expressão pertence ao episódio selecionado pelo owner canônico.
+    fonte_causa = "ultimo_evento_observado"
+    if emocao_expressavel != "calma":
+        evento_emocional = episodio_emocional
+        fonte_causa = "episodio_expressavel"
     evento_vigente = evento_esta_ativo(evento_emocional)
+    expressao_permitida = evento_pode_alterar_estado(evento_emocional)
+    try:
+        intensidade = max(0, min(3, int(evento_emocional.get("intensidade") or 0)))
+    except (TypeError, ValueError, OverflowError):
+        intensidade = 0
+    if not evento_emocional:
+        supressao = "sem_evento_causal"
+    elif not evento_vigente:
+        supressao = "evento_fora_da_validade"
+    elif not expressao_permitida:
+        supressao = evento_emocional.get("motivo_expressao") or "expressao_nao_permitida"
+    elif emocao_expressavel == "calma":
+        supressao = "episodio_nao_expressavel"
+    else:
+        supressao = ""
     estado_emocional_causal = {
         "emocao": _codigo_seguro(conversa.get("current_emotion"), 20),
         "nivel": int(conversa.get("emotion_level") or 1),
+        "intensidade": intensidade,
+        "emocao_expressavel": emocao_expressavel,
+        "nivel_expressavel": nivel_expressavel,
         "humor_fundo": int(conversa.get("humor_level") or 0),
         "causa": _codigo_seguro(
             evento_emocional.get("motivo_expressao") or "sem_evento_causal", 48,
+        ),
+        "causa_ref": (
+            "causa:" + hashlib.sha256(str(evento_emocional["evidencia_ref"]).encode("utf-8")).hexdigest()[:16]
+            if evento_emocional.get("evidencia_ref") else ""
+        ),
+        "fonte_causa": fonte_causa,
+        "evento_observado_ref": (
+            "causa:" + hashlib.sha256(str(evento_observado["evidencia_ref"]).encode("utf-8")).hexdigest()[:16]
+            if evento_observado.get("evidencia_ref") else ""
         ),
         "origem": _codigo_seguro(evento_emocional.get("origem"), 40),
         "responsabilidade": _codigo_seguro(
@@ -146,10 +183,9 @@ def construir_diagnostico_mente(
         ),
         "confianca": float(evento_emocional.get("confianca") or 0.0),
         "validade": evento_vigente,
-        "expressao": evento_pode_alterar_estado(evento_emocional),
-        "supressao": _codigo_seguro(
-            evento_emocional.get("motivo_expressao") if not evento_vigente else "", 48,
-        ),
+        "expressao": expressao_permitida,
+        "supressao": _codigo_seguro(supressao, 48),
+        "decisao_expressao": "expressao_permitida" if emocao_expressavel != "calma" else "expressao_contida",
         "episodio_ativo": bool(episodio_emocional) and evento_esta_ativo(episodio_emocional),
         "transicao": dict(conversa.get("transicao_emocional") or {}),
         "decisao_comportamental": "execucao_pelo_contrato_operacional",
@@ -545,6 +581,9 @@ def construir_diagnostico_mente(
     contadores_presenca = dict(presenca_bruta.get("contadores") or {})
     ultima_presenca = dict(presenca_bruta.get("ultima_decisao") or {})
     configuracao_presenca = dict(presenca_bruta.get("configuracao") or {})
+    aprendizado_presenca = dict(
+        dict(presenca_bruta.get("ultima_emissao") or {}).get("aprendizado_compartilhado") or {}
+    )
     permissoes = {}
     for dominio, registro in permissoes_brutas.items():
         dominio_seguro = _codigo_seguro(dominio, 40)
@@ -616,6 +655,11 @@ def construir_diagnostico_mente(
             "bloqueadas_qualidade": int(contadores_presenca.get("bloqueadas_qualidade") or 0),
             "bloqueadas_variedade": int(contadores_presenca.get("bloqueadas_variedade") or 0),
             "feedbacks": int(contadores_presenca.get("feedbacks") or 0),
+            "feedbacks_compartilhados": int(contadores_presenca.get("feedbacks_compartilhados") or 0),
+            "aprendizado_compartilhado": {
+                "status": _codigo_seguro(aprendizado_presenca.get("status"), 32),
+                "id_evento": _identificador_tecnico_seguro(aprendizado_presenca.get("id_evento")),
+            } if aprendizado_presenca else {},
             "ultima": {
                 "status": _codigo_seguro(ultima_presenca.get("status"), 32),
                 "motivo": _codigo_seguro(ultima_presenca.get("motivo"), 64),

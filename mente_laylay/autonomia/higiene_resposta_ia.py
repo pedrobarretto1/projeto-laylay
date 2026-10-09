@@ -11,6 +11,8 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionais
 from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
+from mente_laylay.cognicao.contratos_turno import ExtracaoRespostaIA, SnapshotComandoIA
+from mente_laylay.autonomia.dispatcher_comandos_json import normalizar_candidato_json_para_intencao
 
 
 _PREFIXO_CAMPO_FALA = re.compile(
@@ -255,18 +257,68 @@ def _normalizar_comandos_efetivos(comandos: Any) -> List[Dict[str, Any]]:
     return efetivos
 
 
+@dataclass
+class RespostaDecodificadaIA:
+    fala: str
+    comandos: List[Dict[str, Any]]
+    extracao: ExtracaoRespostaIA
+
+    def como_legado(self) -> Tuple[str, List[Dict[str, Any]]]:
+        return self.fala, list(self.comandos)
+
+
 def limpar_resposta_da_ia(
     resposta_bruta: Any,
     limpar_texto_fala_cb: Optional[Callable[[str], str]] = None,
     fallback_fala: str = "Não consegui encaixar isso direito. Me fala de outro jeito?",
 ) -> Tuple[str, List[Dict[str, Any]]]:
-    """Separa fala e comandos, mesmo quando a saída da IA vem malformada."""
+    """Fachada compatível para a única decodificação de fala e comandos."""
+    return decodificar_resposta_da_ia(
+        resposta_bruta, limpar_texto_fala_cb, fallback_fala,
+    ).como_legado()
+
+
+def decodificar_resposta_da_ia(
+    resposta_bruta: Any,
+    limpar_texto_fala_cb: Optional[Callable[[str], str]] = None,
+    fallback_fala: str = "Não consegui encaixar isso direito. Me fala de outro jeito?",
+) -> RespostaDecodificadaIA:
+    """Separa fala/comandos e registra o caminho usado na mesma decodificação."""
+    def concluir(
+        fala: str, comandos: Any, metodo: str, *, campo_presente: bool = False,
+    ) -> RespostaDecodificadaIA:
+        efetivos = _normalizar_comandos_efetivos(comandos)
+        originais = None
+        normalizados = None
+        try:
+            originais = tuple(SnapshotComandoIA(item) for item in efetivos)
+        except (TypeError, ValueError, RecursionError):
+            # A lista legada conserva compatibilidade; evidência incompleta
+            # não fabrica uma árvore ou uma autoria a partir do que restou.
+            pass
+        if originais is not None:
+            visoes = []
+            for original in originais:
+                try:
+                    visao = normalizar_candidato_json_para_intencao(original.como_dict())
+                    visoes.append(SnapshotComandoIA(visao) if visao is not None else None)
+                except Exception:
+                    # Normalização incerta nunca modifica o candidato original.
+                    visoes.append(None)
+            normalizados = tuple(visoes)
+        extracao = ExtracaoRespostaIA(
+            resposta_bruta=resposta_bruta if isinstance(resposta_bruta, str) else None,
+            metodo=metodo, campo_comandos_presente=campo_presente,
+            quantidade_comandos=len(efetivos), comandos_originais=originais,
+            comandos_normalizados=normalizados,
+        )
+        return RespostaDecodificadaIA(
+            _normalizar_fala_cb(fala, limpar_texto_fala_cb, fallback_fala), efetivos, extracao,
+        )
+
     if isinstance(resposta_bruta, tuple) and len(resposta_bruta) == 2:
         fala, comandos = resposta_bruta
-        return (
-            _normalizar_fala_cb(str(fala or ""), limpar_texto_fala_cb, fallback_fala),
-            _normalizar_comandos_efetivos(comandos),
-        )
+        return concluir(str(fala or ""), comandos, "tupla_legada")
 
     original = str(resposta_bruta or "").strip()
     fala_final = ""
@@ -274,7 +326,9 @@ def limpar_resposta_da_ia(
 
     texto_pre = re.sub(r"^```(?:json)?\s*", "", original, flags=re.IGNORECASE)
     texto_pre = re.sub(r"\s*```$", "", texto_pre, flags=re.IGNORECASE).strip()
-    texto_pre = _normalizar_envelope_contrato_escapado(texto_pre)
+    texto_envelope = _normalizar_envelope_contrato_escapado(texto_pre)
+    envelope_textual = texto_envelope != texto_pre
+    texto_pre = texto_envelope
     json_invalido = False
 
     try:
@@ -284,13 +338,10 @@ def limpar_resposta_da_ia(
             comandos = dados.get("comandos", [])
             if isinstance(comandos, list):
                 comandos_finais = [c for c in comandos if isinstance(c, dict)]
-                return (
-                    _normalizar_fala_cb(
-                        fala_final,
-                        limpar_texto_fala_cb,
-                        fallback_fala,
-                    ),
-                    _normalizar_comandos_efetivos(comandos_finais),
+                return concluir(
+                    fala_final, comandos_finais,
+                    "json_envelope_textual" if envelope_textual else "json_objeto",
+                    campo_presente="comandos" in dados,
                 )
     except Exception:
         json_invalido = bool(
@@ -298,6 +349,8 @@ def limpar_resposta_da_ia(
             or re.search(r'(?i)(?:\[\s*)?["\']?(?:fala|tipo_interacao|leitura_turno|leitura_emocional|comandos|aprendizados?|humor)["\']?(?:\s*\])?\s*:', texto_pre)
         )
 
+    metodo_comandos = ""
+    campo_presente = False
     try:
         match_cmds = re.search(r'["\']?comandos["\']?\s*:\s*(\[.*?\])', texto_pre, re.IGNORECASE | re.DOTALL)
         if match_cmds:
@@ -308,6 +361,8 @@ def limpar_resposta_da_ia(
                 parsed = ast.literal_eval(cmd_txt)
             if isinstance(parsed, list):
                 comandos_finais = [c for c in parsed if isinstance(c, dict)]
+                metodo_comandos = "recuperacao_campo_comandos"
+                campo_presente = True
     except Exception:
         pass
 
@@ -365,6 +420,7 @@ def limpar_resposta_da_ia(
             elif acao_solta in {"open_app", "close_app"}:
                 comando["app"] = alvo_solto
             comandos_finais = [comando]
+            metodo_comandos = "recuperacao_padrao_textual"
             break
 
     if comandos_finais and not fala_final:
@@ -375,12 +431,12 @@ def limpar_resposta_da_ia(
     if not comandos_finais:
         if json_invalido and not fala_final:
             print("⚠️ [IA] JSON inválido bloqueado antes da fala.")
-            return _normalizar_fala_cb("", limpar_texto_fala_cb, fallback_fala), []
+            return concluir("", [], "json_invalido_bloqueado", campo_presente=campo_presente)
         if fala_final:
             if _tem_indicio_contrato_ia(original):
                 fala_final = _remover_loop_textual_malformado(fala_final)
                 print(f"🧹 [IA] Estrutura conversacional recuperada: {fala_final[:60]}...")
-            return _normalizar_fala_cb(fala_final, limpar_texto_fala_cb, fallback_fala), []
+            return concluir(fala_final, [], metodo_comandos or "recuperacao_fala", campo_presente=campo_presente)
         texto_fala_pura = _remover_blocos_json_estruturais(texto_pre)
         if not texto_fala_pura:
             texto_fala_pura = texto_pre
@@ -391,12 +447,9 @@ def limpar_resposta_da_ia(
         if _tem_indicio_contrato_ia(original):
             texto_fala_pura = _remover_loop_textual_malformado(texto_fala_pura)
             print(f"🧹 [IA] Estrutura conversacional recuperada: {texto_fala_pura[:60]}...")
-        return _normalizar_fala_cb(texto_fala_pura, limpar_texto_fala_cb, fallback_fala), []
+        return concluir(texto_fala_pura, [], metodo_comandos or "texto_livre", campo_presente=campo_presente)
 
-    return (
-        _normalizar_fala_cb(fala_final, limpar_texto_fala_cb, fallback_fala),
-        _normalizar_comandos_efetivos(comandos_finais),
-    )
+    return concluir(fala_final, comandos_finais, metodo_comandos, campo_presente=campo_presente)
 
 def _saida_ia_parece_malformada(texto: str) -> bool:
     s = str(texto or "").strip()

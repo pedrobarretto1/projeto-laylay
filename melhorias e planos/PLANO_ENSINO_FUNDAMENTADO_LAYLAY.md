@@ -3706,6 +3706,2479 @@ Próximo contrato a investigar: provar ato e alvo separadamente, confrontando
 também os serviços canônicos já disponíveis, em vez de supor que mais campos
 numa única chamada resolveram a interpretação. Vigência continua fora da LLM.
 
+### P01: aferição de cada fronteira e contraste do alvo explícito (29/09)
+
+Base atual verificada: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, main,
+worktree inicialmente limpa. Os trabalhos anteriores já estão no novo
+commit; não transportar o HEAD antigo como trava ou baseline de código.
+Hashes do produtor v2 continuam iguais aos da primeira coleta. Nenhum
+commit criado ou mudança externa revertida nesta etapa.
+
+Entregue `scripts/analises/sonda_relacoes_dimensoes_v1.py` com revisão local
+separada de cada campo no painel v2 congelado. A revisão por campo foi
+escrita antes das novas chamadas, mas sobre casos já conhecidos: é diagnóstico,
+não holdout. Possui alternativas explícitas para relato/outro em conversa
+irrelevante; não foi ajustada após geração. Hash:
+`0e3ae60225c1f0fcf3616e1667a806aeddbeacab8e4c98f1bfe013c52d9e54bc`.
+Os campos descrevem posição relativa à mudança de regra, incluindo operação
+apenas mencionada em pergunta/hipótese/citação. Não certificam a relação.
+
+Resultados Qwen real, `qwen3:4b-instruct`, temperatura zero, 14 falas em
+12 casos conhecidos; ordem dos braços alternada:
+
+| Fronteira | Conjunta (1 chamada/fala) | Separada (3 chamadas/fala) |
+| --- | --- | --- |
+| Ato alinhado | 7/14 | 7/14 |
+| Alvo alinhado | 11/14 | 2/14 |
+| Operação alinhada | 8/14 | 9/14 |
+| Todos os campos corretos no caso | 3/12 | 1/12 |
+| Relações finais corretas no caso | 9/12 | 4/12 |
+
+Primeira coleta deste diagnóstico:
+`resultados_testes/sonda_relacoes_dimensoes_v1_diagnostico.jsonl`.
+Exemplo de compensação: ato errado pode produzir `sem_alteracao` correto.
+O teste canônico mantém relação final verde e exige campo errado vermelho.
+Logo, 9/12 relações não devem ser descritas como 9/12 interpretações completas.
+A conjunta variou de 8/12 da coleta anterior para 9/12 nesta repetição com
+script preservado. Não atribuir variação à mudança de código e não supor
+reprodutibilidade perfeita apenas por temperatura zero.
+
+Contraste adicional isolou só a exposição do alvo. Mesmos prompt, schema,
+modelo, fontes e ordem; um braço acrescenta `regra_comparada` com o mesmo
+objeto f0 já existente no histórico. Nenhum ID/revisão novo revela resposta.
+Resultado: **2/14 nos dois braços**. Saída exclusiva:
+`resultados_testes/sonda_relacoes_dimensoes_alvo_ab_diagnostico.jsonl`.
+Falsificada como explicação suficiente a falta de destaque da regra no JSON.
+Não demonstra incapacidade geral do Qwen: o formato de tarefa e a identidade
+contextual ainda precisam de um contrato melhor.
+
+Serviço existente efetivamente consumido: `classificar_modalidade_turno`,
+API pública real com opções padrão. Guardados modalidade, atos, natureza e
+veto; autoridade não é exportada para decisão da sonda. Na consulta direta,
+13/14 falas ficam como conversa; N02 é misto/conversa+pergunta, N08 conversa.
+N01 sem '?' fica conversa. O serviço não expõe identidade de regra comparável.
+Isso delimita sua cobertura nessa tarefa; não validar alvo por `conversa`.
+`leitura_semantica_turno` foi inventariado: normaliza propostas, não verifica
+semântica; não foi usado como oracle. Composição real do orquestrador injeta
+normalizador/detector e confirmação contextual, que esta API direta não
+reproduz. Portanto não declarar falha corrigida ou diagnosticada no loop real.
+
+Decisão: manter candidatos experimentais. Separar chamadas não melhorou
+o conjunto e destacar o alvo não resolveu vínculo. Próxima hipótese causal:
+explicitar identidade/âncoras da regra e vínculo da menção antes de classificar
+relação. Provar com inventário contextual e fonte observada, sem inferir que
+um nome mencionado autoriza alteração ou comprova vigência. Erros de ato e
+operação continuam medidos separadamente; não agrupá-los como a mesma root
+apenas por participarem da mesma frase.
+
+Validação: **520 testes didáticos aprovados**, dez novos; compilação e
+diff-check limpos. Os testes protegem isolamento das chamadas, cobertura,
+fonte do host, aferição por campo e ausência de escrita de vigência. Produção,
+sondas anteriores, painéis v1/v2, modelo e treino preservados. Novos arquivos:
+sonda diagnóstica, revisão por campo e testes; documentação atualizada.
+
+### P01: identidade nominal explícita antes do alvo semântico (29/09)
+
+Base preservada: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, main;
+worktree já continha os três documentos e os três arquivos do diagnóstico
+por campo. Nenhuma mudança anterior apagada ou commit criado nesta etapa.
+
+Inventário estudado: `contrato_inventario_contextual.py`, suas guardas e
+`referencias_linguagem.qualificador_referencia_nominal`. O qualificador é
+genérico, não carece de uma lista especial com `regra`. O resolver nominal
+existente deliberadamente deixa dois itens como `referentes_concorrentes`,
+mesmo em pedido explícito; isso não é bug a ser removido. Seu foco explícito
+exige uma declaração própria de assunto e não pode ser fabricado a partir
+de pedido/citação. Controle real mantém esse resultado e todas as guardas.
+
+Novo experimento `scripts/analises/sonda_alvo_inventariado_v1.py`:
+
+1. A fonte enumeradora do **painel offline**, não uma LLM/seletor de contexto,
+   fornece cadastro tipado, nomes literais, origem, escopo, captura e TTL.
+2. Host reusa a validação canônica do inventário completo e confere o mapa
+   de nomes. Nome duplicado, origem/escopo divergentes, cadastro parcial,
+   vencido ou âncoras sobrepostas bloqueiam. Não registra foco ou vigência.
+3. Host localiza todas as ocorrências dos nomes registrados, com offsets,
+   fonte/escopo, inclusive as negadas e citadas. A correspondência é literal;
+   não certifica a identidade semântica da expressão inteira, paráfrases,
+   qualificadores extras, pronomes ou alvo operacional. Fonte sem nome não
+   recebe identidade inventada. Todas as aprovações continuam falsas.
+4. Qwen propõe só `referente_id`, `nenhum` ou `indeterminado`, entre os mesmos
+   IDs permitidos nos dois braços. O host confere formato/ocorrência, não
+   aceita que um ID verdadeiro certifique papel na oração. Teste mantém
+   âncora válida para ID semântico errado, sem autorização ou autoaprovação.
+
+Contrato geral: identidade cadastrada → ocorrência literal → papel semântico
+proposto são fronteiras distintas. O mesmo mecanismo foi exercitado com
+sensores, sem parser privado de comandos de regra. A lista de nomes pertence
+à fonte do cadastro; não foi descoberta/confirmada automaticamente nesta
+etapa. Portanto não substituir a descoberta de identidades no runtime por
+esses dados fornecidos manualmente nem anunciar uma nova capacidade ativa.
+
+Painel novo de 12 falas, três cadastros com dois itens: infra, clima e estoque.
+Contém pedido educado, pergunta sem '?', citação sem adoção, operações sobre
+outro alvo, negação, manutenção, substituição, restauração, conversa
+irrelevante e ambiguidade. Revisão **local** escrita antes da primeira
+medição; não há validação humana independente. Hashes congelados:
+
+- Entradas: `352cf507f7e05d3e68405199d45291ef953cdc205de77bccbc2c92bb235c817b`.
+- Revisão: `152f875c39a77945ac97be0fa25babf530d917a22b327d3b1ac2fc51553ff181`.
+- Script medido: `ed66e60740ddf913876e69854b0e21078f33546b5e07a63076dfcdbf2b28d55b`.
+
+Contraste controlado: mesmo texto, inventário, nomes, prompt, schema, IDs
+permitidos e modelo; somente o braço ancorado acrescenta ocorrências
+calculadas pelo host. Ordem alternada. `qwen3:4b-instruct` local, temperatura
+zero, 24 chamadas; artefato exclusivo preservado:
+`resultados_testes/sonda_alvo_inventariado_v1_ab_primeira.jsonl`.
+
+| Fronteira de alvo mencionado | Cadastro | Cadastro + âncoras |
+| --- | --- | --- |
+| IDs/abstenções alinhados à revisão | 10/12 | 11/12 |
+| B08, duas regras e retirada sem identificação | escolheu estufa indevidamente | indeterminado |
+| B09, regra mencionada sem operação | escolheu loja indevidamente | mesmo erro |
+
+Este é ganho pontual em uma coleta, não superioridade demonstrada da rede,
+nem porcentagem comparável ao diagnóstico anterior: houve nova tarefa com
+IDs fornecidos e sem classificação de ato/operação/vigência. As nove falas
+com alvo definido alinharam nos dois braços; o erro restante demonstra que
+nome/ID ancorado não resolve a existência de operação. Nenhum prompt, caso
+ou gabarito foi ajustado depois do resultado. Candidato não promovido.
+
+Validação: **62 testes focados** (sonda e contratos reais do inventário/foco),
+**468 regressivos didáticos e de inventário** numa seleção com sobreposição;
+não somar as contagens nem tratá-las como a seleção anterior de 520.
+Compilação e diff-check limpos. Arquivos novos: sonda, painel, revisão e
+testes. Produção, resolver nominal, guardas de contexto, demais sondas e
+painéis, memória do usuário, treino e runtime preservados. Sem efeito externo.
+É prova de componentes reais e geração real do Qwen, não execução da Laylay.
+
+Próxima fronteira: presença e escopo da operação mencionada, mantendo ato e
+autoridade separados. Antes de qualquer integração, ampliar painel com nomes
+novos, ordens/IDs trocados e referências não literais; não compensar B09 com
+um filtro por palavras nem declarar vigência a partir da proposta do modelo.
+
+### P01: presença e escopo da operação antes do alvo — contraste negativo (29/09)
+
+Base: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, main. Preservados
+documentos, sondas, painéis e testes preexistentes na worktree. Investigação
+permanece P01; não há outro ID de problema para O01/B09 ou cada modalidade.
+
+Hipótese testada: o alvo errado em mera discussão poderia ser reduzido por
+uma etapa independente de presença/escopo antes da proposta de ID. Inventário
+de serviços: normalizador semântico canônico não é verificador de sentido;
+modalidade ampla não resolve a presença desta operação didática. Reusados
+cadastro, âncoras, baseline nominal e transporte existentes; `_ancorar_trecho`
+de `sonda_produtor_condicoes_v2` fornece o rastreio literal único, sem copiar
+um parser de condição para decidir operações. Nenhum serviço de produção
+substituído, antecedente fabricado ou catálogo ativo alterado.
+
+Entregue `scripts/analises/sonda_operacao_antes_alvo_v1.py`, painel/revisão e
+regressivos. Contrato experimental:
+
+- Host valida inventário antes de qualquer chamada. Fonte integral, IDs e
+  todas as âncoras permanecem disponíveis no braço estagiado.
+- Primeiro modelo propõe `operacao_mencionada`, `sem_operacao` ou
+  `indeterminado`, com trecho literal único somente na primeira alternativa.
+  Pergunta/citação/hipótese podem mencionar uma operação sem adotá-la.
+- Trecho inexistente, ambíguo ou formato inválido impede chamada dependente.
+  Uma abstenção proposta também evita chamar o seletor de ID, mas continua
+  sem verificação semântica: isso pode perder uma operação real mencionada.
+- Quando há trecho ancorado, segundo modelo recebe a fonte inteira e o
+  trecho com offsets; não removemos negação/histórico para facilitar o alvo.
+- Presence/escopo/alvo são aferidos separadamente depois das chamadas.
+  Alvo correto com presença ou escopo errado não produz interpretação verde.
+  Ausência de operação de regra não consome outro comando, como abrir a
+  calculadora, nem marca `tratado=True` no runtime.
+
+Novo painel de 16 falas: oficina/cofre, biblioteca/museu e horta/lago.
+Quatro sem operação de regra e doze que mencionam operação, inclusive duas
+sem identidade determinada. Inclui apagar uma explicação, não a regra,
+pedido educado, pergunta sem '?', negação de outra regra, manutenção,
+substituição, restauração, citação e hipótese. Revisão local escrita antes
+da coleta; não é revisão humana independente. Intervalos mínimo/máximo de
+escopo são expectativas locais explícitas, não um verificador universal de
+modalidade ou completude. Hashes congelados antes da medição:
+
+- Entradas: `ec02141a0e92a270df9b63a9fcdf11391faa7e4f217c1c572f3cb2a1854ff4dd`.
+- Revisão: `f4714d9cae8ddb0d78e54590874dab040fb4eb846e52abc7fe7c2abe80d88f82`.
+- Script da primeira coleta e replay: `d92598a8993e8dadb477c3161f441b38ccc1ab4aecedf754caf186366adae143`.
+- Baseline preservado: `ed66e60740ddf913876e69854b0e21078f33546b5e07a63076dfcdbf2b28d55b`.
+
+Qwen real local `qwen3:4b-instruct`, temperatura zero; braços alternados sem
+compartilhar respostas. Primeira coleta:
+`resultados_testes/sonda_operacao_antes_alvo_v1_ab_primeira.jsonl`.
+
+| Fronteira | Direto, com âncoras | Estagiado |
+| --- | --- | --- |
+| Alvo alinhado | 11/16 | 11/16 |
+| Presença alinhada | não propõe esse campo | 11/16 |
+| Escopo alinhado | não propõe esse campo | 10/16 |
+| Todas as fronteiras aferidas alinhadas | não aferível | 10/16 |
+
+Três ganhos em menção irrelevante (O01/O09/O14) foram compensados por três
+perdas (O05/O06/O16). O10, apagar texto explicativo, continua sendo tomado
+como operação sobre a regra; O13 continua sem abstenção correta de alvo.
+O04 acerta alvo, mas o trecho perde `Pode`, contrariando a revisão de escopo;
+teste mantém esse RED mesmo com resultado final correto. Os demais testes
+também expõem presença errada com alvo correto e escopo de outra regra.
+
+Replay diagnóstico dos 12 casos nominais conhecidos, sem ajustar dados:
+direto **10/12**, estagiado **9/12**. B09, mero assunto futuro, fica correto
+no candidato; B04/B08/B12 falham. Resolver o turno histórico isolado não
+prova o contrato generalizável. A coleta direta anterior tinha 11/12 e B08
+correto; nesta repetição B08 variou, sem mudança do baseline.
+Artefato: `resultados_testes/sonda_operacao_antes_alvo_v1_replay_nominal.jsonl`.
+
+Falsificação adicional após terminar as coletas: um modo diagnóstico foi
+acrescentado, sem editar o candidato nem o baseline. Repete só a primeira
+chamada nos mesmos 16 casos conhecidos: mesma instrução, schema, modelo e
+fonte integral; um braço não expõe cadastro/nomes/IDs. O host mantém a
+validação do inventário nos dois. Não é novo holdout nem mudança de produção.
+Script desse diagnóstico: `4aec0456adc9e8bf45d4a3d0600146bd5d14a5f278c86ad4a98a368bebc8aa04`.
+Artefato: `resultados_testes/sonda_operacao_antes_alvo_v1_presenca_ab_diagnostico.jsonl`.
+
+| Diagnóstico de entrada, sem ID final | Cadastro | Só a fonte |
+| --- | --- | --- |
+| Presença alinhada | 10/16 | 11/16 |
+| Escopo alinhado | 9/16 | 10/16 |
+
+O05/O06/O10/O13 continuam errados nos dois. Retirar cadastro ajuda O01/O16,
+mas prejudica manutenção O12. O01 variou na repetição com entrada preservada;
+temperatura zero não autoriza afirmar estabilidade perfeita. Não promover
+uma diferença de uma fala nessa coleta. Fonte completa já está presente e
+o erro de citação/hipótese ocorre na proposta de ausência, antes de copiar
+um trecho: não é causado pelo rastreador literal. Falsificadas como soluções
+suficientes tanto adicionar um gate simples quanto remover IDs do gate.
+
+Decisão: **candidato não promovido**. Próxima representação a estudar:
+proposição/evento mencionado → objeto da operação → moldura discursiva,
+sem reduzir falta de adoção ou de identificação à ausência do evento.
+É hipótese de arquitetura, não causa única provada de todos os históricos
+nem motivo para adicionar palavras-chave ou aumentar campos indiscriminadamente.
+Permissão, efeito e vigência continuam sob owners próprios e não são
+inferidos dessa representação. Antes de novo contraste, definir esse
+contrato e seus controles; não ajustar esta revisão aos erros do Qwen.
+
+Validação final: **492 regressivos relevantes verdes**, 24 novos nesta etapa;
+seleção inicial focada de 73 com sobreposição, não somar contagens.
+Compilação e diff-check limpos. Nenhum commit, treino, produção, memória
+durável, executor ou runtime da Laylay alterado/iniciado. Resultados provam
+contratos dos componentes e delimitam falhas reais de geração; não encerram
+a raiz semântica nem demonstram qualidade da fala final de ensino.
+
+### P01: proposição, objeto e molduras — contrato inerte e piloto (29/09)
+
+Base preservada: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch
+`main`, worktree com as sondas/relatórios anteriores. A investigação de código
+reutilizou fonte, ancoragem e aspas canônicas; não criou outro parser de
+comandos, registro de vigência ou inventário privado.
+
+Contrato implementado só em `scripts/analises/contrato_proposicoes_mencionadas.py`:
+
+- fontes tipadas completas, sem normalização ou truncamento;
+- proposições de ação/estado, cada uma com predicado/objeto literais e
+  polaridade/papel propostos, sem escolher uma identidade inventariada;
+- molduras propostas ligadas por IDs, mesma fonte, contenção e ausência de
+  ciclos; molduras coextensivas permitidas, não fundidas;
+- todos os pares de aspas canônicas, incluindo os aninhados, com parentesco;
+  região entre aspas também pode ser filename/título, não prova ordem citada;
+- trecho repetido sem âncora única recusado, não escolher primeira ocorrência;
+- nenhuma parte de um grafo inválido publicada como grafo completo;
+- semântica, cobertura, identidade, autoridade, vigência e produção sempre
+  falsas. Lista vazia/objeto desconhecido/moldura omitida não certificam ausência.
+
+Fontes: `FonteDidatica` já existente. Âncora: `_ancorar_trecho` da sonda
+canônica de condições. Aspas: `mapear_pares_aspas_globais`, sem importar
+extratores neurais ou achatar a árvore. Limites desse mapeador continuam
+explícitos; não ampliado neste candidato. Não converter `EventoCognitivo`
+perceptivo em proposição/permite-ação. Os owners operacionais continuam intactos.
+
+Testes: 43 de estrutura/inércia e 20 de entrada/aferição. Controles cobrem
+arquivo/IoT/música/regra, pergunta com hipótese, citação aninhada, objeto
+textual, alteração negada seguida de pedido independente, estado com objeto
+desconhecido, fonte extensa, ciclos, fonte/objeto errados, omissão de moldura
+e interpretação errada mas literalmente ancorada. Auditoria independente
+encontrou uma guarda de origem sem validação de tipo no protótipo; dois REDs
+reproduziram TypeError e o candidato mínimo adicionou a validação prévia.
+Isso não é uma correção de bug do runtime da Laylay.
+
+Também foi auditada a métrica histórica de escopo: O03 permite remover
+`Quero saber se`, O05 permite omitir aspas/envelope de exemplo; O04/O06
+exigem modalidade. Esses mínimos continuam válidos como seleção local de
+trecho, mas não demonstram preservação uniforme de moldura. Gabaritos,
+hashes e contagens anteriores não foram alterados para corrigir o placar.
+
+Piloto `sonda_proposicoes_mencionadas_v1.py`: oito falas novas em dois domínios
+(arquivo `croqui.md` e tomada da bancada), quatro contrastes por domínio:
+pedido, pedido citado como exemplo, hipótese perguntada e objeto diferente
+que menciona o recurso. A tarefa é a operação **principal** de mudança,
+não a cobertura de todas as proposições de uma conversa. Fonte integral e
+aspas sintáticas chegam ao Qwen; case ID, domínio e revisão não chegam.
+Transporte existente, `qwen3:4b-instruct`, temperatura 0, limite 700 tokens.
+Gabarito local antes da geração, sem revisão humana independente.
+
+Congelamento:
+
+- entrada: `fb77fbfe071de204a8ff72b7dfc769652309d1178ddc563197f10f528c7fa389`;
+- revisão: `7072700e9944467ec08f4ba2a261a6973e958b8243820cbeb6945b8773994d5b`;
+- contrato: `e286c3032fa7ee2c02f14112b353b949d167a96bec1699ee3958503dc01dfb99`;
+- sonda: `f62dce2dd36fbb15899a38d69d9c77a69f0bd4fb3aab391dce6e6821e9f067da`.
+
+Primeira coleta preservada em
+`resultados_testes/sonda_proposicoes_mencionadas_v1_primeira.jsonl`:
+
+| Fronteira | Alinhada à revisão local |
+| --- | --- |
+| Estrutura/âncora | 6/8 |
+| Uma operação do piloto | 5/8 |
+| Predicado | 5/8 |
+| Objeto literal completo | 3/8 |
+| Papel do objeto | 5/8 |
+| Polaridade | 0/8 |
+| Cadeia completa de molduras | 4/8 |
+| Todas as fronteiras | 0/8 |
+
+Interpretação conservadora, **candidato não promovido**:
+
+- F02/I02: primeira fronteira RED na cópia de aspas tipográficas como ASCII;
+  moldura/proposição deixam de ser citações literais. No bruto, o predicado
+  escolhido é `Usei`, não a operação interna. Não relaxar o rastreador.
+- F01/F03: objeto perde só o artigo. Divergência da superfície esperada,
+  não prova de entidade semanticamente errada. Não ajustar ouro após geração.
+- F04/I04: complementos textuais/automação preservados nessa coleta, mas
+  isso não confirma alvo de executor nem cooperação entre habilidades.
+- F03/I03: hipótese proposta sem `Se eu`; I03 também representa `mudaria`.
+  A tarefa restrita pede uma operação; isso não prova cobertura geral ruim.
+- Pedidos sem negação recebem `negativa`; hipóteses recebem `indeterminada`.
+  Hipótese de confusão entre negação gramatical, efeito da ação e certeza de
+  ocorrência. Ainda precisa de contraste controlado; não declarar root única.
+- F02/I02 admitem também um envelope de relato de uso metalinguístico,
+  não previsto nesta cadeia local. Uma moldura extra plausível divergiria
+  do ouro; não seria erro semântico automaticamente demonstrado.
+
+Não há baseline equivalente nesse piloto, portanto **nenhuma comparação de
+ganho**. A representação de múltiplas proposições e estados passou controles
+estruturais, mas não foi avaliada amplamente na extração real. Mudar somente
+a saída monolítica não foi solução suficiente aqui. Próxima fronteira:
+seleção da proposição literal antes da tipagem, sem recopiar o envelope do
+host. Depois, controlar negação gramatical separadamente de valor/certeza;
+preservar contexto externo, sem tratá-lo como autorização. Não repetir um
+gate que confunda citação/hipótese com ausência de operação.
+
+Validação: **555 regressivos relevantes verdes**, incluindo 63 novos nesta
+etapa (seleção focada com sobreposição, não somar). Compilação e diff-check
+limpos. Nenhum commit, produção, treino, memória durável, registro de vigência,
+executor ou runtime da Laylay alterado/iniciado. Contrato estrutural GREEN,
+extração sem promoção, nenhuma prova de ensino final/runtime encerrada.
+
+### P01: seleção literal por cópia versus ID — contraste isolado (29/09)
+
+Base mantida: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch
+`main`; sondas e alterações anteriores preservadas. A pesquisa de código
+localizou seletores condicionais/nominais já existentes, mas não um seletor
+público genérico de uma proposição. O candidato offline reusa
+`FonteDidatica`, a conferência pública de proposições com proposta vazia,
+a âncora literal existente e o mapeador canônico de aspas. Não adiciona parser
+privado nem altera modalidade operacional, resolver contextual ou runtime.
+
+Arquivos: `scripts/analises/sonda_selecao_literal_proposicao_v1.py`, seus
+dois JSONs em `scripts/analises/dados/` e
+`scripts/tests/test_sonda_selecao_literal_proposicao_v1.py`.
+O catálogo preserva fonte integral, todos os conteúdos citados e offsets de
+cada ocorrência; não filtra nomes nem verbos. Pares aninhados são preservados.
+ID materializa o trecho do host; cópia exige um candidato integral e único,
+usando a recuperação de caixa da âncora existente, não cópia byte a byte.
+Ocorrências repetidas são distinguíveis por ID/offset, mas ambíguas na cópia:
+testadas estruturalmente e excluídas deste A/B. Aspas incoerentes não viram
+ausência: a fonte integral permanece disponível e a incoerência é publicada.
+
+Contrato: trecho autêntico continua em `selecao_literal_revisao_pendente`.
+Abstenção não prova ausência de operação. Os seis campos de semântica,
+cobertura, referente, autorização, vigência e promoção ficam `False`.
+A seleção não é convertida automaticamente para interpretação tipada;
+perder offsets ao converter ID para texto reintroduziria ambiguidade de
+ocorrência. Auditoria reproduziu dois REDs: igualdade Python admitia offset
+`0.0`/`False` como `0`. Conferência de catálogo agora exige tipos JSON
+preservados, além da igualdade de conteúdo; GREEN após candidato mínimo.
+
+Painel novo de 12 fontes congelado antes da geração. Tarefa comum: selecionar
+o menor **candidato do host** contendo a operação principal mencionada, sem
+escolher arbitrariamente entre operações sem foco. Citação, hipótese e
+negação não apagam uma operação; nome/filename não a provam. Ambos recebem
+a mesma fonte e catálogo, sem ouro/ID do caso; diferem apenas no protocolo
+de saída. Ordem dos braços e apresentação dos candidatos contrabalançadas,
+seis casos em cada ordem. Qwen local `qwen3:4b-instruct`, temperatura zero,
+700 tokens; sem runtime da Laylay. Revisão local, não humana independente.
+
+Hashes SHA-256 congelados:
+
+- Fontes: `103214ecce3a59be0d2bf2a101f6121005651964b59eaae677f88d3836bb6799`.
+- Revisão: `fe7af8263c6ee65af81fe415ec34b2604ce9c20d9ab6a6696b6714a192f8acb0`.
+- Sonda: `2146d76e2afaa87e45c2abbccffbbbdc13a24d1219cafcdc48e04db79bb688ab`.
+
+Coleta exclusiva:
+`resultados_testes/sonda_selecao_literal_proposicao_v1_ab_primeira.jsonl`.
+
+| Fronteira local | Cópia | ID |
+| --- | --- | --- |
+| Saída válida no catálogo | 11/12 | 12/12 |
+| Seleção alinhada à revisão | 6/12 | 6/12 |
+
+**Empate, candidato não promovido.** ID melhora L01/L02 (operações citadas),
+mas regride L11 (hipótese sem aspas → abstenção) e L12 (nome `Leste` em vez
+do pedido negado). Ambos erram L04 (filename `apague isso.txt`), L05 (nome
+irrelevante mais operação externa), L06 (comparação sem foco) e L10 (expressão
+sem operação). Em L05, cópia propõe subtrecho literal fora do catálogo e é
+recusada; ID escolhe `arquivo disponível`. Não atribuir essa falha de cópia
+a reescrita de aspas. ID produz texto autêntico, não interpretação correta.
+
+Controle diagnóstico conhecido F02/I02: **2/2 válidos/alinhados nos dois
+braços**, preservado em
+`resultados_testes/sonda_selecao_literal_proposicao_v1_historico_diagnostico.jsonl`.
+A tarefa menor não pede objeto/polaridade/moldura; não altera ouro antigo,
+não corrige o pipeline completo e não conta como holdout ou ganho de ID.
+Teste de hipótese concorrente repara só aspas da antiga proposta F02 em
+memória: estrutura fica ancorada, mas o predicado `Usei` continua divergente.
+Logo, cópia não era explicação exclusiva da seleção histórica incorreta.
+
+Validação: **40 testes novos, 595 regressivos relevantes verdes** nesta
+seleção, com sobreposição; compilação/diff-check limpos. Produção, treino,
+persistência, composição, executor e runtime da Laylay não alterados/iniciados;
+nenhum commit. Ouro, hashes e contagens históricos preservados. Próxima
+fronteira: estudar papel do trecho na oração e vínculo predicado/objeto,
+distinguindo operação mencionada de nome/metalinguagem com componentes
+canônicos antes de propor outro candidato. Não aumentar treino/prompt nem
+adicionar gate por aspas. GREEN das guardas não encerra a raiz de P01.
+
+### P01: função contextual do foco — diagnóstico sem seleção final (29/09)
+
+Base mantida: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch
+`main`, worktree anterior preservada. Investigação com pesquisa de código
+em duas leituras paralelas, sem produção/modelo durante o inventário.
+
+Inventário e responsabilidades:
+
+- `nome_natural.mapear_pares_aspas_globais` e o catálogo literal existente
+  preservam fonte, árvore e ocorrência por ID/offset: reuso direto.
+- `normalizacao_linguagem.texto_e_metalinguistico` descreve a moldura inteira,
+  não autentica função de cada fragmento nem dá autorização.
+- `fundamentacao_factual._destaques_com_papel` já usa relação local para
+  distinguir referência de enunciado, mas é privado/voltado à saída, com
+  regex curta sem árvore aninhada. Não é parser genérico da entrada original.
+- `leitura_semantica_turno` descreve ação/alvo sem autorizar; normaliza/trunca
+  textos e não fornece spans certificados do foco. Não substitui o catálogo.
+- `modalidade_turno` permanece owner de autorização/veto. Nenhuma dessas
+  rotas foi alterada ou chamada como executor por esta sonda.
+
+Primeira distinção importante do A/B antigo: catálogo só oferece fonte
+inteira e conteúdos citados. A oração operacional externa de L05 não era
+candidato; cópia a identificou e o host a recusou corretamente. Esse RED
+não prova erro semântico. Preferência por “menor”/aspas e condicionamento do
+schema são hipóteses, não raiz universal demonstrada.
+
+Novo diagnóstico remove competição e “menor”: host fornece um foco autêntico
+e fonte integral; modelo propõe somente sua função contextual. Não há
+seleção da operação principal, resolução de objeto, polaridade, vigência,
+ausência geral de operação ou autorização. Rótulos locais:
+`nome_designacao`, `operacao_mencionada`, `expressao_sem_operacao`,
+`indeterminado`. Nome pode ter formato de ordem; hipótese, exemplo, citação
+e negação podem mencionar operação sem autorizá-la. Rótulo tipado continua
+proposto, com todos os seis campos BASE `False`, mesmo quando alinha ao ouro.
+
+Implementação isolada: `scripts/analises/sonda_papel_trecho_v1.py`, dois JSONs
+em `scripts/analises/dados/` e seu teste em `scripts/tests/`. Reusa preparação
+e conferência do seletor literal; não cria parser nem lista privada de verbos.
+Foco repetido/aninhado conserva ocorrência e árvore; entrada regenerada exige
+conteúdo/tipos íntegros; callback recebe cópia sem poder alterar o envelope
+guardado. Nenhum ouro, par ou ID de caso entra na chamada. Aspas incoerentes
+não inventam foco nem certificam ausência. A aferição confia no shape de
+métricas internas; resumo exige uma resposta por caso, IDs conhecidos únicos
+e cobertura completa, não é importador genérico de resultados externos.
+
+Painel: 16 fontes novas, seis pares nome/enunciado com conteúdo focal idêntico,
+mais estado e ambiguidade explícita. P01A originalmente falava em “etiqueta”,
+que também poderia conter instrução; auditoria mudou a fonte para designação
+explícita **antes** do congelamento/geração. Nenhuma mudança pós-resultados.
+É diagnóstico dirigido pelos REDs conhecidos, com revisão local, não humana
+independente nem holdout do pipeline. Pergunta/enum são fixos; não foi
+contrastada sensibilidade à sua ordem/apresentação.
+
+SHA-256 congelados antes da geração:
+
+- Fontes: `5a0c2f000024e2bfe92b4b4615379bef91ac8b9e8452d8fe2609c15d80febd48`.
+- Revisão: `0f5517506fa0aaa3143d96028973fe35c80e904a72b8fc3401206ebcf6d60cea`.
+- Sonda: `cfa1043d142a01dedaac2e1fb03f8c38e4bdc4686923b5bbdf94a91ae3146bf0`.
+
+Qwen local real `qwen3:4b-instruct`, temperatura zero, 700 tokens; fonte e
+saída completas em `resultados_testes/sonda_papel_trecho_v1_primeira.jsonl`.
+
+| Revisão local do papel | Alinhados / total |
+| --- | --- |
+| Nome/designação | 3/6 |
+| Operação mencionada | 5/6 |
+| Expressão sem operação | 2/2 |
+| Indeterminado | 0/2 |
+| Todos os casos | 10/16 |
+| Pares contextuais com ambos corretos | 2/6 |
+
+Shape válido **16/16**, sem promoção. P01A (chave chamada), P02A (arquivo
+chama-se) e P06A (peça chamada em citação aninhada) ainda recebem operação.
+P03B, enunciado de pedido negado, recebe expressão sem operação; isso não
+prova erro do normalizador de polaridade, que não foi medido. P08A vira nome
+e P08B expressão, apesar de ambas as fontes deixarem a função indeterminada.
+P04/P05 são os dois pares completos: há uso contextual correto em casos
+específicos, não incapacidade universal do modelo nem solução generalizada.
+
+Falsificações/limites: ausência de competição/reescrita e fonte integral
+autêntica não eliminam erros de papel; esses fatores não são explicação
+suficiente de todas as divergências. Não demonstra a causa interna exclusiva
+de cada erro histórico. Não comparar 10/16 com 6/12: tarefa menor, foco
+fornecido, métrica diferente. Essa sonda não resolve seleção externa de
+L05/L11 nem foco entre várias operações de L06. **Somente pedir enum não foi
+suficiente**, e rótulo intermediário não pode virar gate semântico automático.
+
+Validação: três REDs da aferição — duplicata inflava válidos, ID desconhecido
+lançava KeyError e cobertura faltante produzia placar parcial — reproduzidos
+antes da guarda; GREEN após candidato mínimo. **43 testes novos e 638
+regressivos relevantes verdes**; 83 focados com sobreposição, não somar.
+Compilação/diff-check limpos, painéis antigos e produção preservados.
+Nenhum treino, escrita de memória/vigência, integração, efeito externo,
+runtime da Laylay ou commit. Não anunciar ensino/rede corrigidos.
+
+Próximo contrato a estudar: proposta de vínculo contextual com evidência
+literal, distinguindo trecho focal da relação exterior que explica seu papel.
+Host verifica origem/ocorrência/contenção; proponente interpreta a relação;
+modalidade decide autorização; executor/receipt continuam fora. Evidência
+literal não certifica relação semântica e não deverá selecionar ação sozinha.
+Só depois medir se isso ajuda **a mesma tarefa final**, em contraste novo,
+preservando hipótese/negação/citação/ambiguidade e todo o contexto.
+
+### P01: seleção externa antes do papel — desenho congelado (30/09)
+
+Base de investigação: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`,
+branch `main`; mudanças paralelas de P16/runtime preservadas. Pesquisa e
+planejamento encerrados antes do protótipo. Escopo exclusivamente offline,
+sem editar as sondas congeladas, painel/revisão, produção ou treino.
+
+Contrato a medir: primeira proposta contém só `evidencias`; host confere
+origem, tipos, limites, ordem e disjunção do foco, sem propor papel. Somente
+seleção literal não vazia permite segunda consulta de papel. Lista vazia
+significa abstenção de seleção, não ausência nem papel `indeterminado`.
+Segunda entrada conserva fonte/foco e acrescenta seleção literal autenticada;
+verificador de papel não deve ser anunciado como dono dessas evidências.
+
+Reuso: fonte/foco/tokenização, projeção `id/texto`, transporte local e
+conferência de papel existentes. Não foi encontrada API neutra que aceite
+intervalos externos: a guarda antiga exige papel. Nova guarda experimental
+versionada, sem papel fictício e sem parser de linguagem, deve comprovar
+equivalência diferencial da fronteira literal com a anterior. Não refatorar
+o histórico para satisfazer este contrato novo.
+
+Comparação dirigida com os mesmos 20 casos já vistos, não holdout novo:
+controle acoplado contemporâneo contra seleção + papel condicionado. As 40
+primeiras chamadas têm fonte/foco/tokens idênticos e ordem 10 AB/10 BA;
+prompt/schema diferem por tarefa. Depois, até 20 chamadas de papel elegíveis.
+Registrar custo real e todos os casos; não afirmar orçamento igual ou efeito
+isolado do desacoplamento. Elegibilidade não consulta ouro/âncoras.
+
+Validação planejada: RED do avanço sem seleção, guardas neutras/diferenciais,
+transporte autêntico, contexto aninhado/repetido, recusa atômica, segunda
+entrada adulterada, seleção vazia/inválida/consulta com erro, segundo papel
+inválido e resumo completo recalculado. Métricas sobre todos os 20 mais
+elegíveis condicionais, pares completos sobre oito, apoio/papel locais e
+erros/custo por etapa. Literalidade e cobertura lexical nunca viram suporte
+semântico, autorização ou promoção. Registrar resultados após a geração.
+
+**Retomada e medição em 06/10/2026 — candidato não promovido.** HEAD/branch,
+três dependências, painel/revisão e dois artefatos históricos conferidos sem
+alteração. Worktree paralela mais ampla preservada. Instrumento novo:
+`scripts/analises/sonda_vinculo_duas_etapas_v1.py`, SHA-256
+`656c8d2174469a054d23c826a146085792471849f0e5213ada8eac5b230b68b0`.
+Coleta exclusiva `resultados_testes/sonda_vinculo_duas_etapas_v1_ab_replay.jsonl`,
+SHA-256 `5c188b8ec0c03847a1fa953d3d574ed5eb5536e085acd153c2ed1d779b91b240`:
+42 linhas (metadata, 40 primeiras consultas, resumo); nenhuma segunda consulta.
+Qwen local `qwen3:4b-instruct`, temperatura 0, até 700 tokens por consulta,
+digest `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`
+igual nas leituras inicial/final, sem prova de invariância contínua.
+
+| Medida sobre o painel inteiro | Acoplado contemporâneo | Duas etapas |
+| --- | --- | --- |
+| Casos e primeiras consultas | 20 | 20 |
+| Seleções literais não vazias válidas | 0/20 | 0/20 |
+| Listas vazias / propostas inválidas | 19 / 1 | 20 / 0 |
+| Papel bruto alinhado localmente | 15/20 | não emitido: zero elegíveis |
+| Pares com ambos os papéis brutos alinhados | 6/8 | não avaliados na segunda etapa |
+| Envelope de papel válido / alinhado após conferência | 19/20 / 14/20 | não consultado |
+| Cobertura de âncoras / papel e apoio locais alinhados | 0/20 / 0/20 | 0/20 / 0/20 |
+| Consultas totais / duração acumulada | 20 / 44,676 s | 20 / 36,022 s |
+
+O custo é soma das consultas, não latência do runtime ou orçamento igual
+quando houver elegíveis. Zero erros de consulta. Q09A do controle propôs
+`inicio=20, fim=20`: intervalo vazio e fora dos 15 tokens, rejeitado; papel nominal bruto correto
+continua contado separadamente. As 20 propostas do candidato já chegaram
+parseadas com lista vazia; a guarda não apagou intervalos. Isso é abstenção
+permitida, não erro de parsing nem prova de contexto ausente. O transporte
+reusado não fabrica `[]` em falhas; porém esta sonda preserva JSON parseado,
+não HTTP/conteúdo bruto/motivo de término, limitando a auditoria da geração.
+
+**Conclusão restrita:** separar a seleção do papel neste pacote não produziu
+evidência no replay. Qualidade condicional da segunda etapa **não estimável**
+(denominador de elegíveis zero), não acurácia zero nem fracasso demonstrado
+do raciocínio condicionado. O 15/20 do controle contemporâneo difere do 14/20
+da projeção histórica; não atribuir variação entre rodadas ao desacoplamento
+nem afirmar determinismo por temperatura 0. É comparação de pacote, não
+isolamento de prompt/schema; nenhum ganho semântico ou incapacidade geral
+do Qwen foi demonstrado.
+
+Validação do instrumento: **187 testes próprios**, **352 focados** incluindo
+guardas históricas e **947 regressivos relevantes** GREEN (sobrepostos).
+Além dos REDs anteriores do avanço/resumo, retomada reproduziu 19 REDs de
+duração ausente/inválida ou avanço com duração não finita. Guarda no registro
+de consulta exige número finito não negativo (sem bool); soma protegida
+recusa transbordamento. Controles de zero/fração permanecem GREEN.
+Compilação e `git diff --check` focados limpos. Essas provas são do instrumento,
+não do desempenho semântico nem da composição real da Laylay.
+
+Auditoria paralela somente leitura revalidou as entradas/flags/ordem e
+recalculou o resumo das 40 propostas: coincidência integral. Rótulos brutos
+divergentes no controle: Q01B, Q06A, Q06B, Q08A e Q08B; nenhum apagado.
+Hashes atuais e dois artefatos históricos conferem, sem nova inferência.
+
+**Próxima fronteira única:** contrastar o condicionamento da primeira geração
+pelo schema restritivo versus JSON genérico, mantendo prompt/fonte/foco/tokens,
+modelo e orçamento iguais; controle contemporâneo contrabalanceado, mesma
+guarda host e registro de conteúdo bruto/parseado/motivo de término. Não
+consultar ouro para entradas/elegibilidade, não forçar `minItems=1`, não
+reparar intervalos nem abolir abstenção. Se ambos permanecerem vazios, tarefa,
+apresentação e política de abstenção continuam confundidas; se surgirem
+intervalos, separar emissão, literalidade e cobertura antes de significado.
+Esse controle ainda **não foi implementado nem executado** nesta retomada.
+P01 segue aberta; nenhuma produção, treino, memória, execução, fala ou
+promoção neural alterada por este experimento. Nenhum commit.
+
+### P01: schema da seleção — controle isolado, 06/10/2026
+
+Desenho registrado antes da coleta. Mesma base `main/90a2fb8`, worktree
+paralela preservada. Reuso integral de prompt de seleção, projeção fonte/foco/
+tokens `id/texto`, painel/revisão de 20 casos e guarda literal de duas etapas.
+Fonte e tarefa não mudam; diferença única na requisição: `format` contém
+schema original ou a string `json`. Ambos conservam temperatura 0,
+`num_predict=700`, consulta independente e timeout 90 s; ordem 10 AB/10 BA.
+Não forçar lista não vazia, dar exemplos novos, reparar campos ou trocar ouro.
+Arquivo novo `scripts/analises/sonda_schema_selecao_v1.py`, teste correspondente;
+dependência de etapas travada por SHA-256, sem editar instrumentos anteriores.
+
+Captura nova preserva status/texto HTTP antes do parse, conteúdo exato recebido,
+envelope e finalização. Não promete bytes de transporte ou headers completos.
+JSON inválido/não finito não é normalizado nem substituído por lista vazia.
+Literalidade é medida separadamente da finalização: somente `done=true` e
+`done_reason=stop` contam como seleção concluída; `length` mantém a proposta
+observada, mas não certifica sua conclusão. Nenhuma segunda etapa ou ação.
+Resumo relê o HTTP, valida requisição/host e preserva todos os 20 casos.
+
+Hipóteses prévias: seleção válida só no JSON genérico sustenta influência do
+campo de formato nesta configuração, não causa interna exclusiva do decoder
+nem suporte semântico; emissão com intervalos inválidos separa produção de
+coordenadas e literalidade; vazios concluídos nos dois braços deixam tarefa,
+apresentação e política de abstenção abertas. Truncamento/erro impedem atribuir
+um vazio ou resultado incompleto à interpretação semântica. Não interpretar
+replay como holdout, nem treinar/liberar rede com esses resultados.
+
+Validação prévia: três REDs da captura antes do parse no protótipo;
+**44 testes novos, 396 focados** GREEN, sobrepostos com os históricos.
+Uma falha adicional era wiring da própria fixture CLI (callback substituído
+era chamado pela fixture com assinatura diferente), não falha do instrumento;
+fixture passou a invocar a referência original sem alterar asserções.
+Coleta planejada exclusiva `resultados_testes/sonda_schema_selecao_v1_ab_replay.jsonl`.
+Resultados serão registrados após a geração, sem ajuste retroativo.
+
+**Resultado coletado em 06/10 — não promovido.** Quarenta consultas reais
+independentes ao Qwen local, 20 por braço. Requisições conferidas par a par:
+somente `format` difere; ordem prevista 10 AB/10 BA, nenhum ouro enviado.
+Todas HTTP 200, modelo declarado `qwen3:4b-instruct`, `done=true` e motivo
+`stop`. Nos 40 conteúdos brutos há exatamente `{"evidencias": []}`: oito
+tokens gerados por consulta, 160 por braço, sem truncamento observado.
+
+| Medida | Schema restritivo | JSON genérico |
+| --- | --- | --- |
+| Casos / respostas JSON concluídas | 20 / 20 | 20 / 20 |
+| Listas vazias | 20/20 | 20/20 |
+| Emissões de intervalo / seleções literais válidas | 0/20 / 0/20 | 0/20 / 0/20 |
+| Cobertura local concluída | 0/20 | 0/20 |
+| Erros HTTP/parse / limite de tokens | 0 / 0 | 0 / 0 |
+| Duração acumulada das consultas | 23,627 s | 18,873 s |
+
+Resumo recalculado do HTTP/texto recebido coincide integralmente com o salvo;
+requisições autênticas, 42 linhas, flags inertes e três artefatos históricos
+reconferidos sem alteração. Não é auditoria humana independente. Digest
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`
+igual nas leituras extremas; isso não certifica invariância contínua.
+Script SHA-256 `7ffe58ee99016093081b359403f74bc33b3ac19a75bb97615059261a8575ae66`.
+Artefato `resultados_testes/sonda_schema_selecao_v1_ab_replay.jsonl`, SHA-256
+`a4fa8e2780d7af2c7f4fe2439bfce534cdbd2d604f9629479eccc77dc0a5aec6`.
+**991 regressivos relevantes GREEN**, incluindo 44 novos/396 focados
+sobrepostos; compilação e `git diff --check` focados limpos.
+
+**Falsificações restritas:** remover as restrições de propriedades do schema
+não basta para superar esse zero. Parse que apaga intervalos, corte de saída
+ou falha HTTP não explicam os vazios desta coleta; eles já estão no conteúdo
+recebido de respostas concluídas. Não prova que nenhum condicionamento de
+formato tenha influência: o braço genérico ainda usa modo JSON. Tampouco
+prova ausência de contexto, incapacidade do Qwen ou inutilidade de dois estágios.
+Não estimar papel condicionado quando nenhuma seleção foi produzida. A
+primeira fronteira RED observável continua na proposta do selecionador.
+
+**Próximo controle mínimo, antes de novos ajustes semânticos:** verificar a
+capacidade de emitir coordenadas numa extração literal explícita sem julgamento
+de papel. Usar fontes sintéticas separadas, tokenizador/foco/guarda atuais e
+um alvo textual solicitado na entrada, não índices/resposta pronta. Congelar
+positivos (alvo único externo antes/depois do foco e expressão de vários tokens)
+e negativos (ausente, apenas dentro do foco e ocorrência ambígua), com resultados
+canônicos calculados pelo host antes da consulta. Isso calibra a primitiva,
+não é novo gabarito semântico nem holdout de ensino. Não reutilizar pistas
+de resposta do painel de 20 como alvo solicitado. Se positivos funcionarem,
+falsifica incapacidade universal de emitir coordenadas e permite estudar a
+tarefa de seleção contextual; se falharem, examinar protocolo/apresentação/
+configuração sem culpar uma semântica que não foi exigida. Controle apenas
+planejado aqui, não executado. Sem novos exemplos de treino ou promoção.
+
+P01 permanece aberta. Nenhuma produção, fala, memória, executor, personalidade
+ou influência da rede alterada neste controle. Nenhum commit criado.
+
+### P01: extração literal explícita — calibração da primitiva, 06/10/2026
+
+Desenho registrado antes da geração: seis fontes sintéticas novas, separadas
+do painel semântico. Três positivos (antes, depois e vários tokens) e três
+negativos (ausente, somente no foco, duas ocorrências externas). Correspondência
+de grafia e espaços é literal, em limites de tokens; a unicidade é avaliada
+após excluir o foco. Alvo textual solicitado integra a tarefa legítima, mas
+índices/resposta esperada/tipo/ID de caso não chegam ao modelo. Não é aula,
+interpretação de papel, alvo operacional, treino ou promoção neural.
+
+Reuso de fonte/foco/aspas/tokenização/projeção/guarda e captura HTTP bruta.
+Novo oráculo host enumerador de intervalos literais, não parser de linguagem;
+confere disjunção pelo owner existente e aceita só uma ocorrência externa.
+Referências calculadas e confrontadas com o painel congelado antes de consultar.
+SHA-256 do painel `4265070356773ba82a093a211afbceb18d0181cc051a0d3acd526515973c3054`.
+Script/teste novos `sonda_extracao_literal_v1`; fonte em
+`scripts/analises/dados/sonda_extracao_literal_v1.json`. Dependência de captura
+travada por hash, guardas históricas preservadas, sem refatorar instrumentos.
+
+Doze consultas independentes, dois formatos e ordem 3 AB/3 BA; prompt/fonte/
+foco/tokens iguais entre braços, só `format` muda. Prompt é tarefa literal nova,
+logo placar não deve ser comparado como melhoria semântica sobre os 20 casos.
+Qwen local, temperatura 0, até 700 tokens, timeout 90 s. Positivos e negativos
+contados separados: lista vazia universal ganha zero nos três positivos,
+não uma taxa agregada artificialmente favorável. Finalização normal exigida
+para acerto concluído; metadados registram referências antes das consultas.
+
+Dois REDs da referência no protótipo reproduzidos antes da guarda de escopo/
+unicidade; **44 testes novos e 440 focados** GREEN, sobrepostos com históricos.
+Testes incluem limites, grafia/espaços, alvo parcialmente dentro de palavra,
+alvo dentro/fora do foco, aspas aninhadas, ambiguidade, HTTP/finalização/custo,
+resposta salva adulterada, preservação do arquivo e não vazamento de índices.
+Coleta exclusiva planejada `resultados_testes/sonda_extracao_literal_v1_calibracao.jsonl`.
+Se positivos funcionarem, falsifica incapacidade universal de emitir
+coordenadas; não prova seleção contextual. Se falharem, calibração continua
+RED e protocolo/apresentação/configuração permanecem hipóteses abertas,
+sem alegar incapacidade semântica. Resultados só serão anexados após geração.
+
+**Resultado auditado — 06/10, calibração ainda insuficiente.** Doze consultas
+HTTP200 ao Qwen local; todas JSON parseado, `done=true`, `done_reason=stop`.
+Artefato com 14 linhas e referências host anteriores à geração. Ordem
+3 AB/3 BA conferida; requisições diferem somente no formato, resumo recalculado
+do HTTP bruto coincide com o salvo. Sem consulta adicional na auditoria.
+Digest inicial/final igual ao das coletas anteriores, sem invariância contínua.
+
+| Fronteira estrutural | Schema restritivo | JSON genérico |
+| --- | --- | --- |
+| Positivos alinhados e concluídos | 1/3 | 1/3 |
+| Negativos alinhados e concluídos | 2/3 | 1/3 |
+| Intervalos literais materializados | 1/6 | 1/6 |
+| Erros HTTP/parse / truncamentos observados | 0 / 0 | 0 / 0 |
+| Duração acumulada de consultas | 8,823 s | 4,157 s |
+
+L01/L02, alvo único externo `lume` antes/depois, retornam listas vazias nos
+dois braços. L03, `bruma clara`, retorna exatamente `[0,2)` em ambos,
+materializado na fonte pelo owner existente. Isso falsifica incapacidade
+universal de produzir coordenadas e falha universal do materializador; não
+estabelece confiabilidade geral, preferência por vários tokens ou causa lexical:
+esses três positivos não isolam tamanho, grafia e posição entre si.
+
+Negativos: L04/ausente é vazio correto no schema e `{}` inválido no genérico;
+L06/duas ocorrências é vazio correto em ambos. L05/alvo somente dentro do foco
+gera `[9,13)` no schema e `[2,6)` no genérico, ambos fora dos cinco tokens
+da fonte. Rejeição preservada, sem reparar ou reinterpretar esses índices
+como caracteres. Não contar proposta sem envelope como abstenção correta.
+Não atribuir automaticamente o intervalo errado à confusão de unidades;
+isso é hipótese ainda não contrastada. Parser/HTTP/truncamento não explicam
+as falhas desta coleta, observadas no conteúdo bruto de respostas concluídas.
+
+**44 próprios, 440 focados e 1.035 regressivos relevantes GREEN**, sobrepostos.
+Esses testes validam o instrumento, não os resultados do modelo. SHA-256:
+script `2d7a8f1562967848a85e02b1afe21101c983b33ed4eee799ea7eb7fbf64e7d95`;
+artefato `resultados_testes/sonda_extracao_literal_v1_calibracao.jsonl`,
+`0745102a0353c5a24287366a3530d3d650cbe54ab9e8d7eab4d642a1320ddd91`.
+Painel/dependências e artefatos de schema/duas etapas permanecem intactos.
+
+**Próxima hipótese discriminável:** separar localização literal de emissão
+numérica no mesmo alvo explícito, comparando cópia literal versus coordenadas.
+Host continua dono de tokenização/ocorrência/offsets/disjunção; cópia só é
+aceita quando autentica uma ocorrência externa única, sem normalização ou
+reparo. Não usar o texto copiado como prova de papel ou ausência semântica.
+Congelar antes os mesmos alvos/negativos e medir braços contemporâneos com
+bruto, sem comparar diretamente a cópia semântica histórica de 29/09. Se
+cópia localizar positivos que índices não localizam, sustenta dificuldade
+na representação de saída nesta tarefa; se ambos falharem, não atribuir
+a culpa exclusivamente às coordenadas. É apenas plano: contraste não
+implementado/executado aqui, nenhuma migração para produção autorizada pelo
+placar. Não multiplicar treinos ou acrescentar exemplos para mascarar o RED.
+
+P01 permanece aberta. Nenhuma produção, personalidade, runtime, executor,
+fala, treino, memória ou influência da rede alterada nesta calibração;
+worktree paralela preservada e nenhum commit criado.
+
+### P01: cópia literal versus índices, schema nos dois braços — 06/10/2026
+
+Desenho congelado antes da geração, sem produção/treino. Reusa os seis casos
+da calibração literal e suas referências host; replay conhecido, não holdout.
+Schema fica nos dois braços conforme pedido de Pedro: vantagem histórica
+restrita aos negativos (2/3 vs 1/3), positivos empatados e custo maior;
+não comprova eficiência geral. Comparação contemporânea de representação,
+sem misturar novamente JSON genérico. Mesma entrada/opções/Qwen; controle
+índices mantém exatamente a requisição histórica restritiva. Cópia muda
+instruções indispensáveis da saída e o schema para strings; portanto não é
+troca de schema isolada. Ordem 3 AB/3 BA, HTTP bruto/finalização preservados.
+
+Host reusa o enumerador literal de calibração e a guarda de intervalos para
+materializar texto copiado: limites de tokens, grafia/espaços exatos, somente
+ocorrência externa única. Sem normalização de caixa, escolha do primeiro
+duplicado, conserto de índices ou aceite parcial. Ausência/ambiguidade de
+uma cópia emitida é rejeição, não abstenção válida. Lista vazia explícita
+continua permitida e não significa contexto ausente. Nenhum papel é inserido.
+
+Alvo textual já vem na tarefa e pode ser ecoado: positivos de cópia isolados
+não provam localização/raciocínio. Negativos ausente/foco/ambíguo e comparação
+do host são obrigatórios. Separar literalmente autenticado de alvo alinhado,
+e ambos da conclusão da geração. Se cópia superar índices, sustenta um
+resultado do pacote de representação nesta tarefa, não mecanismo interno
+único, ganho semântico ou liberação. Se positivos/negativos seguirem RED,
+não migrar por sensação de formato melhor.
+
+Instrumento novo `scripts/analises/sonda_copia_indices_literal_v1.py`, teste
+correspondente, dependência de calibração travada por hash. Dois REDs do
+protótipo (cópia ausente/ambígua virava vazio válido) reproduzidos antes do
+candidato mínimo; **45 novos, 485 focados** GREEN, sobrepostos com histórico.
+Coleta exclusiva planejada `resultados_testes/sonda_copia_indices_literal_v1_ab.jsonl`.
+Nenhum índice pronto ou ID/tipo/gabarito de caso chega ao modelo; referências
+calculadas antes das consultas e painel anterior intacto. Resultado será
+registrado depois da geração sem ajustes retroativos.
+
+**Resultado em 06/10 — contraste misto, nenhum braço promovido.** Doze
+consultas reais/independentes, HTTP200/JSON/término normal `stop` em todas;
+sem truncamento ou falha de transporte. Referências host anteriores à coleta,
+ordem 3 AB/BA, entrada/opções idênticas e resumo recalculado do bruto conferidos.
+
+| Fronteira estrutural | Índices com schema | Cópia com schema |
+| --- | --- | --- |
+| Positivos alinhados e concluídos | 1/3 | 2/3 |
+| Negativos alinhados e concluídos | 2/3 | 1/3 |
+| Literais materializados | 1/6 | 2/6 |
+| Duração acumulada | 11,514 s | 7,611 s |
+
+L01 vazio nos dois braços; L02 vazio nos índices e cópia `lume` autêntica;
+L03 `[0,2)`/`bruma clara` corretos em ambos. L04 vazio correto em ambos.
+L05/alvo apenas no foco: índices `[9,13)` fora dos cinco tokens, cópia `lume`
+sem ocorrência externa, ambos rejeitados. L06/ambíguo: índices abstêm corretamente,
+cópia `lume` rejeitada por duas ocorrências externas. Não apagar esses negativos
+para promover a cópia. O conteúdo errado já está no HTTP bruto; guarda não
+criou as propostas nem normalizou falta de ocorrência como abstenção.
+
+**Conclusão limitada:** existe ganho de recuperação literal em um positivo
+acompanhado de perda num negativo. Acertos completos totais empatam 3/6;
+nenhum vencedor geral e nenhuma taxa generalizável nesta amostra conhecida.
+L02 sugere sensibilidade ao pacote de representação, mas pode ser eco do alvo
+fornecido; não prova que o modelo localizou a ocorrência nem que coordenadas
+sejam a causa exclusiva de toda abstenção. L01 falha também na cópia, e L05/L06
+mostram perda de restrição de escopo/unicidade. Não confundir autenticação
+literal feita pelo host com compreensão/relevância/autoridade da proposta.
+O controle de índices repetiu os estados históricos, sem garantia de determinismo.
+
+**45 próprios, 485 focados e 1.080 regressivos relevantes GREEN**, sobrepostos;
+compilação e diff-check focados limpos. SHA-256 do script
+`fb9d6085e296e1d70c6f70ccf14c3ac97d3bb81616ec7f44b9eae6633897f2de`;
+artefato `resultados_testes/sonda_copia_indices_literal_v1_ab.jsonl` (14 linhas),
+SHA-256 `3e2eac546335f5332d2d59bd52bca0abd63c8c36653259a80da27a4229759f1a`.
+Digest inicial/final `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`
+igual, não invariância contínua. Painel/dependências/artefatos anteriores intactos.
+
+**Direção arquitetural, não patch aprovado pelo placar:** dado um alvo literal
+explícito, enumeração geométrica/offsets devem continuar no host; pedir à LLM
+que refaça essa decisão conhecida não acrescentou confiabilidade. A lacuna P01
+é escolher contexto relevante quando o alvo de apoio não vem pronto na entrada.
+Próxima prova útil deve remover essa possibilidade de eco: comparar índices
+com cópia de contexto no painel semântico congelado, fonte/foco completos,
+schema em ambos, sem informar âncoras/alvo de evidência. Reusar validação
+atômica de cópia externa e contar todo o denominador; cobertura lexical não
+é suporte. Não avançar para classificação de papel sem seleção válida e
+concluída, nem compensar rejeição pedindo ao modelo outra confirmação.
+Esse próximo experimento ainda não foi implementado/executado. Não aumentar
+treino ou integrar uma troca para cópia com base no empate estrutural.
+
+P01 permanece aberta; não houve produção, treino, memória, personalidade,
+executor, fala, runtime Laylay ou aumento de influência neural. Mesma base
+`main/90a2fb8`, worktree paralela preservada e nenhum commit.
+
+### P01: seleção de contexto sem alvo fornecido, cópia versus índices — 06/10/2026
+
+**Protocolo anterior à coleta.** Reusar os 20 casos, as referências lexicais
+e os oito pares congelados do painel contextual. Não fornecer alvo literal,
+âncoras, papel esperado ou ID do caso ao modelo. Fonte, foco, aspas, tokens
+ID/texto, opções e modelo são iguais nos braços; o controle de índices é a
+requisição histórica de seleção com schema restritivo. No braço de cópia,
+alterar somente instruções de representação e schema de evidências para
+strings literais. Portanto, contraste de pacotes de representação, não
+isolamento do efeito de schema. 40 chamadas independentes, ordem 10 AB/10 BA,
+temperatura zero, sem reconsulta ou segunda etapa de classificação de papel.
+
+Owner da autenticação/materialização continua no host: guarda externa neutra
+para índices e guarda existente de cópia exata, única, externa, ordenada e
+atômica. Cópia rejeitada não vira abstinência válida. Vazio continua revisão
+pendente, não ausência comprovada. Cobertura lexical é calculada após a
+resposta contra referência congelada, separada de seleção literal e de
+finalização HTTP/stop. Não verifica significado, referente, efeito ou vigência.
+
+Instrumentação: `scripts/analises/sonda_contexto_copia_indices_v1.py` e teste
+correspondente. Capturar resposta HTTP textual antes do parse, preservar
+requisição/entrada host, hashes, HEAD/branch/worktree e digest do Qwen.
+Replay autentica painel, gold e requisição e recalcula a partir do bruto;
+resumo exige todo o denominador. Arquivo de coleta exclusivo, sem sobrescrita.
+Nenhuma mudança em produção, treino, personalidade ou autoridade neural.
+
+Na primeira validação da instrumentação: 71 GREEN e um teste RED cuja
+expectativa era incorreta. Em Q10B, `o` tinha só uma ocorrência externa;
+a outra era interna ao foco e corretamente desconsiderada. Substituído por
+Q04B, onde há duas ocorrências externas de `a`, mantendo a exigência de
+rejeição atômica da ambiguidade. Não alterada a guarda para acomodar a fixture.
+
+Coleta ainda não realizada no checkpoint pré-consulta acima. Artefato previsto:
+`resultados_testes/sonda_contexto_copia_indices_v1_ab_replay.jsonl`.
+
+**Resultado posterior à coleta — primeira fronteira ainda RED.** 40 consultas
+reais ao `qwen3:4b-instruct` local: 20 índices vazios e 20 cópias recusadas,
+zero seleção externa válida/concluída em ambos, zero cobertura lexical
+autenticada e zero dos oito pares cobertos. Não vencedor de significado ou
+seleção. As 40 respostas foram HTTP200, JSON parseável e `done=True/stop`,
+sem erro de transporte ou truncamento; índices emitiram 160 tokens no total
+e cópia 454. Durações acumuladas 48,986 s e 52,082 s, não benchmark de latência
+ou eficiência geral. Digest igual nos extremos, não invariância contínua.
+
+Auditoria manual dos brutos: todas as 20 cópias contêm o texto do foco. Em
+14, a cópia ocorre literalmente na fonte, mas intersecta o foco; em seis,
+as aspas externas curvas foram trocadas por retas e a cópia nem ocorre
+exatamente na fonte (Q02A/B, Q04A, Q05A/B e Q06A). A guarda recusou sem
+normalizar aspas, recortar o foco ou converter rejeição em seleção vazia.
+Q01A devolve `“abra o baú”`, não `tem o nome`; Q04B devolve a frase inteira,
+incluindo contexto e foco. Onze strings recusadas contêm lexicalmente as
+âncoras esperadas. Esse diagnóstico do bruto não recebe crédito de cobertura
+autenticada: sugere problema de delimitação/contrato de seleção e não autoriza
+afirmar ausência geral de entendimento. Também não certifica papel ou suporte.
+
+Fronteira observada: requisição autêntica → HTTP/JSON/finalização GREEN →
+proposta de contexto externo RED, antes de materialização utilizável e antes
+de papel. Mudar índices para cópia não resolveu a tarefa sob este pacote;
+parsing, término por limite e perda da resposta no host foram falsificados
+como explicação desses 40 resultados. Não identificada uma causa interna
+única do modelo ou do prompt. Sem relaxar a proteção ou chamar segunda etapa
+para compensar o RED. Produção não foi corrigida nem investigada por este replay.
+
+Prova do instrumento: **72 próprios, 557 focados e 1.152 regressivos relevantes
+GREEN**, conjuntos sobrepostos. Uma fixture foi corrigida conforme checkpoint;
+nenhum patch em guarda compartilhada/produção. Replay recalculado dos brutos,
+42 linhas, 20 IDs em dois braços, ordem 10 AB/BA, referências pré-consulta,
+autenticidade das requisições e aferições conferidas. Baseline HEAD
+`90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree paralela preservada.
+SHA-256 do script
+`688390e78582949caeeff5fb2ba2c72b3735273c5afa391f311c1f3aec1afa9b`;
+do artefato
+`7ee84d1406ea1d24c3751f6df201bb1298c7b45ddec194cc2d09af03bc4c4bc0`.
+
+Próxima fronteira proposta, não implementada: tirar da LLM a geometria que o
+host já conhece. Enumerar por posição **todos** os trechos externos ao foco,
+sem selecionar/rankear por gold, apresentar fonte/foco e esses candidatos
+autênticos e pedir apenas IDs de apoio. Comparar com o controle congelado;
+host continua conferindo autenticidade, disjunção e ordem. Isso testa
+delimitação versus escolha, sem fornecer o trecho certo e sem trocar
+literalidade por prova semântica. Não avançar treino ou influência neural com
+este resultado; P01 continua aberta e nenhum candidato foi promovido.
+
+### P01: host delimita contexto externo, modelo propõe IDs — 06/10/2026
+
+**Protocolo congelado antes da coleta.** Mesmo painel de 20 casos, oito pares,
+referências e controle de índices históricos. Novo braço apresenta todos os
+blocos maximais de tokens externos ao foco, em ordem da fonte, como IDs/textos.
+Enumeração posicional, sem gold, classificação linguística ou ranking; tokens,
+fonte, aspas e foco permanecem iguais. Não remover foco de resposta inválida:
+os candidatos são gerados pelo host **antes** da consulta, não reparo posterior.
+
+Reuso do tokenizer/materializador e da guarda neutra existentes. Novo contrato
+de IDs exige inventário host autêntico, IDs existentes/tipados, ordem, unicidade,
+até dois itens e recusa atômica; não ordenar, deduplicar ou converter ID errado
+em vazio. O inventário é de trechos, não de referentes: não substituir nem
+publicar no `InventarioContextual` de identidades/vigência. Sem efeitos,
+classificação de papel, memória, treinamento ou produção alterada.
+
+40 consultas independentes ao Qwen local, 10 AB/10 BA, schemas em ambos,
+mesmas opções. Mudam inventário na entrada, instrução de representação e schema:
+é comparação de pacotes, não prova isolada da geometria. Captura textual HTTP
+bruta antes do parse e metadados/referências pré-consulta; replay integral.
+
+Controle sem LLM seleciona todos os candidatos e já obtém **20/20 literalidade
+e cobertura lexical** antes da coleta. Nesse painel há no máximo dois blocos:
+selecioná-los todos pode obter cobertura sem escolher o apoio relevante. Medir
+quantas propostas selecionam todos; nenhuma dessas métricas verifica significado.
+Um ganho estrutural contra índices não demonstrará seleção semântica superior.
+
+Instrumento: `scripts/analises/sonda_contextos_enumerados_v1.py`, teste
+correspondente; **60 próprios GREEN**. Artefato previsto, ainda não coletado
+neste checkpoint: `resultados_testes/sonda_contextos_enumerados_v1_ab_replay.jsonl`.
+Primeiro RED que motivou a hipótese permanece a coleta anterior (índices
+vazios/cópias sobre o foco), não falha inventada no teste do novo instrumento.
+
+**Resultado posterior à coleta — GREEN estrutural, não seleção semântica.**
+40 chamadas reais: controle de índices 20 vazios; IDs 20 seleções externas
+literais válidas/concluídas, 40 trechos materializados, cobertura lexical
+20/20 e oito pares cobertos. Os brutos do braço novo são, em todos os casos,
+`{"evidencias": ["e0", "e1"]}`: seleciona todos, tal como o controle sem LLM.
+O denominador não exclui abstenções/falhas. Não há superioridade demonstrada
+contra o baseline de contexto completo, nem evidência de escolha discriminativa.
+
+Todas as 40 respostas HTTP200/JSON/`done=True/stop`, sem erro/truncamento.
+Índices 160 tokens de saída, IDs 280; duração acumulada 48,127/53,211 s, não
+benchmark geral. Digest `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`
+igual nos extremos, não prova de invariância contínua. Replay verifica hash,
+requisições/host/inventário/gold, 42 linhas/40 consultas, ordem 10 AB/BA,
+resumo recalculado e cada trecho igual à fonte e disjunto do foco. O bruto
+histórico anterior também foi autenticado/recalculado, sem modificá-lo.
+
+**60 próprios, 617 focados, 1.212 regressivos relevantes GREEN**, conjuntos
+sobrepostos. Nenhuma alteração de produção ou das guardas históricas. Baseline
+HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree paralela
+preservada. SHA-256 do script
+`9e012ce7e08a176f63c6c87d754678de5bf22bd9a8bcd20c7b37b7b4b34e384f`;
+do artefato
+`506bcd57356b53ab5f54621f5f7d1d1471ffb631d7f27316debcb73c9cfd9905`.
+
+Conclusão causal limitada: o pacote de IDs sobre geometria autenticada produz
+seleção utilizável onde o controle livre não produz. Não prova que geometria
+seja a causa interna exclusiva, pois entrada/instrução/schema diferem. Mantém
+o owner correto: host conhece limites, modelo propõe uso. Falsifica incapacidade
+universal de emitir uma seleção aceita, não comprova interpretação de papel.
+P01 permanece aberta; inferência real no Ollama não é runtime da Laylay.
+
+Próxima decisão proposta, não executada: parar de avaliar escolha pelo mero
+20/20 lexical. Contexto externo completo fornecido pelo host é o baseline
+mais simples, sem seletor neural obrigatório. Comparar, no mesmo painel,
+classificação de papel com fonte/foco completos versus fonte/foco com esse
+contexto externo explícito, sem pedir outra seleção. Referências congeladas,
+pares contrastivos e casos indeterminados avaliam a conclusão, não o formato.
+Somente manter um seletor adicional se houver benefício próprio contra o
+baseline; para prová-lo depois será necessário painel discriminativo com
+distratores/ausência de apoio, congelado antes de consultar o modelo. Não
+forçar essa evidência no painel atual nem liberar rede por métricas estruturais.
+
+### P01: papel com fonte integral versus contexto externo explícito — 06/10/2026
+
+**Protocolo anterior à coleta.** Mesmo painel de 20 casos, referências locais
+e oito pares contrastivos congelados. Classificação independente, sem selecionar
+evidências ou carregar a proposta de uma chamada anterior. Controle usa a
+entrada canônica `papel.preparar_entrada`: fonte integral, foco e aspas. Não
+fornecer tokens em nenhum braço: nesta tarefa o modelo não calcula intervalos.
+No outro braço acrescentar somente `contextos_externos`, IDs/textos de todos
+os blocos externos autenticados pelo host, sem ranking/âncoras/gold.
+
+Prompt `papel.SISTEMA`, schema `papel.FORMATO`, modelo, opções e fonte/foco
+iguais; diferença **somente um campo da entrada**, sem instrução extra no
+sistema. 40 chamadas reais locais, 10 AB/10 BA, temperatura zero, limite
+700 tokens, sem reconsulta ou seletor neural. A classificação do papel é
+proposta, não apoio semântico, referente, autorização ou efeito.
+
+Reusar enumeração, tokenização/materialização, guarda de papel e captura HTTP
+existentes. Aferição confere fonte/foco/inventário/requisição, tipos/flags,
+HTTP bruto, shape e finalização; crédito de acerto exige envelope válido e
+término confirmado. Resumo exige todos os casos em ambos os braços, recalcula
+do bruto e conta ganhos/perdas pareados, oito pares completos, confusão e
+denominadores por papel. `indeterminado` só alinha onde a referência o exige.
+
+Não comparar números diretamente com calibração de seis casos ou painéis
+anteriores com tokens/saídas acopladas: as 40 chamadas contemporâneas são o
+contraste. Painel já reutilizado, não holdout novo nem prova de generalização.
+Fonte integral sem campo extra continua baseline mais simples; só acrescentar
+complexidade se aparecer benefício comprovável, sem promover resultados para
+treinamento ou runtime.
+
+Instrumento `scripts/analises/sonda_papel_contexto_explicito_v1.py` e teste
+correspondente: **74 próprios GREEN**. Nenhuma produção ou guarda histórica
+modificada; hipóteses motivadas por coleta real anterior, não RED artificial.
+Artefato previsto, não coletado neste checkpoint:
+`resultados_testes/sonda_papel_contexto_explicito_v1_ab_replay.jsonl`.
+
+**Auditoria concluída em 07/10 — empate, contexto explícito não promovido.**
+Coleta preservada com data de contexto 06/10 nos metadados, sem reescrever
+script/artefato após a virada do dia. As 40 classificações reais produziram
+HTTP200, JSON/envelope válido e `done=True/stop`; sem falha de transporte ou
+truncamento. Fonte integral **11/20** alinhados e **3/8** pares completos;
+contexto explícito **11/20** e **3/8**. Pares corretos Q04/Q09/Q10 nos dois.
+Comparação por ocorrência: um ganho, uma perda, dez acertos em ambos, oito
+erros em ambos. Todos os casos permanecem no denominador.
+
+| Papel esperado local | Total por braço | Fonte integral | Contexto explícito |
+| --- | ---: | ---: | ---: |
+| nome/designação | 8 | 4 | 5 |
+| operação mencionada | 8 | 5 | 4 |
+| expressão/estado sem operação | 2 | 2 | 2 |
+| indeterminado | 2 | 0 | 0 |
+
+Ganho Q03A: `O modo recebeu o nome “não suspenda a faixa”.` deixa de ser
+expressão sem operação e vira nome. Perda Q05B: o foco interno a uma citação
+com `como ordem de exemplo` deixa de ser operação mencionada e vira nome.
+Q01B/Q06B mudam para outro rótulo igualmente errado; não são ganhos.
+Q08A/B permanecem nome/expressão, respectivamente, apesar de a fonte declarar
+que não distingue nome de instrução. Não reinterpretar esses erros como
+abstenção nem revisar a referência depois de ver o resultado.
+
+Primeira fronteira RED observada agora: fonte/foco/contextos autênticos →
+transporte e shape GREEN → atribuição do papel contextual RED. Os rótulos
+errados já constam do conteúdo HTTP recebido, antes da guarda de papel.
+Falsificados parsing/rejeição posterior/truncamento como explicação dos
+erros desta coleta. A duplicação explícita do contexto não é suficiente para
+resolver o contrato semântico. Não demonstrada uma causa interna exclusiva
+de Qwen/prompt, nem um bug do runtime da Laylay.
+
+**74 próprios, 691 focados, 1.286 regressivos relevantes GREEN**, conjuntos
+sobrepostos. A primeira tentativa da regressão ampla não produziu resultado
+de pytest por interrupção na execução de processos; na retomada de 07/10,
+rerun confirmou 1.286 GREEN. Não contar a tentativa interrompida como GREEN
+ou RED do contrato. Replay integral recalculou resumo, aferições, confusão,
+gold/req/host/inventário, 42 linhas e ordem 10 AB/BA. Prompt/schema/opções
+iguais e única diferença de campo conferidos nos testes.
+
+Tokens de saída 228/224; duração acumulada 18,792/18,507 s. Não inferir
+eficiência geral de uma coleta. Digest igual nos extremos, não determinismo
+ou invariância contínua; não comparar 11/20 diretamente com resultados
+anteriores de tarefas/input diferentes. BASE continua integralmente falsa.
+HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch `main`, produção e
+worktree paralela preservadas, nenhum commit. SHA-256 do script
+`e702fcb8876f54c1354f8e8dcc0ce8305cf5ddc64a3bcbafce8170be85ee56fe`;
+do artefato
+`6f5329010a4815ee37a9d97227e5aa9cb981e742e8138b8ce4f8020cfdda425d`.
+
+Decisão: não acrescentar este campo em produção ou treinar com os rótulos
+gerados por ele. Fonte/foco integral permanece o controle simples. Próxima
+fronteira de estudo, não implementada: testar a interpretação do **predicado
+que enquadra o foco** e indeterminação, separada da aparência de ordem,
+negação e autorização. Casos Q02A/Q03B/Q05A/Q06A/Q08 mostram por que essa
+hipótese merece contraste; não provam que sejam uma única causa. Antes de
+alterar prompt de produção, comparar a mesma tarefa de papel com uma leitura
+contextual mais direta, sem exigir geometria/novas etapas e sem exemplos do
+painel ou gabarito no prompt. Preservar controles de nome versus menção,
+foco aninhado, operação fora do foco e referência explicitamente indeterminada.
+P01 aberta: literalidade resolveu-se nesta interface, semântica não.
+
+### P01: transferência da hierarquia sem ajuste do proponente (08/10)
+
+Protocolo pré-consulta: 16 casos novos escritos antes de consultar o modelo,
+quatro por classe, incluindo quatro pares nome/operação, aspas aninhadas,
+ressalva, texto repetido com ocorrências diferentes e ação fora do foco.
+São variações sintéticas das famílias conhecidas, não revisão independente
+nem prova de generalização aberta. Referências permanecem somente no host.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch `main`, worktree
+  paralela preservada. Script/painel juntos em
+  `scripts/analises/sonda_hierarquia_transferencia_v1.py`, SHA256
+  `3c4f4631ac6113a23a9749c9d65f163d260c2f6b909b8647a834ac82ba663636`.
+- Dependência hierarquia congelada em
+  `5a6612b1df26195f6a6d4a8f2040874789dcd5b24eda14023e4de46c2447adc9`;
+  reutiliza sua projeção, coleta e aferição. Nenhuma alteração de prompt,
+  exemplos, schema, parâmetros, identidade canônica, guardas ou pesos.
+- `base` versus `hierarquia`, duas repetições, ordem dos braços alternada
+  por caso, segunda passagem inversa: 64 consultas. Não uniformizar IDs.
+  Metadata registra fontes, referências, ordem, hashes, estado Git e digest
+  antes da coleta; arquivo exclusivo
+  `resultados_testes/sonda_hierarquia_transferencia_v1.jsonl`.
+- Critério descritivo pré-fixado: ganho de papel nas duas repetições sem
+  perdas pareadas de papel e sem queda do conjunto em cada repetição.
+  Se falhar, não tratar hierarquia como melhoria geral; conservar ganhos e
+  perdas por caso. Mesmo atendido, não autoriza produção. Conjunto continua
+  métrica lexical congelada, distinta de validade semântica independente.
+- Relatar instabilidade com requisição idêntica, vínculo literal separado
+  do papel, sobreposição/paráfrase e falsos indeterminados. Sem correção
+  automática de propostas, retentativa seletiva ou seleção do melhor resultado.
+- Escopo: uma sonda com painel, seus testes e documentação. Produção
+  inalterada; não é teste do runtime Laylay. Coleta pendente neste protocolo.
+
+### P01: hierarquia sintática e identidade de transporte (07/10)
+
+Protocolo pré-consulta. O diagnóstico de moldura mudou fonte, pontuação,
+profundidade, IDs e offsets juntos. Este fatorial mantém fontes/offsets e
+isola dois fatores de interface: explicitação do caminho de aspas até o foco
+e etiqueta de transporte `foco.id`. Reusa `preparar_entrada`, o catálogo e o
+mapeador canônico de aspas; não introduz parser de domínio ou leitura semântica.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`; worktree preservada.
+  Sonda `scripts/analises/sonda_hierarquia_identidade_v1.py`, SHA256
+  `5a6612b1df26195f6a6d4a8f2040874789dcd5b24eda14023e4de46c2447adc9`.
+  Proponente anterior continua congelado em
+  `45cdb3e8fe8802d65fed5c6d38b1e69608ca74eaf4930663643706d5dc326244`.
+- Dez casos conhecidos: E04A/E04B/U04/N03, E03A/E03B, U02/N06 e E05A/E05B.
+  Os últimos têm texto repetido em ocorrências diferentes; não podem ser
+  fundidos pela etiqueta de transporte. Nenhuma fonte é reescrita ou recortada.
+- Quatro braços: `base`, `id_uniforme`, `hierarquia`, `hierarquia_id_uniforme`.
+  No fator ID, somente `foco.id` enviado ao modelo passa a `c1`. IDs de regiões,
+  fonte, offsets e texto não mudam. Identidade canônica fica intacta no host;
+  nenhuma resposta operacional usa o rótulo de transporte. Em focos já c1,
+  esse fator produz requisições idênticas, úteis como controle de variação.
+- Hierarquia acrescenta `hierarquia_sintatica_do_foco`, com fonte_id,
+  regiões ancestrais externa→interna e cópia da ocorrência marcada.
+  Tudo deriva da árvore/offsets autenticados; não inclui pista, papel esperado,
+  justificativa ou interpretação da moldura. Fonte integral e metadados
+  originais continuam presentes. É redundância de apresentação, não nova prova.
+- A mesma projeção é aplicada às oito entradas de demonstração e à entrada
+  final. Respostas dos exemplos, prompt de sistema, schema, opções e modelo
+  permanecem idênticos. Aumentar saliência/texto/tokens é parte desse fator;
+  eventual ganho não isola estrutura de repetição ou comprimento do prompt.
+- Dez casos × quatro braços × duas repetições = 80 consultas. Braços rotacionam
+  por caso; segunda passagem inverte blocos e ordem. Não há balanceamento
+  perfeito por posição em dez casos, nem 80 fontes independentes. Metadata,
+  referências/ordem/hashes antes das consultas; sem retentativa ou ajuste.
+- O aferidor valida a requisição efetiva exata antes de delegar a saída bruta
+  ao aferidor anterior. A ponte transitória só adapta seu envelope de chamada;
+  texto proposto, host, offsets, flags e evidência HTTP não são reescritos.
+  Artefato conserva a requisição efetivamente enviada. Testar adulteração
+  antes dessa delegação para não mascarar divergência de protocolo.
+- Sinal pré-fixado para investigar a hierarquia: recuperar E04A/U04 nas duas
+  repetições, sem perder papéis dos controles antes corretos nem reduzir
+  conjunto local. Medir separadamente a mesma comparação com ID uniforme.
+  E03A permanece controle aberto, não exigir nem alegar sua correção por aspas.
+  Um efeito apenas do ID não conta como prova do benefício da hierarquia.
+- Saída exclusiva `resultados_testes/sonda_hierarquia_identidade_v1.jsonl`.
+  Somente sonda/testes/documentação; produção, guardas, exemplos e treino
+  inalterados. Coleta pendente neste registro; não há holdout novo ou promoção.
+
+#### Resultado auditado — hierarquia e identidade
+
+Coleta concluída: 80/80 HTTP 200, `done=True`, `done_reason=stop`, shape
+válido; 82 linhas incluindo metadata/resumo. Reaferição dos brutos reproduziu
+integralmente aferições e resumo, com requisições efetivas, fontes, ordem,
+ocorrências e flags conferidas. SHA256 do artefato
+`f30eece03a5110f81119f786b7d891fea9ecc03e37851519e0e46d77dc2b28b3`.
+Script/dependências/dados congelados preservados. Digest inicial/final do
+Qwen `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+
+Contagens por repetição, sempre sobre os mesmos dez casos conhecidos:
+
+| Braço | Papel 1 / 2 | Vínculo estrutural 1 / 2 | Pista 1 / 2 | Conjunto 1 / 2 |
+|---|---:|---:|---:|---:|
+| base | 7 / 7 | 7 / 7 | 5 / 5 | 4 / 4 |
+| id_uniforme | 7 / 7 | 6 / 7 | 5 / 5 | 4 / 4 |
+| hierarquia | 10 / 9 | 7 / 6 | 6 / 4 | 6 / 4 |
+| hierarquia_id_uniforme | 10 / 9 | 7 / 6 | 5 / 4 | 5 / 4 |
+
+O sinal pré-fixado para continuar investigando foi atendido nos dois
+contrastes: E04A/U04 recuperam papel nas duas repetições; nenhum papel de
+controle correto se perde; conjunto não diminui frente ao braço pareado.
+Isso não representa ganho repetido no conjunto: na segunda rodada ambos
+os braços com hierarquia empatam com a base em 4/10. Zero falsos indeterminados.
+
+- **Prova localizada:** E04A muda de operação para nome e U04 de expressão
+  para indeterminado, mesmo com fonte/offsets intactos. Uniformizar apenas
+  `foco.id` não recupera nenhum papel. Falsificada a explicação de que essa
+  troca isolada de ID bastaria, não toda influência possível de identificadores.
+- **Estabilidade ainda aberta:** E03A acerta nome somente na primeira
+  repetição com hierarquia; na segunda volta a expressão e propõe trecho
+  não literal. As requisições são idênticas entre repetições. Como seu foco
+  já é c1, os dois braços com hierarquia também têm requisições idênticas:
+  essa oscilação não é efeito causal do fator ID. Temperatura zero não
+  garantiu saída idêntica. Não há evidência para atribuir a oscilação a cache
+  ou a uma causa interna específica.
+- **Seleção não corrigida:** E04A passa a copiar o foco junto de `batizada`,
+  recusado por sobreposição; E04B faz isso nos quatro braços. U02 mantém
+  paráfrase/junção não contígua. Não recortar a proposta nem afrouxar a guarda
+  para aproveitar um papel correto. Em U04, hierarquia seleciona a pista
+  completa só na primeira rodada; nas demais seleciona um trecho literal
+  que omite `perdeu o contexto`. N06 seleciona `informa uma propriedade`,
+  literal e compatível, mas sem o marcador lexical congelado. Métrica de
+  pista não é veredito geral de falsidade semântica.
+- **Controles:** N03/E03B/E05A/E05B preservam papel e conjunto em todos os
+  braços/repetições. E05A/B continuam ocorrências distintas apesar do mesmo
+  texto. Requisições base são idênticas às da coleta contrastiva anterior;
+  seus predicados variam em E03B (duas rodadas) e U02 (primeira), sem mudança
+  nas métricas locais. Não interpretar reexecução como determinismo perfeito.
+- **Limite causal:** a intervenção inclui redundância, saliência e projeção
+  dos exemplos, além de estrutura. Tokens de entrada registrados: 2563–2629
+  na base e 3738–3865 com hierarquia. Não isola hierarquia de comprimento/
+  repetição, nem mede desempenho de latência. Dez casos selecionados não
+  são holdout novo, nem 80 observações independentes.
+
+Validação local: 18 testes novos passaram; regressão das sondas e contrato
+de proposições, **1.493 passed**, inclui esses 18 (não somar as contagens).
+Produção, composição de `laylay.py`, guardas, respostas dos exemplos, pesos,
+memória e permissões não foram alterados; nenhum commit criado.
+
+Próxima fronteira: preservar esta interface como candidata offline e avaliar
+estabilidade/generalização em fontes novas, congeladas antes das consultas.
+Separadamente, investigar seleção literal externa ao foco, reaproveitando
+os seletores existentes, sem usar rótulo correto como prova de evidência e
+sem alimentar respostas do painel ao proponente. E03A permanece RED de papel;
+sobreposição/paráfrase são REDs de seleção. P01 aberta, sem runtime real,
+treino, promoção operacional ou alegação de rede liberada.
+
+### P01: diagnóstico de moldura e foco (07/10)
+
+Protocolo pré-consulta: localizar por que o mesmo proponente com exemplos
+falha em E04A/U04/E03A, antes de qualquer candidato de produção. Fonte,
+offset e foco dos registros históricos são autênticos; a proposta bruta já
+contém o papel errado, antes da ancoragem. U04 conserva pista literal e erra
+papel, logo erro de cópia não explica sozinho essa interpretação.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`; worktree paralela
+  preservada. Sonda `scripts/analises/sonda_moldura_foco_v1.py`, SHA256
+  `29094aad4729847325fd85cc9db2c988b787ee8c14edc8a1e2fea8dd375fd0c4`.
+  Proponente anterior preservado em
+  `45cdb3e8fe8802d65fed5c6d38b1e69608ca74eaf4930663643706d5dc326244`,
+  com os mesmos oito exemplos, prompt, schema e opções. Reusar coleta,
+  aferição e guardas anteriores, sem duplicar parser ou corrigir propostas.
+- E04A/E04B/U04/N03: fonte original; citação plana mantendo frase introdutória;
+  somente conteúdo interno. A versão plana troca aspas externas por dois-pontos
+  para conservar uma apresentação legível: não isola exclusivamente um caractere
+  de aspas. A versão interna remove também a frase introdutória. São fontes
+  contrafactuais sintéticas, nunca reescrita automática em produção.
+- E03A: original; sem ressalva sobre forma de hipótese; ressalva anteposta.
+  A posição/capitalização varia no último braço, mas título e foco continuam
+  os mesmos. E03B controla a hipótese realmente apresentada como operação.
+  U02 controla classificação correta com paráfrase; N06 controla trecho literal
+  sem a pista lexical escolhida. Nenhum desses controles é corrigido pelo host.
+- 18 fontes variantes, duas repetições (36 chamadas), segunda em ordem inversa.
+  Fontes/focos derivados de casos conhecidos: não há holdout novo nem revisão
+  humana independente. IDs/variantes/referências ficam no host; os exemplos e
+  demais mensagens não mudam. Nos originais, a requisição é idêntica à histórica.
+- Conferir papel, vínculo, pista, conjunto e finalização por variante/repetição;
+  não somar como amostra independente. Uma melhora só na variante simplificada
+  não corrige o original nem autoriza descartar contexto. Observar se erro
+  persiste após remover cada moldura e se os controles positivos sobrevivem.
+  Isso discrimina hipóteses de sensibilidade contextual, não mecanismo interno.
+- Metadata com fontes/referências/ordem/hashes antes das chamadas; arquivo
+  exclusivo `resultados_testes/sonda_moldura_foco_v1.jsonl`. Falhas e truncamentos
+  permanecem nos resultados. Coleta pendente neste registro pré-consulta.
+
+#### Resultado auditado — moldura e foco
+
+36/36 consultas concluídas com HTTP200, JSON, shape válido, `done=true` e
+`done_reason=stop`. As 18 propostas completas se repetiram nas duas passagens.
+Artefato com 38 linhas: `resultados_testes/sonda_moldura_foco_v1.jsonl`, SHA256
+`e300f1c856dd928502704a700bc8aa41cbc8cb122ee05dc146ac5c6867d5f023`.
+Auditoria releu brutos, fontes pré-consulta, requisições, ordem e referências;
+recalculou aferições/resumo sem confiar em métricas salvas. As 16 requisições
+dos oito originais são idênticas às históricas correspondentes. Hashes de
+sonda/proponente/dados preservados. Digest Qwen inicial/final igual:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+
+O quadro resume papel alinhado à referência local nas duas repetições;
+não mede compreensão geral nem prova vínculo semântico.
+
+| Família | Original | Citação plana | Sem frase introdutória |
+| --- | --- | --- | --- |
+| E04A, nome aninhado | errado: operação | nome correto | nome correto |
+| U04, contexto indeterminado aninhado | errado: estado | indeterminado correto | indeterminado correto |
+| E04B, operação aninhada | correto | correto | correto |
+| N03, estado aninhado | correto | correto | correto |
+
+Em E03A (título com forma de hipótese), o original recebe estado; sem ressalva
+recebe nome corretamente; com ressalva anteposta recebe operação, ainda errado.
+Na última versão, o predicado proposto é “a exposição foi intitulada”, literal
+e cobrindo a pista nominal, mas o papel continua sendo operação. E03B, que
+realmente apresenta uma hipótese de operação, permaneceu correto.
+
+Cadeia causal e hipóteses discriminadas:
+
+1. **Host → foco correto, proposta → papel errado.** Os offsets das fontes
+   originais recortam exatamente a ocorrência pretendida (c2 em E04A/U04,
+   c1 em E03A); a proposta HTTP bruta já erra antes da ancoragem. Falsificada
+   a hipótese de o host ter enviado outro trecho ou de a guarda ter trocado
+   o papel. Isso não prova que o modelo usou o foco corretamente.
+2. **Falta de pista não explica todos os erros.** U04 seleciona a mesma pista
+   de contexto perdido nas três apresentações, mas só erra o papel na original.
+   E03A com ressalva anteposta seleciona a atribuição nominal e ainda erra.
+   Não resolver esses casos apenas melhorando recópia ou cobertura lexical.
+3. **Verbo introdutório isolado não basta.** A versão plana mantém “registra”
+   ou “diz” e corrige E04A/U04. Há sensibilidade à apresentação/estrutura do
+   foco, não prova de que aqueles verbos determinem o erro. A transformação
+   também altera pontuação, profundidade, IDs c2→c1 e offsets; não foi isolado
+   qual desses fatores produziu o ganho. N03/E04B originais corretos impedem
+   declarar incapacidade geral de ler citações aninhadas ou foco c2.
+4. **Posição final da ressalva não é explicação suficiente.** Antepor a ressalva
+   de E03A muda o rótulo errado, mas não recupera o nome. Retirá-la recupera.
+   Sustenta interferência do contexto sobre forma hipotética na atribuição de
+   função, sem identificar mecanismo interno ou provar que toda concessiva falha.
+5. **Seleção e papel seguem fronteiras distintas.** E04B acerta o papel mas
+   inclui foco no predicado nas três versões, recusadas pela guarda. U02 acerta
+   indeterminação e continua propondo paráfrase ausente da fonte. Logo,
+   aninhamento não é necessário para esses defeitos de seleção literal.
+
+Limites da aferição mantidos: E04A sem moldura escolhe “batizada”, literal e
+nominal, mas não cobre toda a pista congelada “a oficina batizada”; N06 conserva
+“informa uma propriedade” sem cobrir “A descrição visual”. Ambos permanecem
+fora do conjunto por cobertura local; não transformar isso em novo bug nem
+alterar referência após coleta. Nenhuma abstenção falsa foi produzida nos
+controles conclusivos; a amostra pequena não garante segurança futura.
+
+Decisão: não remover aspas, frases introdutórias ou ressalvas em produção.
+O resultado demonstra sensibilidade contextual nesta sonda; não encerra P01.
+Próximo candidato de interface a investigar: explicitar a hierarquia sintática
+fonte → citação externa → foco com trechos/offsets autenticados, conservando
+a fonte integral, sem acrescentar interpretação, pista manual ou autorização.
+Conferir primeiro os mecanismos já existentes de aspas/foco e fazer controles
+de representação/identidade para não atribuir ao aninhamento um efeito de ID.
+E03A deve continuar como controle aberto: hierarquia de aspas por si só não
+foi demonstrada como solução para a interferência da ressalva. Não alterar
+exemplos, prompt e guardas juntos nem repetir novas variações sem hipótese.
+
+Validação: 14 testes novos, 35 focados, 1.475 na regressão das sondas/contrato,
+sem somar contagens sobrepostas. Escopo desta investigação: uma sonda offline,
+seus testes e estes registros. Produção, dados/exemplos anteriores, materializador,
+treino e memória factual intactos; nenhum commit ou efeito externo na Laylay.
+
+### P01: ensino contrastivo com avaliação separada (07/10)
+
+Protocolo pré-consulta. Hipótese: exemplos de funções diferentes para a mesma
+forma superficial ajudam mais que repetir a prioridade da indeterminação.
+O experimento anterior mostrou que selecionar a pista correta não assegura
+papel correto; não declarou incapacidade do modelo ou causa interna única.
+Este contraste altera apenas as mensagens de demonstração, mantendo prompt
+de sistema, entrada final, schema, modelo, opções e materializador da base
+`predicado_host`. São exemplos no contexto, não treinamento dos pesos.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`; worktree paralela
+  preservada. Produção, guardas e sondas congeladas anteriores intocadas.
+- Dados `scripts/analises/dados/sonda_ensino_contrastivo_v1.json`, SHA256
+  `becead72f0fde7b20cc46e50741aeaa6b65c4da8c320b562e3db08e5670d01d5`:
+  oito demonstrações (duas por classe) e 24 avaliações novas (seis por classe).
+  As demonstrações reutilizam duas formas imperativas em nomes, operações e
+  indeterminação; incluem dois estados descritivos. Avaliação contém seis
+  pares nome/operação, seis estados e seis indeterminados, incluindo
+  nome versus estado, aspas aninhadas, duas ocorrências iguais e ação fora do
+  foco. Focos não se repetem entre demonstração/avaliação/painel anterior.
+- Dados e referências são elaborados pelo mesmo agente antes da coleta,
+  com estruturas relacionadas: avaliação separada não significa corpus
+  independente, amostra aleatória ou revisão humana. Não chamar de prova
+  geral de compreensão. Referências de avaliação e justificativas ficam
+  somente no host. Modelos recebem respostas apenas das oito demonstrações.
+- Sonda `scripts/analises/sonda_ensino_contrastivo_v1.py`, SHA256
+  `45cdb3e8fe8802d65fed5c6d38b1e69608ca74eaf4930663643706d5dc326244`;
+  dependência `sonda_predicado_host_v1.py` preservada em
+  `cabbfe97fa3c2f2e1711dda5cdce3f0c2343ba08475c953bde6e2f20257aa01c`.
+- 24 casos × dois braços × duas repetições = 96 chamadas independentes.
+  Primeira repetição alterna AB/BA; segunda inverte ordem dos casos e de
+  cada par. São 24 casos, não 96 observações independentes. Mesma requisição
+  repetida sem seed novo, sem retentativa, escolha da melhor saída ou mudança
+  após observar resultados. Temperatura zero não é prova de determinismo.
+- Critério descritivo pré-fixado para merecer nova investigação: em ambas
+  as repetições, candidato completo em 24/24, conjunto estritamente maior,
+  papel total não inferior, indeterminação estritamente melhor, nenhuma
+  classe conclusiva com menor contagem e nenhum aumento de falsos
+  indeterminados. Contar ganhos/perdas por ID e papéis iguais nas duas
+  repetições; igualdade não significa acerto. Não é teste de significância,
+  aprovação de produção ou compensação de um erro individual por outro acerto.
+- Conjunto exige papel local + vínculo literal + pista pré-fixada. Pista
+  é cobertura lexical, não relação semântica provada. Outra formulação correta
+  pode não cobrir a pista; não mudar referências após coleta. Truncamento,
+  JSON inválido e falha de transporte permanecem no denominador.
+- Saída exclusiva `resultados_testes/sonda_ensino_contrastivo_v1.jsonl`,
+  metadata/ordem/referências/hashes antes da primeira consulta, envelopes
+  brutos preservados, resumos recalculados deles. Nenhuma flag de semântica,
+  autoridade, vigência ou aprovação pode ser promovida.
+
+Instrumento: 20 testes locais passaram antes de acrescentar o controle de
+critério positivo versus perda de classe conclusiva. Coleta ainda não iniciada
+neste registro pré-consulta; executar somente após revalidar esse controle.
+
+#### Resultado auditado — ensino contrastivo
+
+Controle adicional validado antes da coleta: 21 testes novos; 136 testes
+focados passaram. Regressão posterior das sondas e contrato de proposições:
+1.461 testes passaram. Suítes se sobrepõem, não somar. Nenhum desses verdes
+transforma o rótulo do modelo em evidência semântica ou valida o runtime.
+
+96/96 consultas concluídas com HTTP200, JSON, shape válido, `done=true` e
+`done_reason=stop`. Artefato com 98 linhas (metadata + consultas + resumo):
+`resultados_testes/sonda_ensino_contrastivo_v1.jsonl`, SHA256
+`edc1651808f9a3a24e7868bdc0c7ec2a87f3efad305a1ef32640c1695504f6a2`.
+Auditoria releu cada envelope bruto, confirmou requisições, referências e
+ordem pré-consulta e recalculou as 96 aferições e o resumo. Hashes de script,
+dados e dependência preservados. Digest inicial/final do Qwen:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+
+| Medida | Base, repetição 1 | Exemplos, repetição 1 | Base, repetição 2 | Exemplos, repetição 2 |
+| --- | ---: | ---: | ---: | ---: |
+| Papel alinhado /24 | 12 | 21 | 12 | 21 |
+| Vínculo estrutural /24 | 16 | 20 | 16 | 21 |
+| Pista local /24 | 7 | 17 | 7 | 18 |
+| Conjunto /24 | 5 | 16 | 5 | 17 |
+| Nome /6 | 4 | 4 | 4 | 4 |
+| Operação mencionada /6 | 4 | 6 | 4 | 6 |
+| Expressão de estado /6 | 4 | 6 | 4 | 6 |
+| Indeterminado /6 | 0 | 5 | 0 | 5 |
+| Falso indeterminado /18 conclusivos | 0 | 0 | 0 | 0 |
+| Pares com ambos os papéis alinhados /6 | 2 | 4 | 2 | 4 |
+
+O critério pré-fixado foi atendido nas duas repetições. Isso justifica
+continuar investigando a abordagem de demonstrações, não liberá-la. O papel
+ganhou nos mesmos dez casos (E02B/U01/N02/U02/E05A/E06B/U03/U05/N06/U06),
+mas perdeu E04A nas duas repetições. A contagem nominal 4→4 esconde essa troca;
+não equivale à ausência de regressão individual. O conjunto ganhou 11 casos
+na primeira e 12 na segunda, sem perdas nessa métrica, mas tampouco anula a
+regressão de papel em E04A, cujo conjunto da base já estava inválido.
+
+Estabilidade observada: os 24 papéis se repetiram dentro de cada braço, tanto
+corretos quanto errados. Todas as propostas da base foram iguais; no candidato,
+U02 e U06 mudaram apenas o predicado. U02 continuou sem ancoragem; U06 passou
+de paráfrase recusada para trecho literal válido. Conjunto correto nas duas
+repetições: 5/24 base, 16/24 candidato. Duas execuções não provam estabilidade
+geral. Contexto do candidato acrescentou 1.818 tokens de prompt: 2.552–2.629
+contra 734–811; não houve benchmark isolado de latência.
+
+Pendências distintas dentro da P01, sem novos IDs de raiz:
+
+- **Papel contextual ainda errado:** E03A (título com forma de hipótese),
+  E04A (nome dentro de aspas aninhadas, regressão) e U04 (indeterminação
+  dentro de aspas aninhadas). Em U04 o candidato copia a pista correta de
+  contexto perdido e continua classificando como expressão de estado.
+  Portanto, falta de pista selecionada não explica esse erro.
+- **Seleção literal:** E04B acerta papel, mas inclui o foco no predicado;
+  U02 acerta indeterminação, mas substitui o começo da fonte por “não sabemos
+  se...”, inexistente nela. E03A propõe “tem forma de hipótese”, também
+  ausente; U06 falha por paráfrase só na primeira repetição. Materializador
+  recusa esses trechos sem reescrever nem preencher a fonte. A semelhança de
+  U02 com a demonstração D07 sugere transferência de formulação, mas não prova
+  mecanismo interno nem torna a citação inventada aceitável.
+- **Limite da métrica lexical, não bug automaticamente:** N06 seleciona
+  “informa uma propriedade”, literal e compatível com descrição, mas não
+  cobre a pista congelada “A descrição visual”. E06B seleciona “foi citado
+  pelo revisor”, literal, mas sem a pista “O pedido”; citação isolada não
+  decide o papel. Ambos ficam fora do conjunto por cobertura. Não atualizar
+  o gabarito pós-coleta, nem criar patch para forçar palavras da referência.
+
+Conclusão restrita: acrescentar estas oito demonstrações melhorou os resultados
+deste painel nas duas repetições, com ganho real sobre sua base contemporânea.
+Não compara percentuais com o painel anterior de 32 casos; não isola conteúdo
+contrastivo de tamanho/ordem do contexto; não prova aprendizagem durável.
+
+Próxima fronteira: estudar a atribuição de função ao foco em molduras aninhadas
+e concessivas, preservando os ganhos de indeterminação. E04A serve de regressão
+obrigatória; U04 separa falha semântica de falha de seleção. Conservar também
+o contrato de literalidade em U02/E04B, sem corrigir resposta por gabarito.
+Antes de novos ajustes, distinguir erro de papel, trecho inválido e mera
+ausência da pista local. P01 segue aberta; nenhum treino, integração runtime,
+memória factual, autorização ou commit realizado.
+
+### P01: unidade externa e prioridade da indeterminação (07/10)
+
+Protocolo congelado antes da coleta. Duas hipóteses de interface, sem atribuir
+causa interna à rede: (A) chamar a unidade de `predicado` contribui para copiar
+orações incluindo o foco; (B) explicitar a decisão de indeterminação antes
+dos rótulos conclusivos ajuda quando a fonte mantém funções alternativas.
+O diagnóstico anterior mostrou 15 seleções incluindo foco/outra ocorrência,
+além de U02 com pista de incerteza copiada e papel errado. Uma causa única
+para geometria e abstenção ainda não foi demonstrada.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch `main`; worktree
+  paralela preservada. Sonda `scripts/analises/sonda_unidade_abstencao_v1.py`,
+  SHA256 `31e3696dfc86eaf5e141eb720c926794a99b9f8000da32b6883b111e8683ced2`.
+  Dependência `sonda_predicado_host_v1.py` congelada em
+  `cabbfe97fa3c2f2e1711dda5cdce3f0c2343ba08475c953bde6e2f20257aa01c`.
+- Fatorial 2×2: `predicado`, `trecho_externo`, `predicado_abstencao`,
+  `trecho_externo_abstencao`. Primeiro fator troca apenas nome do campo e
+  suas menções no prompt; preserva ordem/propriedades/required do schema.
+  Segundo fator acrescenta instrução inicial de verificar se a fonte decide
+  uma função ou mantém alternativas sem decisão. Não inclui frases de teste,
+  referências locais ou novos exemplos no prompt.
+- Mesmo materializador real da sonda anterior. Adaptador traduz apenas nome
+  de campo após validar shape completo; valores não são reescritos, cortados
+  ou preenchidos. Texto e ocorrência do host permanecem canônicos. Papel
+  proposto não é corrigido por pista lexical, gabarito ou regra de abstenção.
+- 32 casos conhecidos, referências e pistas anteriores intactas. Fonte,
+  foco, aspas, modelo e opções idênticos. 128 chamadas independentes, ordens
+  em quadrado latino: cada variante aparece oito vezes em cada posição.
+  Sem retentativa ou ajuste após saída. Metadata pré-consulta, saída exclusiva
+  `resultados_testes/sonda_unidade_abstencao_v1.jsonl`.
+- Métricas: shape, rótulo local, vínculo estrutural, pista no trecho selecionado,
+  conjunto, repetição textual do foco no trecho e falso `indeterminado` nas
+  28 fontes conclusivas. Repetição textual é diagnóstico, não prova de que
+  corresponde à ocorrência certa nem nova guarda. Reportar quatro inconclusivos
+  separadamente e manter falhas/truncamentos no denominador completo.
+- Comparações de fatores dentro dos dois níveis do outro fator, com IDs de
+  ganhos/perdas. `ganho_booleano` significa aumento da métrica, não melhoria
+  quando a métrica é cópia do foco ou falso indeterminado. Não combinar braços
+  como se fossem 128 fontes independentes. Cada caso continua sendo uma fonte
+  conhecida; não há novo holdout, revisão humana independente ou runtime Laylay.
+- 19 novos testes passaram; 115 focados passaram antes do ajuste pré-coleta
+  que preserva ordem das propriedades; os 19 foram revalidados após esse ajuste.
+  Guardas existentes, produção, treino e artefatos históricos preservados.
+
+No congelamento acima, a coleta estava pendente. Resultado posterior abaixo;
+mesma P01 aberta, sem promoção de interface, autorização, memória ou commit.
+
+#### Resultado do fatorial e decisão — 07/10
+
+128/128 chamadas concluídas com HTTP 200, JSON, shape válido, `done=true`
+e `done_reason=stop`. Auditoria posterior releu os envelopes brutos, conferiu
+as requisições, a ordem, as referências pré-consulta e recalculou cada aferição
+e o resumo. Artefato com 130 linhas (metadata + 128 consultas + resumo):
+`resultados_testes/sonda_unidade_abstencao_v1.jsonl`, SHA256
+`645e7b5c973c8cf904417fd6b24cdbf2daef6c068adbe2c3f1b95b47a1b3aef2`.
+Script, dependência e painel conservam os hashes pré-consulta. Digest do modelo
+igual nas leituras inicial/final:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Isso não é monitoramento contínuo do servidor nem prova de determinismo.
+
+Todas as métricas abaixo usam os mesmos 32 casos conhecidos e as referências
+locais congeladas, não uma revisão humana independente. “Conjunto” exige
+papel alinhado, vínculo literal válido e pista local no trecho selecionado;
+não comprova a relação semântica nem autoriza efeito.
+
+| Medida | Predicado (base) | Trecho externo | Predicado + prioridade | Trecho externo + prioridade |
+| --- | ---: | ---: | ---: | ---: |
+| Papel alinhado /32 | 24 | 23 | 19 | 18 |
+| Vínculo estrutural /32 | 15 | 13 | 20 | 16 |
+| Pista local no trecho /32 | 13 | 11 | 17 | 13 |
+| Conjunto /32 | 12 | 9 | 10 | 6 |
+| Reprodução textual do foco /32 (menor é preferível) | 16 | 19 | 11 | 16 |
+| Indeterminação alinhada /4 | 0 | 0 | 1 | 1 |
+| Falso indeterminado /28 conclusivos | 0 | 0 | 0 | 0 |
+| Pares com ambos os papéis alinhados /12 | 10 | 8 | 4 | 3 |
+
+Evidência e hipóteses:
+
+- Renomear a unidade não reduziu cópia do foco nesta coleta: 16→19 sem
+  prioridade e 11→16 com prioridade; o conjunto caiu 12→9 e 10→6.
+  O resultado contraria o benefício esperado da troca de vocabulário/campo,
+  sem provar uma causa interna do modelo ou equivalência estatística geral.
+- Priorizar indeterminação melhorou geometria, mas piorou o papel: 24→19
+  com `predicado` e 23→18 com `trecho_externo`. No primeiro contraste há
+  dois ganhos de papel (N01/U04) e sete perdas (H02B/H03A/H07A/H08B/H11A/
+  H03B/H06A). No segundo, um ganho (U04) e seis perdas (H02B/H03A/H07A/
+  H08B/H03B/H12A). A maioria das novas perdas recebeu
+  `expressao_sem_operacao`, não `indeterminado`. Não houve excesso de
+  abstenções como explicação dessas perdas; zero falso indeterminado não
+  significa segurança semântica.
+- U02 selecionou literalmente “não sei se é etiqueta de vaso ou uma orientação
+  citada.” nos quatro braços, mas todos propuseram `expressao_sem_operacao`.
+  Ausência de pista selecionada não explica esse erro; o host não modificou
+  o papel. U04 passou de operação para indeterminação apenas com a prioridade,
+  ainda insuficiente para compensar as perdas dos controles conclusivos.
+- Requisições das 32 consultas da base são idênticas às do braço
+  `predicado_host` anterior. Mesmo assim, N01 mudou de expressão para nome
+  (papel 25→24); N01/H05B/H10A tiveram propostas diferentes. Essa variação
+  impede atribuir toda diferença pequena ao fator experimental. Uma execução
+  por caso/braço, em painel já conhecido, não estima estabilidade nem
+  generalização. Opções explícitas continuam com temperatura zero.
+
+Decisão: não promover nenhum dos dois fatores. Preservar materializador e
+guardas; não compensar papel errado com palavras-chave, referência local ou
+fallback. A primeira fronteira semântica continua sendo a leitura da função
+do foco no contexto, inclusive quando o trecho correto já foi selecionado.
+Geometria e interpretação permanecem medidas separadas, sem declarar raiz
+interna única ou incapacidade geral do Qwen.
+
+Próxima investigação proposta: sair das trocas de vocabulário e testar ensino
+por exemplos contrastivos, com nomes, operações mencionadas, expressões e
+fontes realmente inconclusivas em contextos vizinhos. Exemplos de demonstração
+devem ser distintos de um novo painel de avaliação congelado antes de consultas;
+não reutilizar estes 32 casos como holdout. Comparar também preservação dos
+positivos e repetibilidade, além da abstenção. Preparar protocolo e critérios
+antes da próxima coleta; não treinar pesos, integrar ao runtime ou promover
+saídas em memória/autoridade nesta etapa. Nenhuma nova coleta dessa proposta
+foi iniciada aqui.
+
+Validação do instrumento: 19 testes novos; regressão relevante de 1.443 testes
+passou após o ajuste pré-coleta da ordem das propriedades. Contagens de suítes
+se sobrepõem, não devem ser somadas. GREEN local verifica o instrumento e os
+contratos, não a semântica do modelo. Produção, treino, guardas e artefatos
+anteriores não foram alterados por este experimento. Nenhum commit criado.
+
+### P01: predicado proposto e intervalo materializado pelo host (07/10)
+
+Protocolo pré-consulta. A primeira falha estrutural do braço anterior foi
+recopiar enunciados com aspas alteradas (23/32). Fonte canônica e ancorador
+estavam preservados. Novo experimento remove essa recópia: o modelo propõe
+`predicado` e `papel`; o host já conhece o foco, ancora o predicado na fonte
+integral e materializa o intervalo mínimo que contém ambos. Esse intervalo
+é geometria literal, não uma proposição semanticamente descoberta pelo host.
+
+Diferença para as sondas de IDs: não pedir uma lista de blocos externos ou
+índices livres. O proponente aponta um predicado literal, geralmente curto;
+não enumera todos os contextos. Nenhum inventário manual ou recorte correto é
+fornecido. A mudança reduz recópia do enunciado, mas mantém uma seleção
+semântica pendente. Não garante impedir seleção vazia ou predicado irrelevante.
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree preservada.
+  Nova sonda `scripts/analises/sonda_predicado_host_v1.py`, SHA256
+  `cabbfe97fa3c2f2e1711dda5cdce3f0c2343ba08475c953bde6e2f20257aa01c`.
+  Baseline `sonda_vinculo_enunciado_v1.py` congelado em
+  `5020f5bb72a45528025bb85e5f1a7c5a796133a294d2be5b144b02a6628fa570`.
+- Reusa catálogo, contrato de proposições e guarda de vínculo existentes.
+  Primeiro ancora apenas predicado na fonte integral, com objeto indeterminado;
+  depois fatia por offsets verificados e confere foco, unicidade, contenção e
+  sobreposição na guarda anterior. Grafia não é reescrita ou normalizada.
+  Predicado deve ser único na fonte inteira: mais restritivo que unicidade
+  apenas no enunciado do braço anterior. Não escolher o predicado mais próximo.
+- Um intervalo contendo duas cópias do foco continua recusado. Predicado vazio
+  conserva revisão pendente; papel errado continua errado mesmo com pista
+  correta. Predicado de outra oração pode passar geometricamente: cobrir essa
+  limitação com teste e conservar todas as flags semânticas/operacionais falsas.
+- Comparação de interface composta, com prompt/schema/materialização distintos.
+  Não isola causa interna do modelo. Baseline anterior recebe requisição exata;
+  fonte/foco/aspas/opções iguais nos dois braços. 32 casos conhecidos, mesmas
+  referências locais e pistas congeladas; nenhum novo holdout ou revisão humana.
+- 64 consultas independentes, 16 AB/16 BA, sem retentativa ou ajuste após
+  resultados. Metadata antes das chamadas; saída exclusiva
+  `resultados_testes/sonda_predicado_host_v1_ab.jsonl`.
+- Métricas comuns: shape, rótulo projetado, vínculo estrutural, pista lexical
+  **no predicado** e conjunto dessas últimas três. Cobertura ampla do intervalo
+  não vale como pista do predicado. Mesmo conjunto alinhado não prova semântica.
+  Erros/truncamentos/vazios permanecem no denominador de 32. Recontar HTTP bruto.
+- 26 testes novos / 96 focados verdes sobrepostos antes da coleta. Controle
+  reproduz a falha anterior de aspas e mostra materialização original quando
+  apenas predicado é proposto; não modifica guarda antiga nem escores históricos.
+
+Coleta pendente neste registro. Escopo: diagnóstico offline e testes; nenhuma
+mudança em produção, treino, memória ou executor. Mesma P01 aberta; sem commit.
+
+#### Resultado do predicado e materialização host (07/10)
+
+64/64 consultas HTTP200, JSON/shape válido, `done=True`/`stop`, sem reparo ou
+retentativa. Recontagem a partir do HTTP bruto confirmou rótulos, métricas,
+requisições, host, referências, ordem AB/BA, hashes e flags. Painel conhecido;
+resultados são diagnósticos locais, não estimativa de generalização.
+
+| Métrica comum | Copiar enunciado | Predicado + host |
+|---|---:|---:|
+| Rótulos alinhados concluídos | 24/32 | 25/32 |
+| Pares de rótulos completos | 8/12 | 10/12 |
+| Vínculos estruturais válidos | 8/32 | 16/32 |
+| Pista lexical no predicado | 5/32 | 14/32 |
+| Rótulo + vínculo + pista no predicado | 4/32 | 12/32 |
+| Pares completos desse conjunto | 0/12 | 4/12 |
+| Indeterminação alinhada | 1/4 | 0/4 |
+
+O conjunto usa pista no **predicado** nos dois braços. Não comparar o 4/32
+com o 5/32 composto anterior, que contava pista no enunciado inteiro. Nomes
+9/12 → 11/12; operações 10/12 → 11/12; estados 4/4 → 3/4. Três ganhos de
+rótulo H05A/H07A/H08B, duas perdas N03/U04, 22 ambos alinhados e cinco ambos
+errados. Vínculo: 12 ganhos e quatro perdas. Conjunto: nove ganhos e uma perda.
+As perdas permanecem registradas; melhorar geometria não resolveu a semântica.
+
+O baseline congelado repetido obteve 24/32; sua coleta histórica tinha 23/32.
+H11A mudou de `expressao_sem_operacao` para `nome_designacao` sob requisição
+idêntica. Usar a comparação contemporânea 24 → 25. Temperature=0 e digest
+igual não autorizam atribuir oscilações históricas ao novo candidato.
+
+Primeiras recusas no candidato: nove predicados sem âncora literal única,
+sete sobrepondo o foco, 16 intervalos ancorados. Inspeção do bruto dos nove:
+oito contêm troca de aspas; H03B produz `debate a hipótese`, paráfrase de
+`Estamos debatendo a hipótese`. Nenhum foi reparado na aferição. Contrafactual
+de leitura restaurando só as aspas nos oito revela sete sobreposições e um
+objeto ambíguo (H11A); **nenhum** desses oito ganha vínculo válido. Portanto,
+a troca de aspas já não explica por si a barreira restante dessa interface.
+
+Há 15 casos demonstráveis de seleção que inclui o foco ou a outra ocorrência
+(sete recusados diretamente, oito visíveis após diagnóstico de grafia).
+O proponente frequentemente coloca a oração completa no campo `predicado`,
+apesar do pedido de trecho externo. Isso sustenta investigar a especificação
+da unidade pedida; ainda não prova causa interna do Qwen ou efeito causal
+do nome do campo. O host não corta o foco desse texto para fabricar acerto.
+
+Controles que impedem uma conclusão forte:
+
+- H10A ancora `preserve seu conteúdo`, mas esse predicado é de outra ação;
+  rótulo permanece errado. Geometria não certifica relação contextual.
+- U02 ancora `não sei se é etiqueta de vaso ou uma orientação citada`, com
+  pista de incerteza explícita, mas classifica `expressao_sem_operacao`.
+  A falha de abstenção persiste mesmo com a pista selecionada corretamente.
+- U04 perde a abstenção do baseline. Não transferir exemplos para treino,
+  substituir o classificador ou promover a interface com base no ganho literal.
+
+Artefato `resultados_testes/sonda_predicado_host_v1_ab.jsonl`, 66 linhas,
+SHA256 `346dfbab055ca7dabe60a5de97b1424333cd3f41e30ac213b5dbc4f4d0d56d49`.
+Script mantém hash pré-consulta. Digest nas leituras início/fim/auditoria:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+**26 novos / 96 focados / 1.424 relevantes verdes, sobrepostos**. Prova
+estrutural offline e geração local com Qwen; não execução da Laylay real.
+
+Decisão: materialização literal pelo host mostrou utilidade neste diagnóstico,
+com fonte e ocorrência intactas, mas o candidato completo segue sem promoção.
+Próxima fronteira: especificar e testar a escolha de **pista contextual externa**,
+incluindo as recusas observadas de foco dentro do trecho. Investigar se pedir
+`predicado` favorece oração completa como hipótese de interface; não simplesmente
+trocar o nome e declarar raiz. A abstenção precisa de critério próprio de
+aceitação, pois já falha com evidência de incerteza selecionada. Preservar
+as referências atuais e exigir validação em fontes novas antes de generalizar.
+
+Escopo final: nova sonda, testes e os três documentos P01. Nenhuma alteração
+de produção/treino/memória/executor por este trabalho, nenhum commit. Guardas,
+painéis e artefatos históricos preservados. P01 permanece aberta.
+
+### P01: proposta de vínculo enunciado–ocorrência (07/10)
+
+Protocolo congelado antes de consultar o Qwen; mesma raiz P01, somente offline.
+Produção, treino, catálogo de capacidades e composição da Laylay não alterados.
+O experimento anterior falsificou recorte de contexto como solução geral,
+não diagnosticou a causa interna da rede. Este candidato testa uma interface
+composta mais explícita, não declara uma correção da interpretação.
+
+- Baseline HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch `main`;
+  worktree concorrente preservada. Sonda nova
+  `scripts/analises/sonda_vinculo_enunciado_v1.py`, SHA256
+  `5020f5bb72a45528025bb85e5f1a7c5a796133a294d2be5b144b02a6628fa570`.
+  Reutiliza transferência `05ddfa7d4be55e47c6f4942df196d2e5a2e775e78ada2e588b4ab457428689b2`
+  e contrato de proposições `e286c3032fa7ee2c02f14112b353b949d167a96bec1699ee3958503dc01dfb99`;
+  mantém hashes transitivos, dados e artefatos anteriores intactos.
+- 32 casos **já conhecidos** do painel de transferência; não novo holdout.
+  Mesmos rótulos locais congelados: 12 nomes, 12 operações mencionadas,
+  quatro estados, quatro fontes explicitamente inconclusivas. Revisão local
+  do agente, não humana independente nem estimativa populacional.
+- Baseline `leitura_direta` exato. Novo braço retorna três strings:
+  `enunciado`, `predicado`, `papel`. Fonte integral/foco/aspas/opções iguais;
+  muda prompt **e** schema: comparação de interface composta, não efeito
+  isolado de uma instrução. Zero recorte-oráculo, pistas locais, gabaritos,
+  IDs históricos de caso ou exemplos fornecidos ao modelo.
+- Host autentica entrada e pedido; usa contrato existente para ancorar
+  predicado/objeto dentro do enunciado. Objeto é o foco canônico já conhecido
+  pelo host, não uma entidade adivinhada pelo modelo. Tipo/polaridade/papel
+  do objeto permanecem placeholders indeterminados, não inferências.
+  Fonte e offsets do objeto devem coincidir com a ocorrência marcada;
+  texto igual em outra ocorrência ou envelope com duas cópias não basta.
+  Predicado deve ser externo, sem sobreposição parcial ou total ao foco.
+  Guarda canônica aceita diferença de capitalização e recupera grafia da
+  fonte; isso não equivale a exigir cópia byte a byte.
+- Shape/HTTP/finalização, rótulo local, vínculo estrutural e cobertura lexical
+  são métricas separadas. Pistas locais pré-congeladas em `PISTAS_LOCAIS`
+  são apenas alternativas literais fora do foco; cobertura no enunciado e
+  no predicado contadas separadamente. Enunciado amplo com palavra correta
+  e predicado da outra oração pode passar estruturalmente: teste explicita
+  esse limite. Até alinhamento composto local não certifica relação semântica.
+  Vínculo não se aplica ao baseline que só produz rótulo: usar `null`, não zero.
+- Vazio conserva revisão pendente, nunca ausência ou papel inventado.
+  Campos extras invalidam a proposta composta; projeção bruta do rótulo é
+  apenas métrica separada. Truncamento/erro permanecem no denominador de 32,
+  sem crédito concluído. Todas as flags de semântica/autoridade/efeito falsas.
+- 64 consultas independentes; 16 AB/16 BA, sem retentativa ou ajuste após
+  saída observada. Metadata e referências gravadas antes da primeira chamada.
+  Artefato exclusivo `resultados_testes/sonda_vinculo_enunciado_v1_ab.jsonl`.
+  Recontagem deve usar HTTP bruto e autenticar registros, não escores salvos.
+- **26 novos / 108 focados verdes (sobrepostos)** antes da coleta. Um RED
+  de integração da própria sonda identificou confusão entre envelope host
+  com tokens e porta canônica de três campos; corrigida a chamada após
+  autenticação integral, sem enfraquecer testes nem alterar guardas existentes.
+  Não é diagnóstico de bug histórico do modelo ou da produção.
+- Revisão pré-consulta encontrou assimetria na métrica de rótulo para chave
+  extra: referência exigia shape, candidato projetava apenas rótulo. Corrigida
+  antes de qualquer consulta e protegida por controle simétrico nos dois
+  braços. Agora papel projetado e shape são métricas separadas nos dois.
+  Hash acima é o congelamento final pré-consulta, não ajuste após inferência.
+
+Contrato geral investigado: ocorrência literal → enunciado enquadrador
+proposto → papel/indeterminação, sempre separando geometria, interpretação,
+autorização e efeito. Coleta e decisão semântica pendentes neste registro;
+P01 permanece aberta. Nenhum commit, treino ou promoção para runtime.
+
+#### Resultado e decisão do vínculo explícito (07/10)
+
+Coleta fechada, sem retentativa, reparo ou ajuste da sonda. 64/64 HTTP200,
+JSON/shape válido, `done=True`/`stop`; nenhum truncamento. Recontagem integral
+do HTTP bruto confirmou todas as aferições, ordem, referências, entradas,
+requisições e flags. Segunda revisão independente também contou pelo bruto.
+
+| Métrica local | Leitura direta | Vínculo enunciado |
+|---|---:|---:|
+| Rótulos alinhados concluídos | 22/32 | 23/32 |
+| Pares contextuais completos | 7/12 | 7/12 |
+| Nomes | 7/12 | 8/12 |
+| Operações mencionadas | 11/12 | 10/12 |
+| Estados | 4/4 | 4/4 |
+| Indeterminação explícita | 0/4 | 1/4 |
+| Vínculo estrutural | não aplicável | 8/32 |
+| Pista local externa no enunciado | não aplicável | 8/32 |
+| Pista local no predicado | não aplicável | 5/32 |
+| Rótulo + vínculo + pista no enunciado | não aplicável | 5/32 |
+
+Três ganhos de rótulo (H02A/H06A/U04), duas perdas (H07A/H08B), 20 ambos
+alinhados e sete ambos desalinhados. Ganho líquido de um neste painel conhecido,
+sem ganho de pares. **Não é melhora suficiente para promover a interface.**
+Os três ganhos nem produziram vínculo estrutural válido; não contar o rótulo
+isolado como sucesso da proposta completa. U04 se abstém no papel, mas deixa
+predicado vazio: revisão pendente, não evidência de vínculo ou ausência.
+
+Primeira fronteira estrutural RED: 23/32 enunciados sem âncora. Comparação
+literal verificou nos 23 que a única diferença do enunciado proposto para um
+trecho único da fonte é trocar as aspas tipográficas `“/”` por ASCII `"`.
+Fonte/pedido preservaram a grafia; a resposta capturada já contém a troca.
+Isso demonstra a primeira divergência de cópia neste braço, não defeito da
+guarda canônica nem a causa interna do modelo. Oito enunciados ancoram, portanto
+não há falha global de transporte, JSON ou serviço que explique todas as recusas.
+
+Contrafactual de leitura **apenas diagnóstico**, sem alterar artefato, escores,
+guarda, fonte fornecida ou saída do modelo: recuperar a grafia única da fonte
+e do predicado nos 23 faz 21 chegarem à revisão estrutural. Dois REDs posteriores
+permanecem: H11A copiou envelope com ambas as ocorrências e objeto segue ambíguo;
+H10A incluiu foco no predicado e segue sobreposto. **21 não é novo escore de
+sucesso do candidato**: o contrato congelado rejeitou os 23, corretamente.
+Falsificada a explicação de que somente restaurar aspas corrigiria o fluxo.
+
+Interpretação é outra fronteira, não resolvida por copiar melhor:
+
+- H07A copia `é o título do gráfico` no predicado e ancora corretamente,
+  mas propõe `expressao_sem_operacao` em vez de nome. Logo nem ausência da
+  pista na saída nem falha de cópia explica todos os erros de papel.
+- H04A ancora `começa amanhã`, que descreve horário, não designação. Vínculo
+  geométrico e pista `denominada` no enunciado não certificam o enquadramento.
+  A métrica composta local alinha nesse caso e sua limitação permanece exposta.
+- U01 ancora `foi copiado`, mas ignora a alternativa em aberto; U02/U03
+  também não se abstêm. 1/4 de abstenção não resolve a família de indeterminação.
+
+Artefato exclusivo `resultados_testes/sonda_vinculo_enunciado_v1_ab.jsonl`,
+66 linhas, SHA256
+`3b7e5c27f8e7f249575bf1a6f2f0cbbaeb86affefb9171979191cb571d030eaf`.
+Script/dependências/painel mantiveram hashes pré-consulta e artefatos anteriores
+foram conferidos intactos. Digest igual nas leituras início/fim/auditoria:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Isso não certifica invariância contínua nem determinismo do modelo.
+
+Após coleta, acrescentado um controle da troca de aspas, mantendo a recusa
+canônica e o controle de fonte exata; nenhum prompt/guard/script da sonda
+alterado após inferência. **27 novos / 1.398 relevantes verdes (sobrepostos)**.
+Esse verde comprova contratos locais/offline, não semântica ou runtime Laylay.
+
+Decisão: preservar o experimento como evidência, sem promover, treinar ou
+enfraquecer ancoragem. Próxima investigação deve separar seleção semântica de
+reprodução textual: materialização literal tem de continuar pertencendo ao
+host, com identidade/offsets/proveniência intactos. Não repetir simplesmente
+“trocar cópia por IDs”: sondas anteriores já mostraram seleção vazia ou tudo
+selecionado. Antes de novo candidato, explicar qual contrato novo evitaria
+esse comportamento e provar controles de ocorrência e de indeterminação.
+Corrigir cópia não basta para corrigir papel; duas fronteiras evidenciadas,
+não uma root neural interna proclamada.
+
+Escopo desta investigação: nova sonda e seus testes; notas nos mesmos três
+documentos P01. Contrato/catálogo/captura antigos, produção, fontes/dados,
+memória, treino e executor não alterados por este trabalho; worktree paralela
+preservada, nenhum commit. P01 aberta, rede não liberada por este diagnóstico.
+
+### P01: ablação contextual e controles de abstenção (07/10)
+
+Investigação da próxima fronteira, sem patch de produção. O catálogo literal
+seleciona ocorrência por ID/offset, não por primeira string igual. A guarda
+`conferir_papel` autentica fonte/foco e shape, retorna revisão pendente e
+não pretende provar interpretação semântica. Portanto rótulo errado mas
+bem formado não é bug de validação literal; transformar essa guarda em
+classificador de frases seria trocar responsabilidades e esconder o RED.
+`InventarioContextual` enumera referentes com proveniência, não predicações
+de um texto livre; não reutilizá-lo como certificador de papel. O contrato
+de vínculo didático também compara anotações propostas, não as certifica.
+
+Protocolo congelado antes da consulta:
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree preservada.
+- `scripts/analises/sonda_ablacao_contexto_papel_v1.py`, SHA256
+  `426f33a27ac7b951f80eb425b7b06b1539bb21e957d744b423bd018d71890443`.
+  Reutiliza medição, validação, schema, prompts e base da transferência
+  congelada `05ddfa7d4be55e47c6f4942df196d2e5a2e775e78ada2e588b4ab457428689b2`;
+  não altera dados, sondas ou respostas anteriores.
+- Dez casos conhecidos: H05A/H10A/H11A/H11B, H02A/H06A, U01/U02/U03/U04.
+  Mesmas referências locais anteriores, não holdout novo. Quatro intervenções
+  manuais: copiar apenas trechos literais que mantêm a predicação do foco
+  nos quatro primeiros. Seis controles repetem **exatamente** o mesmo input;
+  quatro deles são indeterminação explícita. Zero regra de classificação.
+- Projeção de ocorrência por offsets antigos menos início do recorte, com
+  catálogo/árvore de aspas existentes. H11B recorta a segunda ocorrência:
+  novo c1 continua apontando para o c2 original, não para a primeira cópia.
+  Retirada de contexto foi escolhida manualmente: uma ablação-oráculo
+  diagnóstica, nunca seletor automático ou candidato para produção.
+- 40 consultas independentes (10 casos × duas variantes × dois prompts),
+  sem retentativa ou ajuste; cinco integral-primeiro, cinco recorte-primeiro.
+  Prompts/opções/schema intactos; nenhuma referência, mapa, ID de caso ou
+  justificativa fornecidos ao modelo. Só fonte/foco/aspas reais da variante.
+- Recorte remove contexto mas também muda comprimento/sintaxe/offsets/aspas.
+  Ganho não isolaria mecanismo interno de interferência; controles idênticos
+  ajudam a observar instabilidade, não garantem determinismo em temperature=0.
+- Fonte original, recortes manuais, referências e hashes na metadata antes
+  das chamadas. Saída exclusiva
+  `resultados_testes/sonda_ablacao_contexto_papel_v1.jsonl`.
+  **15 novos / 36 focados verdes (sobrepostos)**; coleta pendente neste registro.
+
+Hipóteses separadas: contexto concorrente pode contribuir em certos erros;
+falha de abstenção pode persistir sem concorrência. Não declarar uma root
+interna comum nem adicionar fallback com gabarito. P01 segue aberta,
+literalidade/proposta/autoridade/efeito separados, sem treino ou commit.
+
+#### Resultado e decisão da ablação (07/10)
+
+40/40 HTTP200/JSON/shape válido/done=True/stop, sem truncamento; recontagem
+independente do bruto confirmou escores, ordem, projeções e gabarito.
+Script/transferência/painel mantiveram os hashes pré-consulta. Comparação
+nos quatro casos intervenientes, não no conjunto de 32 como se fosse novo:
+
+| Prompt congelado | Integral (4 casos) | Recorte manual (4 casos) | Ganhos / perdas |
+|---|---:|---:|---:|
+| Atual | 2/4 | 1/4 | 1 / 2 |
+| Direto | 1/4 | 3/4 | 2 / 0 |
+
+No denominador completo deste diagnóstico dirigido, 2/10 → 1/10 no atual e
+1/10 → 3/10 no direto. **Não são escores de população geral**: casos foram
+selecionados por riscos/erros já conhecidos. H05A alinha após recorte nos
+dois prompts; H10A continua errado nos dois. H11A alinha com recorte no
+direto, mas erra com recorte no atual; H11B sofre perda no atual. Recortar
+o contexto, portanto, não é uma solução geral e nem garante preservar acerto.
+
+Os seis controles por prompt tiveram requisições exatamente iguais entre
+variantes e rótulos estáveis nesta coleta: 12 comparações controladas, sem
+alegar determinismo contínuo. H02A/H06A continuam nome → operação mesmo
+sem outro comando externo ou outra ocorrência concorrente. U01–U04
+continuam sem abstenção (0/4 em ambos os prompts, nas duas variantes).
+Isso falsifica a explicação **exclusiva** de que todos esses REDs dependem
+de outro comando ou de segunda ocorrência na fonte. Não falsifica eventual
+contribuição de contexto nem demonstra a causa interna da falta de abstenção.
+
+Artefato `resultados_testes/sonda_ablacao_contexto_papel_v1.jsonl`, 42 linhas,
+SHA256 `025891330c3cc43350be4ba04336d8396d5bfad6e025374af68691866c7cbb1c`.
+Digest igual nas leituras de início/fim/auditoria:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Primeira RED continua na interpretação proposta; não há evidência de erro
+de identidade literal, fonte, transporte, shape ou recontagem nestas consultas.
+
+Após a coleta, três testes adicionais exercitaram o componente real existente
+`contrato_proposicoes_mencionadas`: duas proposições da mesma fonte com
+objetos textualmente iguais receberam offsets distintos; predicado emprestado
+da outra proposição causou recusa atômica, sem publicação parcial; alterar
+anotação semântica não ganhou autoridade ou verdade por contenção.
+**18 testes novos / 82 focados / 1.371 relevantes verdes (sobrepostos)**.
+`git diff --check` sem erro. Esses testes provam
+integração estrutural local, não produção do vínculo correto pelo Qwen.
+Produção, treino, prompts anteriores e artefatos históricos não alterados;
+nenhum commit. P01 não encerrada nem rede liberada.
+
+Direção arquitetural para a próxima investigação, ainda não implementada:
+
+1. Reusar catálogo/árvore de aspas para identidade da ocorrência e o contrato
+   existente de proposições para ancorar predicado/objeto no seu enunciado.
+   Não criar outro tokenizer, parser privado de títulos ou inventário de
+   referentes usado como verificador de texto.
+2. O proponente deve indicar **qual proposição** enquadra **qual ocorrência**,
+   antes de reduzir a leitura a um rótulo. Conferir fonte, IDs, contenção e
+   igualdade de offsets do objeto com o foco; string igual não basta. Um
+   vínculo estrutural válido continua hipótese, não prova semântica.
+3. Conservar alternativa não decidida quando a fonte não fornece papel
+   conclusivo. Não usar silêncio, evidência vazia ou voto de modelo como
+   prova de ausência, certeza ou autorização. Falha de abstenção permanece
+   hipótese separada até que a mesma mudança explique os respectivos REDs.
+4. Medir a proposta completa contra referências pré-congeladas e controles
+   (enunciados concorrentes, repetição, negação, citações e fonte inconclusiva).
+   Comparar ao caminho atual sem recortes-oráculo na entrada e sem promover
+   validação estrutural a acerto semântico. Não iniciar treino nem runtime
+   antes dessa prova. Não tratar o recorte manual como seletor implementado.
+
+O contrato reutilizável é **ocorrência → enunciado enquadrador proposto →
+papel/indeterminação**, mantendo evidência, decisão e efeito separados. É
+aplicável a comandos, citações, memória e ensino sem alterar esses domínios
+juntos ou prometer que essa estrutura, sozinha, fará o modelo acertar.
+
+### P01: transferência contextual — protocolo pré-consulta (07/10)
+
+Continuação do candidato de instrução, não nova root. Pergunta: o ganho
+11/20 → 16/20 no painel conhecido persiste em fontes/focos novos, mantendo
+os dois prompts congelados? Nenhuma produção ou treinamento alterados.
+Base `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree preservada.
+
+Congelamento antes de qualquer chamada do painel novo:
+
+- Painel `scripts/analises/dados/sonda_papel_transferencia_v1.json`, SHA256
+  `e93ae74cd152f93a75fdb52b226404ab7659288203188c509ef174ce0cbb8ee2`.
+  32 casos: 12 pares nome/operação, quatro estados, quatro indeterminados.
+  Novos textos e focos em relação ao replay anterior; distribuição 12/12/4/4.
+  Inclui negação, hipótese, citações aninhadas, operações externas ao foco,
+  instruções sem autorização, predicação posterior e texto repetido com
+  duas ocorrências de papéis distintos. Domínios variados, sem efeito real.
+- Revisão local com justificativa por caso, escrita antes de consultar.
+  Não é revisão humana independente, corpus externo ou amostra aleatória:
+  painel foi desenhado após observar o replay e seus riscos. Pode medir
+  transferência local limitada, não generalização universal ou superioridade
+  da rede. Após consulta deixa de ser teste não visto; não retreinar nele.
+- `scripts/analises/sonda_papel_transferencia_v1.py`, SHA256
+  `05ddfa7d4be55e47c6f4942df196d2e5a2e775e78ada2e588b4ab457428689b2`.
+  Reutiliza **sem alteração** preparar requisição, medir, aferir, fonte/foco,
+  captura HTTP, decoder e guarda de papel do contraste anterior congelado
+  `05e6a2c74001bd70a113e00b23837631bd7f8a33876357e7e7d189a6349cda59`.
+  Novo resumo exige denominador completo e gabarito/painel autênticos.
+- Ambos os prompts, categorias, schema, modelo `qwen3:4b-instruct`, opções
+  temperature=0/num_predict=700 intactos; só sistema difere entre braços.
+  Fonte/foco/aspas são os únicos dados de usuário fornecidos; nenhuma
+  justificativa, gabarito, ID de caso, exemplos de calibração ou âncora.
+- 64 consultas independentes, 16 AB/16 BA, sem retentativas/adaptação.
+  Referências copiadas antes das chamadas, respostas brutas preservadas,
+  escores recalculados, pares exigem os dois lados. Indeterminação não vira
+  autorização, ausência, referente ou confirmação de efeito.
+- Saída exclusiva `resultados_testes/sonda_papel_transferencia_v1_ab.jsonl`.
+  21 testes novos / 67 com o contraste anterior verdes (sobrepostos), sem
+  consulta Qwen nestes testes. Coleta ainda pendente neste checkpoint.
+
+Não trocar instrução/gabarito após observar respostas. Resultado nulo ou
+negativo será preservado e impedirá alegação de ganho generalizado; ganho
+exigirá tratar os erros remanescentes antes de qualquer promoção ao runtime.
+
+#### Resultado da transferência, auditado sem retocar prompts (07/10)
+
+64/64 HTTP200, JSON, shape válido e done=True/stop; todos os casos mantidos
+no denominador. Recontagem do conteúdo HTTP bruto confirmou o resumo;
+requisições, gabarito pré-consulta, host, focos por offset, flags, ordem e
+hashes revalidados, sem confiar em escores armazenados.
+
+| Medida | Prompt atual | Leitura direta |
+|---|---:|---:|
+| Papéis alinhados / casos novos | 20/32 | 22/32 |
+| Pares com ambos os lados alinhados | 6/12 | 7/12 |
+| Nomes | 6/12 | 7/12 |
+| Operações mencionadas | 11/12 | 11/12 |
+| Expressões/estados | 3/4 | 4/4 |
+| Indeterminação explícita | 0/4 | 0/4 |
+
+Quatro ganhos (H02B, H03A, H07A, N03), **duas perdas** (H11A, H05B), 18
+acertos comuns e oito erros comuns. U02 muda de operação para expressão e
+permanece errado. As contagens de ganhos/perdas não podem ser substituídas
+pelo ganho líquido de dois casos; o contraste anterior sem perdas não se
+reproduziu neste painel. Não declarar ganho robusto a partir de uma coleta.
+
+Dez erros na leitura direta, agrupados como evidências de P01, não dez roots:
+
+- Cinco nomes classificados como operação: H02A/H05A/H06A/H10A/H11A.
+  H05A/H10A contêm comando externo ao foco; H11A contém duas ocorrências
+  textualmente iguais com funções diferentes. É hipótese que haja competição
+  entre contextos, não uma causa interna demonstrada do modelo.
+- Uma operação exemplificada classificada como nome: H05B. A fonte diz
+  exemplo de instrução; é uma perda em relação ao controle, não veto do host.
+- Quatro fontes explicitamente inconclusivas classificadas sem abstenção:
+  U01/U02/U03/U04. Nem presença de negação nem formato de ordem permitem
+  ignorar a indeterminação declarada na fonte.
+
+Primeira RED: fonte/foco íntegros → rótulo proposto no HTTP bruto. Falsificados
+para esses resultados: foco errado por offset, corrupção de transporte/JSON/
+shape e erro de contabilização. Digest igual nas leituras não sustenta troca
+de modelo, mas tampouco prova invariância durante todas as chamadas. A fonte
+e a revisão local sustentam a função esperada, mas não há revisão humana
+independente; manter esse limite. O host já conserva separadas literalidade,
+proposta, autorização e efeito. Não fazê-lo converter rótulo válido em
+suporte verificado para compensar os erros semânticos do modelo.
+
+Artefato exclusivo de 66 linhas (metadata + 64 consultas + resumo):
+`resultados_testes/sonda_papel_transferencia_v1_ab.jsonl`, SHA256
+`2e2c9aa636d79afe2154abfde59ea24be29d454bbaed55d6e6627d0465642075`.
+Script/painel/prompts conservaram os hashes pré-consulta. Digest igual nas
+leituras de início/fim/auditoria:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`;
+isso não prova invariância contínua ou determinismo. Tempos somados de
+consulta 32,9990s / 31,3635s, sem alegação de eficiência.
+
+**21 testes novos, 67 focados e 1.353 relevantes verdes (sobrepostos)**.
+Somente painel, sonda, teste e três documentos P01 adicionados/atualizados
+nesta continuação. Não alterei produção, treino ou prompts anteriores;
+nenhum commit. Este GREEN é de infraestrutura/regressão, não semântico,
+runtime real da Laylay, efeito externo ou liberação da rede.
+
+Decisão: **não promover o prompt direto como substituto**. A melhora local
+existe, mas é pequena, inclui regressões e não resolve indeterminação.
+Próxima fronteira: investigar o contrato de vínculo entre predicação da
+fonte e **ocorrência específica** do foco, incluindo fonte inconclusiva;
+usar o inventário/guardas existentes, não listas de frases ou fallback de
+rótulo. Separar as hipóteses de competição contextual e falha de abstenção
+antes de consolidá-las como mesma causa ou propor candidato. Painel agora
+é conhecido: não reutilizá-lo como holdout novo ou dado de treino.
+
+### P01: leitura direta do papel — protocolo congelado (07/10)
+
+Hipótese, não raiz interna provada: explicitar que a decisão depende de como
+a fonte apresenta o foco pode reduzir competição com a aparência de ordem
+do conteúdo citado. Primeiro RED disponível: rótulos incorretos já presentes
+no bruto de 40 respostas anteriores válidas/concluídas; contexto externo
+explícito não trouxe ganho líquido (11/20 e 3/8 pares em ambos os braços).
+Isso falsifica erro do parser e falta de delimitação como explicações desses
+rótulos, não prova qual mecanismo interno do Qwen os produziu.
+
+Antes da primeira consulta, congelados:
+
+- HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, `main`, worktree suja
+  preservada; estado completo será capturado na metadata.
+- `scripts/analises/sonda_papel_leitura_direta_v1.py`, SHA256
+  `05e6a2c74001bd70a113e00b23837631bd7f8a33876357e7e7d189a6349cda59`;
+  depende do anterior `e702fcb8876f54c1354f8e8dcc0ce8305cf5ddc64a3bcbafce8170be85ee56fe`
+  e reutiliza captura HTTP, decoder, fonte/foco, validação tipada e guarda
+  canônica de papel. Não rebatiza registros para o auditor antigo.
+- Painel/revisão existentes intactos, SHA256
+  `fe94a2a77ac28b2b870004f16f9ca21f4bebf4469955b6f17b4cd10f29dfc682` /
+  `04d53c818d217f910dfd2eb766e3800865544c9a3fd7b64ccd98318743c5d6a0`.
+- 20 casos, 8 pares; 8 nomes, 8 operações, 2 estados, 2 indeterminados.
+  Referências locais copiadas na metadata antes de consultar, nunca no prompt.
+- Dois braços independentes `prompt_atual` / `leitura_direta`; somente o
+  sistema muda. Fonte, foco, aspas, quatro categorias, schema, modelo,
+  temperature=0 e num_predict=700 iguais. Sem exemplos, gatilhos de frases,
+  IDs dos casos ou âncoras na instrução; sem contexto externo adicional.
+- 40 consultas, 10 AB/10 BA, sem retentativas adaptativas; HTTP bruto e
+  finalização preservados. Resumo exige todo o denominador, revalida o bruto,
+  separa shape/conclusão/alinhamento, ganhos/perdas e ambos os lados dos pares.
+- Arquivo exclusivo `resultados_testes/sonda_papel_leitura_direta_v1_ab_replay.jsonl`.
+  Protocolo validado por **46 testes**; coleta ainda não executada neste registro.
+
+Limites: painel já conhecido, não holdout; não mede runtime da Laylay nem
+superioridade da rede. Papel alinhado não verifica suporte, referente,
+vigência ou autoridade. Nenhuma produção/treino alterados, nenhum commit.
+Ganho neste painel exigirá avaliação independente antes de promoção; empate
+ou regressão não justificam incorporar o prompt à produção.
+
+#### Resultado auditado após o congelamento (07/10)
+
+Coleta completa, sem mudar script/protocolo/gabarito: 40 HTTP200, JSON,
+shape de papel válido e done=True/stop; zero erros de transporte ou cortes.
+Replay autenticou requisições contra os dois prompts reais, host, flags,
+ordem, referências e hashes; recontagem direta dos rótulos no bruto confirmou
+os escores sem confiar na aferição salva.
+
+| Medida local | Prompt atual | Leitura direta |
+|---|---:|---:|
+| Papéis alinhados / todos os casos | 11/20 | 16/20 |
+| Pares com ambos os lados alinhados | 3/8 | 6/8 |
+| Nomes | 4/8 | 6/8 |
+| Operações mencionadas | 5/8 | 7/8 |
+| Expressões/estados sem operação | 2/2 | 2/2 |
+| Indeterminação explícita | 0/2 | 1/2 |
+
+Cinco ganhos Q01B, Q03A, Q03B, Q05A e Q08A; nenhuma perda, 11 acertos comuns
+e quatro erros comuns. Q08B muda de expressão para operação e continua
+errado: alteração de rótulo não é melhora. Restantes na leitura direta:
+
+- Q02A: nome de documento classificado como operação.
+- Q06A/B: nome de arquivo classificado como operação / exemplo de pedido
+  classificado como nome. O par segue invertido.
+- Q08B: fonte explicitamente inconclusiva classificada como operação.
+
+Primeira fronteira RED restante: fonte/foco íntegros → atribuição de papel
+no bruto. Nenhum desses erros nasce em parser, shape ou veto do host. Não
+declarar quatro roots nem inferir mecanismo interno único: a instrução
+melhorou o painel, mas não demonstrou por que persistem essas confusões.
+O princípio reutilizável é explicitar a diferença entre função do foco na
+fonte e aparência de comando, sem transformar nenhuma delas em autorização.
+Serve à leitura de comandos, ensino, memória e citações; não exige editar
+esses domínios nesta investigação.
+
+Artefato exclusivo, 42 linhas (metadata + 40 consultas + resumo):
+`resultados_testes/sonda_papel_leitura_direta_v1_ab_replay.jsonl`, SHA256
+`65bd3c3870df9417dce5e674ff4058262484a14f54fc2f03ef366fa0ad3583be`.
+Digest no início/fim e na auditoria:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Isso não prova invariância contínua ou determinismo do modelo.
+Tempos somados 54,8633s / 19,2147s; tokens de saída 228 / 224. Carregamento
+21,7386s / 0,1504s torna a comparação de velocidade inadequada; não alegar
+ganho de desempenho por esse contraste.
+
+**46 testes novos e 1.332 relevantes verdes (contagens sobrepostas)**,
+`git diff --check` sem erro; não são prova de runtime da Laylay ou de
+generalização semântica. Produção/treino não alterados por esta coleta,
+nenhum commit. Painéis, sondas e artefatos históricos preservados.
+
+Próxima fronteira, ainda não executada: congelar frases independentes e
+referências antes da consulta; comparar os mesmos dois prompts sem novo
+ajuste, incluindo funções contextuais, negação, aspas aninhadas, instrução
+externa ao foco e ambiguidade real em domínios distintos. Denominador
+completo, controles negativos e pares necessários. Não treinar com esse
+teste diagnóstico; somente depois discutir composição/validação no runtime.
+
+P01 permanece aberta. Esta evidência sustenta um candidato de instrução,
+não liberação da rede, resolução de referente ou validação de suporte.
+
+### P01: coordenadas dos tokens — replay diagnóstico não promovido (29/09)
+
+
+Base preservada: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch
+`main`, worktree anterior intacta. A pesquisa confirmou o padrão já usado
+pelo produtor de intervalos: `id/texto` para o modelo, posições originais
+para o host. O experimento anterior, painel/revisão e respostas não mudam.
+Novos arquivos apenas:
+
+- `scripts/analises/sonda_coordenadas_vinculo_v1.py`;
+- `scripts/tests/test_sonda_coordenadas_vinculo_v1.py`.
+
+Hipótese testada: expor dois tipos de coordenada no registro de cada token
+contribui para a falha de propor contexto externo. Contraste de **mesma
+tarefa de vínculo**, não comparação com o antigo braço de papel direto:
+`tokens_com_offsets` conserva entrada inteira; `tokens_id_texto` retira
+somente `inicio/fim` dos tokens. Ambos usam os mesmos prompt, schema,
+fonte/foco, opções e `conferir_vinculo`. O verificador recebe entrada host
+completa nos dois braços. Foco/árvore de aspas **ainda expõem caracteres**;
+não é contraste que remove toda ambiguidade de coordenadas.
+
+Reusa exatamente os 20 casos, oito pares e revisão já congelados: replay
+dirigido e visto, **não holdout novo**. Sem alteração do ouro, exemplos extras
+no prompt, reancoragem, correção adivinhada de índices ou aceite parcial.
+40 consultas locais, 20 por braço, 10 ordens AB e 10 BA. Temperatura 0,
+limite 700; digest Qwen observado no início/fim:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Igualdade nos extremos não garante invariância contínua ou determinismo.
+
+Congelamento:
+
+- script replay: `096894e0a2cc6724adc6ccc008981cd3c24961a196063293f80cc97d939033ff`;
+- dependência vínculo: `0231344e4d4a9ac975ab1a98995b382222264197e5bea8d835facb7599aca89c`;
+- painel/revisão: mesmos hashes do A/B anterior, conferidos antes da geração;
+- artefato anterior: `59c97f28c3706fd3ff3f60920ad7a25702e0be096e023e5f45b417e98963c68b`.
+
+Artefato exclusivo `resultados_testes/sonda_coordenadas_vinculo_v1_ab_replay.jsonl`
+contém 42 linhas: metadados, 40 propostas JSON parseadas com payload do
+modelo/host e conferência, resumo. Hash:
+`ffee5c2eabf07aa99eefad4743558d14465ae8862c5f5e034c584f2a016be155`.
+Não registra HTTP bruto ou motivo de término. Nenhum erro de consulta.
+
+| Fronteira | Tokens com offsets | Tokens só id/texto |
+| --- | ---: | ---: |
+| Papel bruto válido | 20/20 | 20/20 |
+| Papel alinhado à revisão local | 12/20 | 14/20 |
+| Pares contextuais completos | 3/8 | 5/8 |
+| Envelope conjunto válido | 15/20 | 18/20 |
+| Listas de evidências vazias | 15/20 | 18/20 |
+| Envelopes com intervalos inválidos | 5/20 | 2/20 |
+| Evidência literal externa materializada | 0/20 | 0/20 |
+| Papel e pistas locais alinhados conjuntamente | 0/20 | 0/20 |
+
+Papéis melhoram em Q02A/Q03B/Q04B e regridem em Q05A; Q01B muda rótulo
+mas continua errado. A projeção não recupera evidência: as listas vazias
+aumentam, e Q05B/Q09A ainda propõem intervalos inválidos. Não reduzir isso
+a “precisão melhorou”: distinguir papel bruto, envelope e evidência.
+Retirar offsets dos tokens **não basta** para superar o RED literal. Não
+prova irrelevância de toda apresentação, nem causa interna única do modelo.
+
+Controle repetido diverge do histórico em propostas de Q05A/Q06B/Q01B/
+Q05B/Q08A. O placar 12/20 permanece, mas a composição muda e os pares passam
+de 2/8 para 3/8. Não reutilizar o controle histórico como se fosse a rodada
+contemporânea; não atribuir a variação ao candidato. Pesos do histórico não
+tinham digest registrado, tampouco há revisão humana independente.
+
+Validação: **64 testes novos; 760 regressivos relevantes verdes**, com 122
+focados sobrepostos. A réplica da apresentação anterior reproduziu o RED
+de offsets ainda visíveis em 20 fontes antes da projeção. GREEN após retirar
+somente esses campos. Testes capturam payload real da consulta substituída,
+protegem host/schema de mutação, comparam mesma proposta materializada em
+ambos, mantêm rejeição atômica e tipos, recusam resumo adulterado/duplicado/
+parcial e preservam arquivo exclusivo. Resumo recalcula conferência e
+métrica em vez de confiar em aferição armazenada. Compilação/diff-check limpos.
+
+Próxima investigação: separar seleção literal externa da classificação de
+papel, medindo cada fronteira, sem forçar evidência falsa quando a proposta
+for incerta. Antes de outro contraste novo, definir qual saída comprova
+ocorrência sem escolher significado, como validar foco/negativas/ambiguidade,
+e qual contribuição se espera na mesma tarefa final. Não acumular novos
+prompts de enum, treino ou gates por aspas. Sem produção, memória, vigência,
+treino, runtime, efeito externo ou commit. P01 não encerrada.
+
+### P01: vínculo contextual com intervalos — contraste não promovido (29/09)
+
+Base mantida: HEAD `90a2fb8698541119f523c0a22fa4de0187cbaf92`, branch
+`main`, worktree anterior preservada. Pesquisa de código orientou o reuso de
+fonte/foco/aspas do diagnóstico de papel e de `tokenizar_fonte`, que conserva
+ocorrência e offsets originais, inclusive trechos repetidos. Não transplantar
+o conversor de condições como verificador semântico genérico.
+
+Contrato do protótipo: proponente envia papel e até dois intervalos de tokens
+externos ao foco; host autentica entrada, tipos, limites, ordem e disjunção
+do foco e materializa texto da fonte. Contexto externo a uma citação interna
+pode pertencer à citação externa. Lista vazia é abstenção de evidência, não
+prova de ausência. Literal válido e cobertura lexical de pistas não provam
+suporte semântico. Todas as flags de semântica, referente, autorização,
+vigência e produção permanecem falsas.
+
+Arquivos funcionais novos:
+
+- `scripts/analises/sonda_vinculo_contextual_v1.py`;
+- `scripts/analises/dados/sonda_vinculo_contextual_v1.json`;
+- `scripts/analises/dados/sonda_vinculo_contextual_revisao_v1.json`;
+- `scripts/tests/test_sonda_vinculo_contextual_v1.py`.
+
+20 fontes novas, oito pares com conteúdo focal idêntico e relação nominal
+ou operacional diferente, mais estados e ambiguidades. Inclui menção negada,
+hipótese, nome de arquivo dentro de comando externo, aspas aninhadas e
+múltiplas operações sem seleção da principal. Revisão local dirigida, não
+holdout independente nem certificação de semântica geral.
+
+Congelamento anterior à geração:
+
+- painel: `fe94a2a77ac28b2b870004f16f9ca21f4bebf4469955b6f17b4cd10f29dfc682`;
+- revisão: `04d53c818d217f910dfd2eb766e3800865544c9a3fd7b64ccd98318743c5d6a0`;
+- script usado: `0231344e4d4a9ac975ab1a98995b382222264197e5bea8d835facb7599aca89c`.
+
+Qwen `qwen3:4b-instruct`, temperatura 0, limite 700, fonte/foco/tokens
+idênticos nos dois braços e ordem contrabalanceada. Baseline mantém prompt e
+schema do papel; candidato altera instrução/schema para pedir intervalos.
+Essa comparação avalia o pacote candidato, não isola evidência de custo de
+formato. Ordem de emissão “evidências antes do papel” solicitada não comprova
+ordem do raciocínio interno. Nenhum gabarito/âncora foi enviado ao modelo.
+Não comparar ao antigo 10/16: painel e apresentação diferentes.
+
+Artefato exclusivo, preservado com entrada, proposta JSON parseada, conferência e
+metadados: `resultados_testes/sonda_vinculo_contextual_v1_ab_primeira.jsonl`.
+Não registra HTTP bruto, motivo de término ou digest do modelo; é uma execução
+local de 20 casos, sem revisão humana independente.
+
+| Fronteira | Papel direto | Papel + evidências |
+| --- | ---: | ---: |
+| Rótulo bruto válido | 20/20 | 20/20 |
+| Papel bruto alinhado à revisão local | 14/20 | 12/20 |
+| Pares contextuais completos | 5/8 | 2/8 |
+| Envelope conjunto válido | 20/20 | 15/20 |
+| Evidência literal externa válida | Não solicitada | 0/20 |
+| Papel e pistas locais alinhados conjuntamente | Não solicitado | 0/20 |
+
+**Não demonstrou ganho.** No candidato há 15 listas vazias e cinco propostas
+de intervalo inválidas (limites, intervalos vazios/invertidos). O papel bruto
+é medido antes e independentemente da guarda conjunta: seus 12 acertos não
+desaparecem por erro de coordenada. Duas trocas favorecem o candidato e quatro
+o prejudicam; não ajustar ouro após observar saídas.
+
+Primeira fronteira da evidência: o proponente não fornece conjunto válido;
+a cobertura lexical de pistas não recebe evidência materializada. Não culpar
+somente a conferência/âncora, nem concluir que uma fonte literal garantiria
+significado. Q05B tem um intervalo individual válido, que selecionaria
+`como`, mas o segundo extrapola os tokens; a guarda rejeita atomicamente o
+conjunto, sem evidência parcial publicada. Possível ambiguidade da
+apresentação ainda **não contrastada**:
+tokens/foco expõem `inicio/fim` de caracteres e a resposta exige campos
+homônimos em IDs de tokens. Valores observados compatíveis com outra escala
+não demonstram a causa interna exclusiva; listas vazias tampouco a provam.
+Interpretar retrospectivamente os números como caracteres também não recupera
+vínculo válido: quando selecionam texto, atingem aspas ou a citação externa
+que intersecta o foco; outros continuam vazios/invertidos. Isso não substitui
+o contraste de apresentação e não autoriza normalizar respostas antigas.
+
+Validação: **58 testes novos e 696 regressivos relevantes verdes**, com 141
+focados sobrepostos. RED da própria sonda: foco citado vazio chegava à
+consulta; guarda mínima passa a recusá-lo antes da geração. Testes cobrem
+entrada adulterada, tipos bool/float, intervalos inválidos sem aceite parcial,
+ocorrência repetida, contexto aninhado, ambiguidade, separação papel/evidência
+e impossibilidade de fabricar uma âncora concatenando fragmentos distintos.
+Compilação e diff-check limpos. Painéis/gabaritos antigos intactos.
+
+Próximo diagnóstico: contrastar apresentação de coordenadas sem homonímia,
+mantendo offsets originais no host, fonte/foco e objetivo intactos. Usar
+replay marcado como diagnóstico, nunca como holdout novo, e testar tanto
+intervalos quanto papel bruto. Só se a fronteira literal alinhar avaliar
+vínculo semântico; não corrigir intervalo por adivinhação nem usar rótulo
+como gate automático. Nenhum runtime, treino, memória, vigência, efeito,
+produção ou commit alterado. P01 e liberação da rede continuam pendentes.
+
 ### P01: veto estrutural opcional e painel cego v4 (28/09)
 
 Base: HEAD `a078360e6b694c37f981e8be11f1470dd14571d5`, branch

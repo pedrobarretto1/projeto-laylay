@@ -13,6 +13,8 @@ from mente_laylay.autonomia.coordenador_oportunidades import (
 from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
 from mente_laylay.autonomia.motor_iniciativa import MotorIniciativaRuntime
 from mente_laylay.autonomia.resposta_evento_runtime import RespostaEventoRuntime
+from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_evento
+from mente_laylay.emocoes.contrato_causal import evento_corresponde_direcao_social_observada
 from mente_laylay.integracao.registro_conversa_llm import (
     PacotePrompt,
     RequisicaoTransporteLLM,
@@ -68,14 +70,14 @@ class _PreparadorTransporteJogo:
 
 
 def _turno_evento(evento: dict[str, Any]) -> dict[str, Any]:
-    contrato = {
-        "funcao": "reacao_evento",
-        "natureza_entrada": "evento",
-        "entrada_cognitiva": dict(evento),
-        "autoridade_usuario": False,
-        "permissao_execucao": False,
-        "autoriza_execucao": False,
-    }
+    # A materialização local da P18 consome o contrato produzido pela cognição,
+    # incluindo âncora e direção social; o envelope incompleto antigo só
+    # funcionava porque a LLM fabricava a fala no teste.
+    referencia = str(evento.get("trace_id") or "evento_teste_p2")
+    contrato = construir_contrato_semantico_evento(
+        evento, turno={"id": f"turno:{referencia}"},
+        plano={"id": f"plano:{referencia}"},
+    )
     return {
         "natureza_entrada": "evento",
         "entrada_cognitiva": dict(evento),
@@ -171,20 +173,24 @@ def test_red_p2_sombra_materializa_candidata_sem_agendar_fala_autonoma() -> None
     resultado = diretor.considerar(_evento_jogo("vitoria-sombra"))
 
     assert str(estado_motor["ultima_decisao"]["decisao"]).startswith("sombra_")
-    assert modelo.chamadas == 1
+    assert modelo.chamadas == 0
     assert resultado["status"] == "proposta_cognitiva"
-    assert resultado["proposta_comunicativa"] == {
-        "status": "suprimida_sombra",
-        "fala": "Essa foi por pouco, hein?",
-        "agendada": False,
-        "emissao_fisica": False,
-        "autoriza_execucao": False,
-        "comandos_descartados": 0,
-    }
+    proposta = resultado["proposta_comunicativa"]
+    assert proposta["status"] == "suprimida_sombra"
+    assert "vitória confirmada" in proposta["fala"]
+    assert proposta["agendada"] is False
+    assert proposta["emissao_fisica"] is False
+    assert proposta["autoriza_execucao"] is False
+    assert proposta["comandos_descartados"] == 0
     assert agendamentos == []
 
 
-def test_red_p2_sugestao_explicita_de_jogo_abre_somente_proposta_sem_execucao() -> None:
+def test_red_p2_sugestao_explicita_de_jogo_abre_somente_proposta_sem_execucao(monkeypatch) -> None:
+    # Diretor e motor desta pilha usam 1000. O consumidor e a factory devem
+    # consultar o mesmo relógio, sem alterar time.time dos demais módulos.
+    monkeypatch.setattr(
+        "mente_laylay.emocoes.contrato_causal.time", SimpleNamespace(time=lambda: 1000.0),
+    )
     diretor, motor, estado_motor, modelo, agendamentos = _pilha_p2()
     liberacao = motor.configurar_dominio(
         "jogo",
@@ -206,19 +212,23 @@ def test_red_p2_sugestao_explicita_de_jogo_abre_somente_proposta_sem_execucao() 
     assert resultado["emissao_fisica"] is False
     assert resultado["contrato_fala"]["autoriza_execucao"] is False
     assert resultado["proposta_comunicativa"]["autoriza_execucao"] is False
-    assert modelo.chamadas == 1
+    contrato = resultado["contrato_fala"]
+    causal = contrato["evento_emocional_causal"]
+    assert evento_corresponde_direcao_social_observada(
+        causal, contrato["entrada_cognitiva"], contrato["direcao_social"],
+        turno_id=contrato["turno_id"],
+    )
+    assert causal["autoriza_execucao"] is False
+    assert modelo.chamadas == 0
     assert len(agendamentos) == 1
     tipo, fala, emocao, nivel, opcoes = agendamentos[0]
-    assert (tipo, fala, emocao, nivel) == (
-        "presenca_jogo",
-        "Essa foi por pouco, hein?",
-        "animada",
-        1,
-    )
+    assert tipo == "presenca_jogo"
+    assert "vitória confirmada" in fala
+    assert (emocao, nivel) == ("alegre", 2)
     assert callable(opcoes["ao_concluir"])
 
 
-def test_presenca_jogo_aprovada_deve_usar_rota_de_conversa_do_jogo_antes_da_fala() -> None:
+def test_presenca_jogo_aprovada_materializa_localmente_sem_rota_de_conversa() -> None:
     chamadas_http_local: list[tuple[Any, ...]] = []
     chamadas_remotas: list[dict[str, Any]] = []
     agendamentos: list[tuple[Any, ...]] = []
@@ -271,7 +281,9 @@ def test_presenca_jogo_aprovada_deve_usar_rota_de_conversa_do_jogo_antes_da_fala
     )
 
     assert resultado["status"] == "agendada"
-    assert chamadas_remotas
+    # P18 substitui a autoria adicional remota por materialização local do
+    # contrato, preservando a fila e todas as guardas de entrega.
+    assert chamadas_remotas == []
     assert chamadas_http_local == []
     assert len(agendamentos) == 1
     assert agendamentos[0][0] == "presenca_jogo"
@@ -346,7 +358,7 @@ def test_red_p2_evento_repetido_nao_gera_segunda_candidata() -> None:
     assert primeira["status"] == "proposta_cognitiva"
     assert segunda["status"] == "bloqueada"
     assert segunda["motivo"] == "governanca"
-    assert modelo.chamadas == 1
+    assert modelo.chamadas == 0
     assert len(agendamentos) == 1
 
 
@@ -370,7 +382,7 @@ def test_red_p2_cooldown_comeca_somente_apos_entrega_confirmada() -> None:
         "categoria": "celebracao",
         "ts": 1_000.0,
     }
-    assert modelo.chamadas == 1
+    assert modelo.chamadas == 0
     assert len(agendamentos) == 1
 
 

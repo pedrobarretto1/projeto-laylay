@@ -7,8 +7,12 @@ que a adoção possa ocorrer módulo por módulo.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
+from copy import deepcopy
+import json
 from typing import Any, Dict, Literal, Mapping, TypedDict
+
+from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 
 
 ModalidadeTurno = Literal[
@@ -131,10 +135,13 @@ class RespostaPreparadaTurnoDict(TypedDict, total=False):
     tipo_interacao: str
     aprendizados: list[Any]
     leitura_semantica: Dict[str, Any]
+    leitura_semantica_reparada: Dict[str, Any]
     autocorrigida: bool
     suprimir_fala: bool
     emocao: str
     nivel_emocao: int
+    proposta_principal: ContratoPropostaPrincipal
+    extracao_original: ExtracaoRespostaIA
 
 
 _CAMPOS_DECISAO = {
@@ -259,6 +266,195 @@ class ContratoDecisaoTurno:
 
 
 @dataclass(frozen=True, slots=True)
+class ContratoOcorrenciaTurno:
+    """Identidade capturada pelo runtime, sem certificar modelo ou efeito."""
+
+    turno_id: Any = ""
+    texto_usuario: str = ""
+    autoriza_execucao: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        identificador = (
+            str(self.turno_id).strip()
+            if isinstance(self.turno_id, (str, int)) and not isinstance(self.turno_id, bool)
+            else ""
+        )
+        texto = self.texto_usuario.strip() if isinstance(self.texto_usuario, str) else ""
+        object.__setattr__(self, "turno_id", identificador)
+        object.__setattr__(self, "texto_usuario", texto)
+
+
+@dataclass(frozen=True, slots=True)
+class ContratoPropostaPrincipal:
+    """Emissão capturada pelo runtime antes de qualquer reparo.
+
+    A procedência identifica somente a emissão e seu turno. Não comprova erro,
+    responsabilidade, autorização ou efeito. O bruto permanece interno; JSON
+    do modelo não materializa este contrato nem define seus campos de origem.
+    """
+
+    turno_id: Any = ""
+    texto_usuario: str = ""
+    resposta_bruta: Any = field(default="", repr=False)
+    sucesso_modelo: bool = True
+    origem: str = field(default="llm_principal", init=False)
+    estado: str = field(default="", init=False)
+    proveniencia_conhecida: bool = field(default=False, init=False)
+    autoriza_execucao: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        turno_id = (
+            str(self.turno_id).strip()
+            if isinstance(self.turno_id, (str, int)) and not isinstance(self.turno_id, bool)
+            else ""
+        )
+        texto = str(self.texto_usuario or "").strip()
+        retorno_textual = isinstance(self.resposta_bruta, str)
+        bruto = self.resposta_bruta if retorno_textual else ""
+        sucesso = self.sucesso_modelo is True
+        if not retorno_textual:
+            estado = "retorno_nao_textual"
+        elif not sucesso or categoria_estado_tecnico_llm(bruto):
+            estado = "falha_tecnica"
+        elif not bruto.strip():
+            estado = "vazia"
+        else:
+            estado = "recebida"
+        object.__setattr__(self, "turno_id", turno_id)
+        object.__setattr__(self, "texto_usuario", texto)
+        object.__setattr__(self, "resposta_bruta", bruto)
+        object.__setattr__(self, "sucesso_modelo", sucesso)
+        object.__setattr__(self, "estado", estado)
+        object.__setattr__(
+            self, "proveniencia_conhecida", bool(estado == "recebida" and turno_id and texto),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ViolacaoPropostaPrincipal:
+    """Fato local demonstrado pelo owner do turno, sem payload ou receipt.
+
+    Certifica somente a restrição violada pela proposta original. Não atesta
+    validade dos parâmetros, identidade do alvo ou efeito no mundo externo.
+    """
+
+    turno_id: str
+    indice_comando: int
+    intent: str
+    motivo: str
+    proprietario: str
+    operacao_explicita: str
+    origem: str = field(default="contrato_proposta_principal", init=False)
+    owner: str = field(default="validador_comandos_turno", init=False)
+    autoriza_execucao: bool = field(default=False, init=False)
+    comprova_efeito_externo: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if not (
+            isinstance(self.turno_id, str) and self.turno_id and self.turno_id == self.turno_id.strip()
+            and isinstance(self.indice_comando, int) and not isinstance(self.indice_comando, bool)
+            and self.indice_comando >= 0
+            and isinstance(self.intent, str) and self.intent
+            and all(letra in "ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789" for letra in self.intent)
+            and isinstance(self.motivo, str) and self.motivo in (
+                "turno não autorizou execução", "intenção incompatível com a operação explícita",
+            )
+            and isinstance(self.proprietario, str) and self.proprietario in ("conversa", "operacional", "coordenador")
+            and isinstance(self.operacao_explicita, str)
+            and all(letra in "abcdefghijklmnopqrstuvwxyz_0123456789" for letra in self.operacao_explicita)
+        ):
+            raise ValueError("Prova de violação exige identidade, índice e restrição canônicos.")
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotComandoIA:
+    """Árvore JSON isolada; toda projeção devolve uma cópia sem autoridade."""
+
+    dados: InitVar[Dict[str, Any]]
+    _dados_json: str = field(init=False, repr=False)
+    autoriza_execucao: bool = field(default=False, init=False)
+
+    def __post_init__(self, dados: Dict[str, Any]) -> None:
+        if not isinstance(dados, dict):
+            raise TypeError("Snapshot de comando exige objeto JSON.")
+        serializado = json.dumps(dados, ensure_ascii=False, allow_nan=False)
+        # Não converter silenciosamente chaves, tuplas ou tipos não JSON.
+        if json.loads(serializado) != dados:
+            raise ValueError("Snapshot de comando exige árvore JSON sem conversão de tipos.")
+        object.__setattr__(self, "_dados_json", serializado)
+
+    def como_dict(self) -> Dict[str, Any]:
+        return json.loads(self._dados_json)
+
+
+@dataclass(frozen=True, slots=True)
+class ExtracaoRespostaIA:
+    """Procedência interna da decodificação; não é autorização nem receipt.
+
+    Os campos descrevem o caminho do parser, sem atestar que a proposta é
+    correta. A string original permite vincular essa leitura à emissão
+    capturada pelo chamador; coleções legadas não criam fonte textual.
+    """
+
+    resposta_bruta: str | None = field(default=None, repr=False)
+    metodo: str = "desconhecido"
+    campo_comandos_presente: bool = False
+    quantidade_comandos: int = 0
+    comandos_originais: tuple[SnapshotComandoIA, ...] | None = field(default=None, repr=False)
+    comandos_normalizados: tuple[SnapshotComandoIA | None, ...] | None = field(default=None, repr=False)
+    candidatos_preservados: bool = field(default=False, init=False)
+    normalizacao_completa: bool = field(default=False, init=False)
+    origem: str = field(default="decoder_canonico", init=False)
+    autoriza_execucao: bool = field(default=False, init=False)
+    proposta_operacional_explicita: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        bruto = self.resposta_bruta if isinstance(self.resposta_bruta, str) else None
+        metodos = {
+            "tupla_legada", "json_objeto", "json_envelope_textual",
+            "recuperacao_campo_comandos", "recuperacao_padrao_textual",
+            "recuperacao_fala", "texto_livre", "json_invalido_bloqueado",
+        }
+        metodo = (
+            self.metodo if isinstance(self.metodo, str) and self.metodo in metodos
+            else "desconhecido"
+        )
+        quantidade = (
+            max(0, self.quantidade_comandos)
+            if isinstance(self.quantidade_comandos, int)
+            and not isinstance(self.quantidade_comandos, bool) else 0
+        )
+        campo_presente = self.campo_comandos_presente is True
+        object.__setattr__(self, "resposta_bruta", bruto)
+        object.__setattr__(self, "metodo", metodo)
+        object.__setattr__(self, "quantidade_comandos", quantidade)
+        object.__setattr__(self, "campo_comandos_presente", campo_presente)
+        originais = self.comandos_originais
+        preservados = (
+            isinstance(originais, tuple) and len(originais) == quantidade
+            and all(isinstance(item, SnapshotComandoIA) for item in originais)
+        )
+        if not preservados:
+            object.__setattr__(self, "comandos_originais", None)
+        normalizados = self.comandos_normalizados
+        if not (
+            preservados and isinstance(normalizados, tuple)
+            and len(normalizados) == quantidade
+            and all(item is None or isinstance(item, SnapshotComandoIA) for item in normalizados)
+        ):
+            normalizados = None
+            object.__setattr__(self, "comandos_normalizados", None)
+        object.__setattr__(self, "candidatos_preservados", preservados)
+        object.__setattr__(self, "normalizacao_completa", bool(
+            normalizados and all(item is not None for item in normalizados)
+        ))
+        object.__setattr__(self, "proposta_operacional_explicita", bool(
+            metodo == "json_objeto" and campo_presente and quantidade > 0
+            and bruto and not categoria_estado_tecnico_llm(bruto)
+        ))
+
+
+@dataclass(frozen=True, slots=True)
 class ContratoRespostaTurno:
     resposta_bruta: Any = ""
     fala: str = ""
@@ -266,10 +462,13 @@ class ContratoRespostaTurno:
     tipo_interacao: str = ""
     aprendizados: tuple[Any, ...] = ()
     leitura_semantica: Mapping[str, Any] = field(default_factory=dict)
+    leitura_semantica_reparada: Mapping[str, Any] = field(default_factory=dict)
     autocorrigida: bool = False
     suprimir_fala: bool = False
     emocao: str = ""
     nivel_emocao: int = 0
+    proposta_principal: ContratoPropostaPrincipal | None = None
+    extracao_original: ExtracaoRespostaIA | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fala", str(self.fala or "").strip())
@@ -279,6 +478,10 @@ class ContratoRespostaTurno:
         object.__setattr__(self, "tipo_interacao", str(self.tipo_interacao or "").strip().lower())
         object.__setattr__(self, "aprendizados", tuple(self.aprendizados or ()))
         object.__setattr__(self, "leitura_semantica", dict(self.leitura_semantica or {}))
+        reparada = deepcopy(dict(self.leitura_semantica_reparada or {}))
+        if reparada:
+            reparada["origem"] = "resposta_reparada"
+        object.__setattr__(self, "leitura_semantica_reparada", reparada)
         object.__setattr__(self, "autocorrigida", bool(self.autocorrigida))
         object.__setattr__(self, "suprimir_fala", bool(self.suprimir_fala))
         object.__setattr__(self, "emocao", str(self.emocao or "").strip().lower())
@@ -287,6 +490,20 @@ class ContratoRespostaTurno:
         except (TypeError, ValueError):
             nivel_emocao = 0
         object.__setattr__(self, "nivel_emocao", max(0, min(3, nivel_emocao)))
+        if not isinstance(self.proposta_principal, ContratoPropostaPrincipal):
+            object.__setattr__(self, "proposta_principal", None)
+        extracao = self.extracao_original
+        if (
+            not isinstance(extracao, ExtracaoRespostaIA)
+            or (
+                self.proposta_principal is not None
+                and (
+                    not self.proposta_principal.proveniencia_conhecida
+                    or extracao.resposta_bruta != self.proposta_principal.resposta_bruta
+                )
+            )
+        ):
+            object.__setattr__(self, "extracao_original", None)
 
     def como_dict(self) -> RespostaPreparadaTurnoDict:
         dados: RespostaPreparadaTurnoDict = {
@@ -302,6 +519,13 @@ class ContratoRespostaTurno:
         if self.emocao:
             dados["emocao"] = self.emocao
             dados["nivel_emocao"] = self.nivel_emocao or 1
+        if self.proposta_principal is not None:
+            # Instância interna: não projetar o bruto para prompt, log ou receipt.
+            dados["proposta_principal"] = self.proposta_principal
+        if self.extracao_original is not None:
+            dados["extracao_original"] = self.extracao_original
+        if self.leitura_semantica_reparada:
+            dados["leitura_semantica_reparada"] = deepcopy(dict(self.leitura_semantica_reparada))
         return dados
 
 
@@ -334,8 +558,14 @@ def normalizar_resposta_preparada(
         tipo_interacao=origem.get("tipo_interacao", ""),
         aprendizados=aprendizados,
         leitura_semantica=leitura,
+        leitura_semantica_reparada=(
+            origem.get("leitura_semantica_reparada")
+            if isinstance(origem.get("leitura_semantica_reparada"), Mapping) else {}
+        ),
         autocorrigida=origem.get("autocorrigida", False),
         suprimir_fala=origem.get("suprimir_fala", False),
         emocao=origem.get("emocao", ""),
         nivel_emocao=origem.get("nivel_emocao", 0),
+        proposta_principal=origem.get("proposta_principal"),
+        extracao_original=origem.get("extracao_original"),
     )

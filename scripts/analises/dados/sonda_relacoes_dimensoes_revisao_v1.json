@@ -1,0 +1,18 @@
+{
+  "versao":1,
+  "nota":"Anotação local por campo do painel v2 já conhecido. Diagnóstico, não holdout. Ato é a postura frente à operação sobre regras; a instrução de citar uma frase não adota a revogação citada. Nenhum: nenhuma regra afetada pela operação. Alternativas explícitas cobrem atos não operacionais sobrepostos.",
+  "casos":{
+    "N01":[{"ato":["pergunta"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N02":[{"ato":["pedido_acao"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N03":[{"ato":["relato"],"alvo":["outra_regra"],"operacao":["revoga"]}],
+    "N04":[{"ato":["relato"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N05":[{"ato":["citacao_sem_adocao"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N06":[{"ato":["pedido_acao"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N07":[{"ato":["hipotese"],"alvo":["regra_alvo"],"operacao":["revoga"]}],
+    "N08":[{"ato":["pedido_acao"],"alvo":["regra_alvo"],"operacao":["mantem"]}],
+    "N09":[{"ato":["pedido_acao"],"alvo":["regra_alvo"],"operacao":["substitui"]}],
+    "N10":[{"ato":["relato"],"alvo":["regra_alvo"],"operacao":["revoga"]},{"ato":["pedido_acao"],"alvo":["regra_alvo"],"operacao":["restaura"]}],
+    "N11":[{"ato":["relato"],"alvo":["nenhum"],"operacao":["nenhuma"]},{"ato":["relato"],"alvo":["indeterminado"],"operacao":["revoga"]}],
+    "N12":[{"ato":["relato","outro"],"alvo":["nenhum"],"operacao":["nenhuma"]}]
+  }
+}

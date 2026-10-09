@@ -15,6 +15,11 @@ from mente_laylay.cognicao.contratos_turno import (
     normalizar_evento_cognitivo,
     texto_evento_cognitivo,
 )
+from mente_laylay.cognicao.decisao_turno import (
+    motivo_divergencia_ocorrencia_principal,
+    motivo_divergencia_ocorrencia_turno,
+    motivo_incoerencia_contratos_turno,
+)
 from mente_laylay.cognicao.leitura_semantica_turno import (
     aplicar_leitura_conversacional,
     comparar_com_legado,
@@ -25,6 +30,7 @@ from mente_laylay.cognicao.intencao_visual_jogo import (
 )
 from mente_laylay.cognicao.fundamentacao_factual import (
     extrair_tema_recomendacao_contextual,
+    texto_pede_recomendacao,
     extrair_titulos_citados,
 )
 from mente_laylay.cognicao.pesquisa_multifonte import (
@@ -71,6 +77,7 @@ from mente_laylay.emocoes.contrato_causal import (
 )
 from mente_laylay.personalidade.leitura_social_conversa import elogio_pessoal_direto
 from mente_laylay.cognicao.preferencia_humor import (
+    contexto_humor_turno,
     extrair_preferencia_humor,
     preferencia_humor_ativa,
     selecionar_preferencia_humor,
@@ -78,6 +85,11 @@ from mente_laylay.cognicao.preferencia_humor import (
 from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal,
 )
+from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
+
+
+_PROPOSTA_NAO_INFORMADA = object()
+_OCORRENCIA_NAO_INFORMADA = object()
 
 
 def observar_especialista_neural_turno(
@@ -654,7 +666,8 @@ def _iniciar_planejamento_evento(
 ) -> dict:
     """Planeja evidência ambiental sem criar uma utterance artificial."""
     ns = namespace_getter()
-    mente_antes_turno = dict(ns['_estado_compartilhado_runtime'].mental)
+    estado = ns['_estado_compartilhado_runtime']
+    mente_antes_turno = estado.snapshot()['mental']
     entrada_cognitiva = dict(evento)
     texto_cognitivo = texto_evento_cognitivo(entrada_cognitiva)
     if not texto_cognitivo:
@@ -779,9 +792,12 @@ def _iniciar_planejamento_evento(
     )
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
+    causal = dict(contrato_fala.get('evento_emocional_causal') or {})
+    if causal:
+        turno['evento_emocional_causal'] = causal
+        plano['evento_emocional_causal'] = causal
 
-    ns['_estado_compartilhado_runtime'].atualizar_campos(
-        'mental',
+    campos_evento = dict(
         evento_cognitivo_atual=entrada_cognitiva,
         turno_atual=turno,
         plano_turno_atual=plano,
@@ -796,6 +812,27 @@ def _iniciar_planejamento_evento(
         entidades_recentes=entidades_recentes,
         especialistas_turno_atual=especialistas,
     )
+
+    def publicar_se_vigente(dominios: dict[str, dict[str, Any]]) -> dict | None:
+        mental = dominios['mental']
+        # A cognição pode trabalhar enquanto uma nova utterance abre seu turno.
+        # Publicar o evento antigo não pode substituir essa nova ocorrência.
+        if any(mental.get(campo) != mente_antes_turno.get(campo) for campo in (
+            'turno_atual', 'plano_turno_atual', 'ultima_entrada', 'ultima_entrada_ts',
+        )):
+            return None
+        turno['publicacao_evento_confirmada'] = True
+        mental.update(campos_evento)
+        conversa = dominios['conversacional']
+        if causal:
+            mental['eventos_emocionais_causais'] = publicar_evento_emocional_causal(
+                mental.get('eventos_emocionais_causais'), causal,
+            )
+            conversa = aplicar_evento_emocional(conversa, causal)
+        return {'mental': mental, 'conversacional': conversa}
+
+    publicado = estado.atualizar_dominios(('mental', 'conversacional'), publicar_se_vigente)
+    turno['publicacao_evento_confirmada'] = publicado
     ns['print'](
         '🧠 [PLANO:EVENTO] '
         f"tipo={entrada_cognitiva.get('tipo') or '-'} | "
@@ -1176,11 +1213,7 @@ def _iniciar_planejamento_turno(
                 )
             )
         )
-        pedido_recomendacao = bool(re.search(
-            r'\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b',
-            str(texto_cognitivo or ''),
-            flags=re.IGNORECASE,
-        ))
+        pedido_recomendacao = texto_pede_recomendacao(str(texto_cognitivo or ''))
         exige_resposta_factual_agora = bool(
             atualidade_factual.get('depende_atualidade')
             or consulta_didatica
@@ -1292,24 +1325,34 @@ def _iniciar_planejamento_turno(
     if preferencia_humor:
         turno['preferencia_humor'] = dict(preferencia_humor)
         plano['preferencia_humor'] = dict(preferencia_humor)
-    contexto_humor = 'jogo' if turno.get('modo_jogo_ativo') else 'conversa'
+    contexto_humor = contexto_humor_turno(
+        modo_jogo_ativo=bool(turno.get('modo_jogo_ativo')), operacional=turno_operacional,
+    )
     preferencias_humor = {
         str(chave): dict(valor)
         for chave, valor in dict(
             mente_antes_turno.get('preferencias_humor_contextuais') or {}
         ).items()
-        if isinstance(valor, Mapping) and preferencia_humor_ativa(
+        if isinstance(valor, Mapping) and valor.get('origem') != 'tolerancia_implicita' and preferencia_humor_ativa(
             valor, contexto=str(chave),
         )
     }
     if preferencia_humor:
         preferencias_humor[preferencia_humor['contexto']] = dict(preferencia_humor)
-    if contexto_humor not in preferencias_humor:
-        carregar_humor = ns.get('_carregar_preferencia_humor_duravel')
-        if callable(carregar_humor):
+    carregar_humor = ns.get('_carregar_preferencia_humor_duravel')
+    if callable(carregar_humor):
+        try:
             aprendida = dict(carregar_humor(contexto_humor) or {})
             if preferencia_humor_ativa(aprendida, contexto=contexto_humor):
-                preferencias_humor[aprendida['contexto']] = aprendida
+                escopo = 'implicita' if aprendida.get('origem') == 'tolerancia_implicita' else aprendida['contexto']
+                atual = preferencias_humor.get(escopo) or {}
+                if float(aprendida['inicio_ts']) > float(atual.get('inicio_ts') or 0.0):
+                    preferencias_humor[escopo] = aprendida
+        except Exception as erro:
+            ns['print'](
+                '⚠️ [APRENDIZADO] não consegui recuperar a preferência de humor: '
+                f'{type(erro).__name__}'
+            )
     preferencia_humor_atual = selecionar_preferencia_humor(
         preferencias_humor, contexto=contexto_humor,
     )
@@ -1415,13 +1458,37 @@ def _iniciar_planejamento_turno(
     return turno
 
 
-def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura: dict | None) -> dict:
+def registrar_leitura_semantica_principal(
+    namespace_getter, texto: str, leitura: dict | None, *,
+    proposta_principal: Any = _PROPOSTA_NAO_INFORMADA,
+) -> dict:
     """Registra a leitura da resposta principal sem alterar sua autorização."""
     ns = namespace_getter()
     semantica = dict(leitura or {})
-    if not semantica.get('valida'):
+    if not semantica.get('valida') or semantica.get('origem') == 'resposta_reparada':
         return {}
-    mente = dict(ns['_estado_compartilhado_runtime'].mental)
+    estado = ns['_estado_compartilhado_runtime']
+    vinculada = proposta_principal is not _PROPOSTA_NAO_INFORMADA
+    if vinculada and not callable(getattr(estado, 'atualizar', None)):
+        return {}
+    mente = (
+        estado.snapshot()['mental']
+        if vinculada else dict(estado.mental)
+    )
+    if vinculada and motivo_divergencia_ocorrencia_principal(
+        proposta_principal, turno=mente.get('turno_atual'),
+        plano=mente.get('plano_turno_atual'), retrato=mente.get('retrato_turno_atual'),
+    ):
+        return {}
+    if vinculada:
+        from mente_laylay.autonomia.processamento_resposta_ia import extrair_leitura_semantica_principal
+
+        original = extrair_leitura_semantica_principal(proposta_principal, texto)
+        if not original.get('valida') or semantica != original:
+            return {}
+        # Publicar a cópia derivada da fonte; subdicts fornecidos pelo caller
+        # não podem mudar a leitura entre esta conferência e o commit.
+        semantica = original
     turno = dict(mente.get('turno_atual') or {})
     comparacao = comparar_com_legado(semantica, turno)
     semantica.update(
@@ -1462,10 +1529,30 @@ def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura:
                 evento,
             )
         )
-    ns['_estado_compartilhado_runtime'].atualizar_campos(
-        'mental',
-        **campos_semanticos,
-    )
+    if vinculada:
+        publicado = False
+
+        def publicar_se_ainda_vigente(mental: dict[str, Any]) -> dict[str, Any]:
+            nonlocal publicado
+            if motivo_divergencia_ocorrencia_principal(
+                proposta_principal, turno=mental.get('turno_atual'),
+                plano=mental.get('plano_turno_atual'), retrato=mental.get('retrato_turno_atual'),
+            ) or any(
+                mental.get(chave) != mente.get(chave)
+                for chave in ('turno_atual', 'plano_turno_atual', 'retrato_turno_atual', 'eventos_emocionais_causais')
+            ):
+                return mental
+            novo = dict(mental)
+            novo.update(campos_semanticos)
+            publicado = True
+            return novo
+
+        # Derivação fora do lock; origem e snapshot conferidos no commit.
+        estado.atualizar('mental', publicar_se_ainda_vigente)
+        if not publicado:
+            return {}
+    else:
+        estado.atualizar_campos('mental', **campos_semanticos)
     atos = [str(item.get('tipo') or '') for item in semantica.get('atos') or [] if isinstance(item, dict)]
     ns['print'](
         f"🧠 [SEMÂNTICA:PRINCIPAL] atos={atos or ['-']} | "
@@ -1475,36 +1562,67 @@ def registrar_leitura_semantica_principal(namespace_getter, texto: str, leitura:
     )
     return semantica
 
-def atualizar_planejamento_turno(namespace_getter, fase: str, *, comandos=(), erros=(), fala: str='') -> dict:
+def atualizar_planejamento_turno(
+    namespace_getter, fase: str, *, comandos=(), erros=(), fala: str='',
+    proposta_principal: Any = _PROPOSTA_NAO_INFORMADA,
+    ocorrencia_turno: Any = _OCORRENCIA_NAO_INFORMADA,
+) -> dict:
     ns = namespace_getter()
-    atual = dict(ns['_estado_compartilhado_runtime'].mental.get('plano_turno_atual') or {})
-    comandos_atuais = list(atual.get('comandos') or [])
+    estado = ns['_estado_compartilhado_runtime']
     comandos_novos = [dict(item) for item in comandos or () if isinstance(item, dict)]
-    comandos_finais = list(comandos_atuais)
-    if comandos_novos:
-        por_intent = {str(item.get('intent') or item.get('acao') or '').upper(): dict(item) for item in comandos_atuais if str(item.get('intent') or item.get('acao') or '').strip()}
-        ordem = list(por_intent)
-        for item in comandos_novos:
-            chave = str(item.get('intent') or item.get('acao') or '').upper()
-            anterior = dict(por_intent.get(chave) or {})
-            mesclado = dict(anterior)
-            mesclado.update(item)
-            for campo in (
-                'status', 'executou', 'confirmado',
-                'confirmacao_oferecida', 'evidencia_confirmacao',
-            ):
-                if item.get(campo) in (None, '') and anterior.get(campo) not in (None, ''):
-                    mesclado[campo] = anterior[campo]
-            por_intent[chave] = mesclado
-            if chave not in ordem:
-                ordem.append(chave)
-        comandos_finais = [por_intent[chave] for chave in ordem]
-    novo = ns['_atualizar_plano_turno_mente'](atual, fase=fase, comandos=comandos_finais, erros=erros, fala=fala)
-    ns['_estado_compartilhado_runtime'].atualizar_campos('mental', plano_turno_atual=novo)
-    trilha = ns['_registrar_etapa_turno_mente'](ns['_estado_compartilhado_runtime'].mental.get('trilha_decisoes_turno') or [], novo, fase=fase)
-    ns['_estado_compartilhado_runtime'].atualizar_campos('mental', trilha_decisoes_turno=trilha)
-    ns['print'](f"🧠 [PLANO:FASE] fase={novo.get('fase')} | comandos={novo.get('comandos') or []} | erros={novo.get('erros') or []}")
-    return novo
+    publicado: dict[str, Any] = {}
+    vinculada = proposta_principal is not _PROPOSTA_NAO_INFORMADA
+    ocorrencia_vinculada = ocorrencia_turno is not _OCORRENCIA_NAO_INFORMADA
+    if (vinculada or ocorrencia_vinculada) and not callable(getattr(estado, 'atualizar', None)):
+        return {}
+
+    def publicar_se_coerente(mental: dict[str, Any]) -> dict[str, Any]:
+        incoerencia = motivo_incoerencia_contratos_turno(
+            mental.get('turno_atual'), mental.get('plano_turno_atual'),
+            mental.get('retrato_turno_atual'),
+        )
+        if incoerencia:
+            return mental
+        if vinculada and motivo_divergencia_ocorrencia_principal(
+            proposta_principal, turno=mental.get('turno_atual'),
+            plano=mental.get('plano_turno_atual'), retrato=mental.get('retrato_turno_atual'),
+        ):
+            return mental
+        if ocorrencia_vinculada and motivo_divergencia_ocorrencia_turno(
+            ocorrencia_turno, turno=mental.get('turno_atual'),
+            plano=mental.get('plano_turno_atual'), retrato=mental.get('retrato_turno_atual'),
+        ):
+            return mental
+        atual = dict(mental.get('plano_turno_atual') or {})
+        comandos_atuais = list(atual.get('comandos') or [])
+        comandos_finais = list(comandos_atuais)
+        if comandos_novos:
+            from mente_laylay.memoria_mental.correlacao_solicitacao import mesclar_solicitacoes
+
+            try:
+                comandos_finais = mesclar_solicitacoes(comandos_atuais, comandos_novos)
+            except ValueError:
+                return mental
+        novo = ns['_atualizar_plano_turno_mente'](atual, fase=fase, comandos=comandos_finais, erros=erros, fala=fala)
+        trilha = ns['_registrar_etapa_turno_mente'](mental.get('trilha_decisoes_turno') or [], novo, fase=fase)
+        novo_estado = dict(mental)
+        novo_estado.update(plano_turno_atual=novo, trilha_decisoes_turno=trilha)
+        publicado.update(novo)
+        return novo_estado
+
+    if callable(getattr(estado, 'atualizar', None)):
+        estado.atualizar('mental', publicar_se_coerente)
+    else:
+        # Adaptadores legados não expõem a transação do estado compartilhado.
+        novo_estado = publicar_se_coerente(estado.mental)
+        if publicado:
+            estado.atualizar_campos(
+                'mental', plano_turno_atual=novo_estado['plano_turno_atual'],
+                trilha_decisoes_turno=novo_estado['trilha_decisoes_turno'],
+            )
+    if publicado:
+        ns['print'](f"🧠 [PLANO:FASE] fase={publicado.get('fase')} | comandos={publicado.get('comandos') or []} | erros={publicado.get('erros') or []}")
+    return publicado
 
 
 def concluir_planejamento_evento(
@@ -1581,7 +1699,25 @@ def concluir_planejamento_evento(
 
 def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='conversa') -> dict:
     ns = namespace_getter()
-    mente = ns['_estado_compartilhado_runtime'].mental
+    estado = ns['_estado_compartilhado_runtime']
+    mente = (
+        estado.snapshot()['mental']
+        if callable(getattr(estado, 'snapshot', None)) else dict(estado.mental)
+    )
+
+    def concluir_sem_evidencia_vigente() -> dict[str, Any]:
+        # A fala segura é aceita para os consumidores concluírem o turno.
+        # Não confirma efeito, não atribui culpa e não solicita outra LLM.
+        return {
+            'aceita': True, 'fala': 'Não tenho uma confirmação válida para esse pedido.',
+            'acao': 'ajustada', 'problemas': ['contratos_turno_incoerentes'],
+            'pontuacao': 0.0,
+        }
+
+    if motivo_incoerencia_contratos_turno(
+        mente.get('turno_atual'), mente.get('plano_turno_atual'), mente.get('retrato_turno_atual'),
+    ):
+        return concluir_sem_evidencia_vigente()
     plano_verificado = dict(mente.get('plano_turno_atual') or {})
     argumentos = {
         'plano': plano_verificado,
@@ -1597,7 +1733,7 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
     pesquisa_runtime = ns.get('_pesquisa_contextual_runtime')
     montar_fundamentacao = ns.get('_montar_fundamentacao_mente')
     if (
-        'obra_sem_evidencia' in problemas_iniciais
+        bool({'obra_sem_evidencia', 'recomendacao_sem_candidato_verificado'} & problemas_iniciais)
         and titulos_candidatos
         and not list(plano_verificado.get('comandos') or [])
         and callable(getattr(pesquisa_runtime, 'pesquisar_contexto_tema', None))
@@ -1619,6 +1755,11 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
                 f'tipo={type(erro).__name__}'
             )
         if fundamentacao_candidata.get('confiavel'):
+            # A consulta pode localizar uma página diferente do rascunho.
+            # Só o título observado pelo pesquisador pode virar candidato;
+            # o verificador factual ainda exige fonte, trecho e validade.
+            if str(pesquisa_candidata.get('titulo') or '').strip().casefold() == titulo_candidato.strip().casefold():
+                fundamentacao_candidata['candidatos'] = [str(pesquisa_candidata['titulo']).strip()]
             plano_candidato = dict(plano_verificado)
             plano_candidato['fundamentacao_factual'] = fundamentacao_candidata
             argumentos['plano'] = plano_candidato
@@ -1626,9 +1767,7 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
                 fala,
                 **argumentos,
             )
-            if 'obra_sem_evidencia' not in set(
-                verificacao_candidata.get('problemas') or []
-            ):
+            if not {'obra_sem_evidencia', 'recomendacao_sem_candidato_verificado'} & set(verificacao_candidata.get('problemas') or []):
                 verificacao = verificacao_candidata
                 plano_verificado = plano_candidato
                 ns['print'](
@@ -1662,7 +1801,10 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
         for problema in verificacao.get('problemas') or []:
             chave = f'problema:{problema}'
             metricas[chave] = int(metricas.get(chave) or 0) + 1
-    ns['_estado_compartilhado_runtime'].atualizar_campos('mental', plano_turno_atual=plano, avaliacoes_turno=avaliacoes[-50:], metricas_verificador=metricas)
+    campos_verificados = {
+        'plano_turno_atual': plano, 'avaliacoes_turno': avaliacoes[-50:],
+        'metricas_verificador': metricas,
+    }
     estrategia = str(dict(
         dict(plano_verificado.get('contrato_fala') or {}).get('roteiro_concreto') or {}
     ).get('estrategia') or '')
@@ -1682,9 +1824,7 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
                 fala_candidata, fontes=fontes, plano_id=plano.get('id'),
             )
             auditoria['verificacao_aceita'] = bool(verificacao.get('aceita', True))
-            estado_runtime.atualizar_campos(
-                'mental', auditoria_alegacoes_didaticas_sombra=auditoria,
-            )
+            campos_verificados['auditoria_alegacoes_didaticas_sombra'] = auditoria
             if os.environ.get('LAYLAY_AUDITORIA_ENSINO_SOMBRA_DEBUG') == '1':
                 segmentos = list(auditoria['segmentos'])
                 ns['print'](
@@ -1706,14 +1846,37 @@ def verificar_fala_do_turno(namespace_getter, fala: str, *, origem: str='convers
         agora = ns['time'].time()
         entidades = dict(mente.get('entidades_recentes') or {})
         entidades['musica'] = {'tipo': 'musica', 'nome': referencia_musical, 'origem': 'fala_verificada', 'ts': agora}
-        ns['_estado_compartilhado_runtime'].atualizar_campos(
-            'mental',
+        campos_verificados.update(
             ultima_musica_mencionada={'titulo': referencia_musical, 'origem': 'fala_verificada', 'ts': agora},
             entidades_recentes=entidades,
         )
     if verificacao.get('problemas'):
         casos = list(mente.get('casos_regressao_candidatos') or [])[-29:]
         casos.append({'origem': 'verificador_fala', 'texto': str(plano.get('texto_usuario') or '')[:500], 'fala': str(verificacao.get('fala') or '')[:500], 'problemas': list(verificacao.get('problemas') or []), 'plano_id': plano.get('id'), 'ts': ns['time'].time()})
-        ns['_estado_compartilhado_runtime'].atualizar_campos('mental', casos_regressao_candidatos=casos)
+        campos_verificados['casos_regressao_candidatos'] = casos
         ns['print'](f"🛡️ [VERIFICADOR:FALA] origem={origem} | acao={verificacao.get('acao')} | problemas={verificacao.get('problemas')}")
+    publicado = False
+
+    def publicar_se_ainda_vigente(mental: dict[str, Any]) -> dict[str, Any]:
+        nonlocal publicado
+        if motivo_incoerencia_contratos_turno(
+            mental.get('turno_atual'), mental.get('plano_turno_atual'), mental.get('retrato_turno_atual'),
+        ) or any(
+            (mental.get(chave) or {}) != (mente.get(chave) or {})
+            for chave in ('turno_atual', 'plano_turno_atual', 'retrato_turno_atual')
+        ):
+            return mental
+        novo_estado = dict(mental)
+        novo_estado.update(campos_verificados)
+        publicado = True
+        return novo_estado
+
+    # Verificação e pesquisa ficam fora do lock; apenas comparação/publicação
+    # usam a transação canônica, impedindo restaurar uma ocorrência superada.
+    if callable(getattr(estado, 'atualizar', None)):
+        estado.atualizar('mental', publicar_se_ainda_vigente)
+    elif publicar_se_ainda_vigente(estado.mental) is not estado.mental:
+        estado.atualizar_campos('mental', **campos_verificados)
+    if not publicado:
+        return concluir_sem_evidencia_vigente()
     return verificacao

@@ -11,6 +11,8 @@ import re
 import time
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+
 
 _CONCLUSAO_PROPRIA = re.compile(
     r"\b(?:entreguei|terminei|conclu[ií]|finalizei|acabei|resolvi|encerrei|"
@@ -30,7 +32,7 @@ _LIBERACAO = re.compile(
     r"saiu\s+(?:(?:um|esse|aquele)\s+)?peso)\b",
     re.IGNORECASE,
 )
-_TRECHO_CITADO = re.compile(r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’')
+_TRECHO_CITADO = re.compile(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\x27[^\x27\n]*\x27|‘[^’\n]*’')
 _ALVO_CONCLUIDO = re.compile(
     r"^\s+(?P<alvo>(?:o|a|os|as|um|uma)\s+[^,.!?;:]{2,80}?)"
     r"(?=\s+(?:depois|ap[oó]s|que|e|mas)\b|[,.!?;:]|$)",
@@ -79,6 +81,62 @@ def _inferir_alivio_com_causa(texto: str) -> Dict[str, Any]:
         "texto": bruto,
         "ts": time.time(),
     }
+
+
+def _complemento_de_conquista_indica_sucesso(verbo: str, complemento: str) -> bool:
+    if not complemento:
+        return True
+    if verbo in {"passei", "passar"}:
+        return bool(re.match(
+            r"(?:n[ao]s?\s+(?:prova|teste|exame|concurso|vestibular|"
+            r"entrevista|sele[cç][aã]o)|de\s+(?:ano|fase))\b", complemento,
+        ))
+    if verbo in {"ganhei", "ganhar"}:
+        return bool(re.match(
+            r"(?:(?:o|a|um|uma|meu|minha)\s+)?(?:jogo|partida|corrida|"
+            r"disputa|aposta|campeonato|competi[cç][aã]o|medalha|pr[eê]mio|"
+            r"concurso|trof[eé]u|bolsa|vaga)\b", complemento,
+        ))
+    if verbo == "consegui":
+        proximo = re.match(
+            r"(?:terminar|concluir|finalizar|resolver|entregar|completar|"
+            r"aprender|passar|vencer|ganhar)\b", complemento,
+        )
+        return bool(proximo and _complemento_de_conquista_indica_sucesso(
+            proximo.group(0), complemento[proximo.end():].strip(" ,.!;:"),
+        ))
+    return True
+
+
+def _tem_conquista_autoral_afirmada(texto: str, padrao: str) -> bool:
+    """Aceita um resultado positivo relatado, sem promover menções a fatos.
+
+    A frase independente e o contraste delimitam a negação. Complementos
+    ambíguos sem sentido de sucesso ficam para a interpretação contextual.
+    """
+    autoral = _TRECHO_CITADO.sub(" ", str(texto or "")).casefold()
+    for frase in re.findall(r"[^.!?;]+[.!?;]?", autoral):
+        if frase.rstrip().endswith("?"):
+            continue
+        for trecho in re.split(r"\b(?:mas|por[eé]m|contudo)\b", frase):
+            if texto_e_metalinguistico(trecho):
+                continue
+            for conquista in re.finditer(padrao, trecho):
+                antes = trecho[:conquista.start()]
+                if re.search(
+                    r"\b(?:n[aã]o(?!\s+(?:s[oó]|apenas)\b)|nunca|jamais|nem|"
+                    r"se|caso|talvez|ser[aá]\s+que|imagina|imagine|suponha|"
+                    r"disse|falou|contou|escreveu|comentou|relatou|segundo|"
+                    r"dele|dela|deles|delas|traduza|repita|cite|explique)\b",
+                    antes,
+                ):
+                    continue
+                verbo = conquista.group(0)
+                depois = trecho[conquista.end():].strip(" ,.!;:")
+                if not _complemento_de_conquista_indica_sucesso(verbo, depois):
+                    continue
+                return True
+    return False
 
 
 def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
@@ -135,6 +193,8 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
                 "texto": bruto,
                 "ts": time.time(),
             }
+        if funcao == "conquista" and not _tem_conquista_autoral_afirmada(bruto, padrao):
+            continue
         if re.search(padrao, base):
             emocao, postura, permite_pergunta = perfis.get(funcao, ("neutra", "natural", True))
             return {
@@ -180,16 +240,41 @@ def analisar_intencao_emocional(
         ("tedio", r"\b(?:chata|chato|tedio|tédio|entediad[oa]|arrastad[oa])\b"),
         ("tedio", r"\b(?:nao tem|não tem|tem nada|nao tenho|não tenho)\s+(?:nada\s+)?(?:pra|para)\s+fazer\b"),
     )
-    emocao = next((nome for nome, padrao in emocoes if re.search(padrao, base)), "")
-    if not emocao and re.search(r"\b(?:nao|não)\s+aguento\b", base):
-        emocao = "esgotamento"
+    # O verbo pessoal e o sinal precisam compor o mesmo predicado. Um
+    # "estou" posterior não prova que "triste" em outra oração é estado
+    # atual do usuário. Formulações fora desta contingência conservadora
+    # seguem para a leitura da principal, sem receber certeza lexical.
+    prefixo_pessoal = (
+        marcadores_pessoais[0]
+        + r"\s+(?:(?:um pouco|meio que|muito|meio|levemente|realmente|"
+        r"bastante|t[aã]o|bem|super|totalmente|emocionalmente)\s+)*"
+    )
+    predicado = None
+    emocao = ""
+    for nome, padrao in emocoes:
+        predicado = re.search(prefixo_pessoal + padrao, base)
+        if predicado:
+            emocao = nome
+            break
+    if not emocao:
+        predicado = re.search(marcadores_pessoais[2], base) or re.search(marcadores_pessoais[3], base)
+        if predicado:
+            emocao = "tedio"
+    if not emocao:
+        predicado = re.search(marcadores_pessoais[1], base)
+        if predicado:
+            emocao = "esgotamento"
     if not emocao:
         return _inferir_alivio_com_causa(bruto)
 
+    sinal_pessoal = predicado.group(0)
     intensidade = 2
-    if re.search(r"\b(?:um pouco|meio|meio que|levemente)\b", base):
+    if re.search(r"\b(?:um pouco|meio|meio que|levemente)\b", sinal_pessoal):
         intensidade = 1
-    if re.search(r"\b(?:muito|demais|pra caramba|para caramba|nao aguento|não aguento|no limite)\b", base):
+    if (
+        re.search(r"\b(?:muito|nao aguento|não aguento)\b", sinal_pessoal)
+        or re.match(r"\s+(?:demais|pra caramba|para caramba|no limite)\b", base[predicado.end():])
+    ):
         intensidade = 3
 
     alvo = "estado_geral"

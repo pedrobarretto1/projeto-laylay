@@ -174,10 +174,18 @@ def calcular_deslocamento_avatar(
     *,
     falando: bool = False,
     movimento_ativo: bool = True,
+    intensidade: float = 1.0,
 ) -> int:
     """Calcula um movimento vertical pequeno e barato para dar vida ao avatar."""
     if not movimento_ativo:
         return 0
+    try:
+        intensidade_limpa = float(intensidade)
+    except (TypeError, ValueError):
+        return 0
+    if not math.isfinite(intensidade_limpa) or intensidade_limpa <= 0:
+        return 0
+    intensidade_limpa = min(1.0, intensidade_limpa)
     t = max(0.0, float(instante))
     if falando:
         # Movimento um pouco mais vivo, sem parecer que a imagem está tremendo.
@@ -186,7 +194,8 @@ def calcular_deslocamento_avatar(
     else:
         # Respiração lenta: no tamanho padrão, desloca apenas um ou dois pixels.
         deslocamento = math.sin(t * math.tau / 3.8) * 1.5
-    return int(round(deslocamento))
+    # Ponderar antes da quantização evita perder a diferença entre níveis.
+    return int(round(deslocamento * (0.4 + intensidade_limpa * 0.6)))
 
 
 def processo_pai_esta_ativo(

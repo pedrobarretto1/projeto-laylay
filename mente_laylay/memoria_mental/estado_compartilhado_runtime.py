@@ -6,7 +6,7 @@ import copy
 import os
 import threading
 import traceback
-from typing import Any, Callable, Dict, Mapping
+from typing import Any, Callable, Dict, Iterable, Mapping
 
 from mente_laylay.memoria_mental.estado_continuidades import atualizar_continuidades
 from mente_laylay.memoria_mental.estado_continuidades import limpar_sugestao_atual
@@ -156,6 +156,57 @@ class EstadoCompartilhadoRuntime:
             atual = self._estado(dominio)
             novo = atualizador(atual, **campos) if callable(atualizador) else atual
             return self.substituir(dominio, novo)
+
+    def atualizar_dominios(
+        self,
+        dominios: Iterable[str],
+        atualizador: Callable[
+            [Dict[str, Dict[str, Any]]], Mapping[str, Mapping[str, Any]] | None,
+        ],
+    ) -> bool:
+        """Publica domínios juntos após derivação pura sobre cópias isoladas.
+
+        O callback usa nomes canônicos, pode recusar com None ou mapping vazio
+        e não deve chamar portas externas. Leitores que usam o lock central
+        observam o estado inteiro anterior ou posterior à publicação.
+        """
+        if isinstance(dominios, (str, bytes)):
+            raise TypeError("Transação exige uma coleção de nomes de domínios.")
+        nomes: list[str] = []
+        for dominio in dominios:
+            if not isinstance(dominio, str):
+                raise TypeError("Nome de domínio da transação deve ser textual.")
+            nome = self._nome_atributo(dominio)
+            if nome in nomes:
+                raise ValueError("Transação não pode repetir domínio ou seu alias.")
+            nomes.append(nome)
+        if not nomes:
+            raise ValueError("Transação exige ao menos um domínio.")
+        if not callable(atualizador):
+            raise TypeError("Transação exige um atualizador puro.")
+        with self._lock:
+            retratos = {
+                nome: self._copiar_dominio(getattr(self, nome)) for nome in nomes
+            }
+            novos = atualizador(retratos)
+            if novos is None:
+                return False
+            if not isinstance(novos, Mapping):
+                raise TypeError("Retorno da transação deve ser um mapping de domínios.")
+            if not novos:
+                return False
+            if set(novos) != set(nomes):
+                raise ValueError("Retorno deve conter exatamente os domínios canônicos declarados.")
+            if not all(isinstance(novos[nome], Mapping) for nome in nomes):
+                raise TypeError("Cada domínio da transação deve ser um mapping.")
+            preparados: Dict[str, Dict[str, Any]] = {}
+            for nome in nomes:
+                novo = self._preparar_dominio(dict(novos[nome]))
+                preparados[nome] = self._normalizar_mental(novo) if nome == "mental" else novo
+            # Nenhum estado é atribuído até todos os domínios serem preparáveis.
+            for nome in nomes:
+                setattr(self, nome, preparados[nome])
+            return True
 
     def substituir(self, dominio: str, estado: Dict[str, Any] | None) -> Dict[str, Any]:
         with self._lock:

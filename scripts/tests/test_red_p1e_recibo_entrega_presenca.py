@@ -5,21 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from mente_laylay.autonomia.diretor_presenca import DiretorPresencaRuntime
+from mente_laylay.cognicao.contrato_fala import construir_contrato_semantico_evento
 from mente_laylay.autonomia.resposta_evento_runtime import RespostaEventoRuntime
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt, ResultadoModelo
 
 
 def _turno_evento(evento: dict[str, Any]) -> dict[str, Any]:
-    contrato = {
-        "funcao": "reacao_evento",
-        "natureza_entrada": "evento",
-        "entrada_cognitiva": dict(evento),
-        "autoriza_execucao": False,
-        "roteiro_concreto": {
-            "estrategia": "reacao_evento",
-            "autoriza_execucao": False,
-        },
-    }
+    # P18 materializa a partir da âncora/direção deliberadas pela cognição.
+    contrato = construir_contrato_semantico_evento(evento)
     return {
         "natureza_entrada": "evento",
         "entrada_cognitiva": dict(evento),

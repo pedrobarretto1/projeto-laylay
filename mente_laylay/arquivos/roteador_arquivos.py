@@ -12,8 +12,10 @@ from mente_laylay.arquivos.lixeira_laylay import existe_exclusao_pendente
 from mente_laylay.arquivos.nome_natural import (
     EXTENSOES_TEXTUAIS_RENOMEAVEIS,
     aspas_globalmente_coerentes,
+    caminho_absoluto_literal,
     desembrulhar_filename_literal,
     limpar_nome_arquivo_natural,
+    texto_contem_caminho_absoluto,
 )
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
@@ -105,6 +107,10 @@ def _limpar_item_movimentacao(valor: str, *, destino: bool = False) -> str:
 
 def _nomes_arquivo_equivalentes(declarado: str, conhecido: str) -> bool:
     """Compara um nome falado com um basename concreto sem adivinhar caminhos."""
+    caminho_declarado = caminho_absoluto_literal(declarado)
+    if caminho_declarado:
+        caminho_conhecido = caminho_absoluto_literal(conhecido)
+        return bool(caminho_conhecido and os.path.normcase(os.path.normpath(caminho_declarado)) == os.path.normcase(os.path.normpath(caminho_conhecido)))
     nome_declarado = os.path.basename(
         limpar_nome_arquivo_natural(declarado).replace("/", os.sep)
     ).casefold()
@@ -190,6 +196,20 @@ def _remover_aspas_pareadas(valor: str) -> str:
     if len(texto) >= 2 and texto[0] == texto[-1] and texto[0] in {'"', "'"}:
         return texto[1:-1].strip()
     return texto
+
+
+def _conteudo_escrita_arquivo(valor: str, verbo: str) -> str:
+    bruto = str(valor or "").strip()
+    citado = len(bruto) >= 2 and bruto[0] == bruto[-1] and bruto[0] in {'"', "'"}
+    conteudo = _remover_aspas_pareadas(bruto)
+    # A moldura linguística apresenta conteúdo sem aspas. Um literal citado
+    # conserva essas mesmas palavras, tanto no pedido explícito como na elipse.
+    if not citado and verbo.casefold() in {"adiciona", "adicione", "acrescenta", "acrescente"}:
+        conteudo = re.sub(
+            r"^(?:a\s+)?(?:frase|linha|texto|trecho)\s+", "", conteudo,
+            count=1, flags=re.IGNORECASE,
+        ).strip()
+    return conteudo
 
 
 _CAMPOS_LITERALIDADE_FILENAME = {
@@ -687,6 +707,8 @@ def detectar_intencao_arquivos(
     t = str(texto_sem_destino or "").strip()
     if not t:
         return None
+    if texto_contem_caminho_absoluto(t) and not aspas_globalmente_coerentes(t):
+        return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     estado = dict(estado_mental or {})
 
@@ -737,6 +759,33 @@ def detectar_intencao_arquivos(
     consulta_recente = str(pesquisa_recente.get("consulta") or "").strip()
     arquivo_recente_caminho, arquivo_recente_nome = _arquivo_recente(estado)
     pasta_recente_caminho, _pasta_recente_nome = _pasta_recente(estado)
+
+    # Um caminho explícito é a identidade do alvo atual. A continuidade e o
+    # índice semântico resolvem referências por nome, nunca substituem esse
+    # alvo por outro arquivo que compartilhe somente seu basename.
+    leitura_literal = re.fullmatch(
+        r"(?:leia|ler|l[eê])\s+"
+        r"(?:(?:o\s+)?conte[uú]do\s+(?:(?:de|do|da)\s+)?)?"
+        r"(?:(?:o|a)\s+)?(?:(?:arquivo|documento)\s+)?(?P<alvo>.+)",
+        t.rstrip(" .,!?:;"), flags=re.IGNORECASE,
+    )
+    if leitura_literal:
+        caminho = caminho_absoluto_literal(leitura_literal.group("alvo"))
+        if caminho:
+            return {"intent": "FILE_READ", "params": params(caminho=caminho, alvo=os.path.basename(caminho))}
+    abertura_literal = re.fullmatch(
+        r"(?:tenta\s+(?:abrir|abre)|abre|abra|abrir|mostra|mostre)\s+"
+        r"(?:(?:o|a)\s+)?(?:(?:arquivo|documento)\s+)?(?P<alvo>.+)",
+        t.rstrip(" .,!?:;"), flags=re.IGNORECASE,
+    )
+    if abertura_literal:
+        alvo, pediu_foco = separar_alvo_e_complemento_foco(abertura_literal.group("alvo"))
+        caminho = caminho_absoluto_literal(alvo)
+        if caminho:
+            dados = {"caminho": caminho, "alvo": os.path.basename(caminho)}
+            if pediu_foco:
+                dados["modo"] = "focus"
+            return {"intent": "FILE_OPEN_RESULT", "params": params(**dados)}
 
     movimentacao = re.fullmatch(
         r"(?:coloca|coloque|bota|ponha|poe|põe|move|mova|transfere|transfira)\s+"
@@ -1045,26 +1094,17 @@ def detectar_intencao_arquivos(
         r"(?P<verbo>escreve|escreva|grava|grave|adiciona|adicione|acrescenta|acrescente)\s+"
         r"(?P<conteudo>.+?)\s+"
         r"(?:(?P<pronome>nele|nela|dentro\s+dele|dentro\s+dela|nesse\s+arquivo|"
-        r"neste\s+arquivo)|dentro\s+(?:do|da)\s+(?:arquivo\s+)?(?P<alvo>.+))",
+        r"neste\s+arquivo)|(?:dentro\s+(?:do|da)\s+(?:arquivo\s+)?|"
+        r"n[oa]\s+(?:arquivo|documento)\s+)(?P<alvo>.+))",
         t.rstrip(" .,!?:;"),
         flags=re.IGNORECASE,
     )
     if escrita:
-        conteudo = _remover_aspas_pareadas(escrita.group("conteudo") or "")
-        # Em "acrescente a frase X nele", artigo e substantivo apenas
-        # apresentam o conteúdo; não fazem parte do texto solicitado. Formas
-        # sem essa moldura ("acrescente X nele") permanecem literais.
-        if str(escrita.group("verbo") or "").casefold() in {
-            "adiciona", "adicione", "acrescenta", "acrescente",
-        }:
-            conteudo = re.sub(
-                r"^(?:a\s+)?(?:frase|linha|texto|trecho)\s+",
-                "",
-                conteudo,
-                count=1,
-                flags=re.IGNORECASE,
-            ).strip()
-        alvo_declarado = str(escrita.group("alvo") or "").strip(" .,!?:;\"'")
+        conteudo = _conteudo_escrita_arquivo(
+            escrita.group("conteudo") or "", escrita.group("verbo") or "",
+        )
+        alvo_bruto = str(escrita.group("alvo") or "")
+        alvo_declarado = caminho_absoluto_literal(alvo_bruto) or alvo_bruto.strip(" .,!?:;\"'")
         alvo = alvo_declarado
         if escrita.group("pronome"):
             alvo = arquivo_recente_caminho
@@ -1132,15 +1172,7 @@ def detectar_intencao_arquivos(
                 )
             )
         )
-        conteudo = _remover_aspas_pareadas(conteudo_bruto)
-        if verbo in {"adiciona", "adicione", "acrescenta", "acrescente"}:
-            conteudo = re.sub(
-                r"^(?:a\s+)?(?:frase|linha|texto|trecho)\s+",
-                "",
-                conteudo,
-                count=1,
-                flags=re.IGNORECASE,
-            ).strip()
+        conteudo = _conteudo_escrita_arquivo(conteudo_bruto, verbo)
         if conteudo and not tem_moldura_alvo and not tem_destino_musical:
             modo_escrita = "append" if verbo in {
                 "adiciona", "adicione", "acrescenta", "acrescente",
@@ -1309,6 +1341,9 @@ def detectar_intencao_arquivos(
     delete_info = extrair_delete_pasta_arquivo(t, normalizar_texto=normalizar_texto)
     if delete_info:
         alvo_declarado = str(delete_info.get("alvo") or "").strip()
+        caminho_literal = caminho_absoluto_literal(alvo_declarado)
+        if caminho_literal:
+            delete_info["alvo"] = caminho_literal
         if (
             arquivo_recente_caminho
             and str(delete_info.get("tipo") or "").casefold() == "arquivo"

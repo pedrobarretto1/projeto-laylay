@@ -1,3 +1,5 @@
+import pytest
+
 from mente_laylay.cognicao.identidade_conversacional import (
     ajustar_autorreferencia_assistente,
     analisar_identidade_turno,
@@ -46,6 +48,63 @@ def test_funcao_humana_reconhece_conquista_correcao_e_encerramento() -> None:
     assert analisar_funcao_comunicativa("tirei nota máxima na prova")["funcao"] == "conquista"
     assert analisar_funcao_comunicativa("não Lay, eu quis dizer outra coisa")["funcao"] == "correcao"
     assert analisar_funcao_comunicativa("obrigado, era só isso")["funcao"] == "encerramento"
+
+
+@pytest.mark.parametrize("texto", [
+    "Terminei o projeto.",
+    "Estou muito feliz porque terminei um projeto.",
+    "Consegui terminar a tarefa.",
+    "Passei na prova.",
+    "Ganhei uma medalha na corrida.",
+    "Fui aprovado no concurso.",
+    "Não ganhei a corrida, mas consegui terminar o percurso.",
+    'Ela disse: "não consegui", mas eu terminei o projeto.',
+    "Não consegui ontem. Hoje terminei o projeto!",
+    "Terminei o projeto! Como posso comemorar?",
+    "Não só terminei o projeto como também ganhei uma medalha.",
+    "Consegui!",
+    "Ganhei o campeonato!",
+    "Consegui passar na prova.",
+    "Consegui ganhar uma medalha.",
+])
+def test_conquista_autoral_afirmada_preserva_reconhecimento(texto: str) -> None:
+    funcao = analisar_funcao_comunicativa(texto)
+
+    assert funcao["funcao"] == "conquista"
+    assert "reconhecer a conquista" in funcao["objetivo"]
+
+
+@pytest.mark.parametrize("texto", [
+    "Não consegui terminar o projeto.",
+    "Ainda não terminei o projeto.",
+    "Nunca ganhei uma medalha.",
+    'Ela disse: "terminei o projeto".',
+    'Traduza "fui aprovado no concurso".',
+    'O que significa "ganhei uma medalha"?',
+    "Se eu passei na prova, ganhei a aposta.",
+    "Imagine que terminei o projeto.",
+    "Será que eu ganhei a corrida?",
+    "Não sei se deu certo.",
+    "Passei mal hoje.",
+    "Passei pelo mercado.",
+    "Ganhei uma dor de cabeça.",
+    "Consegui ficar ainda mais cansado.",
+    "Ela disse que terminei o projeto.",
+    "A frase terminei o projeto é um exemplo.",
+    "Talvez eu ganhei a corrida.",
+    "Deu certo?",
+    "Consegui passar pelo mercado.",
+    "Consegui ganhar uma dor de cabeça.",
+    "Ela comentou que terminei o projeto.",
+    "O projeto dela deu certo.",
+    "«Terminei o projeto» é uma frase de exemplo.",
+])
+def test_mencao_negada_hipotetica_citada_ou_sem_sucesso_nao_e_conquista(
+    texto: str,
+) -> None:
+    funcao = analisar_funcao_comunicativa(texto)
+
+    assert funcao["funcao"] != "conquista"
 
 
 def test_plano_prioriza_reconhecer_conquista() -> None:

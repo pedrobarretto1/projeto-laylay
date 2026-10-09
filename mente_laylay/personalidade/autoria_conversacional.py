@@ -19,6 +19,7 @@ from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
 from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
+from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,8 @@ def criar_fala_autoral(
         return FalaAutoral(fallback, False, "fala_invalida")
     if comandos not in (None, [], ()):
         return FalaAutoral(fallback, False, "comando_na_fala_conversacional")
+    if contem_ataque_pessoal(fala):
+        return FalaAutoral(fallback, False, "ataque_pessoal")
     if detectar_experiencia_pessoal_inventada(fala):
         return FalaAutoral(fallback, False, "realidade_pessoal_inventada")
     if re.search(

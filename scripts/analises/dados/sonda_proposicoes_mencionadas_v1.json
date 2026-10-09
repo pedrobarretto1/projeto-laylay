@@ -1,0 +1,14 @@
+{
+  "versao": 1,
+  "escopo": "piloto_proposicoes_offline_v1",
+  "casos": [
+    {"id": "F01", "texto": "Remova o arquivo croqui.md."},
+    {"id": "F02", "texto": "Usei “remova o arquivo croqui.md” apenas como exemplo de frase."},
+    {"id": "F03", "texto": "Se eu removesse o arquivo croqui.md, o que mudaria?"},
+    {"id": "F04", "texto": "Remova o texto que apresenta o arquivo croqui.md."},
+    {"id": "I01", "texto": "Desative a tomada da bancada."},
+    {"id": "I02", "texto": "Usei “desative a tomada da bancada” apenas como exemplo de frase."},
+    {"id": "I03", "texto": "Se eu desativasse a tomada da bancada, o que mudaria?"},
+    {"id": "I04", "texto": "Desative a automação que menciona a tomada da bancada."}
+  ]
+}

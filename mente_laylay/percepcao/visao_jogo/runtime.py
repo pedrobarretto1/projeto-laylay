@@ -8,6 +8,7 @@ import threading
 import time
 from typing import Any, Callable, Mapping
 
+from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
 from mente_laylay.pesquisa_jogos.contratos import extrair_item_da_resposta_visual
 from mente_laylay.percepcao.imagens_multimodais import (
     desempacotar_imagens,
@@ -21,7 +22,7 @@ from .confirmacao_item import (
     reconciliar_leituras_item,
 )
 from .inventario import extrair_dados_inventario
-from .presenca_visual import extrair_presenca_visual
+from .presenca_visual import criar_contrato_saida_presenca_visual, extrair_presenca_visual
 
 from .captura_janela import capturar_janela_jogo_base64
 from .sessao_jogo import (
@@ -255,8 +256,20 @@ class VisaoJogoRuntime:
         prompt: str,
         identidade: Mapping[str, Any],
         estado_tela: Mapping[str, Any] | None = None,
+        *,
+        contrato_saida: ContratoSaidaEstruturada | None = None,
     ) -> str:
-        resposta = str(self.analisar_imagem(imagem, prompt) or "").strip()
+        def analisar(pergunta: str) -> str:
+            # A capacidade pertence ao callback atual: testes e integrações
+            # podem substituir a porta depois da composição. Não inferimos
+            # suporte pela pergunta ou por TypeError seguido de nova chamada.
+            callback = self.analisar_imagem
+            if (contrato_saida is not None
+                    and getattr(callback, "suporta_contrato_saida", False) is True):
+                return str(callback(imagem, pergunta, contrato_saida=contrato_saida) or "").strip()
+            return str(callback(imagem, pergunta) or "").strip()
+
+        resposta = analisar(prompt)
         contradiz_jogo = resposta_contradiz_identidade_sistema(resposta, identidade)
         inventa_falha = resposta_inventa_falha_da_laylay(resposta)
         contradiz_tela = resposta_contradiz_estado_tela(resposta, estado_tela)
@@ -283,7 +296,7 @@ class VisaoJogoRuntime:
             "somente a dúvida sobre o conteúdo.\nRascunho rejeitado: "
             + resposta[:700]
         )
-        corrigida = str(self.analisar_imagem(imagem, prompt_correcao) or "").strip()
+        corrigida = analisar(prompt_correcao)
         if (
             corrigida
             and not resposta_contradiz_identidade_sistema(corrigida, identidade)
@@ -618,7 +631,7 @@ class VisaoJogoRuntime:
             self._notificar_cooperacao(
                 plano_cooperativo_id, "falha", status="credencial_visual_ausente",
             )
-            self.falar("A visão do jogo ainda precisa da chave do serviço visual nas configurações.", "calma", 1)
+            self.falar("O modelo visual do jogo ainda não está disponível. Confira as configurações da visão.", "calma", 1)
             return True
         proativo = bool(dados.get("_proativo"))
         identidade = identificar_jogo(contexto)
@@ -726,6 +739,15 @@ class VisaoJogoRuntime:
                         )
                     return
                 imagens_entrada = desempacotar_imagens(imagem)
+                if (tipo == "observacao_presenca_proativa" and len(imagens_entrada) == 2
+                    and imagens_entrada[0]["label"].startswith("Quadro temporal 1")
+                    and imagens_entrada[1]["label"].startswith("Quadro temporal 2")):
+                    try:
+                        intervalo = float(dados.get("_intervalo_quadros_s") or 0.0)
+                    except (TypeError, ValueError):
+                        intervalo = 0.0
+                    if 0.2 <= intervalo <= 1.0:
+                        contexto_captura["sequencia_presenca_intervalo_s"] = intervalo
                 if len(imagens_entrada) > 1:
                     dimensoes = ",".join(
                         f"{item.get('width')}x{item.get('height')}"
@@ -752,6 +774,10 @@ class VisaoJogoRuntime:
                 inicio_leitura = time.perf_counter()
                 resposta_bruta = self._analisar_com_identidade(
                     imagem, prompt, identidade, estado_tela,
+                    contrato_saida=(
+                        criar_contrato_saida_presenca_visual()
+                        if tipo == "observacao_presenca_proativa" else None
+                    ),
                 )
                 try:
                     tamanho_kb = len(imagem) * 3 / 4 / 1024

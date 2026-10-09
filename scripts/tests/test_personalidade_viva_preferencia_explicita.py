@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import time
+import math
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 from memoria_sqlite import MemoriaSQLite
 from mente_laylay.cognicao.preferencia_humor import (
@@ -201,3 +204,82 @@ def test_aprendizado_compartilhado_persiste_preferencia_explicita_com_provenienc
     assert evidencia["confirmado_usuario"] is True
     assert restaurada["direcao"] == "leve"
     assert restaurada["autoriza_execucao"] is False
+
+
+@pytest.mark.parametrize("pedido", (
+    "pega leve hoje nos comandos", "Laylay, vai com calma comigo sempre nos comandos",
+    "pode me zoar mais nos comandos", "pode brincar mais comigo hoje nos comandos",
+))
+def test_preferencia_de_comandos_tem_escopo_proprio(pedido: str) -> None:
+    preferencia = extrair_preferencia_humor(pedido, turno_id="comandos")
+    assert preferencia.get("contexto") == "comandos"
+    assert preferencia_humor_ativa(preferencia, contexto="comandos")
+    assert not preferencia_humor_ativa(preferencia, contexto="conversa")
+    assert not preferencia_humor_ativa(preferencia, contexto="jogo")
+    assert preferencia["autoriza_execucao"] is False
+
+
+def test_pega_leve_se_aplica_ao_tom_operacional_sem_mudar_resultado() -> None:
+    preferencia = extrair_preferencia_humor("pega leve hoje", turno_id="leve")
+    postura = selecionar_postura_amizade(
+        "abra a calculadora", operacional=True,
+        estado_mental={"preferencias_humor_contextuais": {"geral": preferencia}},
+    )
+    assert postura.nome == "operacional_amigavel"
+    assert postura.humor == "bloqueado"
+    assert postura.max_tirada == 0
+    assert postura.permite_pergunta is False
+    assert "resultado validado" in postura.objetivo
+
+
+@pytest.mark.parametrize("tipo", ("conversa", "jogo"))
+def test_preferencia_especifica_social_nao_muda_tom_de_comando(tipo: str) -> None:
+    sufixo = "na conversa" if tipo == "conversa" else "no jogo"
+    preferencia = extrair_preferencia_humor(f"pega leve hoje {sufixo}", turno_id="social")
+    postura = selecionar_postura_amizade(
+        "abra a calculadora", operacional=True,
+        estado_mental={"modo_jogo_ativo": True,
+            "preferencias_humor_contextuais": {tipo: preferencia}},
+    )
+    assert postura.humor == "somente_causal"
+
+
+def test_abertura_operacional_nao_relaxa_limite_causal() -> None:
+    preferencia = extrair_preferencia_humor("pode me zoar mais", turno_id="abertura")
+    postura = selecionar_postura_amizade(
+        "abra a calculadora", operacional=True,
+        estado_mental={"preferencia_humor_contextual": preferencia},
+    )
+    assert postura.nome == "operacional_amigavel"
+    assert postura.humor == "somente_causal" and postura.max_tirada == 1
+
+
+@pytest.mark.parametrize("confianca", ("invalida", math.nan, math.inf, -math.inf))
+def test_preferencia_duravel_invalida_fica_ausente_sem_interromper_turno(confianca) -> None:
+    agora = time.time()
+    valor = {"direcao": "leve", "contexto": "conversa"}
+    hipotese = {"chave": "personalidade:tolerancia_humor:conversa", "status": "ativa",
+        "confianca": confianca, "valor": valor}
+    prova = {"confirmado_usuario": True, "origem": "pedido_explicito_usuario",
+        "valor": valor, "evidencia": "turno:preferencia",
+        "criado_em": datetime.fromtimestamp(agora - 1).isoformat(" ")}
+    assert reconstruir_preferencia_humor_duravel(hipotese, prova, agora=agora) == {}
+
+
+@pytest.mark.parametrize("pergunta", (
+    "Você consegue pegar leve no humor?",
+    "Você pode ajustar suas brincadeiras nos comandos?",
+    "Você consegue respeitar minha preferência de humor?",
+))
+def test_catalogo_conhece_preferencia_explicita_e_limite_do_aprendizado(pergunta: str) -> None:
+    from mente_laylay.especialistas.mapa_habilidades import MapaHabilidadesRuntime
+
+    mapa = MapaHabilidadesRuntime()
+    contexto = mapa.contexto_para_prompt(pergunta)
+    resposta = mapa.responder_pergunta_capacidade(pergunta)
+    assert "- personalidade [disponivel]" in contexto
+    for texto in (contexto, resposta):
+        assert "preferência explícita" in texto
+        assert "jogo, conversa e comandos" in texto
+        assert "recusa isolada" in texto
+    assert mapa.responder_pergunta_capacidade("pega leve hoje") == ""

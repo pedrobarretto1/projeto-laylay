@@ -7,6 +7,9 @@ import re
 import unicodedata
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+from mente_laylay.memoria_mental.compatibilidade_contexto import classificar_repeticao_curta
+
 
 DECISOES_VALIDAS = {
     "ACEITAR",
@@ -24,6 +27,85 @@ def _normalizar(texto: str) -> str:
     sem_acento = "".join(ch for ch in bruto if not unicodedata.combining(ch))
     sem_acento = re.sub(r"[^\w\s]", " ", sem_acento)
     return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+def qualificar_feedback_humor(texto: str) -> Dict[str, Any]:
+    """Qualifica avaliação literal de uma brincadeira; não presume a entrega.
+
+    O vínculo e o contexto pertencem ao observador de entrega. Pedidos de
+    preferência, citação, relato de terceiros e correção factual não são
+    amostras de tolerância implícita.
+    """
+    literal = str(texto or "").strip()
+    if not literal or "?" in literal or texto_e_metalinguistico(literal):
+        return {}
+    t = _normalizar(literal)
+    t = re.sub(r"^(?:nao )?(?:lay|laylay)\s+|^nao (?:lay|laylay)\s+", "", t)
+    entidade = r"(?:piada|brincadeira|zoeira|tirada)"
+    referencia = rf"(?:(?:essa|esta|a|sua) {entidade}|seu tom de brincadeira)"
+    padroes = (
+        ("correcao", "leve", rf"(?:{referencia} (?:passou do ponto|foi pesada demais|foi ofensiva|me incomodou)|voce pegou pesado (?:nessa|nesta) {entidade})"),
+        ("recusa", "leve", rf"(?:nao gostei (?:dessa|desta|da sua) {entidade}|para (?:com|de) (?:essas|as|suas) (?:piadas|brincadeiras|zoeiras|tiradas))"),
+        ("aceitacao", "mais_humor", rf"(?:gostei (?:dessa|desta|da sua) {entidade}|gostei do seu tom de brincadeira|{referencia} foi (?:boa|engracada|divertida))"),
+        ("repeticao", "mais_humor", rf"(?:repete|repita|pode repetir) (?:essa|esta|a) {entidade}"),
+    )
+    for tipo, direcao, padrao in padroes:
+        if re.fullmatch(padrao, t):
+            return {"alvo_feedback": "humor", "tipo": tipo, "direcao": direcao,
+                    "evidencia_literal": literal}
+    return {}
+
+
+def solicitacao_feedback_humor(texto: str) -> bool:
+    """Só uma pergunta literal sobre o estilo permite qualificar silêncio."""
+    literal = str(texto or "").strip()
+    return bool(literal.endswith("?") and re.fullmatch(
+        r"(?:essa (?:piada|brincadeira|tirada) (?:foi pesada|passou do ponto|foi boa)|"
+        r"voce gostou dessa (?:piada|brincadeira|tirada)|"
+        r"esse tom de brincadeira (?:te incomodou|ficou bom))", _normalizar(literal)))
+
+
+def resposta_indefinida_sobre_humor(texto: str) -> bool:
+    """Reconhece resposta sem direção, somente diante da pergunta de estilo."""
+    return bool(not texto_e_metalinguistico(texto) and re.fullmatch(
+        r"(?:ainda )?nao sei|talvez|prefiro pensar|nao tenho certeza|estou pensando",
+        _normalizar(texto)))
+
+
+def classificar_feedback_comunicativo(texto: str) -> str:
+    """Classifica evidência sobre uma comunicação, sem consumir ou autorizar.
+
+    O chamador continua dono do vínculo com a entrega/turno. Não interpretar
+    um sim solto aqui: confirmações pertencem à pendência canônica.
+    """
+    if texto_e_metalinguistico(texto):
+        return ""
+    humor = qualificar_feedback_humor(texto)
+    if humor:
+        return "aceita" if humor["tipo"] == "aceitacao" else humor["tipo"]
+    t = _normalizar(texto)
+    if not t:
+        return ""
+    if re.search(
+        r"\b(?:na verdade|nao e isso|voce entendeu errado|essa dica esta errada|"
+        r"quis dizer|voce errou|nao lay|nao foi isso|corrigindo)\b", t,
+    ):
+        return "correcao"
+    if re.search(
+        r"\b(?:para de comentar|nao precisa comentar|fica quieta|isso e obvio|"
+        r"nao interrompe|sem dica)\b", t,
+    ):
+        return "recusa"
+    if classificar_repeticao_curta(t, _normalizar) or re.fullmatch(
+        r"(?:repete|repita)\s+(?:de novo|outra vez)", t,
+    ):
+        return "repeticao"
+    if re.search(
+        r"\b(?:boa dica|isso ajudou|ajudou bastante|gostei dessa|manda mais|"
+        r"foi util|foi boa|(?:esse|essa|o|a) (?:aviso|dica|comentario|alerta|observacao) ajudou)\b", t,
+    ):
+        return "aceita"
+    return ""
 
 
 def _extrair_json(raw: str) -> Dict[str, Any]:

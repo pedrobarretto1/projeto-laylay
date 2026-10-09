@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mente_laylay.autonomia.executor_integracoes as executor_integracoes
 import mente_laylay.autonomia.roteador_intencao as roteador
+from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.coordenador_intencao import executar_fluxo_intencao
 from mente_laylay.autonomia.analise_comandos import (
     executar_comando_em_texto,
@@ -57,8 +58,14 @@ def test_intencao_desconhecida_tratada_nao_vira_execucao_ou_sucesso():
     assert aprendizados == []
 
 
-def test_bloqueio_de_politica_tratado_nao_vira_execucao_ou_sucesso():
+def test_porta_emocional_legada_nao_simula_sucesso(monkeypatch):
     resultado = {"intent": "APP_OPEN", "params": {"nome_app": "Opera"}}
+    chamadas = []
+    def despachar(*_args, **_kwargs):
+        chamadas.append("janelas")
+        return ResultadoDespacho.concluido()
+
+    monkeypatch.setattr(roteador, "_executar_intencao_janelas", despachar)
     def executar(pedido, texto):
         return roteador.executar_intencao(
             pedido,
@@ -72,6 +79,7 @@ def test_bloqueio_de_politica_tratado_nao_vira_execucao_ou_sucesso():
     tratado, registros, aprendizados = _rodar(resultado, executar)
 
     assert tratado is True
+    assert chamadas == ["janelas"]
     assert registros == []
     assert aprendizados == []
 

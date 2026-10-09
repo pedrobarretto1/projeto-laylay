@@ -151,7 +151,7 @@ def detectar_confirmacao_porteiro(
     params_cb: Callable[..., Dict[str, Any]],
     ha_abas_sugeridas: bool = False,
 ) -> Dict[str, Any] | None:
-    """Confirma a limpeza de abas sugeridas pelo Porteiro do navegador."""
+    """Reconhece pedido com alvo explícito; aceites usam a pendência canônica."""
     if not ha_abas_sugeridas:
         return None
     t = str(texto_sem_destino or "").strip()
@@ -160,7 +160,7 @@ def detectar_confirmacao_porteiro(
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
 
     if re.fullmatch(
-        r"(sim|pode|pode fechar|fecha|fecha as abas|limpa|limpa as abas|vai la|vai lá|faz o que sugeriu|manda ver)",
+        r"(?:pode\s+)?(?:fecha|feche|fechar|limpa|limpe|limpar)\s+as\s+abas\s+(?:paradas|ociosas)",
         t,
         flags=re.IGNORECASE,
     ):

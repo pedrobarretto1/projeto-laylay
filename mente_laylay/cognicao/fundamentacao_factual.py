@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import time
 import unicodedata
@@ -850,6 +851,104 @@ def _fallback_sem_inventar(tema: str, texto_usuario: str) -> str:
     )
 
 
+def texto_pede_recomendacao(texto: str) -> bool:
+    """Reconhece o pedido factual; música e execução mantêm seus owners."""
+    return bool(not texto_e_metalinguistico(texto) and re.search(
+        r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b|"
+        r"\b(?:quero|procuro|busco|preciso\s+de)\s+(?:um|uma)\s+"
+        r"(?:modelo|op[cç][aã]o|alternativa)\b",
+        str(texto or ""), flags=re.IGNORECASE,
+    ))
+
+
+def avaliar_candidatos_recomendacao(
+    fundamentacao: Dict[str, Any] | None, *, agora: float | None = None,
+) -> list[Dict[str, str]]:
+    """Liga cada nome a um trecho da fonte, sem inferir atributos ou adequação.
+
+    Uma lista de nomes não prova preço, especificação ou compatibilidade. O
+    conteúdo vem da pesquisa compartilhada, nunca do rascunho da LLM.
+    """
+    base = dict(fundamentacao or {})
+    if not classificar_proveniencia_informacao(
+        base, contexto="fundamentacao_factual",
+    ).get("pode_sustentar_fato_externo"):
+        return []
+    if base.get("evidencia_dentro_validade") is False:
+        return []
+    # Revalidar também fontes estáveis: a lista observada pode ter mudado.
+    if "evidencia_expira_em" in base:
+        try:
+            instante = float(agora if agora is not None else time.time())
+            obtida = float(base["evidencia_obtida_em"])
+            expira = float(base["evidencia_expira_em"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            return []
+        if not all(map(math.isfinite, (instante, obtida, expira))) or not obtida <= instante < expira:
+            return []
+    elif base.get("evidencia_dentro_validade") is not True:
+        return []
+    candidatos = base.get("candidatos")
+    if not isinstance(candidatos, (list, tuple)):
+        return []
+    fontes = [item for item in (base.get("fontes") or []) if isinstance(item, dict)]
+    if not fontes:
+        fontes = [{"fonte": base.get("fonte"), "trecho": base.get("resumo")}]
+    observados = []
+    for candidato in candidatos[:12]:
+        if not isinstance(candidato, str) or not candidato.strip():
+            continue
+        nome = re.sub(r"\s+", " ", candidato).strip()
+        for fonte in fontes:
+            origem = str(fonte.get("url") or fonte.get("fonte") or "").strip()
+            trecho = str(fonte.get("trecho") or "").strip()
+            if origem and re.search(
+                r"(?<!\w)" + re.escape(_normalizar(nome)) + r"(?!\w)",
+                _normalizar(trecho),
+            ):
+                observados.append({"nome": nome, "fonte": origem, "trecho": trecho})
+                break
+    return observados
+
+
+def validar_resposta_recomendacao(
+    fala: str, *, fundamentacao: Dict[str, Any] | None, texto_usuario: str = "",
+    agora: float | None = None,
+) -> Dict[str, Any]:
+    """Projeta o rascunho no alcance comprovado; não pede outro reparo à LLM."""
+    candidatos = avaliar_candidatos_recomendacao(fundamentacao, agora=agora)
+    if not candidatos:
+        segura = (
+            "Ainda não tenho uma opção verificada para recomendar. "
+            "Pode me passar uma opção ou uma fonte para comparar com o seu pedido?"
+        )
+        motivo = "recomendacao_sem_candidato_verificado"
+    else:
+        normalizada = _normalizar(fala)
+        # Um nome curto não captura uma opção mais longa nomeada no rascunho.
+        escolhido = next((item for item in sorted(
+            candidatos, key=lambda item: len(item["nome"]), reverse=True,
+        ) if re.search(r"(?<!\w)" + re.escape(_normalizar(item["nome"])) + r"(?!\w)", normalizada)), candidatos[0])
+        segura = (
+            f"Eu iria de {escolhido['nome']} como opção para avaliar. "
+            f"A fonte {escolhido['fonte']} lista esse candidato. "
+            "Não confirmei se atende a todos os requisitos do seu pedido."
+        )
+        motivo = "recomendacao_limitada_a_evidencia"
+    return {
+        "fala": segura, "acao": "ajustada" if fala != segura else "aceita",
+        "problemas": ([motivo] + (["obra_sem_evidencia"] if not candidatos
+            and extrair_titulos_citados(fala, texto_usuario=texto_usuario) else [])) if fala != segura else [],
+        "candidatos_observados": candidatos, "autoriza_execucao": False,
+        "comparacao": [{
+            "pedido": texto_usuario, "candidato": item["nome"],
+            "fonte": item["fonte"], "trecho": item["trecho"],
+            "estado_requisitos": "nao_comprovado",
+            "afirmacao_comprovada": "nome_presente_na_fonte",
+        } for item in candidatos],
+    }
+
+
 def reparar_recomendacao_com_evidencia(
     fundamentacao: Dict[str, Any] | None,
     fala_candidata: str = "",
@@ -859,25 +958,11 @@ def reparar_recomendacao_com_evidencia(
     Quando o modelo escolheu um item válido, a escolha é preservada. O renderer
     apenas remove alegações que a lista pesquisada não comprovou.
     """
-    base = dict(fundamentacao or {})
-    candidatos = [
-        re.sub(r"\s+", " ", str(item or "")).strip()
-        for item in list(base.get("candidatos") or [])
-        if re.sub(r"\s+", " ", str(item or "")).strip()
-    ]
-    if not candidatos:
+    if not avaliar_candidatos_recomendacao(fundamentacao):
         return ""
-    fala_normalizada = _normalizar(fala_candidata)
-    candidato_escolhido = next((
-        candidato
-        for candidato in candidatos
-        if _normalizar(candidato) in fala_normalizada
-    ), candidatos[0])
-    tema = str(base.get("tema") or "esse tema").strip()
-    return (
-        f"Eu iria de {candidato_escolhido}. Esse aparece na lista que encontrei "
-        f"para {tema}."
-    )
+    return str(validar_resposta_recomendacao(
+        fala_candidata, fundamentacao=fundamentacao,
+    )["fala"])
 
 
 _NEGACAO_CAPACIDADE_COM_PESQUISA = re.compile(

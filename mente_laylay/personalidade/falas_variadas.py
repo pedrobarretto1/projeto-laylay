@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 from typing import Any, Callable, Iterable, Sequence
 
 from mente_laylay.personalidade.ritmo_natural import escolher_sem_repeticao
@@ -79,6 +80,8 @@ def fala_de_confirmacao(
     chave = str(chave or "").strip().lower()
     alvo_txt = _alvo_bonito(alvo)
     ctx = _extrair_contexto(contexto)
+    if humor_bloqueado_por_preferencia(ctx):
+        return str(fallback or "").strip()
     ultima_habilidade = str(ctx.get("ultima_habilidade") or "").strip().lower()
     ultimo_alvo = str(ctx.get("ultimo_alvo") or "").strip()
     emocao = str(ctx.get("current_emotion") or ctx.get("emocao") or "").strip().lower()
@@ -108,6 +111,11 @@ def fala_de_confirmacao(
             "Recomeçando essa aí.",
             "Voltei pro começo da música.",
             "Repetindo ela sem trocar de faixa.",
+        ],
+        "repeat_toggle": [
+            "Alternei o modo de repetição.",
+            "Mudei o modo de repetição da música.",
+            "A repetição foi alternada.",
         ],
         "skip_ad": [
             "Anúncio pulado.",
@@ -223,7 +231,14 @@ def fala_por_estado_acao(
     alvo: str = "",
     contexto=None,
     texto_usuario: str = "",
+    resultado: ResultadoAcao | None = None,
 ) -> str:
+    # Quando o chamador possui receipt, ele é a fonte de status, alvo e
+    # confirmação. A inferência por status fica apenas na compatibilidade
+    # dos chamadores que ainda não transportam o contrato operacional.
+    if resultado is not None:
+        status = resultado.status
+        alvo = resultado.alvo
     status = str(status or "").strip().lower()
     alvo_txt = _alvo_bonito(alvo)
     ctx = _extrair_contexto(contexto)
@@ -397,21 +412,28 @@ def fala_por_estado_acao(
         ],
     }
 
-    base = escolher_contextual(
-        opcoes.get(status, []), contexto=ctx, texto_usuario=texto_usuario, fallback=fallback,
+    base = (
+        str(fallback or "").strip() if humor_bloqueado_por_preferencia(ctx)
+        else escolher_contextual(
+            opcoes.get(status, []), contexto=ctx, texto_usuario=texto_usuario, fallback=fallback,
+        )
     )
-    confirmado = inferir_confirmacao(status, True)
-    return planejar_resposta_acao(
-        ResultadoAcao(
+    contrato = resultado
+    if contrato is None:
+        confirmado = inferir_confirmacao(status, True)
+        contrato = ResultadoAcao(
             status=status,
             alvo=alvo_txt,
             texto_usuario=texto_usuario,
             contexto=ctx,
             executou=True if confirmado is True else None,
             confirmado=confirmado,
-        ),
+        )
+    return planejar_resposta_acao(
+        contrato,
         base,
         emocao_preferida=emocao or "calma",
+        contexto=ctx,
     ).fala
 
 

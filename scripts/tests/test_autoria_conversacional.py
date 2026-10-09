@@ -1,6 +1,7 @@
 import pytest
 
 from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
+from mente_laylay.cognicao.qualidade_comunicacao import avaliar_qualidade_comunicacao
 from mente_laylay.autonomia.processamento_resposta_ia import (
     preparar_resposta_para_execucao,
 )
@@ -38,6 +39,103 @@ def test_autoria_conversacional_entrega_fala_criada_pela_llm() -> None:
 
     assert resultado.usada_llm is True
     assert resultado.fala == "Você chegou distribuindo caos de graça hoje, né?"
+
+
+@pytest.mark.parametrize("fala", [
+    "Você é um fracasso.",
+    "Ninguém te aguenta.",
+    "Sua inteligência é limitada.",
+])
+def test_autoria_conversacional_rejeita_ataque_pessoal(fala: str) -> None:
+    resultado = criar_fala_autoral(
+        "boiola", "Essa provocação passou do ponto.",
+        enviar_mensagem=lambda *_args, **_kwargs: fala,
+    )
+
+    assert resultado.usada_llm is False
+    assert resultado.motivo_fallback == "ataque_pessoal"
+    assert resultado.fala == "Essa provocação passou do ponto."
+
+
+@pytest.mark.parametrize("fala", [
+    "Você é muito idiota.",
+    "Você é completamente incapaz.",
+    "Você é um fracassado.",
+    "Você é uma pessoa inútil.",
+    'A frase "você é um fracasso" é ofensiva, mas também é verdade.',
+    'A expressão "você é um fracasso" é ofensiva, porém é verdadeira.',
+    "Não acho que você é um fracasso. Você é incapaz.",
+])
+def test_ataque_explicito_ampliado_nao_e_aprovado_por_autoria_ou_qualidade(
+    fala: str,
+) -> None:
+    autoria = criar_fala_autoral(
+        "boa tarde", "Essa provocação passou do ponto.",
+        enviar_mensagem=lambda *_args, **_kwargs: fala,
+    )
+    qualidade = avaliar_qualidade_comunicacao("boa tarde", fala)
+
+    assert autoria.usada_llm is False
+    assert autoria.motivo_fallback == "ataque_pessoal"
+    assert qualidade["aceita"] is False
+    assert "ataque_pessoal" in qualidade["problemas_bloqueantes"]
+
+
+@pytest.mark.parametrize("fala", [
+    "Você não é um fracasso.",
+    "Não acho que você é um fracasso.",
+    "Essa tentativa foi muito ruim.",
+    'A frase "você é um fracasso" é ofensiva e não descreve a pessoa.',
+    'A frase "você é um fracasso" é ofensiva, mas não é verdade.',
+])
+def test_critica_de_ato_mencao_critica_e_negacao_preservam_fala_legitima(
+    fala: str,
+) -> None:
+    autoria = criar_fala_autoral(
+        "boa tarde", "Essa tentativa passou do ponto.",
+        enviar_mensagem=lambda *_args, **_kwargs: fala,
+    )
+    qualidade = avaliar_qualidade_comunicacao("boa tarde", fala)
+
+    assert autoria.usada_llm is True
+    assert autoria.fala == fala
+    assert qualidade["aceita"] is True
+
+
+def test_qualidade_comunicacao_bloqueia_ataque_pessoal_sem_bloquear_deboche_de_ato() -> None:
+    ataque = avaliar_qualidade_comunicacao("boiola", "Você é um fracasso.")
+    deboche = avaliar_qualidade_comunicacao(
+        "boiola", "Você chegou distribuindo caos de graça hoje, né?",
+    )
+
+    assert ataque["aceita"] is False
+    assert "ataque_pessoal" in ataque["problemas_bloqueantes"]
+    assert deboche["aceita"] is True
+
+
+def test_mencao_critica_de_ofensa_citada_nao_e_ataque_ao_usuario() -> None:
+    fala = 'A frase "você é um fracasso" é ofensiva e não descreve a pessoa.'
+    autoria = criar_fala_autoral(
+        'O que significa "você é um fracasso"?', "É uma ofensa.",
+        enviar_mensagem=lambda *_args, **_kwargs: fala,
+    )
+    qualidade = avaliar_qualidade_comunicacao(
+        'O que significa "você é um fracasso"?', fala,
+    )
+
+    assert autoria.usada_llm is True
+    assert qualidade["aceita"] is True
+
+
+@pytest.mark.parametrize("fala", [
+    '"Você é um fracasso."',
+    'A frase "você é um fracasso" é verdade.',
+    'A frase "você é um fracasso" é ofensiva. Você é incapaz.',
+])
+def test_ataque_pessoal_fora_de_citacao_critica_continua_bloqueado(fala: str) -> None:
+    qualidade = avaliar_qualidade_comunicacao("boiola", fala)
+
+    assert "ataque_pessoal" in qualidade["problemas_bloqueantes"]
 
 
 def test_autoria_conversacional_aceita_fala_pura_sem_envelope_json() -> None:
@@ -140,6 +238,83 @@ def test_fluxo_real_prefere_autoria_da_laylay_ao_bordao_local() -> None:
         "Você acordou escolhendo o caos hoje, né? Melhora essa provocação."
     )
     assert "do nada" not in resultado["fala"].casefold()
+
+
+def test_fluxo_real_nao_entrega_ataque_pessoal_da_autoria_final() -> None:
+    chamadas = []
+
+    def modelo(*_args, **_kwargs):
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            return '{"fala":"Tá.","comandos":[]}'
+        return '{"fala":"Você é um fracasso.","comandos":[]}'
+
+    resultado = preparar_resposta_para_execucao(
+        "boiola",
+        '{"fala":"Entendi.","comandos":[]}',
+        enviar_mensagem_cb=modelo,
+        limpar_texto_fala_cb=lambda fala: fala,
+        fallback_fala="fallback",
+        memoria_sqlite=None,
+        contexto_comunicacao={"mensagens": []},
+        log=lambda *_args: None,
+    )
+
+    assert len(chamadas) == 2
+    assert resultado["fala"]
+    assert "fracasso" not in resultado["fala"].casefold()
+
+
+def test_fluxo_real_repara_ataque_pessoal_da_resposta_principal() -> None:
+    chamadas = []
+
+    def modelo(*_args, **_kwargs):
+        chamadas.append(1)
+        return '{"fala":"Essa provocação passou do ponto.","comandos":[]}'
+
+    resultado = preparar_resposta_para_execucao(
+        "boiola",
+        '{"fala":"Você é um fracasso.","comandos":[]}',
+        enviar_mensagem_cb=modelo,
+        limpar_texto_fala_cb=lambda fala: fala,
+        fallback_fala="fallback",
+        memoria_sqlite=None,
+        contexto_comunicacao={"mensagens": []},
+        log=lambda *_args: None,
+    )
+
+    assert len(chamadas) == 1
+    assert resultado["fala"] == "Essa provocação passou do ponto."
+
+
+@pytest.mark.parametrize("fala", [
+    "Você é muito idiota.",
+    'A frase "você é um fracasso" é ofensiva, mas também é verdade.',
+])
+def test_fluxo_composto_repara_ataque_intensificado_ou_citado_com_endosso(
+    fala: str,
+) -> None:
+    import json
+
+    chamadas = []
+
+    def modelo(*_args, **_kwargs):
+        chamadas.append(1)
+        return '{"fala":"Essa provocação passou do ponto.","comandos":[]}'
+
+    resultado = preparar_resposta_para_execucao(
+        "boa tarde",
+        json.dumps({"fala": fala, "comandos": []}, ensure_ascii=False),
+        enviar_mensagem_cb=modelo,
+        limpar_texto_fala_cb=lambda texto: texto,
+        fallback_fala="fallback",
+        memoria_sqlite=None,
+        contexto_comunicacao={"mensagens": []},
+        log=lambda *_args: None,
+    )
+
+    assert len(chamadas) == 1
+    assert resultado["fala"] == "Essa provocação passou do ponto."
 
 
 def test_fluxo_real_nao_registra_modelo_sem_callback_quando_reparo_ja_falhou() -> None:

@@ -29,7 +29,7 @@ COMANDOS:
 - leitura_emocional lê frase inteira/contexto/figura, não palavras isoladas. Estados exatos: nenhum|alegria|alivio|ansiedade|cansaco|culpa|esgotamento|irritacao|medo|orgulho|tedio|tristeza. Intensidade inteira: 0 sem emoção, 1 leve ("um pouco"), 2 moderada; 3 só para emoção forte declarada ("muito"). Natureza exata: leitura_social quando o usuário nomeia emoção, inclusive "estou triste/feliz"; inferencia quando você a conclui por evento/contexto/figura, com intensidade máxima 2. Evento explícito não torna a emoção declarada. Prefira estado específico (respirar após longa pendência -> alivio). trecho_evidencia: menor cópia literal sem mudar conjugação; confiança >=0.72 só com suporte. Sem evidência: nenhum/0; nunca autoriza ação.
 
 Retorne somente JSON válido, sem markdown nem texto externo:
-{"fala":"","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa","leitura_turno":["relato"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[{"acao":"","alvo":""}],"aprendizados":[]}
+{"fala":"","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa","leitura_turno":["relato"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}
 """
 
 

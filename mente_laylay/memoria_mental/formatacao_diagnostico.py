@@ -98,11 +98,19 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
         ),
         (
             "  episódio emocional: "
+            f"expressável={_codigo_seguro(estado_emocional_causal.get('emocao_expressavel'), 20)} "
+            f"nível={int(estado_emocional_causal.get('nivel_expressavel') or 1)} "
+            f"intensidade={int(estado_emocional_causal.get('intensidade') or 0)} "
             f"causa={_codigo_seguro(estado_emocional_causal.get('causa'), 48)} "
+            f"referência={_codigo_seguro(estado_emocional_causal.get('causa_ref'), 24) or '-'} "
+            f"fonte={_codigo_seguro(estado_emocional_causal.get('fonte_causa'), 28) or '-'} "
+            f"último_evento={_codigo_seguro(estado_emocional_causal.get('evento_observado_ref'), 24) or '-'} "
             f"responsabilidade={_codigo_seguro(estado_emocional_causal.get('responsabilidade'), 16)} "
             f"confiança={round(float(estado_emocional_causal.get('confianca') or 0.0) * 100):.0f}% "
             f"válido={bool(estado_emocional_causal.get('validade'))} "
             f"expressão={bool(estado_emocional_causal.get('expressao'))} "
+            f"supressão={_codigo_seguro(estado_emocional_causal.get('supressao'), 48) or '-'} "
+            f"decisão={_codigo_seguro(estado_emocional_causal.get('decisao_expressao'), 24)} "
             f"transição={_codigo_seguro(dict(estado_emocional_causal.get('transicao') or {}).get('de'), 16)}"
             f"→{_codigo_seguro(dict(estado_emocional_causal.get('transicao') or {}).get('para'), 16)} "
             "autoriza_execução=False"
@@ -502,6 +510,16 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             "persistência_local=True conteúdo_exposto=False autoriza_execução=False"
         )
     ultima_iniciativa = dict(iniciativa.get("ultima") or {})
+    tolerancia = dict(aprendizado.get("tolerancia_humor") or {})
+    for contexto, avaliacao in dict(tolerancia.get("contextos") or {}).items():
+        if contexto in {"jogo", "conversa", "comandos"} and isinstance(avaliacao, Mapping):
+            linhas.append(
+                f"  tolerância de humor: contexto={contexto} "
+                f"amostras={int(avaliacao.get('amostras_distintas') or 0)} "
+                f"aplicável={bool(avaliacao.get('aplicavel'))} "
+                f"direção={_codigo_seguro(avaliacao.get('direcao'), 24) or '-'} "
+                "explícita_prevalece=True autoriza_execução=False"
+            )
     if ultima_iniciativa:
         linhas.append(
             f"  última iniciativa: {ultima_iniciativa.get('tipo') or '-'} "
@@ -531,7 +549,10 @@ def formatar_diagnostico_terminal(diagnostico: Mapping[str, Any]) -> str:
             f"emitidas={int(presenca.get('emitidas') or 0)} "
             f"bloqueadas_contexto={int(presenca.get('bloqueadas_contexto') or 0)} "
             f"bloqueadas_orçamento={int(presenca.get('bloqueadas_orcamento') or 0)} "
-            f"bloqueadas_qualidade={int(presenca.get('bloqueadas_qualidade') or 0)}"
+            f"bloqueadas_qualidade={int(presenca.get('bloqueadas_qualidade') or 0)} "
+            f"feedbacks_observados={int(presenca.get('feedbacks') or 0)} "
+            f"feedbacks_compartilhados={int(presenca.get('feedbacks_compartilhados') or 0)} "
+            f"aprendizado={dict(presenca.get('aprendizado_compartilhado') or {}).get('status') or 'sem_registro'}"
         )
     auditoria = dict(iniciativa.get("auditoria") or {})
     linhas.append(

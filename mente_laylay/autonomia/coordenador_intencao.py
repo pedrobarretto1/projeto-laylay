@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 import time
 import json
+from contextlib import nullcontext
 from copy import deepcopy
 from threading import Event, RLock, get_ident
 from typing import Any, Callable, Dict, Tuple
-from uuid import uuid4
 
 from mente_laylay.autonomia.analise_comandos import (
     executar_comando_em_texto,
@@ -55,6 +55,7 @@ from mente_laylay.memoria_mental.contexto_imediato import (
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
 from mente_laylay.memoria_mental.resultado_acao import (
+    identificar_solicitacao_execucao,
     interpretar_tratamento_operacional,
     marcar_tratamento_operacional,
 )
@@ -62,6 +63,7 @@ from mente_laylay.arquivos.roteador_arquivos import (
     detectar_intencao_arquivos,
     reconciliar_literalidade_filename,
 )
+from mente_laylay.arquivos.nome_natural import texto_contem_caminho_absoluto
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
 
@@ -438,7 +440,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     # português e preserva nomes, URLs, aspas e extensões.
     preservar_argumentos_arquivo = bool(
         str(turno_congelado.get("modalidade_geral") or "") != "misto"
-        and re.search(
+        and (texto_contem_caminho_absoluto(texto) or (re.search(
             r"\b(?:arquivo|pasta|documento|escreve|escreva|grava|grave)\b",
             str(texto or ""),
             flags=re.IGNORECASE,
@@ -448,7 +450,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             or '"' in str(texto or "")
             or "'" in str(texto or "")
             or bool(re.search(r"\b(?:nele|nela|dentro\s+dele|dentro\s+dela)\b", str(texto or ""), re.IGNORECASE))
-        )
+        )))
     )
     texto_detector_deterministico = (
         str(texto or "") if preservar_argumentos_arquivo else texto_deteccao
@@ -739,14 +741,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
 # P0_CONTRATO_EXECUCAO_NONE_V1_20260815
 def _preparar_intent_execucao(intent: Dict[str, Any]) -> Dict[str, Any]:
     """Cria a identidade da ocorrência antes do despacho, sem mutar o pedido original."""
-    identificado = dict(intent or {})
-    id_existente = str(
-        identificado.get("id_solicitacao")
-        or identificado.get("request_id")
-        or ""
-    ).strip()
-    identificado["id_solicitacao"] = id_existente or uuid4().hex
-    return identificado
+    return identificar_solicitacao_execucao(intent)
 
 
 def executar_fluxo_intencao(
@@ -1396,6 +1391,11 @@ class CicloComandosRuntime:
                     and dominio_atual
                     and dominio_novo != dominio_atual
                     and pendencia_runtime is not None
+                    and not bool(
+                        (pendencia_acao.get("metadados") or {}).get(
+                            "sobrevive_comando_independente"
+                        )
+                    )
                 ):
                     try:
                         pendencia_runtime.concluir(
@@ -1657,6 +1657,10 @@ class CicloComandosRuntime:
                 "⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | "
                 f"indice={indice} concluidas={concluidas} trecho={trecho[:120]}"
             )
+            registrar_falha_lote = getattr(agrupamento, "registrar_falha", None)
+            if callable(registrar_falha_lote):
+                registrar_falha_lote(trecho, indice, concluidas)
+                return
             # A fala pertence ao contexto de execução tipado, não à
             # allowlist enxuta do resolvedor. Consultá-la daqui evita que uma
             # falha consumida deixe o turno sem resposta.
@@ -1684,13 +1688,20 @@ class CicloComandosRuntime:
                 )
             falar(fala, "calma", 1)
 
-        return processar_comandos_em_cadeia(
-            texto,
-            origem,
-            normalizar_texto=normalizar,
-            executar_trecho=executar_trecho_isolado,
-            relatar_falha=relatar_falha,
+        contexto_entrega = self.contexto_intencao_runtime.montar()
+        agrupar = contexto_entrega.get("_agrupar_resultados_operacionais")
+        lote = (
+            agrupar(texto_usuario=texto, enviar_mensagem=contexto_entrega.get("enviar_mensagem"))
+            if callable(agrupar) else nullcontext()
         )
+        with lote as agrupamento:
+            return processar_comandos_em_cadeia(
+                texto,
+                origem,
+                normalizar_texto=normalizar,
+                executar_trecho=executar_trecho_isolado,
+                relatar_falha=relatar_falha,
+            )
 
 
 def criar_ciclo_comandos_runtime(**kwargs: Any) -> CicloComandosRuntime:

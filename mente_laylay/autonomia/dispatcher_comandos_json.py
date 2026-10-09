@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import re
+from copy import deepcopy
+from contextlib import nullcontext
 from typing import Any, Dict, List
 
+from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.memoria_mental.resultado_acao import (
+    identificar_solicitacao_execucao,
     interpretar_tratamento_operacional,
 )
 
@@ -55,7 +59,10 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         }
     if acao in simples:
         intent, chave_alvo = simples[acao]
-        params = {k: v for k, v in cmd.items() if k not in {"acao", "intent"}}
+        params = {
+            k: v for k, v in cmd.items()
+            if k not in {"acao", "intent", "id_solicitacao", "request_id"}
+        }
         if alvo and not params.get(chave_alvo):
             params[chave_alvo] = alvo
         params.setdefault("target", destino)
@@ -149,6 +156,32 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
     return None
 
 
+def normalizar_candidato_json_para_intencao(cmd: Dict[str, Any]) -> Dict[str, Any] | None:
+    """Projeta uma representação isolada, sem resolver alvo ou autorizar efeito.
+
+    Nomes canônicos vêm do catálogo compartilhado. Formatos flat usam o
+    adaptador legado; campos concorrentes e formas incertas ficam sem visão.
+    Parâmetros, disponibilidade e alvo efetivo ainda exigem seus validadores.
+    """
+    if not isinstance(cmd, dict):
+        return None
+    campos = [campo for campo in ("intent", "acao", "action") if campo in cmd]
+    if len(campos) != 1:
+        return None
+    campo = campos[0]
+    nome = cmd[campo]
+    if not isinstance(nome, str) or not nome.strip() or campo == "action":
+        return None
+    copia = deepcopy(cmd)
+    if "params" in cmd:
+        intent = nome.strip().upper()
+        if campo != "intent" or intent not in intents_registradas() or not isinstance(cmd["params"], dict):
+            return None
+        copia["intent"] = intent
+        return copia
+    return adaptar_acao_json_para_intencao(copia)
+
+
 def executar_comandos_json(
     ctx: Dict[str, Any],
     texto: str,
@@ -158,6 +191,35 @@ def executar_comandos_json(
     fala_ja_emitida: bool,
     fala_emitida_por_acao: bool,
     fala_salva_no_inicio: bool,
+) -> Dict[str, Any]:
+    """Executa cada comando e apresenta o pedido composto uma única vez."""
+    agrupar = _get(ctx, "_agrupar_resultados_operacionais")
+    usar_lote = callable(agrupar) and isinstance(comandos, list) and len(comandos) > 1
+    lote = (
+        agrupar(texto_usuario=texto, enviar_mensagem=_get(ctx, "enviar_mensagem"))
+        if usar_lote else nullcontext()
+    )
+    with lote as agrupamento:
+        resultado = _executar_comandos_json_sem_lote(
+            ctx, texto, comandos, fala_limpa_original, tipo_interacao,
+            fala_ja_emitida, fala_emitida_por_acao, fala_salva_no_inicio,
+        )
+        if agrupamento is not None and resultado.get("erros"):
+            # O receipt da etapa falha já descreve o que não aconteceu. Se a
+            # falha ocorreu antes de existir receipt, mantenha uma conclusão.
+            agrupamento.registrar_falha("", 0, 0)
+    if usar_lote:
+        resultado.update({
+            "resposta_composta_publicada": bool(agrupamento.resposta_publicada),
+            "fala_composta": str(agrupamento.fala_publicada),
+        })
+    return resultado
+
+
+def _executar_comandos_json_sem_lote(
+    ctx: Dict[str, Any], texto: str, comandos: List[Dict[str, Any]],
+    fala_limpa_original: str, tipo_interacao: str, fala_ja_emitida: bool,
+    fala_emitida_por_acao: bool, fala_salva_no_inicio: bool,
 ) -> Dict[str, Any]:
     """Executa ações JSON usando o contexto compartilhado da Laylay."""
     mensagens = _get(ctx, "messages")
@@ -192,6 +254,15 @@ def executar_comandos_json(
     for cmd in comandos:
         if not isinstance(cmd, dict):
             continue
+        if isinstance(ctx, dict) and "proposta_principal_vigente" in ctx:
+            conferir = _get(ctx, "proposta_principal_vigente")
+            try:
+                vigente = callable(conferir) and conferir() is True
+            except Exception:
+                vigente = False
+            if not vigente:
+                erros_execucao.append("ocorrência da proposta não está vigente; comandos restantes interrompidos.")
+                break
         # Alguns modelos usam ``intent`` dentro da lista de comandos, apesar
         # do contrato histórico chamar o campo de ``acao``. Ambos precisam
         # chegar ao mesmo executor; ignorar ``intent`` marcava sucesso vazio.
@@ -201,7 +272,21 @@ def executar_comandos_json(
         alvo_raw = _extrair_alvo(cmd)
         alvo = re.sub(r'\[.*?\]\((.*?)\)', r'\1', str(alvo_raw or "")).replace("[", "").replace("]", "").strip('"\' ')
 
-        intencao_canonica = adaptar_acao_json_para_intencao(cmd, alvo)
+        try:
+            pedido = identificar_solicitacao_execucao(cmd)
+            if alvo_raw:
+                pedido["alvo"] = alvo
+            intencao_canonica = normalizar_candidato_json_para_intencao(pedido)
+            if intencao_canonica is not None:
+                intencao_canonica["id_solicitacao"] = pedido["id_solicitacao"]
+                intencao_canonica.pop("request_id", None)
+                params = dict(intencao_canonica["params"])
+                params.pop("id_solicitacao", None)
+                params.pop("request_id", None)
+                intencao_canonica["params"] = params
+        except (TypeError, ValueError) as erro_identidade:
+            erros_execucao.append(f"pedido inválido: {erro_identidade}")
+            continue
         if intencao_canonica is not None:
             if not callable(executar_intencao):
                 erros_execucao.append(f"executor canônico indisponível para a ação '{acao}'.")

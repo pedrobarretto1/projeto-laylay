@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import json
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from copy import deepcopy
+from dataclasses import dataclass, field
 from threading import RLock
 from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+from mente_laylay.cognicao.preferencia_humor import contexto_humor_turno
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
-from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
+from mente_laylay.personalidade.retrato_entrega import (
+    RetratoEntregaFala,
+    criar_retrato_entrega_fala,
+)
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.personalidade.confirmacao_llm import (
+    INTENTS_INFORMATIVOS, personalizar_confirmacao_composta_llm,
+)
+from mente_laylay.personalidade.planejador_resposta import (
+    classificar_resultado, fala_factual_resultados_compostos,
+)
 
 
 DEPENDENCIAS_ORQUESTRADOR_FALA = (
@@ -23,7 +38,25 @@ DEPENDENCIAS_ORQUESTRADOR_FALA = (
 
 DEPENDENCIAS_OPCIONAIS_ORQUESTRADOR_FALA = (
     "_registrar_metrica_diagnostico",
+    "_registrar_entrega_comunicativa",
 )
+
+
+@dataclass(slots=True)
+class _LoteResultadosOperacionais:
+    turno_id: str
+    texto_usuario: str
+    enviar_mensagem: Callable[..., Any] | None
+    resultados: list[ResultadoAcao] = field(default_factory=list)
+    informacoes: dict[str, str] = field(default_factory=dict)
+    avisos: list[str] = field(default_factory=list)
+    contexto: dict[str, Any] = field(default_factory=dict)
+    falha_cadeia: tuple[str, int, int] | None = None
+    resposta_publicada: bool = False
+    fala_publicada: str = ""
+
+    def registrar_falha(self, trecho: str, indice: int, concluidas: int) -> None:
+        self.falha_cadeia = (str(trecho or ""), int(indice), int(concluidas))
 
 
 class OrquestradorFalaRuntime:
@@ -48,6 +81,102 @@ class OrquestradorFalaRuntime:
         self._observadores_fala_final: list[Callable[..., Any]] = []
         self._observadores_texto_final: list[Callable[..., Any]] = []
         self._textos_publicados_turno: dict[str, list[str]] = {}
+        self._lote_resultados: ContextVar[_LoteResultadosOperacionais | None] = ContextVar(
+            "lote_resultados_operacionais", default=None,
+        )
+
+    def _turno_fala_atual(self) -> str:
+        mental = self._ns()["_estado_compartilhado_runtime"].mental
+        return str(dict(mental.get("turno_atual") or {}).get("id") or "").strip()
+
+    @contextmanager
+    def agrupar_resultados_operacionais(
+        self, *, texto_usuario: str, enviar_mensagem: Callable[..., Any] | None = None,
+    ):
+        """Adia somente apresentação; cada executor continua publicando seu receipt."""
+        anterior = self._lote_resultados.get()
+        if anterior is not None:
+            yield anterior
+            return
+        lote = _LoteResultadosOperacionais(self._turno_fala_atual(), str(texto_usuario or ""), enviar_mensagem)
+        token = self._lote_resultados.set(lote)
+        try:
+            yield lote
+        except Exception:
+            lote.avisos.append("Não consegui concluir o restante do pedido.")
+            raise
+        finally:
+            self._lote_resultados.reset(token)
+            self._entregar_resultados_compostos(lote)
+
+    def acumular_resultado_operacional(
+        self, resultado: Any, texto: str, emocao: str = "calma", nivel: int = 1,
+        *, contexto: Mapping[str, Any] | None = None,
+    ) -> bool:
+        """Consome a apresentação de um resultado quando há pedido composto ativo."""
+        lote = self._lote_resultados.get()
+        if lote is None:
+            return False
+        if not isinstance(resultado, ResultadoAcao) or not resultado.id_solicitacao or resultado.origem != "executor":
+            lote.avisos.append("Não consegui validar o resultado de uma das ações com segurança.")
+            return True
+        receipt = deepcopy(resultado)
+        indice = next((i for i, item in enumerate(lote.resultados)
+                       if item.id_solicitacao == receipt.id_solicitacao), None)
+        if indice is None:
+            lote.resultados.append(receipt)
+        else:
+            # Republicação pode rebaixar a certeza da mesma ocorrência. A
+            # apresentação segue o snapshot mais recente do publicador.
+            lote.resultados[indice] = receipt
+        lote.contexto.update(dict(contexto or {}))
+        if receipt.intent in INTENTS_INFORMATIVOS:
+            lote.informacoes[receipt.id_solicitacao] = str(texto or "").strip()
+        else:
+            lote.informacoes.pop(receipt.id_solicitacao, None)
+        return True
+
+    def _entregar_resultados_compostos(self, lote: _LoteResultadosOperacionais) -> bool:
+        ns = self._ns()
+        if not lote.resultados and not lote.avisos and lote.falha_cadeia is None:
+            return False
+        if not lote.turno_id or lote.turno_id != self._turno_fala_atual():
+            ns["print"]("🛡️ [FALA:COMPOSTA] resultado retido: turno mudou antes da entrega")
+            return False
+        avisos = list(dict.fromkeys(lote.avisos))
+        if lote.falha_cadeia is not None:
+            _trecho, indice, concluidas = lote.falha_cadeia
+            if not lote.resultados or classificar_resultado(lote.resultados[-1]) in {"sucesso", "sem_acao"}:
+                avisos.append(
+                    f"Não consegui executar a etapa {indice}; parei nesse ponto."
+                    if indice > 0 else "Uma das etapas não foi confirmada."
+                )
+        fala_segura = fala_factual_resultados_compostos(lote.resultados, informacoes=lote.informacoes)
+        if lote.resultados:
+            confirmacao = personalizar_confirmacao_composta_llm(
+                lote.resultados, fala_segura,
+                enviar_mensagem=lote.enviar_mensagem, contexto=lote.contexto,
+                informacoes=lote.informacoes,
+            )
+            fala = confirmacao.fala
+            emocao, nivel = confirmacao.emocao, confirmacao.nivel
+            if confirmacao.motivo_fallback:
+                ns["print"]("⚠️ [FALA:COMPOSTA] fallback factual | " + confirmacao.motivo_fallback)
+        else:
+            fala = ""
+            emocao, nivel = "calma", 1
+        fala = " ".join([parte for parte in (fala, *avisos) if parte]).strip()
+        # Uma chamada demorada pode terminar depois de a conversa mudar.
+        # Os receipts continuam publicados; sua fala não pertence ao turno novo.
+        if lote.turno_id != self._turno_fala_atual():
+            ns["print"]("🛡️ [FALA:COMPOSTA] resultado retido: turno mudou durante autoria")
+            return False
+        if not fala:
+            return False
+        aceita = self.falar(fala, emocao, nivel)
+        lote.resposta_publicada = bool(aceita or fala in self.textos_publicados_turno(lote.turno_id))
+        lote.fala_publicada = fala if lote.resposta_publicada else ""
+        return aceita
 
     def textos_publicados_turno(self, turno_id: Any) -> tuple[str, ...]:
         """Texto aceito por canal textual; não é receipt de áudio ou de ação."""
@@ -80,6 +209,8 @@ class OrquestradorFalaRuntime:
         texto: str,
         emocao: str = "calma",
         nivel: int = 1,
+        *,
+        _retrato_entrega: RetratoEntregaFala | None = None,
     ) -> bool:
         """Entrega uma fala autônoma aos canais textuais antes do TTS.
 
@@ -90,7 +221,12 @@ class OrquestradorFalaRuntime:
         fala = str(texto or "").strip()
         if not fala:
             return False
-        mensagem_id = f"proativa:{time.time_ns()}"
+        retrato = _retrato_entrega or criar_retrato_entrega_fala(
+            getattr(self._ns()["_estado_compartilhado_runtime"], "conversacional", {}),
+            mensagem_id=f"proativa:{time.time_ns()}",
+        )
+        mensagem_id = retrato.mensagem_id
+        emocao, nivel = retrato.emocao, retrato.nivel
         publicado = False
         for observador in tuple(self._observadores_texto_final):
             try:
@@ -234,6 +370,8 @@ class OrquestradorFalaRuntime:
         nivel: int = 1,
     ) -> bool:
         """Entrega no máximo uma confirmação para o mesmo resultado do turno."""
+        if self.acumular_resultado_operacional(resultado, texto, emocao, nivel):
+            return True
         ns = self._ns()
         estado = ns["_estado_compartilhado_runtime"]
         mental = dict(estado.mental)
@@ -373,6 +511,27 @@ class OrquestradorFalaRuntime:
         _proativa: bool = False,
         _avaliacao_evento: Mapping[str, Any] | None = None,
     ) -> bool:
+        lote = self._lote_resultados.get()
+        if lote is not None and not _proativa:
+            fala_pendente = str(texto or "").strip()
+            if fala_pendente:
+                # A chamada direta não trouxe um receipt próprio. Receipts
+                # de outras etapas não autorizam alegações deste aviso.
+                guardiao_aviso = validar_alegacoes_da_fala(
+                    fala_pendente,
+                    plano={"requer_execucao": False, "comandos": [],
+                           "exigir_receipt_para_estado": True,
+                           "texto_usuario": lote.texto_usuario},
+                    origem="canal_voz",
+                )
+                if guardiao_aviso.get("problemas"):
+                    fala_pendente = "Não consegui validar uma das confirmações com segurança."
+                    self._ns()["print"](
+                        "🛡️ [FALA:COMPOSTA] aviso sem receipt | "
+                        f"problemas={guardiao_aviso.get('problemas') or []}"
+                    )
+                lote.avisos.append(fala_pendente)
+            return bool(fala_pendente)
         ns = self._ns()
         estado = ns["_estado_compartilhado_runtime"]
         mental_antes = dict(estado.mental)
@@ -409,6 +568,18 @@ class OrquestradorFalaRuntime:
             mente_direcao["avaliacao_emocional_operacional_atual"] = dict(
                 _avaliacao_evento
             )
+        turno_id = str(
+            dict(mental_antes.get("turno_atual") or {}).get("id")
+            or plano_antes.get("id") or ""
+        ).strip()
+        retrato_entrega = criar_retrato_entrega_fala(
+            getattr(estado, "conversacional", {}),
+            mensagem_id=(
+                f"proativa:{time.time_ns()}" if _proativa
+                else (f"turno:{turno_id}" if turno_id else "")
+            ),
+        )
+        emocao, nivel = retrato_entrega.emocao, retrato_entrega.nivel
         direcao = ns["_dirigir_fala_mente"](
             fala, texto_usuario=str(plano_antes.get("texto_usuario") or ""),
             estado_mental=mente_direcao, emocao=emocao, nivel=nivel,
@@ -417,24 +588,16 @@ class OrquestradorFalaRuntime:
         fala = str(direcao.get("fala") or fala)
         # O diretor sugere estilo, mas só o episódio da mente compartilhada
         # possui autoridade para emoção e intensidade publicadas em voz/texto.
-        emocao, nivel = retrato_emocional_expressavel(
-            getattr(estado, "conversacional", {}),
-        )
         direcao = dict(direcao)
         emocao_proposta = str(direcao.get("emocao") or "").strip().casefold()
         if str(direcao.get("tom") or "").strip().casefold() == emocao_proposta:
             direcao["tom"] = emocao
         direcao["emocao"] = emocao
         direcao["nivel"] = nivel
-        turno_id = str(
-            dict(mental_antes.get("turno_atual") or {}).get("id")
-            or plano_antes.get("id")
-            or ""
-        ).strip()
-        mensagem_id = (
-            f"proativa:{time.time_ns()}"
-            if _proativa
-            else (f"turno:{turno_id}" if turno_id else "")
+        mensagem_id = retrato_entrega.mensagem_id
+        contexto_humor = contexto_humor_turno(
+            operacional=bool(plano_antes.get("requer_execucao")),
+            modo_jogo_ativo=bool(mental_antes.get("modo_jogo_ativo")),
         )
         inicio_publicacao_texto = time.perf_counter()
         texto_publicado = False
@@ -460,12 +623,29 @@ class OrquestradorFalaRuntime:
                     textos.append(fala)
                 while len(self._textos_publicados_turno) > 64:
                     self._textos_publicados_turno.pop(next(iter(self._textos_publicados_turno)))
+        registrar_entrega = ns.get("_registrar_entrega_comunicativa")
+        def concluir_entrega(entregue: bool, texto_entregue: str, canal: str) -> None:
+            if _proativa or not callable(registrar_entrega) or not mensagem_id:
+                return
+            try:
+                registrar_entrega(id_entrega=mensagem_id, fala=texto_entregue,
+                    entregue=entregue, contexto_humor=contexto_humor, canal_entrega=canal)
+            except Exception as erro:
+                ns["print"](f"⚠️ [ENTREGA:FEEDBACK] registro indisponível: {type(erro).__name__}")
+        if texto_publicado:
+            concluir_entrega(True, fala, "texto_publicado")
+        parametros_entrega = {}
+        if not texto_publicado and not _proativa and callable(registrar_entrega):
+            parametros_entrega["_ao_concluir_entrega"] = lambda entregue, texto: concluir_entrega(
+                entregue, texto, "audio_reproducao_confirmada")
         aceita = ns["_voz_runtime"].falar(
             fala, emocao, nivel, wait=wait, _proativa=_proativa,
             _texto_publicado_antecipado=bool(
                 self._observadores_texto_final
                 or self._observadores_fala_final
             ),
+            _retrato_entrega=retrato_entrega,
+            **parametros_entrega,
         )
         if aceita is not False:
             inicio_publicacao_fala = time.perf_counter()

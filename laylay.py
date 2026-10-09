@@ -257,7 +257,7 @@ from mente_laylay.especialistas.capacidades import (
     intents_registradas as _intents_registradas,
 )
 from mente_laylay.cognicao.decisao_turno import (
-    filtrar_comandos_pelo_turno as _filtrar_comandos_pelo_turno_mente,
+    criar_validador_comandos_turno_runtime as _criar_validador_comandos_turno_runtime,
 )
 from mente_laylay.percepcao.ritmo_circadiano import (
     criar_ritmo_circadiano_runtime as _criar_ritmo_circadiano_runtime_mente,
@@ -2284,6 +2284,14 @@ _motor_aprendizado_runtime = _criar_motor_aprendizado_runtime_mente(
     log=print,
 )
 
+_ponte_iniciativa_aplicacao_runtime.conectar_aprendizado(
+    registrar_feedback=_adaptadores_aplicacao_runtime.registrar_feedback_contextual,
+    publicar_evento_emocional=partial(
+        _estado_contexto_runtime.publicar_evento_emocional_causal,
+        vincular_plano=False, ocorrencia_unica=True,
+    ),
+)
+
 
 _finalizar_encerramento_assunto_apos_fala = (
     _orquestrador_fala_runtime.finalizar_encerramento_assunto
@@ -2309,6 +2317,7 @@ _registro_arquivos_mutacao_runtime = _registrar_arquivos_mutacao(
     _arquivos_mutacao_runtime
 )
 _orquestrador_fala_runtime.conectar_servicos({
+    "_registrar_entrega_comunicativa": _diretor_presenca_runtime.registrar_entrega_comunicativa,
     "_registrar_mente_curta": _registrar_mente_curta,
     "_estado_compartilhado_runtime": _estado_compartilhado_runtime,
     "_encerrar_topico_mente": _encerrar_topico_mente,
@@ -2325,6 +2334,8 @@ _orquestrador_fala_runtime.conectar_servicos({
 })
 falar_com_lipsync = _orquestrador_fala_runtime.falar
 _falar_resultado_operacional = _orquestrador_fala_runtime.falar_resultado_operacional
+_agrupar_resultados_operacionais = _orquestrador_fala_runtime.agrupar_resultados_operacionais
+_acumular_resultado_operacional = _orquestrador_fala_runtime.acumular_resultado_operacional
 
 _composicao_iot_runtime = _criar_composicao_iot_laylay_runtime(
     memoria_sqlite=MEMORIA_SQLITE,
@@ -2722,6 +2733,7 @@ resumir_pagina_ou_video = _resumo_conteudo_runtime.resumir
 
 _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
     abas_sugeridas=_abas_sugeridas_fechar,
+    pendencias=_pendencia_acao_runtime,
     obter_ram_percent=lambda: psutil.virtual_memory().percent,
     listar_abas=_registro_navegador_leitura_runtime.listar_abas,
     obter_estado_chrome=_chrome_estado.snapshot,
@@ -3608,6 +3620,10 @@ _central_notificacoes_runtime = _criar_central_notificacoes_runtime_mente(
         _estado_compartilhado_runtime.atualizar_campos("mental", **campos)
     ),
     registrar_aprendizado_cb=_motor_aprendizado_runtime.registrar_evidencia,
+    registrar_entrega_cb=_diretor_presenca_runtime.registrar_entrega_observada,
+    publicar_evento_emocional_cb=partial(
+        _estado_contexto_runtime.publicar_evento_emocional_causal, vincular_plano=False,
+    ),
     log=print,
 )
 _central_notificacoes_executar = _central_notificacoes_runtime.executar
@@ -3806,7 +3822,10 @@ _diagnostico_mente_runtime = _criar_diagnostico_mente_runtime(
     orquestracao_cooperativa_getter=_orquestrador_cooperativo_runtime.diagnostico,
     agenda_getter=_agenda_runtime.diagnostico,
     memoria_pessoas_getter=_registro_memoria_pessoas_runtime.diagnostico,
-    aprendizado_getter=MEMORIA_SQLITE.diagnostico_aprendizados,
+    aprendizado_getter=lambda: {
+        **MEMORIA_SQLITE.diagnostico_aprendizados(),
+        "tolerancia_humor": _motor_aprendizado_runtime.diagnostico_tolerancia_humor(),
+    },
     linguagem_natural_getter=lambda: {
         **_composicao_ciclo_comandos_runtime.diagnostico_linguagem_natural(),
         "tolerancia_portugues": (
@@ -3871,25 +3890,8 @@ _coleta_entradas_neurais = _ColetaEntradasNeurais(
     ativo=os.getenv("LAYLAY_NEURAL_COLETA_ENTRADAS", "1").strip() == "1",
 )
 _registro_servicos_aplicacao_runtime.publicar(_coleta_entradas_neurais=_coleta_entradas_neurais)
-from mente_laylay.cognicao.preferencia_humor import (
-    reconstruir_preferencia_humor_duravel as _reconstruir_preferencia_humor_duravel,
-)
-
-
 def _carregar_preferencia_humor_duravel(contexto: str) -> dict:
-    for escopo in (contexto, "geral"):
-        chave = f"personalidade:tolerancia_humor:{escopo}"
-        try:
-            hipotese = MEMORIA_SQLITE.obter_hipotese_aprendizado(chave)
-            evidencias = MEMORIA_SQLITE.listar_eventos_aprendizado(chave, limit=1)
-        except Exception:
-            continue
-        preferencia = _reconstruir_preferencia_humor_duravel(
-            hipotese, evidencias[0] if evidencias else {},
-        )
-        if preferencia:
-            return preferencia
-    return {}
+    return _motor_aprendizado_runtime.carregar_preferencia_humor_duravel(contexto)
 
 
 _registro_servicos_aplicacao_runtime.publicar(
@@ -3912,6 +3914,9 @@ _registro_servicos_aplicacao_runtime.publicar(
     ),
 )
 
+_validador_comandos_turno_runtime = _criar_validador_comandos_turno_runtime(
+    estado_runtime=_estado_compartilhado_runtime,
+)
 _composicao_turno_runtime = _criar_composicao_turno_runtime(
     servicos=_registro_servicos_aplicacao_runtime.snapshot(),
 )
@@ -3979,13 +3984,14 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
             log=print,
         ),
         "registrar_leitura_semantica_principal": _registrar_leitura_semantica_principal,
-        "validar_comandos_planejados": lambda comandos: _filtrar_comandos_pelo_turno_mente(
-            comandos,
-            turno=dict(_estado_compartilhado_runtime.mental.get("turno_atual") or {}),
-            plano=dict(_estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}),
-            retrato=dict(_estado_compartilhado_runtime.mental.get("retrato_turno_atual") or {}),
-        ),
+        "registrar_leitura_proposta": _composicao_turno_runtime.registrar_leitura_proposta,
+        "validar_comandos_planejados": _validador_comandos_turno_runtime,
+        "publicar_erro_proposta": _estado_contexto_runtime.publicar_erro_proposta,
+        "confirmar_erro_proposta": _estado_contexto_runtime.confirmar_erro_proposta,
         "atualizar_plano_turno": _atualizar_planejamento_turno,
+        "atualizar_plano_ocorrencia": _composicao_turno_runtime.atualizar_ocorrencia,
+        "atualizar_plano_proposta": _composicao_turno_runtime.atualizar_proposta,
+        "proposta_principal_vigente": _composicao_turno_runtime.proposta_vigente,
         "atualizar_memoria_topicos": _atualizar_memoria_topicos,
         "processar_comando_deterministico": processar_comando_deterministico,
         "contexto_dispatch_runtime": _contexto_dispatcher_runtime,
@@ -4005,6 +4011,7 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         "registrar_falha_diagnostico": _observabilidade_mente_runtime.registrar_falha,
         "registrar_decisao_diagnostico": _observabilidade_mente_runtime.registrar_decisao,
         "observar_feedback_presenca": _diretor_presenca_runtime.observar_resposta,
+        "registrar_feedback_emissao_turno": _adaptadores_aplicacao_runtime.registrar_feedback_emissao_turno,
                             },
     log=print,
 )

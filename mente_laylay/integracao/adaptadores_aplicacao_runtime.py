@@ -8,6 +8,7 @@ preservar a inicialização tardia dos runtimes sem criar imports circulares.
 from __future__ import annotations
 
 import time
+import hashlib
 from typing import Any, Callable, Mapping
 
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
@@ -16,7 +17,9 @@ from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     interpretar_tratamento_operacional,
     normalizar_resultado_acao,
+    obter_id_solicitacao,
 )
+from mente_laylay.memoria_mental.correlacao_solicitacao import mesclar_solicitacoes
 
 
 class AdaptadoresAplicacaoRuntime:
@@ -37,6 +40,31 @@ class AdaptadoresAplicacaoRuntime:
     def _ns(self) -> Mapping[str, Any]:
         return self._namespace_getter()
 
+    def registrar_feedback_emissao_turno(
+        self, texto: str, feedback: Mapping[str, Any], turno_id: Any,
+    ) -> None:
+        """Vincula a observação feita antes do plano à entrada que a originou."""
+        if not isinstance(feedback, Mapping) or not feedback.get("resultado") or turno_id is None:
+            return
+        estado = self._ns().get("_estado_compartilhado_runtime")
+        transacionar = getattr(estado, "atualizar_dominios", None)
+        if not callable(transacionar):
+            return
+
+        def marcar(dominios):
+            mental = dict(dominios["mental"])
+            turno = dict(mental.get("turno_atual") or {})
+            if turno.get("id") != turno_id:
+                return None
+            turno["feedback_emissao_observado"] = {
+                "turno_id": turno_id, "resultado": str(feedback["resultado"]),
+                "texto_sha256": hashlib.sha256(str(texto).strip().encode("utf-8")).hexdigest(),
+            }
+            mental["turno_atual"] = turno
+            return {"mental": mental}
+
+        transacionar(("mental",), marcar)
+
     def registrar_mente_curta(
         self,
         texto_usuario: str = "",
@@ -53,8 +81,18 @@ class AdaptadoresAplicacaoRuntime:
         motor = ns.get("_motor_aprendizado_runtime")
         if motor is not None and texto_usuario:
             try:
+                estado = ns.get("_estado_compartilhado_runtime")
+                turno = dict(getattr(estado, "mental", {}).get("turno_atual") or {})
+                observado = dict(turno.get("feedback_emissao_observado") or {})
+                mesmo_feedback = bool(
+                    observado and observado.get("turno_id") == turno.get("id")
+                    and observado.get("texto_sha256") == hashlib.sha256(
+                        str(texto_usuario).strip().encode("utf-8")
+                    ).hexdigest()
+                )
                 motor.observar_interacao(
                     texto_usuario, resposta_ia, habilidade=habilidade, alvo=alvo,
+                    **({"feedback_ja_observado": True} if mesmo_feedback else {}),
                 )
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] observação textual ignorada: {erro}")
@@ -81,8 +119,14 @@ class AdaptadoresAplicacaoRuntime:
         *,
         origem: str = "",
         status: str = "",
-    ) -> None:
+    ) -> bool | None:
         ns = self._ns()
+        if isinstance(resultado, dict):
+            try:
+                obter_id_solicitacao(resultado)
+            except ValueError as erro:
+                ns["print"](f"⚠️ [PLANO] identidade de receipt recusada: {erro}")
+                return False
         tratamento = interpretar_tratamento_operacional(resultado, executou)
         if not tratamento.legado and not tratamento.resultado_publicado:
             # A própria invocação conhece melhor seu efeito que o bool legado
@@ -120,12 +164,43 @@ class AdaptadoresAplicacaoRuntime:
             origem=origem,
             status=status,
         )
+        # Uma decisão publicada pelo owner antes do executor encerra o turno
+        # atual, mas ainda não oferece evidência sobre a habilidade. Alimentar
+        # os observadores de efeito aqui inventaria uma falha de execução e
+        # aprendizado negativo a partir de uma confirmação ainda pendente.
+        adiamento_sem_efeito = bool(
+            contrato_plano.origem
+            and contrato_plano.origem.casefold() != "executor"
+            and contrato_plano.status == "aguardando_confirmacao"
+            and contrato_plano.executou is False
+            and contrato_plano.confirmado is False
+        )
         # A identidade pertence ao turno que disparou a ação. Capture-a antes
         # de notificar base, aprendizado e limpadores de contexto: esses
         # consumidores também atualizam a mente compartilhada e não podem
         # trocar o RG do recibo pela proposta operacional já reduzida.
         estado = ns["_estado_compartilhado_runtime"]
         plano = dict(estado.mental.get("plano_turno_atual") or {})
+        registro_resultado = {
+            "id_solicitacao": contrato_plano.id_solicitacao,
+            "intent": contrato_plano.intent,
+            "alvo": contrato_plano.alvo,
+            "status": contrato_plano.status,
+            "params": dict(contrato_plano.params),
+            "origem": contrato_plano.origem,
+            "detalhe": contrato_plano.detalhe,
+            "executou": contrato_plano.executou,
+            "confirmado": contrato_plano.confirmado,
+            "confirmacao_oferecida": contrato_plano.confirmacao_oferecida,
+            "evidencia_confirmacao": contrato_plano.evidencia_confirmacao,
+        }
+        try:
+            # Uma identidade contraditória é recusada antes de alimentar
+            # memória, aprendizado ou plano com o receipt mal correlacionado.
+            mesclar_solicitacoes(plano.get("comandos") or [], [registro_resultado])
+        except ValueError as erro:
+            ns["print"](f"⚠️ [PLANO] correlação de receipt recusada: {erro}")
+            return False
         texto_turno = " ".join(str(texto or "").split()).casefold()
         texto_plano = " ".join(
             str(plano.get("texto_usuario") or "").split()
@@ -171,7 +246,7 @@ class AdaptadoresAplicacaoRuntime:
             else texto_turno
         )
         especialista_neural = ns.get("_especialista_neural_comandos_runtime")
-        if especialista_neural is not None:
+        if especialista_neural is not None and not adiamento_sem_efeito:
             try:
                 especialista_neural.observar_resultado(
                     {
@@ -194,13 +269,13 @@ class AdaptadoresAplicacaoRuntime:
             resultado, texto, executou, origem=origem, status=status,
         )
         motor = ns.get("_motor_aprendizado_runtime")
-        if motor is not None:
+        if motor is not None and not adiamento_sem_efeito:
             try:
                 motor.observar_resultado(resultado, texto, executou, origem=origem, status=status)
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] resultado não observado: {erro}")
         mapa_habilidades = ns.get("_mapa_habilidades_runtime")
-        if mapa_habilidades is not None:
+        if mapa_habilidades is not None and not adiamento_sem_efeito:
             try:
                 mapa_habilidades.registrar_resultado(
                     resultado,
@@ -214,22 +289,16 @@ class AdaptadoresAplicacaoRuntime:
         try:
             intent = contrato_plano.intent
             params = dict(contrato_plano.params)
-            status_resultado = contrato_plano.status
-            confirmado = contrato_plano.confirmado
-            confirmacao_oferecida = contrato_plano.confirmacao_oferecida
-            evidencia_confirmacao = contrato_plano.evidencia_confirmacao
             id_solicitacao = contrato_plano.id_solicitacao
-            origem_resultado = contrato_plano.origem
-            detalhe_resultado = contrato_plano.detalhe
             alvo_objeto = contrato_plano.alvo
             if not intent:
-                return
+                return False
             # Uma acao operacional observada encerra qualquer pergunta casual
             # anterior. Sem esta limpeza, um ``Sim`` enviado depois de apagar
             # uma playlist podia responder a uma pergunta musical de varios
             # turnos atras e reabrir um contexto que ja havia sido superado.
             limpar_pergunta = ns.get("_limpar_pergunta_aberta")
-            if callable(limpar_pergunta):
+            if callable(limpar_pergunta) and not adiamento_sem_efeito:
                 try:
                     limpar_pergunta()
                 except Exception as erro:
@@ -238,7 +307,7 @@ class AdaptadoresAplicacaoRuntime:
                         f"{type(erro).__name__}"
                     )
             suspender_topico = ns.get("_suspender_topico_conversacional")
-            if callable(suspender_topico):
+            if callable(suspender_topico) and not adiamento_sem_efeito:
                 try:
                     suspender_topico("acao_operacional_executada")
                 except Exception as erro:
@@ -287,76 +356,16 @@ class AdaptadoresAplicacaoRuntime:
                     "comandos": [],
                     "erros": [],
                 }
-            comandos = list(plano.get("comandos") or [])
-            # P0_BUG_B_OBSERVABILIDADE_EXECUCOES_V1_20260815
-            # Resultado identificado: consolida somente a MESMA ocorrência.
-            # Resultado legado sem ID: mantém a deduplicação antiga por intent.
-            indice_anterior = None
-            if id_solicitacao:
-                indice_anterior = next(
-                    (
-                        indice
-                        for indice, item in enumerate(comandos)
-                        if str(item.get("id_solicitacao") or "").strip()
-                        == id_solicitacao
-                    ),
-                    None,
-                )
-                anterior = (
-                    dict(comandos[indice_anterior])
-                    if indice_anterior is not None
-                    else {}
-                )
-            else:
-                anterior = next(
-                    (
-                        item
-                        for item in comandos
-                        if not str(item.get("id_solicitacao") or "").strip()
-                        and str(item.get("intent") or "").upper()
-                        == intent.upper()
-                    ),
-                    {},
-                )
-            preservar_resultado_detalhado = bool(
-                anterior.get("status") and not status_resultado
+            comandos = mesclar_solicitacoes(
+                plano.get("comandos") or [], [registro_resultado],
             )
-            params_anteriores = (
-                dict(anterior.get("params") or {})
-                if isinstance(anterior.get("params"), dict)
-                else {}
+            registro = next(
+                (item for item in comandos if id_solicitacao
+                 and item.get("id_solicitacao") == id_solicitacao),
+                comandos[-1],
             )
-            params_registro = dict(params_anteriores)
-            params_registro.update(params)
-            registro = {
-                "id_solicitacao": id_solicitacao,
-                "intent": intent.upper(),
-                "alvo": alvo or str(anterior.get("alvo") or ""),
-                "status": status_resultado or str(anterior.get("status") or ""),
-                "params": params_registro,
-                "origem": origem_resultado or str(anterior.get("origem") or ""),
-                "detalhe": detalhe_resultado or str(anterior.get("detalhe") or ""),
-                "executou": (
-                    anterior.get("executou") if preservar_resultado_detalhado
-                    else executou if executou is not None else anterior.get("executou")
-                ),
-                "confirmado": (
-                    anterior.get("confirmado") if preservar_resultado_detalhado
-                    else confirmado if confirmado is not None else anterior.get("confirmado")
-                ),
-                "confirmacao_oferecida": (
-                    confirmacao_oferecida
-                    if confirmacao_oferecida not in (None, "")
-                    else anterior.get("confirmacao_oferecida")
-                ),
-                "evidencia_confirmacao": (
-                    evidencia_confirmacao
-                    if evidencia_confirmacao not in (None, "")
-                    else anterior.get("evidencia_confirmacao")
-                ),
-            }
             rede = ns.get("_rede_associativa_runtime")
-            if rede is not None:
+            if rede is not None and not adiamento_sem_efeito:
                 try:
                     rede.observar_resultado(
                         intencao=intent,
@@ -370,23 +379,6 @@ class AdaptadoresAplicacaoRuntime:
                         "⚠️ [REDE ASSOCIATIVA] resultado isolado: "
                         f"{type(erro_rede).__name__}"
                     )
-            if id_solicitacao:
-                if indice_anterior is None:
-                    comandos.append(registro)
-                else:
-                    # Atualiza a mesma execução na posição original.
-                    comandos[indice_anterior] = registro
-            else:
-                # Compatibilidade legada: sem identidade confiável, preserva
-                # o comportamento anterior apenas entre registros também sem ID.
-                comandos = [
-                    item
-                    for item in comandos
-                    if str(item.get("id_solicitacao") or "").strip()
-                    or str(item.get("intent") or "").upper()
-                    != intent.upper()
-                ]
-                comandos.append(registro)
             novo = ns["_atualizar_plano_turno_mente"](
                 plano,
                 fase=str(plano.get("fase") or "executado"),
@@ -395,6 +387,8 @@ class AdaptadoresAplicacaoRuntime:
                 fala=str(plano.get("fala_planejada") or ""),
             )
             estado.atualizar_campos("mental", plano_turno_atual=novo)
+            if adiamento_sem_efeito:
+                return
             mente_atual = dict(estado.mental)
             correcao = ns["_concluir_correcao_interpretacao_mente"](
                 mente_atual.get("correcao_interpretacao_pendente")
@@ -431,6 +425,7 @@ class AdaptadoresAplicacaoRuntime:
                 )
         except Exception as erro:
             ns["print"](f"⚠️ [PLANO] não consegui anexar resultado real: {erro}")
+            return False
 
     def resumo_mente_integrada_para_prompt(self, texto_usuario: str = "") -> str:
         from mente_laylay.memoria_mental.contexto_integrado import (

@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Any, Dict
-from uuid import uuid4
 
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     CHAVE_TRATAMENTO_OPERACIONAL,
     ResultadoAcao,
     STATUS_RESULTADO_JA_SATISFEITO,
+    identificar_solicitacao_execucao,
     inferir_confirmacao,
     interpretar_tratamento_operacional,
     marcar_tratamento_operacional,
+    obter_id_solicitacao,
 )
 from mente_laylay.emocoes.avaliador_eventos import contextualizar_fala_evento
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
@@ -60,22 +62,23 @@ class AdaptadorResultadoOperacional:
     # Quando o coordenador já criou a identidade, todos os publicadores da
     # mesma execução reutilizam esse ID. Chamadores legados ainda recebem UUID.
     id_solicitacao: str = ""
+    _receipt_publicado: ResultadoAcao | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         resultado = self.resultado if isinstance(self.resultado, dict) else {}
+        id_recebido = obter_id_solicitacao(resultado)
+        id_explicito = obter_id_solicitacao({"id_solicitacao": self.id_solicitacao})
+        if id_recebido and id_explicito and id_recebido != id_explicito:
+            raise ValueError("Adaptador e pedido identificam ocorrências distintas.")
+        self.id_solicitacao = identificar_solicitacao_execucao({
+            "id_solicitacao": id_explicito or id_recebido,
+        })["id_solicitacao"]
         # O marcador é uma prova apenas da invocação corrente. Se algum
         # resolvedor reutilizar o mesmo dict em outro turno, ele precisa voltar
         # a ser elegível ao fallback até publicar um novo ResultadoAcao.
         if isinstance(resultado, dict):
             resultado.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, None)
             resultado.pop(CHAVE_TRATAMENTO_OPERACIONAL, None)
-        id_existente = str(
-            self.id_solicitacao
-            or resultado.get("id_solicitacao")
-            or resultado.get("request_id")
-            or ""
-        ).strip()
-        self.id_solicitacao = id_existente or uuid4().hex
 
     @property
     def intent(self) -> str:
@@ -120,6 +123,8 @@ class AdaptadorResultadoOperacional:
             "ultima_resposta": self.ctx.get("ultima_resposta", ""),
             "falas_recentes": list(self.ctx.get("falas_recentes") or [])[-4:],
             "modo_jogo_ativo": modo_jogo_ativo,
+            "preferencias_humor_contextuais": dict(self.ctx.get("preferencias_humor_contextuais") or {}),
+            "preferencia_humor_contextual": dict(self.ctx.get("preferencia_humor_contextual") or {}),
         }
         if isinstance(extra, dict):
             contexto.update(extra)
@@ -144,6 +149,12 @@ class AdaptadorResultadoOperacional:
         canônico mantém referências como ``ele`` e ``essa também`` ligadas ao
         resultado efetivamente confirmado.
         """
+        # Uma tentativa nova não pode reutilizar a evidência da anterior,
+        # mesmo quando a instância e o ID são os mesmos.
+        self._receipt_publicado = None
+        if isinstance(self.resultado, dict):
+            self.resultado.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, None)
+            self.resultado.pop(CHAVE_TRATAMENTO_OPERACIONAL, None)
         registrar = self.ctx.get("_registrar_resultado_execucao")
         if not callable(registrar):
             return
@@ -166,6 +177,10 @@ class AdaptadorResultadoOperacional:
                     if valor is not None and str(valor).strip()
                 })
             alvo_final = str(alvo_resolvido or "").strip() or self.alvo_dos_params()
+            contexto_receipt = dict(contexto_resultado or {})
+            # A avaliação pertence ao observador instalado. Contexto vindo
+            # do executor não pode fornecer uma avaliação já certificada.
+            contexto_receipt.pop("avaliacao_evento", None)
             contrato = ResultadoAcao(
                 intent=self.intent,
                 status=status,
@@ -180,17 +195,19 @@ class AdaptadorResultadoOperacional:
                 origem="executor",
                 detalhe=detalhe,
                 texto_usuario=self.texto_original,
-                contexto=dict(contexto_resultado or {}),
+                contexto=contexto_receipt,
                 id_solicitacao=self.id_solicitacao,
                 evidencia_confirmacao=str(evidencia_confirmacao or ""),
             )
-            registrar(
+            publicacao = registrar(
                 contrato,
                 self.texto_original,
                 executou,
                 origem="executor",
                 status=status,
             )
+            if publicacao is False:
+                return
             # Só marque depois que o registrador oficial retornou. Assim,
             # falhas de publicação continuam permitindo o fallback legado.
             if isinstance(self.resultado, dict):
@@ -206,8 +223,55 @@ class AdaptadorResultadoOperacional:
                     resultado_publicado=True,
                     retorno_legado=bool(contrato.executou),
                 )
+            # A fala recebe somente a evidência desta publicação concluída.
+            # Isolar também valores aninhados evita que outro consumidor
+            # altere a atribuição que o registrador acabou de receber.
+            try:
+                self._receipt_publicado = deepcopy(contrato)
+            except Exception:
+                pass
+            # Todo domínio publica nesta fronteira, mesmo quando possui seu
+            # próprio método de fala. Observar o receipt aceito aqui evita
+            # perder eventos em arquivos e contar novamente uma fala repetida.
+            # A avaliação fica somente na cópia privada desta publicação.
+            avaliar_evento = self.ctx.get("_avaliar_evento_emocional_operacional")
+            if self._receipt_publicado is not None and callable(avaliar_evento):
+                try:
+                    avaliada = avaliar_evento(deepcopy(self._receipt_publicado))
+                    if isinstance(avaliada, dict) and avaliada:
+                        self._receipt_publicado.contexto["avaliacao_evento"] = deepcopy(avaliada)
+                except Exception:
+                    pass
         except Exception:
             pass
+
+    def _receipt_da_fala(
+        self, status: str, alvo: str, *,
+        executou: bool | None, confirmado: bool | None,
+        status_tratamento: str,
+    ) -> ResultadoAcao | None:
+        receipt = self._receipt_publicado
+        if (
+            receipt is None
+            or receipt.id_solicitacao != self.id_solicitacao
+            or self.resultado.get(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO) != receipt.id_solicitacao
+            or any(
+                str(self.resultado.get(chave) or "").strip() != receipt.id_solicitacao
+                for chave in ("id_solicitacao", "request_id")
+                if str(self.resultado.get(chave) or "").strip()
+            )
+            or receipt.intent != self.intent.strip().upper()
+            or receipt.status != str(status or "").strip().lower()
+            or receipt.status != status_tratamento
+            or receipt.alvo != str(alvo or "").strip()
+            or receipt.executou is not executou
+            or receipt.confirmado is not confirmado
+        ):
+            return None
+        try:
+            return deepcopy(receipt)
+        except Exception:
+            return None
 
     def falar_por_status(
         self,
@@ -247,6 +311,34 @@ class AdaptadorResultadoOperacional:
             )
         contexto_fala = self.contexto_fala()
         modo_jogo_ativo = bool(contexto_fala.get("modo_jogo_ativo"))
+        confirmado_final = (
+            confirmado
+            if tratamento_moderno
+            else (
+                inferir_confirmacao(status_norm, executou)
+                if confirmado is None
+                else bool(confirmado)
+            )
+        )
+        receipt = self._receipt_da_fala(
+            status_norm, alvo, executou=executou, confirmado=confirmado_final,
+            status_tratamento=tratamento_atual.status,
+        )
+        contexto_receipt = receipt.contexto if receipt is not None else {}
+        contexto_receipt["destino"] = self.destino
+        contrato = ResultadoAcao(
+            intent=self.intent,
+            status=status_norm,
+            alvo=alvo,
+            params=self.params,
+            executou=executou,
+            confirmado=confirmado_final,
+            detalhe=detalhe,
+            origem=receipt.origem if receipt is not None else "",
+            texto_usuario=self.texto_original,
+            id_solicitacao=self.id_solicitacao,
+            contexto=contexto_receipt,
+        )
         if self.intent == "NOTIFICATIONS" and str(fallback or "").strip():
             # O resumo da central já é o dado observado. Passá-lo pelo gerador
             # de confirmação antes de montar o contrato acrescentava uma
@@ -259,6 +351,7 @@ class AdaptadorResultadoOperacional:
                 alvo=alvo,
                 contexto=contexto_fala,
                 texto_usuario=self.texto_original,
+                resultado=contrato,
             )
         if status_norm in STATUS_RESULTADO_JA_SATISFEITO and not modo_jogo_ativo:
             objeto = str(alvo or "isso").strip()
@@ -284,37 +377,9 @@ class AdaptadorResultadoOperacional:
             else:
                 fala_base = f"{objeto} já estava como você pediu; não repeti a ação."
         status_calmo = status_norm in STATUS_FALA_CALMA
-        contrato = ResultadoAcao(
-            intent=self.intent,
-            status=status_norm,
-            alvo=alvo,
-            params=self.params,
-            executou=executou,
-            confirmado=(
-                confirmado
-                if tratamento_moderno
-                else (
-                    inferir_confirmacao(status_norm, executou)
-                    if confirmado is None
-                    else bool(confirmado)
-                )
-            ),
-            detalhe=detalhe,
-            texto_usuario=self.texto_original,
-            id_solicitacao=self.id_solicitacao,
-            contexto={"destino": self.destino},
-        )
-        avaliacao_evento: dict[str, Any] = {}
-        avaliar_evento = self.ctx.get("_avaliar_evento_emocional_operacional")
-        if callable(avaliar_evento):
-            try:
-                avaliada = avaliar_evento(contrato)
-                if isinstance(avaliada, dict):
-                    avaliacao_evento = dict(avaliada)
-            except Exception:
-                avaliacao_evento = {}
-        if avaliacao_evento:
-            contrato.contexto["avaliacao_evento"] = dict(avaliacao_evento)
+        # A fala consome a avaliação da mesma publicação, sem produzir evento
+        # novo, aumentar repetição ou renovar a validade da causa.
+        avaliacao_evento = dict(contexto_receipt.get("avaliacao_evento") or {})
         emocao_evento = str(avaliacao_evento.get("emocao") or "").strip()
         expressao_evento = evento_pode_alterar_estado(avaliacao_evento)
         emocao_preferida = (
@@ -332,7 +397,16 @@ class AdaptadorResultadoOperacional:
             fala_base,
             emocao_preferida=emocao_preferida,
             nivel_preferido=nivel_preferido,
+            contexto=contexto_fala,
         )
+        acumular = self.ctx.get("_acumular_resultado_operacional")
+        if callable(acumular) and acumular(
+            contrato, plano.fala, plano.emocao, plano.nivel,
+            contexto=self.contexto_fala({"avaliacao_evento": avaliacao_evento}),
+        ):
+            # O receipt já foi publicado. A autoria e a entrega pertencem ao
+            # pedido composto inteiro, depois de todas as etapas concluídas.
+            return
         if contrato.intent in INTENTS_INFORMATIVOS:
             # A frase factual inteira vira âncora literal. A LLM pode cercá-la
             # com a voz da Laylay, mas não resumir, trocar ou omitir os dados.
@@ -389,6 +463,7 @@ class AdaptadorResultadoOperacional:
                 confirmacao.fala,
                 avaliacao_evento,
                 alvo=contrato.alvo,
+                contexto=contexto_fala,
             )
             if modo_jogo_ativo
             else confirmacao.fala

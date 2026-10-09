@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
+from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
+from mente_laylay.emocoes.erro_proposta import evento_corresponde_erro_proposta
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -65,6 +67,19 @@ def _chamar_modelo_finalizacao(ctx: Dict[str, Any], messages: Any) -> str:
     return ""
 
 
+def _registrar_aprendizado_erros(ctx: Dict[str, Any], erros: List[str]) -> None:
+    registrar = _get(ctx, "_registrar_autoaprimoramento")
+    if not callable(registrar):
+        return
+    contexto = " | ".join(erros)
+    for erro in erros:
+        try:
+            registrar({}, texto=erro, sucesso=False, erro=erro,
+                      contexto=contexto, origem="execucao")
+        except Exception as ap_err:
+            print(f"⚠️ [AUTOAPRENDIZADO] falha ao registrar erro: {ap_err}")
+
+
 def finalizar_execucao_resposta_ia(
     ctx: Dict[str, Any],
     comandos: List[Dict[str, Any]],
@@ -79,6 +94,18 @@ def finalizar_execucao_resposta_ia(
         "registrar_no_historico": False,
         "tipo": "sem_fala",
     }
+    composta = _get(ctx, "resposta_operacional_composta")
+    if isinstance(composta, dict) and composta.get("resposta_composta_publicada") is True:
+        fala_composta = str(composta.get("fala_composta") or "").strip()
+        if fala_composta:
+            _registrar_aprendizado_erros(ctx, erros_execucao)
+            # Já atravessou os receipts, a autora e a publicação textual/voz.
+            # A finalização registra essa mesma resposta, sem outra fala de
+            # autocorreção que repetiria ou apagaria o sucesso parcial.
+            return {
+                "fala": fala_composta, "registrar_no_historico": True,
+                "tipo": "operacional_composta",
+            }
     messages = _get(ctx, "messages")
     current_emotion = _get(ctx, "current_emotion", "calma")
     emotion_level = _get(ctx, "emotion_level", 1)
@@ -103,19 +130,7 @@ def finalizar_execucao_resposta_ia(
     if erros_execucao:
         erros_txt = " | ".join(erros_execucao)
 
-        for erro_item in erros_execucao:
-            try:
-                if callable(registrar_autoaprimoramento):
-                    registrar_autoaprimoramento(
-                        {},
-                        texto=erro_item,
-                        sucesso=False,
-                        erro=erro_item,
-                        contexto=erros_txt,
-                        origem="execucao",
-                    )
-            except Exception as ap_err:
-                print(f"⚠️ [AUTOAPRENDIZADO] falha ao registrar erro: {ap_err}")
+        _registrar_aprendizado_erros(ctx, erros_execucao)
 
         chave_erro = erros_txt[:120]
         if isinstance(falhas_consecutivas, dict):
@@ -223,6 +238,28 @@ def finalizar_execucao_resposta_ia(
                         fala_limpa_original = str(
                             verificacao.get("fala") or fala_limpa_original
                         ).strip()
+            erro_proposta = _get(ctx, "erro_proposta_confirmado")
+            if isinstance(erro_proposta, dict):
+                evento = erro_proposta.get("evento")
+                confirmar_erro = _get(ctx, "confirmar_erro_proposta")
+                vigente = False
+                if callable(confirmar_erro):
+                    try:
+                        vigente = confirmar_erro(
+                            erro_proposta.get("prova"), erro_proposta.get("principal"),
+                            erro_proposta.get("extracao"), evento,
+                        ) is True
+                    except Exception:
+                        vigente = False
+                if (
+                    vigente and evento_corresponde_erro_proposta(
+                        evento, erro_proposta.get("prova"), erro_proposta.get("principal"),
+                    )
+                    and evento_esta_ativo(evento)
+                ):
+                    # Afirma somente a violação local demonstrada. O texto de
+                    # efeito/contingência já atravessou seu verificador próprio.
+                    fala_limpa_original = "Eu errei essa proposta. " + fala_limpa_original
             # A mesma fala será emitida pela fronteira oficial abaixo, que já
             # formata o balão e publica no Terminal 2.x. Este print cru fazia
             # cada resposta conversacional aparecer duas vezes no modo limpo;

@@ -170,6 +170,7 @@ def executar_intencao_arquivos(
             texto,
             emocao_preferida=emocao,
             nivel_preferido=nivel,
+            contexto=ctx,
         )
         modo_jogo = _get(ctx, "modo_jogo_ativo", False)
         try:
@@ -186,6 +187,8 @@ def executar_intencao_arquivos(
             contexto={
                 "current_emotion": _get(ctx, "current_emotion", "calma"),
                 "modo_jogo_ativo": modo_jogo_ativo,
+                "preferencias_humor_contextuais": dict(ctx.get("preferencias_humor_contextuais") or {}),
+                "preferencia_humor_contextual": dict(ctx.get("preferencia_humor_contextual") or {}),
             },
         )
         resultado_fala["status"] = ""

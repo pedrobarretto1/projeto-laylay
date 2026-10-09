@@ -1,0 +1,57 @@
+{
+  "versao": 1,
+  "agora": 1001.0,
+  "cadastros": {
+    "oficina": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "oficina_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa", "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r47", "tipo": "regra", "grandeza": "oficina", "origem": "cadastro_offline_do_painel", "escopo": "oficina_a"},
+          {"identificador": "r08", "tipo": "regra", "grandeza": "cofre", "origem": "cadastro_offline_do_painel", "escopo": "oficina_a"}
+        ]
+      },
+      "nomes": {"r47": ["a regra da oficina"], "r08": ["a regra do cofre"]}
+    },
+    "cultura": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "cultura_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa", "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r36", "tipo": "regra", "grandeza": "biblioteca", "origem": "cadastro_offline_do_painel", "escopo": "cultura_a"},
+          {"identificador": "r72", "tipo": "regra", "grandeza": "museu", "origem": "cadastro_offline_do_painel", "escopo": "cultura_a"}
+        ]
+      },
+      "nomes": {"r36": ["a regra da biblioteca"], "r72": ["a regra do museu"]}
+    },
+    "jardim": {
+      "inventario": {
+        "origem": "cadastro_offline_do_painel", "escopo": "jardim_a",
+        "capturado_em": 1000.0, "ttl_s": 60.0, "cobertura": "completa", "metodo_cobertura": "enumeracao_da_fonte",
+        "referentes": [
+          {"identificador": "r19", "tipo": "regra", "grandeza": "horta", "origem": "cadastro_offline_do_painel", "escopo": "jardim_a"},
+          {"identificador": "r54", "tipo": "regra", "grandeza": "lago", "origem": "cadastro_offline_do_painel", "escopo": "jardim_a"}
+        ]
+      },
+      "nomes": {"r19": ["a regra da horta"], "r54": ["a regra do lago"]}
+    }
+  },
+  "casos": [
+    {"id": "O01", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da oficina será o assunto da aula de amanhã."}},
+    {"id": "O02", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "Cancele a regra da oficina."}},
+    {"id": "O03", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "Quero saber se a regra do cofre foi retirada"}},
+    {"id": "O04", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "Pode retirar a regra do cofre?"}},
+    {"id": "O05", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "A expressão 'retire a regra da oficina' é só um exemplo linguístico."}},
+    {"id": "O06", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "Se eu revogasse a regra da oficina, o que mudaria?"}},
+    {"id": "O07", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da oficina não foi revogada; retire a regra do cofre."}},
+    {"id": "O08", "cadastro_id": "oficina", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra do cofre não foi revogada; retire a regra da oficina."}},
+    {"id": "O09", "cadastro_id": "cultura", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra da biblioteca me lembra a prova. Abra a calculadora."}},
+    {"id": "O10", "cadastro_id": "cultura", "fonte": {"id": "u1", "origem": "usuario", "texto": "Apaguei do quadro o texto que descrevia a regra da biblioteca."}},
+    {"id": "O11", "cadastro_id": "cultura", "fonte": {"id": "u1", "origem": "usuario", "texto": "Troque a regra do museu por um critério novo."}},
+    {"id": "O12", "cadastro_id": "cultura", "fonte": {"id": "u1", "origem": "usuario", "texto": "Continue aplicando a regra da biblioteca."}},
+    {"id": "O13", "cadastro_id": "cultura", "fonte": {"id": "u1", "origem": "usuario", "texto": "Entre a regra do museu e a regra da biblioteca, uma não vale mais. Não sei qual."}},
+    {"id": "O14", "cadastro_id": "jardim", "fonte": {"id": "u1", "origem": "usuario", "texto": "Ontem pensei na regra da horta. Hoje reguei as flores."}},
+    {"id": "O15", "cadastro_id": "jardim", "fonte": {"id": "u1", "origem": "usuario", "texto": "A regra do lago tinha sido retirada; agora volte a usar essa regra."}},
+    {"id": "O16", "cadastro_id": "jardim", "fonte": {"id": "u1", "origem": "usuario", "texto": "Uma dessas regras foi revogada, mas não sei qual delas."}}
+  ]
+}

@@ -136,7 +136,9 @@ namespace LaylayGameBar
                     _reactionId = state.ReactionId ?? "";
                 }
                 _activity = activity;
-                _intensity = Math.Max(0.0, Math.Min(1.0, state.Intensity));
+                _intensity = Double.IsNaN(state.Intensity) || Double.IsInfinity(state.Intensity)
+                    ? 0.0
+                    : Math.Max(0.0, Math.Min(1.0, state.Intensity));
                 UpdateActivityIndicator();
                 if (state.CommandBar.Visible != _commandVisible)
                 {
@@ -260,6 +262,8 @@ namespace LaylayGameBar
             var relative = pair[_speaking ? 1 : 0];
             AvatarImage.Source = new BitmapImage(new Uri("ms-appx:///Assets/Avatar/" + relative));
             AvatarImage.Opacity = _preferences.SmoothTransitions
+                && _preferences.MotionIntensity > 0
+                && (_preferences.IdleMotion || _preferences.SpeakingMotion || _preferences.ReactiveMotion)
                 ? _preferences.AvatarOpacity * 0.82
                 : _preferences.AvatarOpacity;
             _imageChangedAt = DateTimeOffset.Now;
@@ -294,61 +298,68 @@ namespace LaylayGameBar
             }
             var seconds = (DateTimeOffset.Now - _animationStarted).TotalSeconds;
             var transitionAge = (DateTimeOffset.Now - _imageChangedAt).TotalSeconds;
-            var fade = _preferences.SmoothTransitions && transitionAge < 0.16
+            var intensity = _preferences.MotionIntensity;
+            var motionEnabled = intensity > 0
+                && (_preferences.IdleMotion || _preferences.SpeakingMotion || _preferences.ReactiveMotion);
+            var fade = motionEnabled && _preferences.SmoothTransitions && transitionAge < 0.16
                 ? 0.82 + transitionAge / 0.16 * 0.18
                 : 1.0;
             AvatarImage.Opacity = _preferences.AvatarOpacity * fade;
-            var intensity = _preferences.MotionIntensity;
-            var activityStrength = 0.65 + _intensity * 0.35;
+            // O retrato já foi validado pela mente. Intensidade só altera o
+            // peso visual deste mesmo PNG e permanece estática sem movimento.
+            var expressionScale = 0.97 + _intensity * 0.03;
+            var activityStrength = _intensity > 0 ? 0.4 + _intensity * 0.6 : 0.0;
             AvatarMove.X = 0;
+            AvatarScale.ScaleX = expressionScale;
+            AvatarScale.ScaleY = expressionScale;
             if (_speaking && _preferences.SpeakingMotion)
             {
                 AvatarMove.Y = (Math.Sin(seconds * Math.PI * 2.0 / 0.56) * 1.15
-                             + Math.Sin(seconds * Math.PI * 2.0 / 1.70) * 0.55) * intensity;
-                var pulse = 1.0 + Math.Sin(seconds * Math.PI * 2.0 / 0.38) * 0.003 * intensity;
-                AvatarScale.ScaleX = pulse;
-                AvatarScale.ScaleY = pulse;
+                             + Math.Sin(seconds * Math.PI * 2.0 / 1.70) * 0.55) * intensity * activityStrength;
+                var pulse = 1.0 + Math.Sin(seconds * Math.PI * 2.0 / 0.38) * 0.003 * intensity * activityStrength;
+                AvatarScale.ScaleX = expressionScale * pulse;
+                AvatarScale.ScaleY = expressionScale * pulse;
             }
             else if (!_speaking && _preferences.IdleMotion)
             {
-                AvatarMove.Y = Math.Sin(seconds * Math.PI * 2.0 / 3.8) * 1.5 * intensity;
-                AvatarScale.ScaleX = 1.0;
-                AvatarScale.ScaleY = 1.0;
+                AvatarMove.Y = Math.Sin(seconds * Math.PI * 2.0 / 3.8) * 1.5 * intensity * activityStrength;
                 if (_activity == "listening")
                 {
-                    AvatarMove.Y += Math.Abs(Math.Sin(seconds * 3.0)) * 1.5 * intensity;
+                    AvatarMove.Y += Math.Abs(Math.Sin(seconds * 3.0)) * 1.5 * intensity * activityStrength;
                 }
                 else if (_activity == "thinking")
                 {
-                    AvatarMove.X = Math.Sin(seconds * 2.1) * 1.4 * intensity;
+                    AvatarMove.X = Math.Sin(seconds * 2.1) * 1.4 * intensity * activityStrength;
                 }
                 else if (_activity == "executing")
                 {
-                    AvatarMove.Y += Math.Sin(seconds * 8.0) * 1.8 * intensity;
+                    AvatarMove.Y += Math.Sin(seconds * 8.0) * 1.8 * intensity * activityStrength;
                 }
                 var reactionAge = (DateTimeOffset.Now - _reactionStarted).TotalSeconds;
                 if (_preferences.ReactiveMotion && _activity == "success" && reactionAge < 0.75)
                 {
                     AvatarMove.Y -= Math.Abs(Math.Sin(reactionAge * 8.4)) * 7 * intensity * activityStrength;
-                    var pop = 1.0 + Math.Sin(Math.Min(1.0, reactionAge / 0.75) * Math.PI) * 0.025;
-                    AvatarScale.ScaleX = pop;
-                    AvatarScale.ScaleY = pop;
+                    var pop = 1.0 + Math.Sin(Math.Min(1.0, reactionAge / 0.75) * Math.PI) * 0.025 * intensity * activityStrength;
+                    AvatarScale.ScaleX = expressionScale * pop;
+                    AvatarScale.ScaleY = expressionScale * pop;
                 }
                 else if (_preferences.ReactiveMotion && _activity == "error" && reactionAge < 0.7)
                 {
-                    AvatarMove.X = Math.Sin(reactionAge * 38.0) * 5 * (1 - reactionAge / 0.7) * intensity;
+                    AvatarMove.X = Math.Sin(reactionAge * 38.0) * 5 * (1 - reactionAge / 0.7) * intensity * activityStrength;
                 }
             }
             else
             {
                 AvatarMove.Y = 0;
                 AvatarMove.X = 0;
-                AvatarScale.ScaleX = 1.0;
-                AvatarScale.ScaleY = 1.0;
             }
             var active = _preferences.ActivityIndicator
                 && _activity != "idle" && _activity != "speaking";
-            ActivityAura.Opacity = active ? 0.32 + (Math.Sin(seconds * 5.0) + 1.0) * 0.16 : 0.0;
+            ActivityAura.Opacity = active
+                ? (motionEnabled && _preferences.IdleMotion
+                    ? 0.32 + (Math.Sin(seconds * 5.0) + 1.0) * 0.16
+                    : 0.48)
+                : 0.0;
             ActivityDot.Opacity = active ? 0.88 : 0.0;
         }
     }

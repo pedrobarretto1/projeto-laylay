@@ -7,6 +7,8 @@ import threading
 from datetime import datetime
 from typing import Any, Callable
 
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+
 
 class MemoriaLaylay:
     def __init__(
@@ -177,8 +179,8 @@ class MemoriaLaylay:
                     f"{type(erro).__name__}: {erro}"
                 )
                 return
-            if not novo_resumo or "LAYLAY_LLM_INDISPONIVEL" in novo_resumo:
-                self._log("⚠️ [MEMÓRIA] resumo diário adiado; LLM indisponível e lote preservado")
+            if not novo_resumo or eh_estado_tecnico_llm(novo_resumo) or "LAYLAY_LLM_INDISPONIVEL" in novo_resumo:
+                self._log("⚠️ [MEMÓRIA] resumo diário adiado; geração não concluída e lote preservado")
                 return
             self.resumo_do_dia = novo_resumo
             self.historico_recente = []

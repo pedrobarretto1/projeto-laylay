@@ -1,0 +1,18 @@
+{
+  "versao": 1,
+  "natureza": "Gabarito local congelado antes da geração, não revisão humana independente. Menor candidato host que contém a operação principal selecionável. Indeterminado não certifica ausência. Não mede predicado, objeto, moldura, polaridade, vigência ou efeito.",
+  "casos": {
+    "L01": "c1",
+    "L02": "c1",
+    "L03": "c2",
+    "L04": "c0",
+    "L05": "c0",
+    "L06": "indeterminado",
+    "L07": "c1",
+    "L08": "c1",
+    "L09": "c1",
+    "L10": "indeterminado",
+    "L11": "c0",
+    "L12": "c0"
+  }
+}

@@ -632,6 +632,27 @@ def test_presenca_visual_espera_enquanto_titulo_confirma_carregamento():
     assert any("observação adiada" in item for item in logs)
 
 
+def test_visao_preserva_dois_instantes_sem_confundir_multirrecorte_com_sequencia():
+    for temporal in (True, False):
+        chamadas = []
+        pacote = empacotar_imagens([
+            {"label": "Quadro temporal 1" if temporal else "Quadro geral", "data": "primeiro"},
+            {"label": "Quadro temporal 2" if temporal else "Tooltip", "data": "segundo"},
+        ])
+        runtime = VisaoJogoRuntime(
+            contexto_jogo=lambda: _jogo_ativo(),
+            analisar_imagem=lambda imagem, prompt: chamadas.append((imagem, prompt)) or (
+                'PRESENCA_JOGO_JSON: {"relevante":false,"categoria":"nenhuma","fala":""}'
+            ),
+            falar=lambda *_: None, thread_factory=_ThreadImediata,
+        )
+        assert runtime.executar({"pergunta": "observe o acontecimento", "tipo": "observacao_presenca_proativa",
+                                 "_proativo": True, "_imagem_pre_capturada": pacote, "_intervalo_quadros_s": .6})
+        assert len(chamadas) == 1 and chamadas[0][0] == pacote
+        assert ("SEQUÊNCIA TEMPORAL" in chamadas[0][1]) is temporal
+        assert "não faça catálogo de objetos" in chamadas[0][1]
+
+
 def test_fala_do_usuario_sobre_menu_bloqueia_gameplay_inventado():
     falas = []
     prompts = []
@@ -685,7 +706,9 @@ def test_runtime_explica_quando_servico_visual_nao_esta_configurado():
         thread_factory=_ThreadImediata,
     )
     assert runtime.executar({"pergunta": "olha isso"}) is True
-    assert "chave do serviço visual" in falas[-1][0]
+    # Disponibilidade pode faltar por chave remota ou por modelo local ausente.
+    assert "modelo visual" in falas[-1][0].casefold()
+    assert "não está disponível" in falas[-1][0]
 
 
 def test_runtime_avalia_item_com_jogo_mouse_e_build_da_mesma_sessao():

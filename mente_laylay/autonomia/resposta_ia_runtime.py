@@ -5,10 +5,21 @@ from __future__ import annotations
 import threading
 import time
 import traceback
+from collections.abc import Mapping
 from typing import Any, Callable, Dict
 
 from mente_laylay.autonomia.pre_fluxo_contextual import responder_conversa_social_curta
+from mente_laylay.autonomia.processamento_resposta_ia import extrair_leitura_semantica_principal
+from mente_laylay.cognicao.contratos_turno import (
+    ContratoOcorrenciaTurno,
+    ContratoPropostaPrincipal,
+    ViolacaoPropostaPrincipal,
+    normalizar_resposta_preparada,
+)
 from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
+from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
+from mente_laylay.emocoes.erro_proposta import evento_corresponde_erro_proposta
+from mente_laylay.memoria_mental.resultado_acao import identificar_solicitacao_execucao
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
@@ -169,10 +180,21 @@ class RespostaIARuntime:
         if not t:
             return
 
+        if callable(ainda_atual_cb):
+            try:
+                if not ainda_atual_cb():
+                    self._log("🧠 [TURNO] entrada antiga descartada antes do processamento.")
+                    return True
+            except Exception:
+                pass
+
         observar_feedback_presenca = _get(ctx, "observar_feedback_presenca")
+        feedback_emissao_observado = {}
         if callable(observar_feedback_presenca):
             try:
-                observar_feedback_presenca(t)
+                observado = observar_feedback_presenca(t)
+                if isinstance(observado, Mapping):
+                    feedback_emissao_observado = dict(observado)
             except Exception as erro:
                 # Aprendizado de presença nunca pode impedir o turno principal,
                 # mas também não deve desaparecer sem diagnóstico.
@@ -186,14 +208,6 @@ class RespostaIARuntime:
                         "presenca_feedback", "falha_observacao", erro=erro,
                     )
 
-        if callable(ainda_atual_cb):
-            try:
-                if not ainda_atual_cb():
-                    self._log("🧠 [TURNO] entrada antiga descartada antes do processamento.")
-                    return True
-            except Exception:
-                pass
-
         marcar_inicio_turno = _get(ctx, "marcar_inicio_turno")
         if callable(marcar_inicio_turno):
             if origem != "desconhecida":
@@ -205,6 +219,10 @@ class RespostaIARuntime:
             sincronizar_turno_voz()
         obter_turno = _get(ctx, "obter_turno_atual")
         turno = obter_turno() if callable(obter_turno) else {}
+        turno_id_principal = turno.get("id") if isinstance(turno, dict) else None
+        registrar_feedback_turno = _get(ctx, "registrar_feedback_emissao_turno")
+        if feedback_emissao_observado and callable(registrar_feedback_turno):
+            registrar_feedback_turno(t, feedback_emissao_observado, turno_id_principal)
         turno_conversa_id = str(
             (turno.get("id") if isinstance(turno, dict) else "") or ""
         ).strip() or trace_id or f"resposta-ia-{self._sequencia_turnos}"
@@ -222,7 +240,45 @@ class RespostaIARuntime:
                 f"motivo={turno.get('motivo_decisao') or turno.get('motivo') or '-'}"
             )
         atualizar_plano = _get(ctx, "atualizar_plano_turno")
+        atualizar_ocorrencia = _get(ctx, "atualizar_plano_ocorrencia")
+        ocorrencia_local = ContratoOcorrenciaTurno(turno_id=turno_id_principal, texto_usuario=t)
+        atualizar_proposta = _get(ctx, "atualizar_plano_proposta")
         registrar_turno_local = None
+
+        def concluir_proposta_descartada(fase: str) -> None:
+            self._log(f"🛡️ [TURNO] publicação da proposta antiga recusada | fase={fase}")
+            _atualizar_trace(ctx, trace_id, fase="publicacao_proposta_recusada", rota="proposta_descartada")
+            abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+            if callable(abortar) and turno_conversa_iniciado:
+                abortar(turno_conversa_id)
+
+        def publicar_plano_principal(fase: str, **campos: Any) -> bool:
+            if callable(atualizar_proposta):
+                publicado = atualizar_proposta(fase, proposta_principal, **campos)
+                if not isinstance(publicado, dict):
+                    raise TypeError("Writer vinculado deve devolver um plano ou recusa vazia.")
+                if not publicado:
+                    concluir_proposta_descartada(fase)
+                    return False
+            elif callable(atualizar_plano):
+                # Extensões históricas conservam assinatura/retorno; não
+                # conferem ocorrência nem recebem uma promessa de atomicidade.
+                atualizar_plano(fase, **campos)
+            return True
+
+        def admitir_etapa_principal(fase: str) -> bool:
+            # Compatibilidade explícita: contextos antigos não oferecem esta
+            # conferência. Na composição moderna, falha/retorno incerto recusa.
+            if "proposta_principal_vigente" not in ctx:
+                return True
+            conferir = _get(ctx, "proposta_principal_vigente")
+            try:
+                vigente = callable(conferir) and conferir(proposta_principal) is True
+            except Exception:
+                vigente = False
+            if not vigente:
+                concluir_proposta_descartada(fase)
+            return vigente
 
         def falha_registro_local(erro: Exception) -> None:
             self._log(
@@ -249,7 +305,15 @@ class RespostaIARuntime:
                             registrar_turno_local("\n".join(falas))
                     except Exception as erro:
                         falha_registro_local(erro)
-            if callable(atualizar_plano):
+            if callable(atualizar_ocorrencia):
+                publicado = atualizar_ocorrencia(fase, ocorrencia_local)
+                if not isinstance(publicado, dict):
+                    raise TypeError("Writer de ocorrência deve devolver plano ou recusa vazia.")
+                if not publicado:
+                    self._log(f"🛡️ [TURNO] conclusão local antiga recusada | fase={fase}")
+                    _atualizar_trace(ctx, trace_id, fase="conclusao_local_obsoleta", rota=fase)
+                    return
+            elif callable(atualizar_plano):
                 atualizar_plano(fase)
             rotas_fase = {
                 "tratado_modo_chat": "modo_chat",
@@ -548,13 +612,25 @@ class RespostaIARuntime:
                     abortar(turno_conversa_id)
                 return True
 
+            proposta_principal = ContratoPropostaPrincipal(
+                turno_id=turno_id_principal,
+                texto_usuario=t,
+                resposta_bruta=bot_raw,
+                sucesso_modelo=sucesso_llm,
+            )
             preparar_resposta = _get(ctx, "preparar_resposta")
             if not callable(preparar_resposta):
                 raise RuntimeError("Preparador de resposta ainda não foi inicializado.")
             inicio_preparacao = time.perf_counter()
             sucesso_preparacao = False
             try:
-                resposta = preparar_resposta(t, bot_raw)
+                resposta_preparada = preparar_resposta(t, bot_raw)
+                if not isinstance(resposta_preparada, Mapping):
+                    raise TypeError("Preparador de resposta deve devolver um mapping.")
+                resposta = normalizar_resposta_preparada(
+                    resposta_preparada,
+                    proposta_principal=proposta_principal,
+                ).como_dict()
                 sucesso_preparacao = True
             finally:
                 _registrar_metrica(
@@ -582,12 +658,12 @@ class RespostaIARuntime:
             # nunca pode anexar comandos a uma pergunta/conversa que não
             # autorizou execução. A validação canônica abaixo continua sendo
             # aplicada aos turnos operacionais autorizados.
-            if (
-                comandos
-                and isinstance(turno, dict)
+            turno_nao_autoriza = (
+                isinstance(turno, dict)
                 and "autoriza_execucao" in turno
                 and not bool(turno.get("autoriza_execucao"))
-            ):
+            )
+            if comandos and turno_nao_autoriza:
                 intents_bloqueados = [
                     str(item.get("intent") or item.get("acao") or "").strip().upper()
                     for item in comandos
@@ -598,24 +674,123 @@ class RespostaIARuntime:
                     f"motivo=turno_sem_autorizacao intents={intents_bloqueados}"
                 )
                 comandos = []
+            validar_comandos = _get(ctx, "validar_comandos_planejados")
+            validar_proposta = getattr(validar_comandos, "validar_proposta", None)
+            validar_original = getattr(validar_comandos, "validar_proposta_original", None)
+            validacao_comandos = None
+            evento_erro_proposta = {}
+            prova_erro_proposta = None
+            if callable(validar_comandos) and callable(validar_proposta):
+                # O reparo e a autoridade podem zerar comandos. A ocorrência
+                # ainda precisa corresponder antes de qualquer publicação.
+                validacao_comandos = (
+                    validar_original(comandos, proposta_principal, resposta.get("extracao_original"))
+                    if callable(validar_original) else validar_proposta(comandos, proposta_principal)
+                )
+                if (
+                    not isinstance(validacao_comandos, dict)
+                    or not isinstance(validacao_comandos.get("proposta_vinculada"), bool)
+                    or not isinstance(validacao_comandos.get("ocorrencia_vinculada"), bool)
+                    or not isinstance(validacao_comandos.get("comandos"), list)
+                    or not isinstance(validacao_comandos.get("rejeitados"), list)
+                ):
+                    raise TypeError("Validador moderno deve devolver vínculo e listas de comandos/rejeitados.")
+                if (
+                    validacao_comandos["proposta_vinculada"]
+                    and not proposta_principal.proveniencia_conhecida
+                ):
+                    raise TypeError("Validador não pode promover procedência ausente na fonte capturada.")
+                if validacao_comandos["comandos"] and (
+                    validacao_comandos["proposta_vinculada"] is False
+                    or validacao_comandos.get("autoriza_execucao") is False
+                ):
+                    raise TypeError("Proposta sem procedência ou autorização não pode devolver comandos validados.")
+                if validacao_comandos["ocorrencia_vinculada"] is False:
+                    self._log(
+                        "🛡️ [TURNO] proposta principal descartada antes da publicação | "
+                        f"rejeitados={validacao_comandos['rejeitados']}"
+                    )
+                    _atualizar_trace(
+                        ctx, trace_id, fase="proposta_principal_nao_vinculada",
+                        rota="proposta_descartada",
+                    )
+                    abortar = getattr(estado_conversa_turno, "abortar_turno", None)
+                    if callable(abortar) and turno_conversa_iniciado:
+                        abortar(turno_conversa_id)
+                    return True
+                # Mesmo frame com falha técnica conserva a contingência; a
+                # fonte insuficiente nunca sustenta comandos ou autoria.
+                comandos = [] if turno_nao_autoriza else list(validacao_comandos["comandos"])
+                # Fato local da fonte original; o publicador emocional deve
+                # revalidá-lo no commit. Não é receipt nem falha do executor.
+                provas = validacao_comandos.get("violacoes_proposta_original", ())
+                if (
+                    isinstance(provas, tuple) and proposta_principal.proveniencia_conhecida
+                    and validacao_comandos["proposta_vinculada"] is True
+                ):
+                    for prova in provas:
+                        if not isinstance(prova, ViolacaoPropostaPrincipal) or prova.turno_id != proposta_principal.turno_id:
+                            continue
+                        self._log(
+                            "🧭 [PROPOSTA:CONTRATO] violação original demonstrada | "
+                            f"turno={prova.turno_id} indice={prova.indice_comando} "
+                            f"intent={prova.intent} motivo={prova.motivo}"
+                        )
+                        registrar_decisao = _get(ctx, "registrar_decisao_diagnostico")
+                        if callable(registrar_decisao):
+                            registrar_decisao(
+                                "turno", "violacao_proposta",
+                                (prova.motivo, f"turno={prova.turno_id}", f"indice={prova.indice_comando}", prova.intent),
+                                categoria="proposta_original",
+                            )
+                        publicar_erro = _get(ctx, "publicar_erro_proposta")
+                        if callable(publicar_erro) and not evento_erro_proposta:
+                            try:
+                                publicado = publicar_erro(
+                                    prova, proposta_principal, resposta.get("extracao_original"),
+                                )
+                                if (
+                                    evento_corresponde_erro_proposta(publicado, prova, proposta_principal)
+                                    and evento_esta_ativo(publicado)
+                                ):
+                                    evento_erro_proposta = publicado
+                                    prova_erro_proposta = prova
+                            except Exception as erro:
+                                self._log(
+                                    "⚠️ [PROPOSTA:EMOÇÃO] publicação recusada: "
+                                    f"{type(erro).__name__}"
+                                )
+                                evento_erro_proposta = {}
             tipo_interacao = str(resposta.get("tipo_interacao") or "")
             emocao_resposta = str(resposta.get("emocao") or "").strip().lower()
             try:
                 nivel_emocao_resposta = max(1, min(3, int(resposta.get("nivel_emocao") or 1)))
             except (TypeError, ValueError):
                 nivel_emocao_resposta = 1
-            leitura_semantica = dict(resposta.get("leitura_semantica") or {})
+            # A porta de preparo pode substituir o bruto e seus metadados.
+            # A fonte semântica continua sendo a emissão capturada pelo host.
+            leitura_semantica = extrair_leitura_semantica_principal(proposta_principal, t)
             registrar_leitura_semantica = _get(ctx, "registrar_leitura_semantica_principal")
-            if leitura_semantica and callable(registrar_leitura_semantica):
+            registrar_leitura_proposta = _get(ctx, "registrar_leitura_proposta")
+            if leitura_semantica.get("valida") and callable(registrar_leitura_proposta):
+                publicada = registrar_leitura_proposta(t, leitura_semantica, proposta_principal)
+                if not isinstance(publicada, dict):
+                    raise TypeError("Registro semântico vinculado deve devolver leitura ou recusa vazia.")
+                if not publicada:
+                    concluir_proposta_descartada("leitura_semantica_principal")
+                    return True
+            elif leitura_semantica and callable(registrar_leitura_semantica) and not callable(registrar_leitura_proposta):
                 try:
                     registrar_leitura_semantica(t, leitura_semantica)
                 except Exception as erro:
                     self._log(f"⚠️ [SEMÂNTICA:PRINCIPAL] falha ao registrar leitura: {erro}")
-            validar_comandos = _get(ctx, "validar_comandos_planejados")
-            if comandos and callable(validar_comandos):
-                validacao_comandos = validar_comandos(comandos)
+            if validacao_comandos is not None or (comandos and callable(validar_comandos)):
+                if validacao_comandos is None:
+                    # Extensões legadas continuam com um argumento; não
+                    # conferem procedência para uma futura atribuição causal.
+                    validacao_comandos = validar_comandos(comandos)
                 if isinstance(validacao_comandos, dict):
-                    comandos = list(validacao_comandos.get("comandos") or [])
+                    comandos = [] if turno_nao_autoriza else list(validacao_comandos.get("comandos") or [])
                     rejeitados = list(validacao_comandos.get("rejeitados") or [])
                     if rejeitados:
                         self._log(
@@ -629,15 +804,21 @@ class RespostaIARuntime:
                                 "execucao", "bloqueada", ("dono do turno recusou comandos",),
                                 categoria="comandos_planejados",
                             )
-            if callable(atualizar_plano):
-                atualizar_plano(
-                    "resposta_planejada",
-                    comandos=comandos,
-                    fala=fala_limpa_original,
-                )
+            # A ocorrência pertence ao host, depois do último validador. IDs e
+            # receipts propostos pelo modelo não identificam uma execução real.
+            comandos = [
+                identificar_solicitacao_execucao(item, nova_identidade=True)
+                for item in comandos
+            ]
+            if not publicar_plano_principal(
+                "resposta_planejada", comandos=comandos, fala=fala_limpa_original,
+            ):
+                return True
 
             if suprimir_fala and not comandos:
-                marcar_fase("resposta_tecnica_suprimida")
+                if not publicar_plano_principal("resposta_tecnica_suprimida"):
+                    return True
+                _atualizar_trace(ctx, trace_id, fase="resposta_tecnica_suprimida")
                 self._log("⚠️ [IA] Turno técnico encerrado sem contaminar a conversa.")
                 abortar = getattr(estado_conversa_turno, "abortar_turno", None)
                 if callable(abortar) and turno_conversa_iniciado:
@@ -659,8 +840,14 @@ class RespostaIARuntime:
             inicio_execucao = time.perf_counter()
             sucesso_dispatch = False
             try:
+                contexto_dispatch = dispatcher_runtime.montar()
+                if not admitir_etapa_principal("admissao_dispatch"):
+                    return True
+                if "proposta_principal_vigente" in ctx:
+                    contexto_dispatch = dict(contexto_dispatch)
+                    contexto_dispatch["proposta_principal_vigente"] = lambda: admitir_etapa_principal("admissao_comando")
                 dispatch = resultado_dispatch(
-                    dispatcher_runtime.montar(),
+                    contexto_dispatch,
                     texto,
                     comandos,
                     fala_limpa_original,
@@ -683,13 +870,11 @@ class RespostaIARuntime:
             fala_ja_emitida = bool(dispatch.get("fala_ja_emitida", False))
             fala_emitida_por_acao = bool(dispatch.get("fala_emitida_por_acao", False))
             fala_salva_no_inicio = bool(dispatch.get("fala_salva_no_inicio", False))
-            if callable(atualizar_plano):
-                atualizar_plano(
-                    "executado" if not erros_execucao else "falha_execucao",
-                    comandos=comandos,
-                    erros=erros_execucao,
-                    fala=fala_limpa_original,
-                )
+            if not publicar_plano_principal(
+                "executado" if not erros_execucao else "falha_execucao",
+                comandos=comandos, erros=erros_execucao, fala=fala_limpa_original,
+            ):
+                return True
 
             # A emoção escolhida pela LLM só entra depois da execução. Assim,
             # ela colore a fala e os próximos turnos, mas nunca muda a
@@ -714,8 +899,27 @@ class RespostaIARuntime:
             finalizar = _get(ctx, "finalizar_execucao")
             if finalizacao_runtime is None or not callable(finalizar):
                 raise RuntimeError("Contexto de finalizacao ainda não foi inicializado.")
+            contexto_finalizacao = finalizacao_runtime.montar()
+            if dispatch.get("resposta_composta_publicada") is True:
+                contexto_finalizacao = dict(contexto_finalizacao)
+                contexto_finalizacao["resposta_operacional_composta"] = {
+                    "resposta_composta_publicada": True,
+                    "fala_composta": str(dispatch.get("fala_composta") or ""),
+                }
+            if not admitir_etapa_principal("admissao_finalizacao"):
+                return True
+            if evento_erro_proposta and prova_erro_proposta is not None:
+                contexto_finalizacao = dict(contexto_finalizacao)
+                # A finalização confere novamente a validade antes de emitir;
+                # o texto planejado não congela uma expressão já expirada.
+                contexto_finalizacao["erro_proposta_confirmado"] = {
+                    "evento": evento_erro_proposta, "prova": prova_erro_proposta,
+                    "principal": proposta_principal,
+                    "extracao": resposta.get("extracao_original"),
+                }
+                contexto_finalizacao["confirmar_erro_proposta"] = _get(ctx, "confirmar_erro_proposta")
             resultado_finalizacao = finalizar(
-                finalizacao_runtime.montar(),
+                contexto_finalizacao,
                 comandos,
                 erros_execucao,
                 fala_limpa_original,

@@ -77,7 +77,7 @@ class CoordenadorVisaoJogoRuntime:
         if diretor is not None:
             evidencias = [
                 str(dados.get(nome) or "").strip()
-                for nome in ("item", "slot", "motivo")
+                for nome in ("item", "slot")
                 if str(dados.get(nome) or "").strip()
             ]
             evidencias.extend(
@@ -90,10 +90,15 @@ class CoordenadorVisaoJogoRuntime:
                 "dominio": "jogo",
                 "categoria": categoria,
                 "fala": fala,
+                "motivo": str(dados.get("motivo") or "").strip(),
                 "confianca": confianca,
                 "utilidade": 92 if str(dados.get("prioridade") or "").casefold()
                 in {"alta", "urgente", "critica"} else 78,
                 "evidencias": evidencias,
+                **({"foco_evidencia": dados["foco_evidencia"]}
+                   if "foco_evidencia" in dados else {}),
+                **({"proposta_reacao": dados["proposta_reacao"]}
+                   if "proposta_reacao" in dados else {}),
                 "fundamentada": categoria != "dica" or len(evidencias) >= 2,
                 "momento_seguro": bool(dados.get("momento_seguro", True)),
                 "chave": chave,

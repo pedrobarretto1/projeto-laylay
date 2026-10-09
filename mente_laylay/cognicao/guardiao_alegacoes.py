@@ -92,7 +92,7 @@ _ESTADO_REAL_FORTE = re.compile(
 )
 _ALEGACAO_ESTADO_OBSERVAVEL = re.compile(
     r"\b(?:est[aá]|t[aá]|continua|segue|permanece)\s+"
-    r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|rodando|em\s+execu[cç][aã]o)\b",
+    r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|rodando|tocando|reproduzindo|em\s+execu[cç][aã]o)\b",
     re.IGNORECASE,
 )
 _FRONTEIRA_ORACAO_ESTADO = re.compile(
@@ -428,7 +428,8 @@ def validar_alegacoes_da_fala(
             continue
         if (
             origem_ia
-            and consulta_estado_observavel
+            and (consulta_estado_observavel
+                 or contrato.get("exigir_receipt_para_estado") is True)
             and not tem_leitura_confirmada
             and not frase.rstrip().endswith("?")
             and _alega_estado_sem_incerteza_local(frase)

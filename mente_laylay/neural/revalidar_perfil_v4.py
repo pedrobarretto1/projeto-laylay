@@ -53,6 +53,18 @@ REPROJECAO_REVISADA = {
 # diferença futura continua bloqueada, mesmo se os rótulos gold coincidirem.
 SHA_DIVERGENCIAS_REVISADAS = "260bfdda4382a66addf3891da94fedb2af0d5137653de757b9fd8031991a2e8c"
 
+# Revisão P06 de 30/09: ponto interno/aspas/reticências no segmentador.
+# Replay integral dos 672 e 1176 casos preservou supervisão literal, labels,
+# offsets e o SHA de divergências acima (160 leituras e 48 segmentações).
+# As revisões anteriores e os protocolos fonte permanecem congelados. Isto
+# permite somente a reprojeção offline com replay, nunca uma promoção neural.
+REPROJECAO_SEGMENTACAO_P06_REVISADA = {
+    "mente_laylay/cognicao/modalidade_turno.py": (
+        "e1bef38f0195c52ec754ea937ac1f5c9e4a3bcd387bba1923352516ab5028e5a",
+        "b63a73b971ca316fdd3d363e5abd6571b702d04fad7587176501f010029898ef",
+    ),
+}
+
 
 def conferir_dependencias(dependencias: dict, hashes: dict, *, reprojetar: bool = False) -> dict:
     alteradas = {}
@@ -61,7 +73,11 @@ def conferir_dependencias(dependencias: dict, hashes: dict, *, reprojetar: bool 
         if antigo == atual:
             continue
         revisadas = REPROJECAO_REVISADA if reprojetar else {NORMALIZADOR_REVISADO: HASHES_REVISADOS}
-        if (antigo, atual) != revisadas.get(nome.replace("\\", "/")):
+        revisao_p06 = (
+            REPROJECAO_SEGMENTACAO_P06_REVISADA.get(nome.replace("\\", "/"))
+            if reprojetar else None
+        )
+        if (antigo, atual) not in (revisadas.get(nome.replace("\\", "/")), revisao_p06):
             raise ValueError("mudança de dependência sem revisão de compatibilidade")
         alteradas[nome] = {"historico": antigo, "atual": atual}
     return alteradas

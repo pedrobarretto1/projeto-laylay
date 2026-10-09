@@ -30,6 +30,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     texto_pede_opiniao,
 )
 from mente_laylay.cognicao.contratos_turno import texto_evento_cognitivo
+from mente_laylay.emocoes.contrato_causal import criar_evento_direcao_social_observada
 from mente_laylay.personalidade.proporcao_resposta import (
     LIMITES, classificar_proporcao, parece_pedido_reexplicacao,
 )
@@ -166,6 +167,89 @@ class ContratoSemanticoFala:
         return dados
 
 
+_ROTULO_EVIDENCIA_TEXTUAL = re.compile(
+    r"^(?:texto exato(?: vis[ií]vel)?|nome leg[ií]vel|artista leg[ií]vel)\s*:", re.I,
+)
+
+
+def _evidencia_e_rotulo_isolado(fato: str) -> bool:
+    """Um texto OCR ou fragmento nominal não comprova um acontecimento.
+
+    A fonte continua no inventário; esta consulta limita somente reações
+    espontâneas de companhia/curiosidade, sem alterar perguntas visuais.
+    """
+    return bool(_ROTULO_EVIDENCIA_TEXTUAL.match(fato)) or len(re.findall(r"\w+", fato)) < 2
+
+
+def _selecionar_foco_evento(evidencia: Mapping[str, Any], fatos: list[str]) -> str:
+    """Proposta de foco precisa apontar para a fonte; ordem não é relevância."""
+    if "foco_evidencia" in evidencia:
+        foco = evidencia["foco_evidencia"]
+        return foco if isinstance(foco, str) and foco in fatos else ""
+    # Compatibilidade: uma descrição de cena tem prioridade sobre rótulo OCR.
+    return next((f for f in fatos if not _evidencia_e_rotulo_isolado(f)), fatos[0] if fatos else "")
+
+
+def _apresentacao_evidencia_evento(fato: str) -> str:
+    """Uma descrição não precisa de moldura de citação; texto operacional sim."""
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+
+    # Classificadores são consultas locais. Nenhuma decisão de autoridade
+    # resultante é transportada: a entrada continua sendo um evento.
+    if (not fato or _ROTULO_EVIDENCIA_TEXTUAL.match(fato)
+        or re.search(r"\b(?:eu|meu|minha|estou|tô|vou)\b", fato, re.I)
+        or classificar_modalidade_turno(fato).get("autoriza_execucao")
+        or validar_alegacoes_da_fala(fato, plano={}, origem="canal_voz").get("problemas")):
+        return "citacao"
+    return "descricao"
+
+
+def validar_proposta_reacao_evento(
+    proposta: Any, *, foco: str, direcao: Mapping[str, Any],
+    contrato: Mapping[str, Any],
+) -> tuple[dict[str, Any], str]:
+    """Adota autoria vinculada sem transformar estilo em fato ou permissão.
+
+    Vínculo literal não atesta toda a verdade semântica da reação. Os guardiões
+    compartilhados vetam violações fortes; a fonte visual continua falível.
+    """
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+    from mente_laylay.cognicao.validacao_contrato_fala import validar_aderencia_contrato_fala
+    from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
+    from mente_laylay.personalidade.higiene_fala import remover_fragmento_final_incompleto
+
+    if not isinstance(proposta, Mapping):
+        return {}, "reacao_formato_invalido"
+    fala, trecho = proposta.get("fala"), proposta.get("trecho_ancora")
+    if (not isinstance(fala, str) or not isinstance(trecho, str)
+        or not fala.strip() or len(fala) > 260
+        or remover_fragmento_final_incompleto(fala) != fala
+        or len(re.split(r"(?<=[.!?])\s+", fala.strip())) > 2
+        or type(proposta.get("humor")) is not bool
+        or any(bool(proposta.get(k)) for k in ("autoridade_usuario", "permissao_execucao", "autoriza_execucao"))):
+        return {}, "reacao_formato_invalido"
+    if (not foco or proposta.get("foco_evidencia") != foco
+        or not trecho or trecho.casefold() not in foco.casefold() or trecho.casefold() not in fala.casefold()
+        or not _tokens_contextuais(trecho)):
+        return {}, "reacao_sem_vinculo_factual"
+    if proposta["humor"] and direcao.get("permite_humor") is not True:
+        return {}, "reacao_humor_contido"
+    if "?" in fala and contrato.get("permite_pergunta") is not True:
+        return {}, "reacao_pergunta_contida"
+    if (contem_ataque_pessoal(fala)
+        or classificar_modalidade_turno(fala).get("autoriza_execucao")
+        or validar_alegacoes_da_fala(fala, plano=dict(contrato), origem="canal_voz").get("problemas")
+        or not validar_aderencia_contrato_fala(
+            "", fala, contrato_fala=contrato, turno_id=contrato.get("turno_id"),
+        ).get("aceita")):
+        return {}, "reacao_guardiao_rejeitou"
+    return {"fala": fala.strip(), "foco_evidencia": foco,
+            "trecho_ancora": trecho, "humor": proposta["humor"],
+            "autoriza_execucao": False}, ""
+
+
 def construir_contrato_semantico_evento(
     evento: Mapping[str, Any],
     *,
@@ -179,6 +263,25 @@ def construir_contrato_semantico_evento(
     planejamento = dict(plano or {})
     estado = dict(mente or {})
     texto_evidencia = texto_evento_cognitivo(evento)
+    evidencia = dict(evento.get("evidencia") or {}) if isinstance(evento.get("evidencia"), Mapping) else {}
+    itens = evidencia.get("itens")
+    evidencias_factuais = list(dict.fromkeys(
+        str(item).strip() for item in itens if str(item).strip()
+    ))[:5] if isinstance(itens, (list, tuple)) else []
+    motivo_evento = _texto_curto(evidencia.get("motivo") or evento.get("motivo"), 500)
+    # O motivo explica a oportunidade comunicativa; não é um fato observado.
+    # Eventos legados sem motivo separado conservam sua descrição factual.
+    ancora_factual = (
+        _selecionar_foco_evento(evidencia, evidencias_factuais)
+        if evidencias_factuais or "foco_evidencia" in evidencia
+        else "" if motivo_evento else texto_evidencia
+    )
+    categoria_evento = _normalizar(evidencia.get("categoria") or evento.get("tipo"))
+    motivo_supressao_reacao = ""
+    if (categoria_evento in {"companhia", "curiosidade", "presenca_companhia", "presenca_curiosidade"}
+        and ancora_factual and _evidencia_e_rotulo_isolado(ancora_factual)):
+        motivo_supressao_reacao = "rotulo_sem_acontecimento"
+        ancora_factual = ""
     tipo = _texto_curto(evento.get("tipo"), 80) or "evento_observado"
     ultima_utterance = _texto_curto(estado.get("ultima_entrada"), 500)
     recentes = _itens_unicos(falas_recentes, limite_item=320)[-3:]
@@ -189,7 +292,7 @@ def construir_contrato_semantico_evento(
     roteiro = {
         "versao": 1,
         "estrategia": "reacao_evento",
-        "ancora_literal": texto_evidencia[:300],
+        "ancora_literal": ancora_factual,
         "nucleo_resposta": "formular uma reação breve ao evento observado",
         "sequencia": [
             "interpretar a evidência observada",
@@ -240,7 +343,27 @@ def construir_contrato_semantico_evento(
         entrada_cognitiva=dict(evento),
         texto_evidencia=texto_evidencia,
         direcao_social=direcao_social,
+        motivo_evento=motivo_evento,
+        evidencias_factuais=evidencias_factuais,
+        # O roteiro tem limite de apresentação; a fonte inteira permite que
+        # qualquer materializador rejeite um corte em vez de completá-lo.
+        ancora_factual_completa=ancora_factual,
+        apresentacao_evidencia=_apresentacao_evidencia_evento(ancora_factual),
+        motivo_supressao_reacao=motivo_supressao_reacao,
+        reacao_validada={},
     )
+    if "proposta_reacao" in evidencia and not motivo_supressao_reacao:
+        reacao, supressao = validar_proposta_reacao_evento(
+            evidencia["proposta_reacao"], foco=ancora_factual,
+            direcao=direcao_social, contrato=contrato,
+        )
+        contrato.update(reacao_validada=reacao, motivo_supressao_reacao=supressao)
+    causal = criar_evento_direcao_social_observada(
+        evento, direcao_social, turno_id=str(contrato.get("turno_id") or ""),
+        ancora_factual=ancora_factual,
+    )
+    if causal:
+        contrato["evento_emocional_causal"] = causal
     return contrato
 
 

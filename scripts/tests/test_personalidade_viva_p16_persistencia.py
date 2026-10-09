@@ -239,6 +239,7 @@ def test_recuperacao_real_do_avaliador_substitui_falha_do_mesmo_alvo() -> None:
         falha = avaliador.avaliar(ResultadoAcao(
             intent="IOT_CONTROL", status="timeout", alvo="lâmpada",
             executou=False, confirmado=False, texto_usuario="liga a lâmpada",
+            origem="executor",
             id_solicitacao=f"falha:{indice}",
         ))
         estado = aplicar_evento_emocional(estado, falha, agora=instante[0])
@@ -248,6 +249,7 @@ def test_recuperacao_real_do_avaliador_substitui_falha_do_mesmo_alvo() -> None:
     recuperacao = avaliador.avaliar(ResultadoAcao(
         intent="IOT_CONTROL", status="sucesso", alvo="lâmpada",
         executou=True, confirmado=True, texto_usuario="liga a lâmpada",
+        origem="executor",
         id_solicitacao="sucesso:3",
     ))
     estado = aplicar_evento_emocional(estado, recuperacao, agora=instante[0])
@@ -419,6 +421,7 @@ def test_quatro_receipts_redundantes_e_desculpa_usam_estado_compartilhado() -> N
         resultado = ResultadoAcao(
             intent="APP_OPEN", status="ja_aberto_focado", alvo="Opera",
             executou=False, confirmado=True, texto_usuario="abre o Opera",
+            origem="executor",
             id_solicitacao=f"opera:redundante:{indice}",
         )
         avaliacao = avaliar_evento_emocional_operacional(
@@ -548,3 +551,216 @@ def test_refino_com_estado_compartilhado_fecha_episodio_ao_mudar_assunto() -> No
 
     assert estado.conversacional["current_emotion"] == "calma"
     assert estado.conversacional["episodio_emocional"] == {}
+
+
+@pytest.mark.parametrize("intent, status, alvo, pedido", [
+    ("APP_OPEN", "ja_aberto_focado", "Opera", "abre o Opera"),
+    ("IOT_CONTROL", "ja_estava_ligado", "lâmpada", "liga a lâmpada"),
+])
+def test_erro_proprio_confirmado_interrompe_bronca_por_repeticao(
+    intent: str, status: str, alvo: str, pedido: str,
+) -> None:
+    estado = EstadoCompartilhadoRuntime(conversacional={"current_emotion": "calma"})
+    publicador = EstadoContextoRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+    )
+    conversa = RespostaConversacionalRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+        fallback_fala="", log=lambda *_args: None,
+    )
+    avaliador = AvaliadorEventosEmocionaisRuntime(log=lambda *_args: None)
+
+    for indice in range(4):
+        avaliacao = avaliar_evento_emocional_operacional(
+            ResultadoAcao(
+                intent=intent, status=status, alvo=alvo,
+                executou=False, confirmado=True, texto_usuario=pedido,
+                origem="executor",
+                id_solicitacao=f"repeticao:{indice}",
+            ),
+            avaliador=avaliador,
+            publicar_evento=publicador.publicar_evento_emocional_causal,
+            definir_emocao=conversa.definir_emocao,
+            log=lambda *_args: None,
+        )
+        assert avaliacao["permite_expressao"] is True
+    assert estado.conversacional["current_emotion"] == "brava"
+
+    reparo = avaliar_evento_emocional_operacional(
+        ResultadoAcao(
+            intent=intent, status="alvo_ausente", alvo=alvo,
+            executou=False, confirmado=False,
+            texto_usuario=f"você entendeu o alvo {alvo} errado",
+            origem="executor",
+            id_solicitacao=f"correcao:{intent}",
+            contexto={
+                "responsabilidade": "laylay",
+                "confianca_responsabilidade": 0.98,
+            },
+        ),
+        avaliador=avaliador,
+        publicar_evento=publicador.publicar_evento_emocional_causal,
+        definir_emocao=conversa.definir_emocao,
+        log=lambda *_args: None,
+    )
+
+    assert reparo["arco"] == "autorreparo"
+    assert reparo["validade"]["valido"] is True
+    assert reparo["responsabilidade"] == "laylay"
+    assert estado.mental["eventos_emocionais_causais"]["atual"]["evidencia_ref"] == f"correcao:{intent}"
+    assert reparo["motivo_expressao"] == "autoria_da_falha_confirmada"
+    assert reparo["permite_expressao"] is True
+    assert estado.conversacional["current_emotion"] == "envergonhada"
+    assert estado.conversacional["episodio_emocional"]["evidencia_ref"] == f"correcao:{intent}"
+
+
+@pytest.mark.parametrize("mudanca", [
+    {"arco": "rotina"},
+    {"responsabilidade": "sistema"},
+    {"confianca": 0.70},
+    {"origem": "leitura_usuario"},
+    {"natureza_evidencia": "inferencia"},
+    {"ts_offset": -5.0},
+])
+def test_evento_fraco_sem_autorreparo_confirmado_nao_substitui_bronca(
+    mudanca: dict,
+) -> None:
+    instante = time.time()
+    forte = _evento(instante)
+    estado = aplicar_evento_emocional({}, forte, agora=instante)
+    dados = {
+        "origem": "resultado_operacional",
+        "causa": "falha de interpretação confirmada",
+        "evidencia_ref": "resultado:autorreparo:1",
+        "natureza_evidencia": "fato_observado",
+        "responsabilidade": "laylay",
+        "confianca": 0.98,
+        "relevancia": 0.95,
+        "alvo": "Opera",
+        "validade_s": 120.0,
+        "permite_expressao": True,
+        "emocao": "envergonhada",
+        "nivel": 1,
+        "arco": "autorreparo",
+        "ts": instante + 1.0,
+    }
+    if "ts_offset" in mudanca:
+        dados["ts"] = instante + mudanca["ts_offset"]
+    else:
+        dados.update(mudanca)
+    fraco = criar_evento_emocional_causal(**dados)
+
+    depois = aplicar_evento_emocional(estado, fraco, agora=instante + 1.0)
+
+    assert depois["current_emotion"] == "brava"
+    assert depois["episodio_emocional"]["evidencia_ref"] == forte["evidencia_ref"]
+
+
+@pytest.mark.parametrize("emocao", ["debochada", "irritada", "brava"])
+@pytest.mark.parametrize("arco", ["provocacao_afetuosa", "bronca_brincalhona"])
+@pytest.mark.parametrize("texto", [
+    "Terminei o projeto.",
+    "Estou muito feliz porque terminei um projeto.",
+    "Não ganhei a corrida, mas consegui terminar o percurso.",
+])
+def test_conquista_autoral_encerra_bronca_sem_fabricar_alegria_propria(
+    emocao: str, arco: str, texto: str,
+) -> None:
+    instante = time.time()
+    evento = _evento(instante)
+    evento["emocao"] = emocao
+    evento["arco"] = arco
+    estado = EstadoCompartilhadoRuntime(conversacional=aplicar_evento_emocional(
+        {}, evento, agora=instante,
+    ))
+    conversa = RespostaConversacionalRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+        fallback_fala="", log=lambda *_args: None,
+    )
+    funcao = analisar_funcao_comunicativa(texto)
+    assert funcao["funcao"] == "conquista"
+    humor_antes = estado.conversacional["humor_level"]
+
+    conversa.avancar_emocao(contexto=funcao["funcao"], interaction_key=texto)
+
+    assert retrato_emocional_expressavel(estado.conversacional) == ("calma", 1)
+    assert estado.conversacional["episodio_emocional"] == {}
+    assert estado.conversacional["humor_level"] == humor_antes
+    assert funcao["postura_esperada"] == "celebratoria"
+
+
+@pytest.mark.parametrize("intent, status, alvo", [
+    ("APP_OPEN", "ja_aberto_focado", "Calculadora"),
+    ("IOT_CONTROL", "ja_estava_ligado", "lâmpada"),
+])
+def test_conquista_encerra_arco_real_das_primeiras_redundancias(
+    intent: str, status: str, alvo: str,
+) -> None:
+    estado = EstadoCompartilhadoRuntime(conversacional={"current_emotion": "calma"})
+    publicador = EstadoContextoRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+    )
+    conversa = RespostaConversacionalRuntime(
+        namespace_getter=lambda: {}, estado_runtime_getter=lambda: estado,
+        fallback_fala="", log=lambda *_args: None,
+    )
+    avaliador = AvaliadorEventosEmocionaisRuntime(log=lambda *_args: None)
+    for indice in range(2):
+        evento = avaliar_evento_emocional_operacional(
+            ResultadoAcao(
+                intent=intent, status=status, alvo=alvo, origem="executor",
+                executou=False, confirmado=True, texto_usuario=f"abre {alvo}",
+                id_solicitacao=f"redundancia:{intent}:{indice}",
+            ),
+            avaliador=avaliador,
+            publicar_evento=publicador.publicar_evento_emocional_causal,
+            definir_emocao=conversa.definir_emocao, log=lambda *_args: None,
+        )
+        assert evento["arco"] == "provocacao_afetuosa"
+    assert retrato_emocional_expressavel(estado.conversacional) == ("debochada", 2)
+    humor_antes = estado.conversacional["humor_level"]
+
+    conversa.avancar_emocao(
+        contexto=analisar_funcao_comunicativa("Estou muito feliz porque terminei um projeto.")["funcao"],
+        interaction_key=f"conquista:{intent}",
+    )
+
+    assert retrato_emocional_expressavel(estado.conversacional) == ("calma", 1)
+    assert estado.conversacional["episodio_emocional"] == {}
+    assert estado.conversacional["humor_level"] == humor_antes
+
+
+@pytest.mark.parametrize("texto", [
+    "Não consegui terminar o projeto.",
+    'Ela disse: "terminei o projeto".',
+    "Se eu passei na prova, ganhei a aposta.",
+    "Passei mal hoje.",
+    "Ganhei uma dor de cabeça.",
+])
+def test_mencao_sem_conquista_autoral_preserva_bronca(texto: str) -> None:
+    instante = time.time()
+    evento = _evento(instante)
+    antes = aplicar_evento_emocional({}, evento, agora=instante)
+    funcao = analisar_funcao_comunicativa(texto)
+    assert funcao["funcao"] != "conquista"
+
+    depois, _ = decair_estado_emocional(antes, agora=instante + 1, contexto=funcao["funcao"])
+
+    assert retrato_emocional_expressavel(depois, agora=instante + 1) == ("brava", 3)
+    assert depois["episodio_emocional"] == evento
+
+
+@pytest.mark.parametrize("mudanca", [
+    {"responsabilidade": "sistema"},
+    {"arco": "irritacao_compartilhada"},
+])
+def test_conquista_nao_apaga_episodio_de_outra_responsabilidade_ou_arco(mudanca: dict) -> None:
+    instante = time.time()
+    evento = _evento(instante)
+    evento.update(mudanca)
+    antes = aplicar_evento_emocional({}, evento, agora=instante)
+
+    depois, _ = decair_estado_emocional(antes, agora=instante + 1, contexto="conquista")
+
+    assert retrato_emocional_expressavel(depois, agora=instante + 1) == ("brava", 3)
+    assert depois["episodio_emocional"] == evento

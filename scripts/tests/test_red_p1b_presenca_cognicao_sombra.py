@@ -241,8 +241,11 @@ def test_evento_concluido_nao_deixa_turno_global_preso(
     )
 
     primeiro = diretor.considerar({
-        "origem": "observador_jogo",
-        "dominio": "jogo",
+        # P18 materializa jogo localmente mesmo se a LLM estiver indisponível.
+        # Este controle de encerramento por falha da LLM começa no cotidiano;
+        # o próximo evento ainda exercita jogo e clipboard nos dois domínios.
+        "origem": "observador_janela",
+        "dominio": "cotidiano",
         "categoria": "companhia",
         "confianca": 0.95,
         "momento_seguro": True,

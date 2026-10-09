@@ -82,6 +82,63 @@ def test_aceite_e_atomico_e_nao_executa_duas_vezes() -> None:
     assert segunda["status"] == "em_processamento"
 
 
+def test_id_esperado_impede_classificar_ou_consumir_oferta_de_outro_dominio() -> None:
+    runtime, _estado = _runtime()
+    anterior = runtime.registrar(
+        origem="observador_area_transferencia", acao="investigar_erro",
+        pergunta="Quer que eu investigue?", referencia="erro-1",
+    )
+    runtime.concluir(anterior["id"], "substituida")
+    atual = runtime.registrar(
+        origem="agenda", acao="criar_lembrete",
+        pergunta="Criar este lembrete?", referencia="lembrete-2",
+    )
+    classificacoes = []
+    resposta = runtime.resolver(
+        "seria ótimo", id_esperado=anterior["id"],
+        classificar_dominio=lambda *_args: classificacoes.append("dominio") or "aceitar",
+        classificar_contextual=lambda *_args: classificacoes.append("contextual") or True,
+    )
+    assert resposta["status"] == "concorrente"
+    assert classificacoes == []
+    assert runtime.obter() == atual
+
+
+def test_id_esperado_correto_preserva_aceite_e_registro_retornado() -> None:
+    runtime, _estado = _runtime()
+    criada = runtime.registrar(
+        origem="agenda", acao="criar_lembrete",
+        pergunta="Criar este lembrete?", referencia="lembrete-1",
+    )
+    resposta = runtime.resolver("sim", id_esperado=criada["id"])
+    assert resposta["status"] == "aceitar"
+    assert resposta["pendencia"]["id"] == criada["id"]
+    assert runtime.obter()["status"] == "em_processamento"
+
+
+def test_troca_durante_classificacao_preserva_nova_oferta_na_transacao() -> None:
+    runtime, _estado = _runtime()
+    anterior = runtime.registrar(
+        origem="agenda", acao="criar_lembrete",
+        pergunta="Criar este lembrete?", referencia="lembrete-1",
+    )
+    nova = {}
+
+    def classificar(*_args):
+        assert runtime.concluir(anterior["id"], "substituida") is True
+        nova.update(runtime.registrar(
+            origem="observador_area_transferencia", acao="investigar_erro",
+            pergunta="Quer que eu investigue?", referencia="erro-2",
+        ))
+        return "aceitar"
+
+    resposta = runtime.resolver(
+        "seria ótimo", id_esperado=anterior["id"], classificar_dominio=classificar,
+    )
+    assert resposta["status"] == "concorrente"
+    assert runtime.obter() == nova
+
+
 def test_recusa_natural_encerra_sem_autorizar() -> None:
     runtime, _estado = _runtime()
     criada = runtime.registrar(

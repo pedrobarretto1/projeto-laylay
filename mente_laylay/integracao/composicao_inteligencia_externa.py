@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from functools import partial
 from typing import Any, Callable, Dict
+from urllib.parse import urlsplit
 
 from mente_laylay.cognicao.confirmacao_llm import criar_confirmacao_llm_runtime
 from mente_laylay.cognicao.memoria_visual import (
@@ -20,11 +21,18 @@ from mente_laylay.integracao.cliente_llm_runtime import (
 from mente_laylay.integracao.conversa_jogo_remota import (
     criar_conversa_jogo_remota_runtime,
 )
+from mente_laylay.integracao.contrato_saida_estruturada import (
+    AnaliseVisualComContrato, ContratoSaidaEstruturada,
+)
 from mente_laylay.integracao.llm_http import criar_llm_http_runtime
+from mente_laylay.integracao.modelo_visual_local import ModeloVisualLocalRuntime
 from mente_laylay.integracao.preparador_requisicao_llm import (
     criar_preparador_requisicao_llm_runtime,
 )
 from mente_laylay.integracao.registro_conversa_llm import registrar_modelo_llm
+
+
+MODELO_VISUAL_GROQ_PADRAO = "qwen/qwen3.8-27b"
 
 
 class ComposicaoInteligenciaExternaRuntime:
@@ -97,14 +105,17 @@ class ComposicaoInteligenciaExternaRuntime:
         )
         self.groq_api_key = str(env_getter("GROQ_API_KEY", "") or "").strip()
         self.groq_model = str(
-            env_getter("GROQ_VISION_MODEL", "qwen/qwen3.6-27b")
-            or "qwen/qwen3.6-27b"
+            env_getter("GROQ_VISION_MODEL", MODELO_VISUAL_GROQ_PADRAO)
+            or MODELO_VISUAL_GROQ_PADRAO
         ).strip()
         self.groq_chat_model = str(
             env_getter("GROQ_CHAT_MODEL", self.groq_model) or self.groq_model
         ).strip()
+        self.conversa_jogo_remota_ativa = str(
+            env_getter("LAYLAY_CONVERSA_JOGO_REMOTA_ATIVA", "1") or "1"
+        ).casefold() not in desativados
         self.conversa_jogo = conversa_jogo_factory(
-            api_key=self.groq_api_key,
+            api_key=self.groq_api_key if self.conversa_jogo_remota_ativa else "",
             model=self.groq_chat_model,
             requests_post=requests_post,
             timeout_s=self._float_env(
@@ -156,6 +167,113 @@ class ComposicaoInteligenciaExternaRuntime:
             model=self.groq_model,
             timeout_s=8.0,
         )
+        self.visao_backend = str(env_getter("LAYLAY_VISAO_BACKEND", "groq") or "groq").strip().casefold()
+        self.visao_model = self.groq_model
+        self._visao_local_disponivel = False
+        if self.visao_backend == "ollama":
+            self.visao_model = str(env_getter("LAYLAY_VISAO_MODEL", "qwen3-vl:4b-instruct") or "qwen3-vl:4b-instruct").strip()
+            url_visual = str(env_getter("LAYLAY_VISAO_OLLAMA_BASE_URL", "http://localhost:11434/v1") or "").strip().rstrip("/")
+            try:
+                partes = urlsplit(url_visual)
+                endpoint_seguro = bool(
+                    partes.scheme == "http" and partes.hostname in {"localhost", "127.0.0.1"}
+                    and not partes.username and not partes.password and partes.path == "/v1"
+                    and not partes.query and not partes.fragment
+                )
+            except ValueError:
+                endpoint_seguro = False
+            if endpoint_seguro:
+                try:
+                    resposta = requests_post(
+                        f"{url_visual[:-3]}/api/show", json={"model": self.visao_model}, timeout=3.0,
+                    )
+                    self._visao_local_disponivel = bool(
+                        int(resposta.status_code) == 200 and "vision" in list(resposta.json().get("capabilities") or [])
+                    )
+                except Exception as erro:
+                    self._relatar("modelo_visual_local_indisponivel", erro)
+                http_visual = self.http if url_visual == self.base_url.rstrip("/") else llm_http_factory(
+                    base_url=url_visual, local_timeout=self.local_timeout, remote_timeout=self.remote_timeout,
+                    game_timeout=self.game_timeout, requests_post=requests_post, print_fn=log,
+                    registrar_falha=registrar_falha,
+                )
+                post_visual = http_visual.post
+            else:
+                self._relatar("endpoint_visual_local_invalido", ValueError("A visão local exige endpoint Ollama em loopback."))
+                post_visual = self.http.post
+            self.visao_local = ModeloVisualLocalRuntime(
+                model=self.visao_model if self._visao_local_disponivel else "",
+                post_chat=post_visual,
+                timeout_s=self._float_env(env_getter, "LAYLAY_VISAO_LOCAL_TIMEOUT", 45.0, minimo=3.0, maximo=300.0),
+                registrar_falha=registrar_falha, log=log,
+            )
+            self.analisar_imagem = self.visao_local.analisar
+            self.analisar_imagem_jogo = self.visao_local.analisar
+            self.sintetizar_pesquisa_jogo = partial(
+                self.visao_local.sintetizar,
+                pergunta="Sintetize a análise e a pesquisa fornecidas, preservando o formato solicitado e sem inventar fatos.",
+            )
+            log(f"[VISÃO:LOCAL] modelo={self.visao_model} disponível={self._visao_local_disponivel}")
+        elif self.visao_backend == "gemini":
+            # A gratuidade pertence ao projeto Google. Esta guarda registra a
+            # confirmação humana, não consulta nem modifica seu faturamento.
+            chave_gemini = str(env_getter("GEMINI_API_KEY", "") or "").strip()
+            gratuito_confirmado = str(env_getter("LAYLAY_GEMINI_FREE_TIER_CONFIRMADO", "0")) == "1"
+            self.visao_model = str(env_getter("GEMINI_VISION_MODEL", "gemini-3.5-flash-lite") or "gemini-3.5-flash-lite").strip()
+            self.http_visual_gemini = llm_http_factory(
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+                local_timeout=self.local_timeout, remote_timeout=self.remote_timeout,
+                requests_post=requests_post, print_fn=log, registrar_falha=registrar_falha,
+            )
+
+            def post_gemini(headers: dict, data: dict, timeout: float):
+                return self.http_visual_gemini.post(
+                    {**headers, "Authorization": f"Bearer {chave_gemini}"}, data, timeout=timeout,
+                )
+
+            self.visao_gemini = ModeloVisualLocalRuntime(
+                model=self.visao_model if chave_gemini and gratuito_confirmado else "",
+                post_chat=post_gemini, nome_provedor="gemini",
+                reasoning_effort="minimal",
+                timeout_s=12.0, registrar_falha=registrar_falha, log=log,
+            )
+            self.analisar_imagem = self.analisar_imagem_jogo = self.visao_gemini.analisar
+            self.sintetizar_pesquisa_jogo = partial(
+                self.visao_gemini.sintetizar,
+                pergunta="Sintetize a análise e a pesquisa fornecidas, preservando o formato solicitado e sem inventar fatos.",
+            )
+            log(f"[VISÃO:GEMINI] modelo={self.visao_model} disponível={self.visao_gemini.disponivel}")
+        elif self.visao_backend != "groq":
+            # Configuração desconhecida não autoriza envio a outro provedor.
+            self.analisar_imagem = self.analisar_imagem_jogo = lambda *_a, **_k: "Falha visual: provedor visual inválido."
+            self.sintetizar_pesquisa_jogo = lambda *_a, **_k: ""
+            self._relatar("provedor_visual_invalido", ValueError("Provedor visual inválido."))
+
+        self._analisar_imagem_jogo_provedor = self.analisar_imagem_jogo
+        self.analisar_imagem_jogo = AnaliseVisualComContrato(self._analisar_jogo_com_contrato)
+
+    def _analisar_jogo_com_contrato(
+        self, imagem: str, pergunta: str, *,
+        contrato_saida: ContratoSaidaEstruturada | None = None,
+    ) -> str:
+        if contrato_saida is None:
+            return self._analisar_imagem_jogo_provedor(imagem, pergunta)
+        if not isinstance(contrato_saida, ContratoSaidaEstruturada):
+            raise TypeError("contrato de saída deve ser explícito e tipado")
+        if self.visao_backend in {"ollama", "gemini"}:
+            return self._analisar_imagem_jogo_provedor(
+                imagem, pergunta, contrato_saida=contrato_saida,
+            )
+        if self.visao_backend != "groq":
+            return "Falha visual: provedor visual inválido."
+        # A porta Groq existente já solicita o marcador textual. Validar esse
+        # framing mantém a compatibilidade sem aceitar JSON livre nessa porta.
+        resposta = self._analisar_imagem_jogo_provedor(imagem, pergunta)
+        try:
+            return contrato_saida.validar_framing(resposta)
+        except (TypeError, ValueError) as erro:
+            self._relatar("contrato_saida_visual_invalido", erro)
+            return "Falha visual: o provedor não devolveu a estrutura contratada."
 
     def _relatar(self, codigo: str, erro: BaseException) -> None:
         if callable(self.registrar_falha):
@@ -247,7 +365,7 @@ class ComposicaoInteligenciaExternaRuntime:
             app_title=self.app_title,
             interacao_ativa=interacao_ativa or (lambda: False),
             modo_jogo_ativo=lambda: bool(self.http.modo_jogo_ativo),
-            conversa_jogo_remota=self.conversa_jogo.enviar,
+            conversa_jogo_remota=self.conversa_jogo.enviar if self.conversa_jogo_remota_ativa else None,
             registrar_metrica=registrar_metrica,
             registrar_falha=self.registrar_falha,
             orcamento_turno=orcamento_turno,
@@ -286,7 +404,11 @@ class ComposicaoInteligenciaExternaRuntime:
 
     @property
     def credencial_visual_disponivel(self) -> bool:
-        return bool(self.groq_api_key)
+        if self.visao_backend == "gemini":
+            return self.visao_gemini.disponivel
+        if self.visao_backend == "ollama":
+            return self._visao_local_disponivel
+        return self.visao_backend == "groq" and bool(self.groq_api_key)
 
 
 def criar_composicao_inteligencia_externa_runtime(

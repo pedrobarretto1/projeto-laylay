@@ -4,20 +4,24 @@ from __future__ import annotations
 
 from datetime import datetime
 import time
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Mapping
 
 from mente_laylay.integracao.contexto_conversa import (
     montar_contexto_conversa_natural,
     montar_contexto_gate_conversa,
 )
-from mente_laylay.autonomia.roteador_intencao import bloquear_por_emocao
 from mente_laylay.autonomia.porteiro_acoes import (
     texto_conversa_casual_sem_acao,
     texto_conversa_contextual_sem_comando,
     texto_parece_pergunta_factual,
 )
 from mente_laylay.personalidade.ajuste_contextual import ajustar_fala_por_horario
-from mente_laylay.cognicao.decisao_turno import consolidar_arbitragem
+from mente_laylay.cognicao.decisao_turno import consolidar_arbitragem, avaliar_violacoes_proposta_original
+from mente_laylay.cognicao.contratos_turno import (
+    ContratoPropostaPrincipal, ExtracaoRespostaIA, ViolacaoPropostaPrincipal,
+)
+from mente_laylay.emocoes.erro_proposta import criar_evento_erro_proposta, evento_corresponde_erro_proposta
+from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     alvo_corrigido_ativo,
     atualizar_foco_vivo,
@@ -71,6 +75,7 @@ from mente_laylay.emocoes.leitura_usuario import (
 )
 from mente_laylay.emocoes.contrato_causal import (
     criar_evento_leitura_emocional_usuario,
+    evento_esta_ativo,
     evento_tem_causa_rastreavel,
 )
 from mente_laylay.memoria_mental.eventos_emocionais import (
@@ -225,24 +230,145 @@ class EstadoContextoRuntime:
     def publicar_evento_emocional_causal(
         self,
         evento: Dict[str, Any],
+        *, vincular_plano: bool = True, ocorrencia_unica: bool = False,
     ) -> bool:
         retrato = dict(evento or {})
+        # Esta origem exige a fonte original e a revalidação no commit abaixo.
+        if retrato.get("origem") == "contrato_proposta_principal":
+            return False
         aceito = evento_tem_causa_rastreavel(retrato)
         estado = self._estado()
-        quadro = publicar_evento_emocional_no_quadro(
-            estado.mental.get("eventos_emocionais_causais"),
-            retrato,
-        )
-        campos: Dict[str, Any] = {
-            "eventos_emocionais_causais": quadro,
-        }
-        if aceito:
-            plano = dict(estado.mental.get("plano_turno_atual") or {})
-            if plano:
-                plano["evento_emocional_causal"] = retrato
-                campos["plano_turno_atual"] = plano
-        estado.atualizar_campos("mental", **campos)
+        def publicar(dominios):
+            nonlocal aceito
+            mental = dict(dominios["mental"])
+            quadro = dict(mental.get("eventos_emocionais_causais") or {})
+            if ocorrencia_unica and aceito:
+                fontes = [quadro.get("atual"), *(quadro.get("historico") or [])]
+                mesmas = [item for item in fontes if isinstance(item, Mapping)
+                          and item.get("evidencia_ref") == retrato.get("evidencia_ref")]
+                if mesmas:
+                    aceito = all(item == retrato for item in mesmas)
+                    return None
+            mental["eventos_emocionais_causais"] = publicar_evento_emocional_no_quadro(
+                quadro, retrato,
+            )
+            if aceito and vincular_plano:
+                plano = dict(mental.get("plano_turno_atual") or {})
+                if plano:
+                    plano["evento_emocional_causal"] = retrato
+                    mental["plano_turno_atual"] = plano
+            return {"mental": mental}
+
+        transacionar = getattr(estado, "atualizar_dominios", None)
+        if callable(transacionar):
+            transacionar(("mental",), publicar)
+        else:
+            publicados = publicar({"mental": estado.mental})
+            if publicados is not None:
+                estado.atualizar_campos("mental", **publicados["mental"])
         return aceito
+
+    def publicar_erro_proposta(
+        self,
+        prova: ViolacaoPropostaPrincipal,
+        principal: ContratoPropostaPrincipal,
+        extracao: ExtracaoRespostaIA,
+        *,
+        agora: float | None = None,
+    ) -> Dict[str, Any]:
+        """Revalida autoria e consome a fonte junto ao episódio, sem receipt.
+
+        A ocorrência limita a fonte; não mede a idade da emissão do modelo.
+        O marcador no plano impede reabrir a mesma fonte após outros eventos.
+        """
+        if not (
+            isinstance(prova, ViolacaoPropostaPrincipal)
+            and isinstance(principal, ContratoPropostaPrincipal)
+            and isinstance(extracao, ExtracaoRespostaIA)
+        ):
+            return {}
+        estado = self._estado()
+        transacionar = getattr(estado, "atualizar_dominios", None)
+        if not callable(transacionar):
+            return {}
+        publicado: Dict[str, Any] = {}
+
+        def consumir_se_vigente(dominios: Dict[str, Any]) -> Dict[str, Any] | None:
+            mental = dominios["mental"]
+            turno = mental.get("turno_atual")
+            plano = mental.get("plano_turno_atual")
+            retrato = mental.get("retrato_turno_atual")
+            if not all(isinstance(item, Mapping) for item in (turno, plano, retrato)):
+                return None
+            vigentes = avaliar_violacoes_proposta_original(
+                principal, extracao, turno=turno, plano=plano, retrato=retrato,
+            )
+            if prova not in vigentes:
+                return None
+            instante = time.time() if agora is None else agora
+            evento = criar_evento_erro_proposta(prova, principal, agora=instante)
+            if not evento:
+                return None
+            referencia = evento["evidencia_ref"]
+            consumidos = plano.get("erros_proposta_consumidos", [])
+            if not isinstance(consumidos, list) or referencia in consumidos:
+                return None
+            conversa = aplicar_evento_emocional(
+                dominios["conversacional"], evento, agora=instante,
+                prova_proposta=prova, proposta_principal=principal,
+            )
+            if conversa.get("episodio_emocional") != evento:
+                return None
+            quadro = publicar_evento_emocional_no_quadro(
+                mental.get("eventos_emocionais_causais"), evento,
+            )
+            novo_plano = dict(plano)
+            novo_plano.update(
+                evento_emocional_causal=evento,
+                erros_proposta_consumidos=[*consumidos, referencia],
+            )
+            mental.update(eventos_emocionais_causais=quadro, plano_turno_atual=novo_plano)
+            publicado.update(evento)
+            return {"mental": mental, "conversacional": conversa}
+
+        aceito = transacionar(("mental", "conversacional"), consumir_se_vigente)
+        return publicado if aceito else {}
+
+    def confirmar_erro_proposta(
+        self,
+        prova: ViolacaoPropostaPrincipal,
+        principal: ContratoPropostaPrincipal,
+        extracao: ExtracaoRespostaIA,
+        evento: Mapping[str, Any],
+        *,
+        agora: float | None = None,
+    ) -> bool:
+        """Confere a mesma fonte consumida depois do guardião da fala."""
+        if not (
+            isinstance(extracao, ExtracaoRespostaIA)
+            and evento_corresponde_erro_proposta(evento, prova, principal)
+            and evento_esta_ativo(evento, agora=agora)
+        ):
+            return False
+        retratos = self._estado().snapshot()
+        mental = retratos["mental"]
+        plano = mental.get("plano_turno_atual")
+        turno = mental.get("turno_atual")
+        retrato = mental.get("retrato_turno_atual")
+        if not all(isinstance(item, Mapping) for item in (plano, turno, retrato)):
+            return False
+        quadro = mental.get("eventos_emocionais_causais")
+        consumidos = plano.get("erros_proposta_consumidos")
+        if not (
+            isinstance(quadro, Mapping) and quadro.get("atual") == evento
+            and plano.get("evento_emocional_causal") == evento
+            and retratos["conversacional"].get("episodio_emocional") == evento
+            and isinstance(consumidos, list) and evento["evidencia_ref"] in consumidos
+        ):
+            return False
+        return prova in avaliar_violacoes_proposta_original(
+            principal, extracao, turno=turno, plano=plano, retrato=retrato,
+        )
 
     def registrar_leitura_emocional_usuario(self, leitura: Dict[str, Any]) -> None:
         try:
@@ -878,8 +1004,18 @@ class EstadoContextoRuntime:
         )
 
     def ajustar_estado_voz(self, chave: str, valor: Any) -> None:
+        from mente_laylay.personalidade.retrato_entrega import RetratoEntregaFala
+
         campos: Dict[str, Any] = {}
-        if chave == "current_emotion":
+        if chave == "retrato_entrega_fala":
+            # Metadado da apresentação. Não passa pelo setter de emoção,
+            # não muda a causa e não pertence à persistência pessoal.
+            ativo = isinstance(valor, RetratoEntregaFala)
+            campos["retrato_entrega_fala"] = valor.como_dict() if ativo else {}
+            campos["is_speaking"] = ativo
+            if not ativo:
+                campos["audio_playing"] = False
+        elif chave == "current_emotion":
             conversa_atual = self._estado().conversacional
             emocao_atual = str(conversa_atual.get("current_emotion") or "calma")
             emocao_nova = str(valor or "calma").strip().lower()
@@ -1010,6 +1146,7 @@ class EstadoContextoRuntime:
             if isinstance(item, dict) and str(item.get("fala") or "").strip()
         ]
         ultima_resposta = str(mente.get("ultima_resposta") or "").strip()[:300]
+        episodio_em_contexto = dict(conversa_get("episodio_emocional", {}) or {})
         if ultima_resposta and (
             not falas_recentes or falas_recentes[-1] != ultima_resposta
         ):
@@ -1046,11 +1183,60 @@ class EstadoContextoRuntime:
                 atual["casos_regressao_candidatos"] = candidatos
             estado.substituir("mental", atual)
 
+        def registrar_resistencia_p17(referencia: str) -> bool:
+            referencia = str(referencia or "").strip()
+            if not referencia:
+                return False
+            registrada = False
+
+            def atualizar(dominios: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]] | None:
+                nonlocal registrada
+                mental = dominios["mental"]
+                conversa = dominios["conversacional"]
+                episodio = conversa.get("episodio_emocional")
+                if not (
+                    isinstance(episodio, Mapping)
+                    and dict(episodio) == episodio_em_contexto
+                    and episodio.get("evidencia_ref") == referencia
+                    and evento_esta_ativo(episodio)
+                    and conversa.get("current_emotion") == "brava"
+                    and conversa.get("emotion_level") == 3
+                ):
+                    return None
+                agora = time.time()
+                anteriores = mental.get("resistencias_p17_refs")
+                vigentes = {
+                    str(ref): float(expira)
+                    for ref, expira in (anteriores.items() if isinstance(anteriores, dict) else ())
+                    if isinstance(expira, (int, float)) and float(expira) > agora
+                }
+                if referencia not in vigentes:
+                    mental["resistencia_p17_ref"] = referencia
+                    vigentes[referencia] = agora + 120.0
+                    registrada = True
+                else:
+                    return None
+                mental["resistencias_p17_refs"] = vigentes
+                return dominios
+
+            estado.atualizar_dominios(("mental", "conversacional"), atualizar)
+            return registrada
+
         return {
             "mente_integrada_estado": dict(mente),
+            "preferencias_humor_contextuais": dict(mente.get("preferencias_humor_contextuais") or {}),
+            "preferencia_humor_contextual": dict(mente.get("preferencia_humor_contextual") or {}),
             "ultima_playlist": musica_get("ultima_playlist"),
             "current_emotion": conversa_get("current_emotion", "calma"),
             "emotion_level": conversa_get("emotion_level", 1),
+            "episodio_emocional": dict(episodio_em_contexto),
+            "resistencia_p17_ref": str(mente.get("resistencia_p17_ref") or ""),
+            "resistencias_p17_refs": [
+                str(ref)
+                for ref, expira in dict(mente.get("resistencias_p17_refs") or {}).items()
+                if isinstance(expira, (int, float)) and float(expira) > time.time()
+            ],
+            "registrar_resistencia_p17": registrar_resistencia_p17,
             "messages": memoria_get("messages", []),
             "set_ultima_playlist": lambda valor: ns["_musica_estado_set"]("ultima_playlist", valor),
             "set_playlist_state_last_url": lambda valor: playlist_state.__setitem__("last_url", valor),
@@ -1076,16 +1262,6 @@ class EstadoContextoRuntime:
             "falas_recentes": falas_recentes[-4:],
             "ultimas_entradas": list(mente.get("ultimas_entradas") or []),
             "foco_vivo": ns["_foco_vivo_atual"](),
-            "_bloqueio_por_emocao": lambda intent, texto, _ctx: bloquear_por_emocao(
-                intent,
-                texto,
-                {
-                    "current_emotion": conversa_get("current_emotion", "calma"),
-                    "emotion_level": conversa_get("emotion_level", 1),
-                    "falar_com_lipsync": ns["falar_com_lipsync"],
-                    "_normalizar_texto_com_apelidos": ns["_normalizar_texto_com_apelidos"],
-                },
-            ),
             "registrar_contexto_arquivo": lambda alvo, tipo="": self.registrar_mente_curta(
                 "", "", intencao="ARQUIVOS", alvo=alvo, habilidade=tipo or "arquivos"
             ),

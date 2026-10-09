@@ -259,10 +259,20 @@ _CONTRATO_POR_DOMINIO = {
         "limites": "data ou horário ambíguo exige esclarecimento",
     },
     "arquivos": {
-        "invocacao_natural": ("cria um arquivo", "encontra este código", "apaga esse arquivo"),
+        "invocacao_natural": (
+            "cria um arquivo", "encontra este código", "apaga esse arquivo",
+            "leia o arquivo pelo caminho completo",
+            "abra o arquivo pelo caminho completo",
+            "escreva uma anotação no arquivo seguido do caminho completo",
+            "acrescente uma linha no arquivo seguido do caminho completo",
+        ),
         "proprietario": "mente_laylay.arquivos.execucao_arquivos",
         "dependencias": ("sistema de arquivos", "índice local para pesquisa"),
-        "limites": "opera somente em caminhos resolvidos e exclusão exige confirmação",
+        "limites": (
+            "opera somente nas raízes pessoais permitidas; caminho absoluto preserva o alvo, "
+            "mas não autoriza efeito sem pedido; leitura valida formato, tamanho e sensibilidade; "
+            "exclusão exige confirmação e abertura pode não confirmar foco"
+        ),
     },
     "email": {
         "invocacao_natural": ("quais e-mails novos eu tenho", "mostra minhas notificações"),

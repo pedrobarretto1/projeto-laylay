@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from memoria_sqlite import MemoriaSQLite
 
 from mente_laylay.autonomia.comandos_imediatos import ComandosImediatosRuntime
@@ -52,6 +54,45 @@ def criar_runtime(tmp_path):
 
 def dados_salvos(tmp_path):
     return json.loads((tmp_path / "pessoas.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("texto", [
+    "Meu irmão está bravo. Eu me sinto culpado.",
+    "Meu irmão estava bravo.",
+    "Minha amiga parece cansada.",
+    "Meu colega chegou atrasado.",
+    "Minha amiga corre todos os dias.",
+    "Meu irmão feliz conseguiu emprego.",
+    "Minha mãe continua preocupada.",
+    "Meu pai anda cansado.",
+])
+def test_relacao_sem_nome_apresentado_nao_autoriza_identidade_persistente(tmp_path, texto):
+    runtime, _pendencia, estado, falas, resultados, aprendizados, mente, _revogacoes = criar_runtime(tmp_path)
+    assert runtime._extrair_relacao(texto) is None, "primeira fronteira: palavra após relação não prova identidade"
+    antes = dict(estado)
+    assert runtime.processar(texto) is False
+    assert not runtime.caminho.exists()
+    assert estado == antes
+    assert falas == resultados == aprendizados == mente == []
+
+
+@pytest.mark.parametrize("texto,nome,relacao", [
+    ("Meu irmão se chama Esta.", "Esta", "irmão"),
+    ("Minha irmã se chama Ana.", "Ana", "irmã"),
+    ("Meu colega chama Carlos.", "Carlos", "colega"),
+    ("Esta é minha amiga.", "Esta", "amiga"),
+    ("meu irmão é carlos", "Carlos", "irmão"),
+    ("eu tenho uma amiga chamada beatriz", "Beatriz", "amiga"),
+])
+def test_moldura_de_nomeacao_prevalece_sobre_palavra_soltas(tmp_path, texto, nome, relacao):
+    runtime, _pendencia, _estado, _falas, resultados, _aprendizados, _mente, _revogacoes = criar_runtime(tmp_path)
+    assert runtime._extrair_relacao(texto) == {"nome": nome, "relacao": relacao, "correcao": "nao"}
+    assert runtime.processar(texto) is False
+    pessoa = dados_salvos(tmp_path)["pessoas"][0]
+    assert pessoa["nome"] == nome
+    assert pessoa["relacoes"][0]["tipo"] == relacao
+    assert pessoa["relacoes"][0]["evidencia"] == texto
+    assert resultados[-1][0][0]["params"]["alvo"] == nome
 
 
 class _IoTNulo:

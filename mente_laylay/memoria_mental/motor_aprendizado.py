@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import math
 import threading
 import time
 import unicodedata
@@ -13,6 +14,11 @@ from mente_laylay.memoria_mental.maturidade_aprendizado import (
     MaturidadeAprendizadoRuntime,
 )
 from mente_laylay.memoria_mental.estado_continuidades import sugestao_pendente_ativa
+from mente_laylay.cognicao.interpretador_continuidade import classificar_feedback_comunicativo
+from mente_laylay.cognicao.preferencia_humor import (
+    CONTEXTOS_HUMOR, reconstruir_preferencia_humor_duravel, selecionar_preferencia_humor,
+    PESOS_FEEDBACK_HUMOR, validar_amostra_humor,
+)
 
 
 def _normalizar(texto: Any) -> str:
@@ -73,6 +79,39 @@ class MotorAprendizadoRuntime:
             )[:80],
         }
 
+    def carregar_preferencia_humor_duravel(self, contexto: str) -> Dict[str, Any]:
+        """Compara pedidos explícitos com proveniência no mesmo seletor do turno.
+
+        A ordem de consulta ao banco não decide prioridade. Uma evidência de
+        interação isolada não passa pela reconstrução de pedido explícito.
+        """
+        if contexto not in CONTEXTOS_HUMOR:
+            return {}
+        candidatas = {}
+        for escopo in dict.fromkeys((contexto, "geral")):
+            chave = f"personalidade:tolerancia_humor:{escopo}"
+            try:
+                hipotese = self.memoria.obter_hipotese_aprendizado(chave)
+                evidencias = self.memoria.listar_eventos_aprendizado(chave, limit=1)
+                preferencia = reconstruir_preferencia_humor_duravel(
+                    hipotese, evidencias[0] if evidencias else {},
+                )
+            except Exception as erro:
+                self.log(f"⚠️ [APRENDIZADO] preferência de humor indisponível: {type(erro).__name__}")
+                continue
+            if preferencia:
+                candidatas[escopo] = preferencia
+        try:
+            avaliacao = self.maturidade.avaliar_tolerancia_humor(contexto)
+            if avaliacao["aplicavel"]:
+                candidatas["implicita"] = {
+                    **avaliacao, "origem": "tolerancia_implicita", "duravel": False,
+                    "evidencia_ref": f"aprendizado:{avaliacao['chave']}",
+                }
+        except Exception as erro:
+            self.log(f"⚠️ [APRENDIZADO] tolerância indisponível: {type(erro).__name__}")
+        return selecionar_preferencia_humor(candidatas, contexto=contexto)
+
     @staticmethod
     def _assinatura_contexto(contexto: Dict[str, Any] | None, *, global_: bool = False) -> str:
         if global_:
@@ -117,6 +156,7 @@ class MotorAprendizadoRuntime:
         escopo: str = "geral",
         confirmado_usuario: bool = False,
         contexto: Dict[str, Any] | None = None,
+        id_evento: str = "",
     ) -> Dict[str, Any] | None:
         if _normalizar(origem) in {"ia", "assistente", "resposta ia", "fala ia"}:
             return None
@@ -126,6 +166,7 @@ class MotorAprendizadoRuntime:
                 valor=valor, sinal=sinal, origem=origem, evidencia=evidencia,
                 contexto=contexto or self._contexto(),
                 confirmado_usuario=confirmado_usuario,
+                **({"id_evento": id_evento} if id_evento else {}),
             )
         except Exception as erro:
             self.log(f"⚠️ [APRENDIZADO] evidência não persistida: {erro}")
@@ -363,6 +404,8 @@ class MotorAprendizadoRuntime:
         origem: str,
         confianca: float = 1.0,
         alvo: str = "",
+        id_evento: str = "",
+        proveniencia: Dict[str, Any] | None = None,
     ) -> Dict[str, Any] | None:
         """Registra feedback efêmero sem promovê-lo a preferência durável.
 
@@ -374,10 +417,10 @@ class MotorAprendizadoRuntime:
         origem_limpa = _normalizar(origem) or "desconhecida"
         alvo_limpo = re.sub(r"\s+", " ", str(alvo or "").strip())[:120]
         confianca_evento = max(0.0, min(1.0, float(confianca or 0.0)))
-        if evento in {"silencio", "silencio qualificado"} or aceito is None:
-            sinal = -0.10 * confianca_evento
-        elif evento in {"correcao", "repeticao"}:
+        if evento in {"correcao", "repeticao"}:
             sinal = -0.35 * confianca_evento
+        elif evento in {"silencio", "silencio qualificado"} or aceito is None:
+            sinal = -0.10 * confianca_evento
         else:
             sinal = (0.45 if aceito else -0.45) * confianca_evento
         contexto = self._contexto()
@@ -385,9 +428,17 @@ class MotorAprendizadoRuntime:
             "origem_feedback": origem_limpa,
             "confianca_evento": confianca_evento,
         })
+        fonte = dict(proveniencia or {})
+        identidade = str(id_evento or "").strip()
+        if fonte.get("id_entrega") and str(fonte["id_entrega"]).strip() != identidade:
+            raise ValueError("identidade do feedback diverge da proveniência da entrega")
+        if fonte:
+            contexto["proveniencia"] = fonte
+        dominio = _normalizar(fonte.get("dominio"))[:60]
+        contexto_alvo = f"{dominio}:" if dominio else ""
         chave_alvo = _normalizar(alvo_limpo)[:80] or "geral"
-        return self.registrar_evidencia(
-            chave=f"feedback_contextual:{origem_limpa}:{evento}:{chave_alvo}",
+        registro = self.registrar_evidencia(
+            chave=f"feedback_contextual:{origem_limpa}:{evento}:{contexto_alvo}{chave_alvo}",
             tipo="feedback_contextual",
             escopo=origem_limpa,
             valor={
@@ -401,7 +452,41 @@ class MotorAprendizadoRuntime:
             evidencia=str(resultado or tipo or "")[:500],
             confirmado_usuario=False,
             contexto=contexto,
+            id_evento=f"feedback_contextual:{identidade}" if identidade else "",
         )
+        # A persistência genérica continua com os pesos históricos. A projeção
+        # de estilo exige qualificação literal + receipt validado da entrega.
+        qualificacao = validar_amostra_humor(resultado, evento, identidade, fonte)
+        if registro is not None and qualificacao and math.isfinite(confianca_evento) and confianca_evento >= 0.90:
+            estilo = self.registrar_evidencia(
+                chave=f"personalidade:tolerancia_humor_implicita:{fonte['contexto_humor']}",
+                tipo="tolerancia_humor", escopo=fonte["contexto_humor"],
+                valor={"evento": evento, "direcao": qualificacao["direcao"]},
+                sinal=PESOS_FEEDBACK_HUMOR[evento], origem="feedback_humor_entrega",
+                evidencia=qualificacao["evidencia_literal"], confirmado_usuario=False,
+                contexto={"proveniencia": fonte}, id_evento=f"tolerancia_humor:{identidade}",
+            )
+            registro = {**registro, "tolerancia_humor": {
+                "status": "registrado" if estilo is not None else "falha",
+                "contexto": fonte["contexto_humor"], "autoriza_execucao": False,
+            }}
+        return registro
+
+    def diagnostico_tolerancia_humor(self) -> Dict[str, Any]:
+        """Expõe suficiência e influência por contexto, sem texto pessoal."""
+        contextos = {}
+        for contexto in ("jogo", "conversa", "comandos"):
+            try:
+                avaliada = self.maturidade.avaliar_tolerancia_humor(contexto)
+                contextos[contexto] = {campo: avaliada[campo] for campo in (
+                    "aplicavel", "amostras_distintas", "predominancia", "influencia_media",
+                )}
+                if avaliada["aplicavel"]:
+                    contextos[contexto]["direcao"] = avaliada["direcao"]
+            except Exception:
+                contextos[contexto] = {"aplicavel": False, "estado": "indisponivel"}
+        return {"contextos": contextos, "minimo_entregas": 3,
+                "preferencia_explicita_prevalece": True, "autoriza_execucao": False}
 
     def observar_evento_pendencia(
         self, evento: str, pendencia: Dict[str, Any] | None,
@@ -540,15 +625,12 @@ class MotorAprendizadoRuntime:
             self.registrar_feedback_musical(alvo or t[:80], positivo and not negativo, texto)
 
     def observar_interacao(
-        self, texto_usuario: str, resposta_ia: str, *, habilidade: str = "", alvo: str = ""
+        self, texto_usuario: str, resposta_ia: str, *, habilidade: str = "", alvo: str = "",
+        feedback_ja_observado: bool = False,
     ) -> None:
         self.observar_texto_usuario(texto_usuario, habilidade=habilidade, alvo=alvo)
-        texto_normalizado = _normalizar(texto_usuario)
-        if re.search(
-            r"\b(?:na verdade|quis dizer|voce errou|você errou|nao lay|não lay|"
-            r"nao foi isso|não foi isso|corrigindo)\b",
-            texto_normalizado,
-        ):
+        feedback = "" if feedback_ja_observado else classificar_feedback_comunicativo(texto_usuario)
+        if feedback == "correcao":
             self.registrar_feedback_contextual(
                 tipo="correcao",
                 aceito=False,
@@ -557,11 +639,7 @@ class MotorAprendizadoRuntime:
                 confianca=0.9,
                 alvo=alvo,
             )
-        elif re.search(
-            r"^(?:tenta|tente|faz|faca|faça|repete|repita)\s+(?:de novo|outra vez)$|"
-            r"^(?:de novo|outra vez)$",
-            texto_normalizado,
-        ):
+        elif feedback == "repeticao":
             self.registrar_feedback_contextual(
                 tipo="repeticao",
                 aceito=False,

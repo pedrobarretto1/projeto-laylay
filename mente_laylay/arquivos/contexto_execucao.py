@@ -6,6 +6,7 @@ import os
 from typing import Any, Dict
 
 from mente_laylay.integracao.registro_mutacoes_arquivos import PortaArquivosMutacao
+from mente_laylay.arquivos.nome_natural import caminho_absoluto_literal, texto_contem_caminho_absoluto
 
 
 def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
@@ -60,6 +61,12 @@ def resolver_referencia_arquivo_contextual(
     ctx: Dict[str, Any], alvo_ref: str, tipo_ref: str = ""
 ) -> str:
     ref = str(alvo_ref or "").strip()
+    caminho_literal = caminho_absoluto_literal(ref)
+    if caminho_literal:
+        return caminho_literal
+    if texto_contem_caminho_absoluto(ref):
+        # Uma moldura inválida não pode escapar para um alias por basename.
+        return ref
     ref_norm = ref.lower()
     tipo_norm = str(tipo_ref or "").strip().lower()
     referencias = {

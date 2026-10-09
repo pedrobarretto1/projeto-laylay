@@ -25,7 +25,7 @@ from mente_laylay.personalidade.higiene_fala import remover_residuos_operacionai
 from mente_laylay.personalidade.proporcao_resposta import parece_problema_matematico
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
-from mente_laylay.cognicao.contratos_turno import ContratoRespostaTurno
+from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal, ContratoRespostaTurno
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
@@ -42,6 +42,7 @@ from mente_laylay.autonomia.higiene_resposta_ia import (
     _recuperar_fala_no_mesmo_turno,
     _saida_conversacional_recuperavel_localmente,
     corrigir_saida_malformada_da_ia,
+    decodificar_resposta_da_ia,
     limpar_resposta_da_ia,
 )
 
@@ -360,7 +361,9 @@ def _extrair_campo_json_independente(bruto: str, campo: str) -> Any:
     return valor
 
 
-def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> Dict[str, Any]:
+def extrair_leitura_semantica_da_ia(
+    resposta_bruta: Any, texto_usuario: str, *, origem: str = "llm_principal",
+) -> Dict[str, Any]:
     """Extrai a compreensão produzida junto da fala, sem interpretar comandos."""
     if isinstance(resposta_bruta, dict):
         dados = resposta_bruta
@@ -426,7 +429,22 @@ def extrair_leitura_semantica_da_ia(resposta_bruta: Any, texto_usuario: str) -> 
     return normalizar_leitura_semantica(
         valor,
         texto=texto_usuario,
-        origem="llm_principal",
+        origem=origem,
+    )
+
+
+def extrair_leitura_semantica_principal(
+    proposta_principal: Any, texto_usuario: str,
+) -> Dict[str, Any]:
+    """Reextrai a leitura da emissão capturada pelo host, antes dos reparos."""
+    if (
+        not isinstance(proposta_principal, ContratoPropostaPrincipal)
+        or not proposta_principal.proveniencia_conhecida
+        or proposta_principal.texto_usuario != str(texto_usuario or "").strip()
+    ):
+        return {}
+    return extrair_leitura_semantica_da_ia(
+        proposta_principal.resposta_bruta, proposta_principal.texto_usuario,
     )
 
 
@@ -453,6 +471,10 @@ def preparar_resposta_para_execucao(
     registrar_log = log or print
     texto = str(texto_usuario or "").strip()
     bot_raw = resposta_bruta
+    decodificacao_original = decodificar_resposta_da_ia(
+        bot_raw, limpar_texto_fala_cb=limpar_texto_fala_cb,
+        fallback_fala=fallback_fala,
+    )
     leitura_semantica_original = extrair_leitura_semantica_da_ia(
         bot_raw,
         texto,
@@ -544,11 +566,13 @@ def preparar_resposta_para_execucao(
         bot_raw = corrigida
         registrar_log("🍪 [AUTOCORREÇÃO] Saída da IA refeita em JSON válido antes de executar.")
 
-    fala_limpa, comandos = limpar_resposta_da_ia(
-        bot_raw,
-        limpar_texto_fala_cb=limpar_texto_fala_cb,
-        fallback_fala=fallback_fala,
-    )
+    if corrigida:
+        fala_limpa, comandos = limpar_resposta_da_ia(
+            bot_raw, limpar_texto_fala_cb=limpar_texto_fala_cb,
+            fallback_fala=fallback_fala,
+        )
+    else:
+        fala_limpa, comandos = decodificacao_original.como_legado()
     contexto_com = dict(contexto_comunicacao or {})
     plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
     # Consumir a decisão do dono do turno ANTES de escolher o caminho de
@@ -989,10 +1013,6 @@ def preparar_resposta_para_execucao(
                 )
     tipo_interacao = extrair_tipo_interacao_da_ia(bot_raw)
     emocao_resposta, nivel_emocao_resposta = extrair_emocao_da_ia(bot_raw)
-    leitura_semantica = (
-        extrair_leitura_semantica_da_ia(bot_raw, texto)
-        or leitura_semantica_original
-    )
     suprimir_fala = False
     if realidade_bloqueada:
         fala_limpa = contingencia_comunicacao(
@@ -1060,9 +1080,14 @@ def preparar_resposta_para_execucao(
         comandos=tuple(comandos),
         tipo_interacao=tipo_interacao,
         aprendizados=tuple(aprendizados),
-        leitura_semantica=leitura_semantica,
+        leitura_semantica=leitura_semantica_original,
+        leitura_semantica_reparada=(
+            extrair_leitura_semantica_da_ia(bot_raw, texto, origem="resposta_reparada")
+            if bot_raw != resposta_bruta else {}
+        ),
         autocorrigida=bool(corrigida or comunicacao_autocorrigida),
         suprimir_fala=suprimir_fala,
         emocao=emocao_resposta,
         nivel_emocao=nivel_emocao_resposta,
+        extracao_original=decodificacao_original.extracao,
     ).como_dict()

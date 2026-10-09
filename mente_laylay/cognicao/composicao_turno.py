@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from mente_laylay.cognicao.contratos_turno import ContratoOcorrenciaTurno, ContratoPropostaPrincipal
+from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_principal
 from mente_laylay.cognicao.orquestrador_turno_runtime import (
     atualizar_planejamento_turno,
     concluir_planejamento_evento,
@@ -132,14 +134,53 @@ class ComposicaoTurnoRuntime:
             resultado=resultado,
         )
 
+    def atualizar_ocorrencia(
+        self, fase: str, ocorrencia: ContratoOcorrenciaTurno, *,
+        comandos=(), erros=(), fala: str = "",
+    ) -> dict:
+        """Conclui somente a ocorrência capturada pelo produtor local."""
+        return atualizar_planejamento_turno(
+            self._snapshot, fase, comandos=comandos, erros=erros, fala=fala,
+            ocorrencia_turno=ocorrencia,
+        )
+
+    def atualizar_proposta(
+        self, fase: str, proposta_principal: ContratoPropostaPrincipal, *,
+        comandos=(), erros=(), fala: str = "",
+    ) -> dict:
+        """Publica somente na ocorrência capturada pelo runtime da resposta."""
+        return atualizar_planejamento_turno(
+            self._snapshot, fase, comandos=comandos, erros=erros, fala=fala,
+            proposta_principal=proposta_principal,
+        )
+
     def verificar_fala(self, fala: str, *, origem: str = "conversa") -> dict:
         return verificar_fala_do_turno(self._snapshot, fala, origem=origem)
+
+    def proposta_vigente(self, proposta_principal: ContratoPropostaPrincipal) -> bool:
+        """Confere origem num snapshot único, sem publicar ou autorizar efeitos."""
+        estado = self._servicos.get("_estado_compartilhado_runtime")
+        snapshot = getattr(estado, "snapshot", None)
+        if not callable(snapshot):
+            return False
+        mental = snapshot().get("mental", {})
+        return not motivo_divergencia_ocorrencia_principal(
+            proposta_principal, turno=mental.get("turno_atual"),
+            plano=mental.get("plano_turno_atual"), retrato=mental.get("retrato_turno_atual"),
+        )
 
     def registrar_leitura_semantica(
         self, texto: str, leitura: dict | None,
     ) -> dict:
         return registrar_leitura_semantica_principal(
             self._snapshot, texto, leitura,
+        )
+
+    def registrar_leitura_proposta(
+        self, texto: str, leitura: dict | None, proposta_principal: ContratoPropostaPrincipal,
+    ) -> dict:
+        return registrar_leitura_semantica_principal(
+            self._snapshot, texto, leitura, proposta_principal=proposta_principal,
         )
 
     @property

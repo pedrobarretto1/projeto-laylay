@@ -3,8 +3,12 @@ from __future__ import annotations
 
 # P0_DIAGNOSTICO_ENCERRAMENTO_TESTES_V1_20260815
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
+import textwrap
 
 from cliente.executor_roteiro_laylay import _registrar_saida_processo
 from mente_laylay.integracao.diagnostico_encerramento import (
@@ -44,6 +48,73 @@ def test_sentinela_registra_inicio_sem_faulthandler() -> None:
             assert eventos[:2] == ["processo_observado", "depois_do_inicio"]
         finally:
             sentinela.desregistrar_para_teste()
+
+
+def _processo_com_callback_tardio(
+    pasta: Path, *, falha_nativa: bool = False,
+    captura: bool = True, desregistrar: bool = False,
+) -> subprocess.CompletedProcess:
+    codigo = textwrap.dedent('''
+        import atexit, faulthandler, json, os, sys
+        from mente_laylay.integracao.diagnostico_encerramento import SentinelaEncerramento
+        if os.name == "nt":
+            import ctypes
+            ctypes.WinDLL("kernel32").SetErrorMode(3)
+        def callback_de_encerramento_tardio():
+            print("CAPTURA_TARDIA " + json.dumps(faulthandler.is_enabled()), flush=True)
+            if sys.argv[2] == "falha":
+                faulthandler._sigsegv()
+        atexit.register(callback_de_encerramento_tardio)
+        sentinela = SentinelaEncerramento(sys.argv[1], habilitar_faulthandler=sys.argv[3] == "ativa")
+        print("CAPTURA_INICIAL " + json.dumps(faulthandler.is_enabled()), flush=True)
+        if sys.argv[4] == "limpar":
+            fd = sentinela._fault_fd
+            sentinela.desregistrar_para_teste()
+            sentinela.desregistrar_para_teste()
+            try:
+                os.fstat(fd)
+            except OSError:
+                print("DESCRITOR_LIBERADO", flush=True)
+    ''')
+    ambiente = dict(os.environ, PYTHONIOENCODING="utf-8")
+    ambiente.pop("PYTHONFAULTHANDLER", None)
+    return subprocess.run(
+        [sys.executable, "-c", codigo, str(pasta), "falha" if falha_nativa else "normal",
+         "ativa" if captura else "inativa", "limpar" if desregistrar else "preservar"],
+        cwd=Path(__file__).resolve().parents[2],
+        env=ambiente,
+        capture_output=True, text=True, encoding="utf-8", timeout=20,
+    )
+
+
+def test_sentinela_mantem_captura_ativa_para_demais_callbacks_de_saida(tmp_path: Path) -> None:
+    processo = _processo_com_callback_tardio(tmp_path)
+    assert processo.returncode == 0, processo.stderr
+    assert "CAPTURA_INICIAL true" in processo.stdout
+    assert "CAPTURA_TARDIA true" in processo.stdout, "a sentinela não é o último callback de atexit"
+
+
+def test_falha_nativa_de_callback_tardio_permanece_na_caixa_preta(tmp_path: Path) -> None:
+    # Somente o filho descartável sofre a falha; não inicia Laylay ou hardware.
+    processo = _processo_com_callback_tardio(tmp_path, falha_nativa=True)
+    assert "CAPTURA_INICIAL true" in processo.stdout
+    assert processo.returncode != 0, "uma falha nativa não pode aparentar saída normal"
+    nativo = (tmp_path / "falhas_nativas.log").read_text(encoding="utf-8")
+    assert "callback_de_encerramento_tardio" in nativo, "a captura foi desativada antes da falha"
+
+
+def test_sentinela_sem_captura_nao_habilita_handler_nem_abre_arquivo_nativo(tmp_path: Path) -> None:
+    processo = _processo_com_callback_tardio(tmp_path, captura=False)
+    assert processo.returncode == 0, processo.stderr
+    assert "CAPTURA_INICIAL false" in processo.stdout and "CAPTURA_TARDIA false" in processo.stdout
+    assert not (tmp_path / "falhas_nativas.log").exists()
+
+
+def test_desregistro_explicito_para_teste_desativa_e_libera_descritor(tmp_path: Path) -> None:
+    processo = _processo_com_callback_tardio(tmp_path, desregistrar=True)
+    assert processo.returncode == 0, processo.stderr
+    assert "CAPTURA_INICIAL true" in processo.stdout and "CAPTURA_TARDIA false" in processo.stdout
+    assert "DESCRITOR_LIBERADO" in processo.stdout
 
 
 def test_executor_registra_codigo_windows_em_hex() -> None:

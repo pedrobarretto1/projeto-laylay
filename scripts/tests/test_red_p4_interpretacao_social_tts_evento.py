@@ -126,6 +126,7 @@ def test_red_p4_resposta_evento_usa_expressao_da_cognicao_nao_da_fonte() -> None
     contrato = construir_contrato_semantico_evento(
         evento,
         mente={"ultima_entrada": "Essa pista eu domino facil."},
+        turno={"id": "p4-evento-atual"}, plano={"id": "p4-plano-atual"},
     )
     turno = {
         "natureza_entrada": "evento",
@@ -136,9 +137,10 @@ def test_red_p4_resposta_evento_usa_expressao_da_cognicao_nao_da_fonte() -> None
         "contrato_fala": contrato,
     }
     agendamentos: list[tuple[Any, ...]] = []
+    modelo = _Modelo()
     runtime = RespostaEventoRuntime(
         preparacao_prompt=_Prompt(),
-        modelo_llm=_Modelo(),
+        modelo_llm=modelo,
         agendar_fala_proativa=lambda *args, **kwargs: (
             agendamentos.append((*args, kwargs)) or True
         ),
@@ -156,12 +158,13 @@ def test_red_p4_resposta_evento_usa_expressao_da_cognicao_nao_da_fonte() -> None
     )
 
     assert resultado["status"] == "agendada"
-    assert agendamentos == [(
-        "presenca_jogo",
-        "E a pista era facil, ne?",
-        "debochada",
-        contrato["direcao_social"]["nivel"],
-        {},
-    )]
+    # P18: expressão exige a causa da ocorrência e o jogo materializa o
+    # contrato localmente. A frase livre da LLM não é o resultado esperado.
+    assert len(agendamentos) == 1
+    tipo, fala, emocao, nivel, opcoes = agendamentos[0]
+    assert tipo == "presenca_jogo" and "queda confirmada" in fala
+    assert (emocao, nivel) == ("debochada", contrato["direcao_social"]["nivel"])
+    assert opcoes == {} and modelo.pedidos == []
+    assert contrato["evento_emocional_causal"]["direcao_social"] == contrato["direcao_social"]
     assert resultado["direcao_social"] == contrato["direcao_social"]
     assert resultado["autoriza_execucao"] is False

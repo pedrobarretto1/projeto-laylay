@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any, Mapping, Sequence
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 from mente_laylay.memoria_mental.resultado_acao import (
     ResultadoAcao,
     STATUS_RESULTADO_CANCELADO,
@@ -264,6 +266,7 @@ def planejar_resposta_acao(
     *,
     emocao_preferida: str = "",
     nivel_preferido: int = 1,
+    contexto: Mapping[str, Any] | None = None,
 ) -> PlanoResposta:
     classe = classificar_resultado(resultado)
     alvo = str(resultado.alvo or "isso").strip()
@@ -302,6 +305,7 @@ def planejar_resposta_acao(
         fala,
         classe=classe,
         emocao=emocao,
+        contexto=contexto,
     )
     fala = _contextualizar_turno_misto(fala, resultado.texto_usuario)
 
@@ -311,5 +315,32 @@ def planejar_resposta_acao(
         emocao=emocao,
         nivel=nivel,
         grau_compromisso=classificar_grau_compromisso(resultado.texto_usuario),
-        personalidade_permitida=True,
+        personalidade_permitida=not humor_bloqueado_por_preferencia(contexto),
     )
+
+
+def fala_factual_resultados_compostos(
+    resultados: Sequence[ResultadoAcao],
+    *,
+    informacoes: Mapping[str, str] | None = None,
+) -> str:
+    """Compõe fatos dos receipts, sem colar confirmações já personalizadas."""
+    informacoes = dict(informacoes or {})
+    partes = []
+    for item in resultados:
+        classe = classificar_resultado(item)
+        status = str(item.status or "").casefold()
+        # Abrir um alvo não confirma foco nem reprodução. No novo caminho
+        # composto a contingência declara apenas o efeito mínimo do receipt.
+        if classe == "sucesso" and "abert" in status and "focad" not in status:
+            objeto = item.alvo or "o que você pediu"
+            if status.startswith("playlist_aberta"):
+                objeto = "a playlist " + objeto
+            ancora = f"Abri {objeto}."
+        elif classe == "sucesso" and item.executou is True and status in {"ligado", "desligado"}:
+            verbo = "Liguei" if status == "ligado" else "Desliguei"
+            ancora = f"{verbo} {item.alvo or 'o que você pediu'}."
+        else:
+            ancora = _ancora_resultado(item, classe)
+        partes.append(str(informacoes.get(item.id_solicitacao) or ancora).strip())
+    return "; ".join(parte.rstrip(" .;") for parte in partes if parte).strip(" ;") + "." if partes else ""

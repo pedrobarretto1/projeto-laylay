@@ -50,6 +50,17 @@ def _plano_pergunta() -> dict:
     }
 
 
+def _candidatos_observados() -> dict:
+    # Fixture passa pelo produtor real de evidência; sem fonte/nomes/TTL,
+    # 'confiavel=True' sozinho já não promete uma escolha fundamentada.
+    return montar_fundamentacao("filme de romance", {
+        "ok": True, "titulo": "Candidatos de filme de romance",
+        "resumo": "Uma Linda Mulher; Titanic; Jerry Maguire.",
+        "candidatos": ["Uma Linda Mulher", "Titanic", "Jerry Maguire"],
+        "fonte": "fonte_teste", "confianca": 0.9,
+    })
+
+
 def test_saudacao_com_recomendacao_preserva_os_dois_atos() -> None:
     contrato = construir_contrato_semantico_fala(
         "oi lay, pode me recomendar um filme?",
@@ -69,11 +80,7 @@ def test_followup_de_recomendacao_exige_titulo_concreto_da_evidencia() -> None:
         plano={
             **_plano_pergunta(),
             "dominio": "recomendacao",
-            "fundamentacao_factual": {
-                "tema": "filme de romance",
-                "resumo": "Uma Linda Mulher; Titanic; Jerry Maguire.",
-                "confiavel": True,
-            },
+            "fundamentacao_factual": _candidatos_observados(),
         },
     )
 
@@ -361,6 +368,8 @@ def test_recomendacao_inventada_e_substituida_por_candidato_pesquisado() -> None
             "titulo": "Candidatos de filme de romance",
             "resumo": "Uma Linda Mulher; Titanic; Jerry Maguire.",
             "candidatos": ["Uma Linda Mulher", "Titanic", "Jerry Maguire"],
+            "fonte": "fonte_teste",
+            "evidencia_dentro_validade": True,
             "confiavel": True,
         },
         texto_usuario="quero um filme de romance",
@@ -383,13 +392,15 @@ def test_resposta_sem_titulo_vira_recomendacao_pesquisada_concreta() -> None:
                 "titulo": "Candidatos de filme de romance",
                 "resumo": "Uma Linda Mulher; Titanic; Jerry Maguire.",
                 "candidatos": ["Uma Linda Mulher", "Titanic", "Jerry Maguire"],
+                "fonte": "fonte_teste",
+                "evidencia_dentro_validade": True,
                 "confiavel": True,
             },
         },
         origem="resposta_ia",
     )
 
-    assert "recomendacao_sem_opcao_concreta" in resultado["problemas"]
+    assert "recomendacao_limitada_a_evidencia" in resultado["problemas"]
     assert resultado["fala"].startswith("Eu iria de Uma Linda Mulher")
 
 
@@ -416,7 +427,7 @@ def test_negacao_falsa_de_capacidade_vira_resultado_pesquisado() -> None:
         origem="resposta_ia",
     )
 
-    assert "negacao_capacidade_contradiz_pesquisa" in resultado["problemas"]
+    assert "recomendacao_limitada_a_evidencia" in resultado["problemas"]
     assert resultado["fala"].startswith("Eu iria de Uma Linda Mulher")
     assert "não posso" not in resultado["fala"].casefold()
     assert "não tenho acesso" not in resultado["fala"].casefold()
@@ -447,7 +458,7 @@ def test_lista_de_candidatos_nao_autoriza_sinopse_inventada_pelo_qwen() -> None:
         origem="resposta_ia",
     )
 
-    assert "descricao_obra_sem_evidencia" in resultado["problemas"]
+    assert "recomendacao_limitada_a_evidencia" in resultado["problemas"]
     assert "Jerry Maguire" in resultado["fala"]
     assert "história real" not in resultado["fala"].casefold()
     assert "jogador de futebol" not in resultado["fala"].casefold()
@@ -476,7 +487,7 @@ def test_lista_de_candidatos_nao_comprova_justificativa_generica_da_obra() -> No
         origem="resposta_ia",
     )
 
-    assert "descricao_obra_sem_evidencia" in resultado["problemas"]
+    assert "recomendacao_limitada_a_evidencia" in resultado["problemas"]
     assert resultado["fala"].startswith("Eu iria de Uma Linda Mulher")
     assert "clássicos" not in resultado["fala"].casefold()
     assert "roteiro" not in resultado["fala"].casefold()
@@ -742,5 +753,5 @@ def test_guardiao_pesquisa_e_confirma_titulo_candidato_antes_da_fala() -> None:
 
     assert chamadas == ["Diário de uma Paixão"]
     assert verificacao["aceita"] is True
-    assert verificacao["problemas"] == []
+    assert "recomendacao_limitada_a_evidencia" in verificacao["problemas"]
     assert "Diário de uma Paixão" in verificacao["fala"]

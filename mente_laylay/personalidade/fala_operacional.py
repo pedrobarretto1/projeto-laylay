@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import random
 import re
-from typing import Iterable
+from typing import Any, Iterable, Mapping
+
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.ritmo_natural import escolher_sem_repeticao
@@ -255,12 +257,15 @@ def estilizar_fala_operacional(
     *,
     classe: str,
     emocao: str = "calma",
+    contexto: Mapping[str, Any] | None = None,
 ) -> str:
     """Varia só sucessos confirmados; falha e incerteza conservam a precisão original."""
     fala = re.sub(r"\s+", " ", str(fala_base or "")).strip()
     if classe != "sucesso" or resultado.confirmado is not True:
         return fala
 
+    if humor_bloqueado_por_preferencia(contexto):
+        return str(fala_base or "").strip()
     status = str(resultado.status or "").strip().casefold()
     alvo_txt = _alvo(resultado)
     if resultado.intent == "IOT_STATUS" and status in {"ligado", "desligado"}:

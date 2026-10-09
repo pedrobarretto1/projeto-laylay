@@ -13,6 +13,61 @@ from mente_laylay.personalidade.confirmacao_llm import (
 )
 
 
+@pytest.mark.parametrize("fala", [
+    "A repetição da música foi ativada. Tá na hora de escutar de novo, sem parar!",
+    "Desativei a repetição da música.",
+    "A repetição da música foi alternada e ficou ligada.",
+    "A repetição da música foi alternada e ficou desativada.",
+])
+def test_receipt_de_alternancia_nao_prova_direcao_do_estado(fala: str) -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MEDIA_CONTROL", "status": "midia_repeat_toggle",
+        "alvo": "musica", "params": {"acao": "repeat_toggle"},
+        "executou": True, "confirmado": True, "origem": "executor",
+    })
+    assert _motivo_contrato_invalido(
+        fala, resultado=resultado, classe="sucesso",
+        status_declarado=resultado.status, alvo_declarado=resultado.alvo,
+    ) == "estado_final_do_toggle_nao_evidenciado"
+
+
+def test_confirmacao_de_alternancia_preserva_operacao_sem_inventar_estado() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "MEDIA_CONTROL", "status": "midia_repeat_toggle",
+        "alvo": "musica", "params": {"acao": "repeat_toggle"},
+        "executou": True, "confirmado": True,
+    })
+    assert _motivo_contrato_invalido(
+        "A repetição da música foi alternada.", resultado=resultado,
+        classe="sucesso", status_declarado=resultado.status,
+        alvo_declarado=resultado.alvo,
+    ) == ""
+
+
+def test_autoria_e_reparo_sem_estado_observado_preservam_fala_segura_do_toggle() -> None:
+    chamadas = []
+
+    def modelo(mensagens, **opcoes):
+        chamadas.append((mensagens, opcoes))
+        return "A repetição da música foi ativada."
+
+    resultado = normalizar_resultado_acao({
+        "intent": "MEDIA_CONTROL", "status": "midia_repeat_toggle",
+        "alvo": "musica", "params": {"acao": "repeat_toggle"},
+        "executou": True, "confirmado": True,
+    })
+    fala_segura = "A repetição da música foi alternada."
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, fala_segura, classe="sucesso", emocao="calma", nivel=1,
+        enviar_mensagem=modelo,
+    )
+    assert len(chamadas) == 2
+    assert "não confirma ativação" in chamadas[0][0][0]["content"]
+    assert confirmacao.usada_llm is False
+    assert confirmacao.fala == fala_segura
+    assert confirmacao.motivo_fallback == "contrato_nao_preservado:estado_final_do_toggle_nao_evidenciado"
+
+
 def test_todo_intent_documenta_como_confirma_resultado() -> None:
     assert intents_registradas()
     for intent in intents_registradas():
@@ -544,6 +599,186 @@ def test_bloqueio_por_politica_nao_e_descrito_como_tentativa_falha() -> None:
     assert "não executei" in plano.fala.casefold()
     assert "não consegui" not in plano.fala.casefold()
     assert "tentei" not in plano.fala.casefold()
+
+
+@pytest.mark.parametrize("intent, status, alvo, segura, contaminada", [
+    (
+        "APP_OPEN", "ja_aberto_focado", "calculadora",
+        "calculadora já está aberto e em foco; não repeti a abertura.",
+        "calculadora já está aberto e em foco; não repeti a abertura, e o erro de "
+        "tamanho_invalido não se aplica aqui — você me deu um problema que não existe no cenário real.",
+    ),
+    (
+        "IOT_CONTROL", "ja_estava_ligado", "abajur",
+        "O abajur já está ligado; não repeti o comando.",
+        "O abajur já está ligado; não repeti o comando, e o erro de "
+        "tamanho_invalido não se aplica aqui — você me deu um problema que não existe no cenário real.",
+    ),
+])
+def test_retry_nao_transforma_diagnostico_da_redacao_em_fato_do_receipt(
+    intent: str, status: str, alvo: str, segura: str, contaminada: str,
+) -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": intent, "status": status, "alvo": alvo,
+        "executou": False, "confirmado": True, "origem": "executor",
+    })
+    chamadas: list[list[dict]] = []
+
+    def transporte_local(mensagens, **_opcoes):
+        chamadas.append(mensagens)
+        return "x" * 261 if len(chamadas) == 1 else contaminada
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, segura, classe="sem_acao", emocao="calma", nivel=1,
+        enviar_mensagem=transporte_local, contexto={},
+    )
+
+    assert len(chamadas) == 2
+    assert "tamanho_invalido" not in chamadas[1][-1]["content"]
+    assert confirmacao.usada_llm is False
+    assert confirmacao.fala == segura
+    assert confirmacao.motivo_fallback == "contrato_nao_preservado:tamanho_invalido"
+
+
+@pytest.mark.parametrize("proposta_rejeitada, motivo", [
+    ("x" * 261, "tamanho_invalido"),
+    ("{", "json_invalido"),
+    ("Calculadora já está aberta como se fosse uma rainha; não repeti a abertura.",
+     "metafora_operacional_nao_ancorada"),
+])
+def test_retry_preserva_diagnostico_local_sem_projeta_lo_como_fonte_da_autoria(
+    proposta_rejeitada: str, motivo: str,
+) -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN", "status": "ja_aberto_focado", "alvo": "calculadora",
+        "executou": False, "confirmado": True, "origem": "executor",
+    })
+    segura = "Calculadora já está aberto e em foco; não repeti a abertura."
+    chamadas: list[list[dict]] = []
+
+    def transporte_local(mensagens, **_opcoes):
+        chamadas.append(mensagens)
+        return proposta_rejeitada if len(chamadas) == 1 else segura
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, segura, classe="sem_acao", emocao="calma", nivel=1,
+        enviar_mensagem=transporte_local, contexto={},
+    )
+
+    assert len(chamadas) == 2
+    assert motivo not in chamadas[1][-1]["content"]
+    assert "somente os fatos" in chamadas[1][-1]["content"]
+    assert confirmacao.usada_llm is True
+    assert confirmacao.fala == segura
+
+
+@pytest.mark.parametrize("identificador", ["tamanho_invalido", "analise_nao_ancorada", "falha_de_verificacao"])
+def test_identificador_tecnico_sem_fonte_nao_compoe_confirmacao(identificador: str) -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN", "status": "ja_aberto_focado", "alvo": "calculadora",
+        "executou": False, "confirmado": True, "origem": "executor",
+        "params": {"responsabilidade": identificador},
+        "contexto": {"diagnostico": identificador},
+    })
+    motivo = _motivo_contrato_invalido(
+        f"Calculadora já está aberta e em foco; não repeti a abertura por {identificador}.",
+        resultado=resultado, classe="sem_acao", status_declarado=resultado.status,
+        alvo_declarado=resultado.alvo,
+    )
+
+    assert motivo == "diagnostico_sem_evidencia"
+
+
+@pytest.mark.parametrize("nome", ["tamanho_invalido.txt", "analise_nao_ancorada.txt"])
+def test_nome_factual_com_underscore_permanece_na_confirmacao(nome: str) -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "CREATE_FILE", "status": "arquivo_criado", "alvo": nome,
+        "params": {"nome_arquivo": nome}, "executou": True, "confirmado": True,
+        "origem": "executor",
+    })
+    segura = f"Criei o arquivo {nome}."
+    chamadas: list[bool] = []
+
+    def transporte_local(*_argumentos, **_opcoes):
+        chamadas.append(True)
+        return segura
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, segura, classe="sucesso", emocao="calma", nivel=1,
+        enviar_mensagem=transporte_local, contexto={},
+    )
+
+    assert chamadas == [True]
+    assert confirmacao.usada_llm is True
+    assert confirmacao.fala == segura
+
+
+def test_diagnostico_real_do_executor_pode_compor_fala_de_falha() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN", "status": "falha_execucao", "alvo": "Opera",
+        "executou": False, "confirmado": False, "origem": "executor",
+        "detalhe": "tamanho_invalido",
+    })
+
+    assert _motivo_contrato_invalido(
+        "Não consegui abrir o Opera: o executor informou tamanho_invalido.",
+        resultado=resultado, classe="falha", status_declarado=resultado.status,
+        alvo_declarado=resultado.alvo,
+    ) == ""
+
+
+def test_transformacao_de_abertura_nao_aprova_saida_que_viola_contrato() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN", "status": "ja_aberto_focado", "alvo": "calculadora",
+        "executou": False, "confirmado": True, "origem": "executor",
+    })
+    segura = "Calculadora já está aberto e em foco; não repeti a abertura."
+    proposta = (
+        "Calculadora já está aberto e em foco, não repeti a abertura, "
+        "a janela continua pronta, o pedido encontrou o destino, deixei tudo como estava."
+    )
+    assert _motivo_contrato_invalido(
+        proposta, resultado=resultado, classe="sem_acao", status_declarado=resultado.status,
+        alvo_declarado=resultado.alvo,
+    ) == ""
+    chamadas: list[bool] = []
+
+    def transporte_local(*_argumentos, **_opcoes):
+        chamadas.append(True)
+        return proposta
+
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, segura, classe="sem_acao", emocao="calma", nivel=1,
+        enviar_mensagem=transporte_local, contexto={"falas_recentes": [segura]},
+    )
+
+    assert chamadas == [True]
+    assert confirmacao.usada_llm is False
+    assert confirmacao.fala == segura
+    assert confirmacao.motivo_fallback == "contrato_nao_preservado:fala_operacional_prolixa"
+
+
+def test_transformacao_de_abertura_preserva_variacao_validada() -> None:
+    resultado = normalizar_resultado_acao({
+        "intent": "APP_OPEN", "status": "ja_aberto_focado", "alvo": "calculadora",
+        "executou": False, "confirmado": True, "origem": "executor",
+    })
+    proposta = (
+        "Calculadora já está aberta e em foco; não repeti o comando porque a Calculadora está em foco."
+    )
+    segura = "Calculadora já está aberta e em foco; não repeti a abertura."
+    confirmacao = personalizar_confirmacao_llm(
+        resultado, segura, classe="sem_acao", emocao="calma", nivel=1,
+        enviar_mensagem=lambda *_argumentos, **_opcoes: proposta,
+        contexto={"falas_recentes": [segura]},
+    )
+
+    assert confirmacao.usada_llm is True
+    assert confirmacao.fala.startswith("Não repeti o comando porque a Calculadora está em foco.")
+    assert _motivo_contrato_invalido(
+        confirmacao.fala, resultado=resultado, classe="sem_acao", status_declarado=resultado.status,
+        alvo_declarado=resultado.alvo,
+    ) == ""
 
 
 

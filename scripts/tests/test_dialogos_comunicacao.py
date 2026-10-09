@@ -672,7 +672,7 @@ class DialogosComunicacaoTests(unittest.TestCase):
             ajustar_estado_fala_cb=lambda *_args: None,
             proativa_permitida_cb=lambda: True,
             interrupt_event=threading.Event(),
-            publicar_texto_proativo_cb=lambda texto, *_args: eventos.append(
+            publicar_texto_proativo_cb=lambda texto, *_args, **_dados: eventos.append(
                 ("terminal", texto),
             ),
         )
@@ -789,7 +789,10 @@ class DialogosComunicacaoTests(unittest.TestCase):
             False,
             False,
         )
-        self.assertEqual(executados[0][0], {
+        pedido = executados[0][0]
+        self.assertTrue(pedido["id_solicitacao"])
+        self.assertEqual({chave: valor for chave, valor in pedido.items()
+                          if chave != "id_solicitacao"}, {
             "intent": "IOT_CONTROL",
             "params": {"acao": "ligar", "alvo": "ventilador"},
         })

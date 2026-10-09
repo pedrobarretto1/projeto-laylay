@@ -135,10 +135,14 @@ def test_root_publica_receipt_antes_da_fala_com_persistencia_real(tmp_path, monk
         falas.append(fala)
 
     monkeypatch.setattr(root, "falar_com_lipsync", capturar)
+    turnos = []
     for _ in range(2):
         root._continuidades_update(playlist_sugestao_pendente={"playlist": "teste receipt", "ts": time.time()})
+        turno = root._iniciar_planejamento_turno("sim", origem="teste_feedback_receipt")
+        turnos.append(turno["id"])
         assert root._handle_feedback_pendente("sim") is True
         assert root._continuidades_get("playlist_sugestao_pendente") is None
+    assert len(set(turnos)) == 2, "cada confirmação é uma nova entrada do usuário"
     assert len(falas) == 2
     assert "já estava" in falas[-1]
     conteudo = store.load()

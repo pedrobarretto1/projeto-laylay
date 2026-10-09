@@ -56,11 +56,34 @@ def test_negacao_na_oracao_pedida_continua_recusa(texto, pontuacao):
     assert not autoriza_execucao_efetiva(turno)
 
 
-@pytest.mark.xfail(strict=True, reason="Raiz separada: segmentador corta antonio.txt? no ponto da extensão")
 def test_negacao_preserva_nome_com_extensao_e_interrogacao_em_um_ato():
     turno = classificar_modalidade_turno("preciso que voce nao apague o arquivo antonio.txt?")
     assert len(turno["segmentos"]) == 1, turno
     assert turno["modalidade"] == "recusa"
+
+
+@pytest.mark.parametrize("alvo", (
+    "antonio.txt", "relatorio.final.pdf", "backup.tar.gz", ".env",
+    r"C:\projetos\versao.2\antonio.txt", "https://exemplo.test/notas.txt",
+    "192.168.1.2", "3.5", '"notas. finais.txt"',
+))
+def test_pontuacao_interna_do_alvo_nao_inicia_pergunta_independente(alvo):
+    texto = f"preciso que você não apague o arquivo {alvo}?"
+    turno = classificar_modalidade_turno(texto)
+    assert len(turno["segmentos"]) == 1, turno
+    assert turno["segmentos"][0]["texto"] == texto.casefold()
+    assert turno["modalidade"] == "recusa"
+    assert not autoriza_execucao_efetiva(turno)
+
+
+@pytest.mark.parametrize("separador", (". ", "; ", ", ", "... "))
+def test_fronteira_real_depois_do_filename_preserva_pergunta_e_recusa(separador):
+    texto = "não apague o arquivo antonio.txt" + separador + "qual é o nome dele?"
+    turno = classificar_modalidade_turno(texto)
+    assert len(turno["segmentos"]) == 2, turno
+    assert turno["segmentos"][0]["modalidade"] == "recusa"
+    assert turno["segmentos"][1]["modalidade"] == "pergunta"
+    assert not autoriza_execucao_efetiva(turno)
 
 
 @pytest.mark.parametrize("texto", (

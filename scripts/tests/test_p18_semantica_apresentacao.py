@@ -232,6 +232,7 @@ def test_diagnostico_emocional_explica_contencao_em_vez_de_perda_silenciosa() ->
         executou=False,
         confirmado=False,
         texto_usuario="liga a luz",
+        origem="executor",
     ))
     diagnostico = runtime.diagnostico()
 

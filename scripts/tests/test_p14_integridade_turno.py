@@ -75,6 +75,7 @@ def test_resultado_atomico_nao_herda_alvo_de_outro_dominio() -> None:
 def test_registro_generico_do_mesmo_turno_nao_apaga_confirmacao_observada() -> None:
     comando = {
         "intent": "OPEN_URL",
+        "id_solicitacao": "abrir-ifood",
         "params": {"alvo": "ifood"},
     }
     mente = registrar_resultado_execucao(
@@ -99,7 +100,7 @@ def test_registro_generico_do_mesmo_turno_nao_apaga_confirmacao_observada() -> N
     )
 
     assert mente["ultima_acao_contrato"] == {
-        "id_solicitacao": "",
+        "id_solicitacao": "abrir-ifood",
         "intent": "OPEN_URL",
         "alvo": "ifood",
         "status": "url_aberta",

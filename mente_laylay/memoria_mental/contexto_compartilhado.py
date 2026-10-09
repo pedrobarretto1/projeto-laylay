@@ -6,7 +6,11 @@ import time
 import re
 from typing import Any, Dict
 
-from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao, normalizar_resultado_acao
+from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
+    normalizar_resultado_acao,
+    obter_id_solicitacao,
+)
 from mente_laylay.memoria_mental.pendencia import criar_pendencia, limpar_pendencia, registrar_pendencia
 from mente_laylay.memoria_mental.continuidade_geral import (
     normalizar_dominio_continuidade,
@@ -210,6 +214,10 @@ def registrar_resultado_execucao(
     if not isinstance(resultado, (dict, ResultadoAcao)):
         return dict(estado_atual or {})
 
+    id_solicitacao = obter_id_solicitacao(
+        resultado if isinstance(resultado, dict)
+        else {"id_solicitacao": resultado.id_solicitacao}
+    )
     estado = dict(estado_atual or {})
     contrato = normalizar_resultado_acao(
         resultado,
@@ -223,9 +231,19 @@ def registrar_resultado_execucao(
     status_final = contrato.status
     registro_generico = not bool(status_final)
     texto_curto = str(texto or "").strip()[:200]
-    mesmo_intent = str(estado.get("ultima_acao_intent") or "").strip().upper() == intent
-    mesmo_texto = str(estado.get("ultima_acao_texto") or "").strip() == texto_curto
-    mesmo_resultado = mesmo_intent and mesmo_texto
+    contrato_anterior = dict(estado.get("ultima_acao_contrato") or {})
+    try:
+        id_anterior = obter_id_solicitacao(contrato_anterior)
+    except ValueError:
+        # Estado histórico ambíguo não pode fornecer facetas ao receipt novo.
+        id_anterior = ""
+    mesmo_resultado = bool(
+        id_solicitacao and id_solicitacao == id_anterior
+        and str(contrato_anterior.get("intent") or "").strip().upper() == intent
+    )
+    if not mesmo_resultado:
+        contrato_anterior = {}
+    complemento_generico = mesmo_resultado and registro_generico
 
     # Uma pendência visual só pode sobreviver a dados que complementem aquela
     # análise. Quando uma ação de outro domínio foi realmente roteada, ela
@@ -240,8 +258,17 @@ def registrar_resultado_execucao(
         estado = limpar_pendencia(estado, motivo="substituida_por_nova_acao")
 
     if not status_final:
-        status_anterior = str(estado.get("ultima_acao_status") or "").strip().lower()
-        if mesmo_resultado and status_anterior:
+        status_anterior = str(contrato_anterior.get("status") or "").strip().lower()
+        faceta_negativa_divergente = bool(
+            (contrato.confirmado is False and contrato_anterior.get("confirmado") is True)
+            or (
+                contrato.executou is False
+                and contrato.confirmado is not True
+                and contrato_anterior.get("executou") is True
+            )
+        )
+        complemento_generico = complemento_generico and not faceta_negativa_divergente
+        if complemento_generico and status_anterior:
             status_final = status_anterior
         else:
             status_final = "executado" if contrato.executou is True else "falhou" if contrato.executou is False else "incerto"
@@ -272,56 +299,51 @@ def registrar_resultado_execucao(
     estado["ultima_acao_reexecutavel"] = reexecutavel
     estado["ultima_acao_intent"] = intent
     estado["ultima_acao_params"] = dict(params)
-    estado["ultima_acao_origem"] = contrato.origem
+    origem_final = (
+        str(contrato_anterior.get("origem") or "")
+        if complemento_generico and contrato_anterior.get("origem")
+        else contrato.origem
+    )
+    estado["ultima_acao_origem"] = origem_final
     estado["ultima_acao_texto"] = texto_curto
     estado["ultima_acao_confirmada"] = (
-        estado.get("ultima_acao_confirmada")
-        if mesmo_resultado and (registro_generico or contrato.confirmado is None)
+        contrato_anterior.get("confirmado")
+        if complemento_generico and contrato.confirmado is None
         else contrato.confirmado
     )
     estado["ultima_acao_ok"] = (
-        estado.get("ultima_acao_ok")
-        if mesmo_resultado and (registro_generico or contrato.ok is None)
+        contrato_anterior.get("executou")
+        if complemento_generico and (
+            contrato.ok is None or contrato.ok is True
+        )
         else contrato.ok
     )
     estado["ultima_acao_alvo"] = (
-        str(estado.get("ultima_acao_alvo") or "")
-        if mesmo_resultado and (registro_generico or not contrato.alvo)
+        str(contrato_anterior.get("alvo") or "")
+        if mesmo_resultado and not contrato.alvo
         else contrato.alvo
     )
     estado["ultima_acao_detalhe"] = (
         str(estado.get("ultima_acao_detalhe") or "")
-        if mesmo_resultado and (registro_generico or not contrato.detalhe)
+        if complemento_generico and not contrato.detalhe
         else contrato.detalhe[:300]
     )
     estado["ultima_acao_ts"] = time.time()
     # Fonte canônica atômica: leitores não podem completar campos vazios com
     # pedaços de ações anteriores. Um alvo vazio continua sendo informação
     # válida deste evento, e não uma oportunidade para herdar outro domínio.
-    contrato_anterior = (
-        dict(estado.get("ultima_acao_contrato") or {})
-        if mesmo_resultado else {}
-    )
     estado["ultima_acao_contrato"] = {
-        "id_solicitacao": (
-            str(contrato_anterior.get("id_solicitacao") or "")
-            if registro_generico and not contrato.id_solicitacao
-            else contrato.id_solicitacao
-        ),
+        "id_solicitacao": id_solicitacao,
         "intent": intent,
         "alvo": str(estado.get("ultima_acao_alvo") or ""),
         "status": status_final,
         "dominio": normalizar_dominio_continuidade(intent=intent),
         "executou": estado.get("ultima_acao_ok"),
         "confirmado": estado.get("ultima_acao_confirmada"),
-        "origem": (
-            str(contrato_anterior.get("origem") or "")
-            if registro_generico and contrato_anterior.get("origem")
-            else contrato.origem
-        ),
+        "origem": origem_final,
         "evidencia_confirmacao": (
             str(contrato_anterior.get("evidencia_confirmacao") or "")
-            if registro_generico and contrato_anterior.get("evidencia_confirmacao")
+            if complemento_generico and contrato_anterior.get("evidencia_confirmacao")
             else contrato.evidencia_confirmacao
         ),
     }

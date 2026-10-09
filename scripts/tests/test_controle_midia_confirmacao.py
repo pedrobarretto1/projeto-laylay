@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from mente_laylay.autonomia.controle_midia import executar_media_control
 from mente_laylay.memoria_mental.operacoes_musicais_runtime import (
     OperacoesMusicaisRuntime,
@@ -52,6 +54,48 @@ def test_confirmacao_do_chrome_chega_ao_resultado_e_a_fala() -> None:
     assert resultados == [("midia_next", True, True)]
     assert falas
     assert "não consegui confirmar" not in falas[-1].casefold()
+
+
+@pytest.mark.parametrize("texto", ["alterna a repetição", "alterna o loop. É opcional."])
+def test_alternancia_de_repeticao_confirmada_preserva_o_efeito_na_fala(texto: str) -> None:
+    falas: list[str] = []
+    resultados: list[tuple] = []
+    enviados: list[dict] = []
+
+    ok = executar_media_control(
+        {"acao": "repeat_toggle", "platform": "music"}, texto, "pc_a",
+        _ctx_base(
+            enviar_chrome=lambda _action, payload: enviados.append(payload) or True,
+            falas=falas,
+        ),
+        marcar_resultado=lambda status, executou=None, confirmado=None, **_kw: resultados.append(
+            (status, executou, confirmado)
+        ),
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=lambda: {},
+    )
+
+    assert ok is True
+    assert enviados == [{"command": "repeat_toggle"}]
+    assert resultados == [("midia_repeat_toggle", True, True)]
+    assert len(falas) == 1
+    assert "repetição" in falas[0].casefold()
+    assert not any(termo in falas[0].casefold() for termo in ("recome", "começo", "repetindo ela"))
+
+
+def test_replay_confirmado_continua_com_fala_de_reinicio() -> None:
+    falas: list[str] = []
+
+    assert executar_media_control(
+        {"acao": "replay", "platform": "music"}, "recomeça essa música", "pc_a",
+        _ctx_base(enviar_chrome=lambda *_: True, falas=falas),
+        marcar_resultado=lambda *_args, **_kwargs: None,
+        falar_por_status=lambda *_args, **_kwargs: None,
+        ctx_fala=lambda: {},
+    ) is True
+
+    assert len(falas) == 1
+    assert any(termo in falas[0].casefold() for termo in ("recome", "começo", "repetindo ela"))
 
 
 def test_tecla_nativa_fala_do_envio_sem_fingir_confirmacao() -> None:

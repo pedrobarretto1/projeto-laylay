@@ -1,0 +1,17 @@
+{
+  "versao": 1,
+  "casos": [
+    {"id": "L01", "texto": "Usei “remova o arquivo quadro.svg” apenas como exemplo na aula."},
+    {"id": "L02", "texto": "Usei “acenda a lâmpada do jardim” apenas como exemplo na aula."},
+    {"id": "L03", "texto": "O docente citou “o manual usa 'renomeie o arquivo mapa.csv' como exemplo de pedido”."},
+    {"id": "L04", "texto": "Renomeie o arquivo “apague isso.txt” para rascunho.txt."},
+    {"id": "L05", "texto": "A legenda é “arquivo disponível”; remova o arquivo quadro.svg."},
+    {"id": "L06", "texto": "Estou comparando “acenda a lâmpada do jardim” e “apague a lâmpada da varanda”, sem destacar uma das duas frases."},
+    {"id": "L07", "texto": "A frase “não apague o arquivo mapa.csv” está no exercício."},
+    {"id": "L08", "texto": "Na hipótese “se eu desligasse a bomba da cisterna”, o que aconteceria?"},
+    {"id": "L09", "texto": "A instrutora usou “remova a descrição da regra do galpão” como exemplo de frase."},
+    {"id": "L10", "texto": "O cartaz traz a expressão “jardim disponível”."},
+    {"id": "L11", "texto": "Se eu removesse o arquivo quadro.svg, o que mudaria?"},
+    {"id": "L12", "texto": "Não desligue a tomada chamada “Leste”."}
+  ]
+}

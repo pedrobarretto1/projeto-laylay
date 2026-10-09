@@ -6,10 +6,15 @@ import math
 import time
 from typing import Any, Dict, Mapping
 
+from mente_laylay.cognicao.contratos_turno import (
+    ContratoPropostaPrincipal,
+    ViolacaoPropostaPrincipal,
+)
 from mente_laylay.emocoes.contrato_causal import (
     evento_esta_ativo,
     evento_pode_alterar_estado,
 )
+from mente_laylay.emocoes.erro_proposta import evento_corresponde_erro_proposta
 
 
 PERFIS_DURACAO = {
@@ -142,10 +147,23 @@ def aplicar_evento_emocional(
     evento: Mapping[str, Any] | None,
     *,
     agora: float | None = None,
+    prova_proposta: ViolacaoPropostaPrincipal | None = None,
+    proposta_principal: ContratoPropostaPrincipal | None = None,
 ) -> Dict[str, Any]:
     """Abre episódio temporário apenas a partir de causa publicada e vigente."""
     estado = dict(estado_atual or {})
     instante = float(time.time() if agora is None else agora)
+    erro_proposta_comprovado = bool(
+        isinstance(evento, Mapping)
+        and evento.get("origem") == "contrato_proposta_principal"
+        and evento_corresponde_erro_proposta(evento, prova_proposta, proposta_principal)
+    )
+    if (
+        isinstance(evento, Mapping)
+        and evento.get("origem") == "contrato_proposta_principal"
+        and not erro_proposta_comprovado
+    ):
+        return estado
     if not evento_pode_alterar_estado(evento, agora=instante):
         return estado
     dados = dict(evento or {})
@@ -163,6 +181,8 @@ def aplicar_evento_emocional(
         relevancia_nova = float(dados.get("relevancia") or 0.0)
         relevancia_anterior = float(episodio_anterior.get("relevancia") or 0.0)
         confianca_nova = float(dados.get("confianca") or 0.0)
+        ts_novo = float(dados.get("ts") or 0.0)
+        ts_anterior = float(episodio_anterior.get("ts") or 0.0)
     except (TypeError, ValueError, OverflowError):
         return estado
     emocao_anterior, nivel_anterior = retrato_emocional_expressavel(
@@ -178,13 +198,23 @@ def aplicar_evento_emocional(
         == str(episodio_anterior.get("alvo") or "").casefold()
         and confianca_nova >= 0.90
     )
+    autorreparo_confirmado = bool(
+        emocao_anterior in {"debochada", "irritada", "brava"}
+        and emocao == "envergonhada"
+        and dados.get("arco") == "autorreparo"
+        and (dados.get("origem") == "resultado_operacional" or erro_proposta_comprovado)
+        and dados.get("natureza_evidencia") == "fato_observado"
+        and dados.get("responsabilidade") == "laylay"
+        and confianca_nova >= 0.90
+        and ts_novo >= ts_anterior
+    )
     manter_episodio = bool(
         emocao_anterior != "calma"
         and (
             nivel_novo < nivel_anterior
             or (nivel_novo == nivel_anterior and relevancia_nova < relevancia_anterior)
         )
-        and not recuperacao_confirmada
+        and not (recuperacao_confirmada or autorreparo_confirmado)
     )
     if manter_episodio:
         novo = estado
@@ -247,6 +277,17 @@ def decair_estado_emocional(
         ), True
 
     episodio = estado.get("episodio_emocional")
+    if (
+        str(contexto or "").casefold() == "conquista"
+        and emo in {"debochada", "irritada", "brava"}
+        and isinstance(episodio, Mapping)
+        and episodio.get("arco") in {"provocacao_afetuosa", "bronca_brincalhona"}
+        and episodio.get("responsabilidade") == "usuario"
+    ):
+        return aplicar_estado_emocional(
+            estado, "calma", causa="conquista do usuário encerra o episódio de repetição",
+            agora=instante,
+        ), True
     if isinstance(episodio, Mapping) and episodio and not evento_esta_ativo(
         episodio, agora=instante,
     ):

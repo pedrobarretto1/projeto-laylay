@@ -15,6 +15,10 @@ import unicodedata
 from typing import Any, Callable, Mapping
 
 from mente_laylay.autonomia.governanca_iniciativa import decisao_permite_emissao
+from mente_laylay.cognicao.interpretador_continuidade import classificar_feedback_comunicativo
+from mente_laylay.cognicao.interpretador_continuidade import solicitacao_feedback_humor
+from mente_laylay.cognicao.interpretador_continuidade import resposta_indefinida_sobre_humor
+from mente_laylay.cognicao.preferencia_humor import contexto_humor_turno
 
 
 PERFIS_COMPANHIA = frozenset({"silencioso", "adaptativo", "presente"})
@@ -234,7 +238,9 @@ class DiretorPresencaRuntime:
             valor = [valor]
         if not isinstance(valor, (list, tuple, set, frozenset)):
             return []
-        return [str(item).strip()[:180] for item in valor if str(item).strip()][:5]
+        # O transporte preserva a fonte; cortar aqui impediria o compositor
+        # de distinguir uma oração inteira de um prefixo incompleto.
+        return [str(item).strip() for item in valor if str(item).strip()][:5]
 
     @staticmethod
     def _incrementar(estado: dict[str, Any], campo: str) -> None:
@@ -310,11 +316,11 @@ class DiretorPresencaRuntime:
         agora: float,
     ) -> dict[str, Any]:
         evidencias = self._evidencias(dados)
+        motivo = str(dados.get("motivo") or "").strip()[:500]
         descricao = str(
-            dados.get("motivo")
-            or dados.get("conteudo")
+            dados.get("conteudo")
             or " | ".join(evidencias)
-            or f"evento de presença {categoria} observado em {dominio}"
+            or ("" if motivo else f"evento de presença {categoria} observado em {dominio}")
         ).strip()[:500]
         return {
             "natureza": "evento",
@@ -324,6 +330,11 @@ class DiretorPresencaRuntime:
             "evidencia": {
                 "descricao": descricao,
                 "itens": evidencias,
+                **({"foco_evidencia": dados["foco_evidencia"]}
+                   if "foco_evidencia" in dados else {}),
+                **({"proposta_reacao": dados["proposta_reacao"]}
+                   if "proposta_reacao" in dados else {}),
+                "motivo": motivo,
                 "dominio": dominio,
                 "categoria": categoria,
             },
@@ -361,6 +372,7 @@ class DiretorPresencaRuntime:
             if entregue:
                 emissao = {
                     "id_entrega": id_entrega,
+                    "entregue": True,
                     "ts": momento,
                     "proposta_ts": float(registro_proposta.get("ts") or 0.0),
                     "dominio": str(registro_proposta.get("dominio") or ""),
@@ -368,6 +380,11 @@ class DiretorPresencaRuntime:
                     "chave": str(registro_proposta.get("chave") or ""),
                     "origem": str(registro_proposta.get("origem") or ""),
                     "fala": str(fala or "").strip(),
+                    "contexto_humor": str(registro_proposta.get("contexto_humor") or
+                        contexto_humor_turno(modo_jogo_ativo=bool(self._contexto().get("modo_jogo_ativo")))),
+                    "canal_entrega": str(registro_proposta.get("canal_entrega") or "audio_reproducao_confirmada"),
+                    "autoriza_execucao": False,
+                    "solicitacao_feedback_humor": solicitacao_feedback_humor(fala),
                 }
                 estado["historico"] = [
                     *list(estado.get("historico") or []),
@@ -385,6 +402,49 @@ class DiretorPresencaRuntime:
                 ao_concluir_fonte(bool(entregue), str(motivo or ""))
             except Exception as erro:
                 self._falha("callback_entrega_fonte", erro)
+
+    def registrar_entrega_observada(
+        self, *, id_entrega: str, entregue: bool, motivo: str, fala: str,
+        dominio: str, categoria: str, chave: str, origem: str,
+        contexto_humor: str = "", canal_entrega: str = "",
+    ) -> None:
+        """Recebe o receipt de outro produtor pela mesma porta de feedback.
+
+        O produtor conserva decisão e fila; o Diretor só registra a ocorrência
+        entregue, sem gerar outra fala, oportunidade ou autorização.
+        """
+        if entregue is not True or not all(str(v or "").strip() for v in (
+            id_entrega, dominio, categoria, chave, origem,
+        )):
+            return
+        with self._lock:
+            if any(str(i.get("id_entrega") or "") == id_entrega
+                   for i in self._estado().get("historico") or []):
+                return
+            self._registrar_resultado_entrega(
+                id_entrega=id_entrega, entregue=True, motivo=motivo, fala=fala,
+                registro_proposta={
+                    "dominio": dominio, "categoria": categoria, "chave": chave,
+                    "origem": origem, "autoriza_execucao": False,
+                    "contexto_humor": contexto_humor, "canal_entrega": canal_entrega,
+                }, ao_concluir_fonte=None,
+            )
+
+    def registrar_entrega_comunicativa(
+        self, *, id_entrega: str, fala: str, entregue: bool,
+        contexto_humor: str, canal_entrega: str,
+    ) -> None:
+        """Registra receipt textual ou de reprodução; não prova audição física."""
+        if (entregue is not True or not str(fala or "").strip()
+            or contexto_humor not in {"jogo", "conversa", "comandos"}
+            or canal_entrega not in {"texto_publicado", "audio_reproducao_confirmada"}):
+            return
+        self.registrar_entrega_observada(
+            id_entrega=id_entrega, entregue=True, motivo=canal_entrega, fala=fala,
+            dominio=contexto_humor, categoria="resposta", chave=id_entrega,
+            origem="orquestrador_fala", contexto_humor=contexto_humor,
+            canal_entrega=canal_entrega,
+        )
 
     def _processar_proposta_cognitiva(
         self,
@@ -445,6 +505,8 @@ class DiretorPresencaRuntime:
             "origem": str(dados.get("origem") or "diretor_presenca").casefold(),
             "evento": evento,
             "contrato_fala": contrato_fala,
+            "contexto_humor": contexto_humor_turno(
+                modo_jogo_ativo=bool(self._contexto().get("modo_jogo_ativo"))),
         }
         id_entrega = f"{evento.get('trace_id') or 'presenca'}:{agora:.6f}"
         registro["id_entrega"] = id_entrega
@@ -726,10 +788,79 @@ class DiretorPresencaRuntime:
             self.estado_set(estado)
             return decisao
 
+    @staticmethod
+    def _evento_feedback_emissao(
+        emissao: Mapping[str, Any], observado_ts: float,
+    ) -> dict[str, Any]:
+        """Transporta a identidade da entrega sem promover a fala a autoridade."""
+        id_entrega = str(emissao.get("id_entrega") or "")
+        return {
+            "id_evento": id_entrega,
+            "id_entrega": id_entrega,
+            "dominio": str(emissao.get("dominio") or ""),
+            "origem_produtor": str(emissao.get("origem") or ""),
+            "categoria": str(emissao.get("categoria") or ""),
+            "alvo": str(emissao.get("chave") or ""),
+            "entrega_ts": float(emissao.get("ts") or 0.0),
+            "observado_ts": observado_ts,
+            "entregue": emissao.get("entregue") is True,
+            "contexto_humor": str(emissao.get("contexto_humor") or ""),
+        }
+
+    def _registrar_resultado_feedback_compartilhado(
+        self, id_entrega: str, retorno: Any,
+    ) -> None:
+        """Publica o diagnóstico somente na emissão que originou o feedback."""
+        if not id_entrega:
+            return
+        resultado = retorno.get("aprendizado_compartilhado") if isinstance(retorno, Mapping) else None
+        status = str(resultado.get("status") or "indisponivel") if isinstance(resultado, Mapping) else "indisponivel"
+        with self._lock:
+            estado = self._estado()
+            emissao = dict(estado.get("ultima_emissao") or {})
+            if str(emissao.get("id_entrega") or "") != id_entrega:
+                ocorrencias = [item for item in estado.get("historico") or []
+                               if str(item.get("id_entrega") or "") == id_entrega]
+                if len(ocorrencias) != 1:
+                    return
+                emissao = dict(ocorrencias[0])
+            if not emissao.get("feedback_registrado"):
+                return
+            anterior = dict(emissao.get("aprendizado_compartilhado") or {})
+            emissao["aprendizado_compartilhado"] = {"status": status, "id_evento": id_entrega}
+            self._atualizar_emissao_feedback(estado, emissao)
+            if status == "registrado" and anterior.get("status") != "registrado":
+                self._incrementar(estado, "feedbacks_compartilhados")
+            self.estado_set(estado)
+
+    @staticmethod
+    def _atualizar_emissao_feedback(estado: dict[str, Any], emissao: Mapping[str, Any]) -> None:
+        """Mantém o feedback na ocorrência entregue, mesmo após outra emissão."""
+        id_entrega = str(emissao.get("id_entrega") or "")
+        atual = estado.get("ultima_emissao") or {}
+        if str(atual.get("id_entrega") or "") == id_entrega:
+            estado["ultima_emissao"] = dict(emissao)
+        if id_entrega:
+            estado["historico"] = [
+                dict(emissao) if str(item.get("id_entrega") or "") == id_entrega else item
+                for item in estado.get("historico") or []
+            ]
+
     def observar_resposta(self, texto: str) -> dict[str, Any]:
         """Aprende com resposta explícita sem consumir nem reinterpretar o turno."""
-        fala = _codigo(texto, 180).replace("_", " ")
-        if not fala:
+        resultado = classificar_feedback_comunicativo(texto)
+        if not resultado:
+            if resposta_indefinida_sobre_humor(texto):
+                agora = float(self.clock())
+                with self._lock:
+                    estado = self._estado()
+                    ultima = dict(estado.get("ultima_emissao") or {})
+                    if (ultima.get("solicitacao_feedback_humor") is True
+                        and not ultima.get("feedback_registrado")
+                        and 0 <= agora - float(ultima.get("ts") or 0.0) <= JANELA_FEEDBACK_PRESENCA_S):
+                        ultima["resposta_humor_relacionada_ts"] = agora
+                        self._atualizar_emissao_feedback(estado, ultima)
+                        self.estado_set(estado)
             return {}
         agora = float(self.clock())
         with self._lock:
@@ -740,18 +871,10 @@ class DiretorPresencaRuntime:
                 or agora - float(ultima.get("ts") or 0.0) > JANELA_FEEDBACK_PRESENCA_S
             ):
                 return {}
-            resultado = ""
-            if re.search(r"\b(boa dica|isso ajudou|ajudou bastante|gostei dessa|manda mais|foi util|foi boa)\b", fala):
-                resultado = "aceita"
-            elif re.search(r"\b(para de comentar|nao precisa comentar|fica quieta|isso e obvio|nao interrompe|sem dica)\b", fala):
-                resultado = "recusa"
-            elif re.search(r"\b(na verdade|nao e isso|voce entendeu errado|essa dica esta errada)\b", fala):
-                resultado = "correcao"
-            if not resultado:
-                return {}
             ultima["feedback_registrado"] = True
             ultima["feedback"] = resultado
-            estado["ultima_emissao"] = ultima
+            ultima["feedback_ts"] = agora
+            self._atualizar_emissao_feedback(estado, ultima)
             aprendizado = dict(estado.get("aprendizado") or {})
             categorias = dict(aprendizado.get("categorias") or {})
             categoria = str(ultima.get("categoria") or "companhia")
@@ -764,15 +887,20 @@ class DiretorPresencaRuntime:
             estado["aprendizado"] = {"categorias": categorias}
             self._incrementar(estado, "feedbacks")
             self.estado_set(estado)
+        retorno_feedback = None
         if callable(self.registrar_feedback):
             try:
-                self.registrar_feedback(
+                retorno_feedback = self.registrar_feedback(
                     "jogo" if ultima.get("dominio") == "jogo" else ultima.get("categoria"),
                     True if resultado == "aceita" else False if resultado == "recusa" else None,
                     resultado=resultado,
+                    texto_feedback=str(texto or "").strip(),
+                    evento_feedback=self._evento_feedback_emissao(ultima, agora),
                 )
             except Exception as erro:
+                retorno_feedback = {"aprendizado_compartilhado": {"status": "falha"}}
                 self._falha("feedback_resposta", erro)
+        self._registrar_resultado_feedback_compartilhado(str(ultima.get("id_entrega") or ""), retorno_feedback)
         return {"resultado": resultado, "categoria": ultima.get("categoria")}
 
     def registrar_silencio_pendente(self) -> dict[str, Any]:
@@ -784,22 +912,28 @@ class DiretorPresencaRuntime:
             idade = agora - float(ultima.get("ts") or 0.0)
             if (
                 not ultima or ultima.get("feedback_registrado")
+                or ultima.get("resposta_humor_relacionada_ts")
                 or idade < JANELA_FEEDBACK_PRESENCA_S
             ):
                 return {}
             ultima["feedback_registrado"] = True
             ultima["feedback"] = "silencio"
-            estado["ultima_emissao"] = ultima
+            ultima["feedback_ts"] = agora
+            self._atualizar_emissao_feedback(estado, ultima)
             self._incrementar(estado, "feedbacks")
             self.estado_set(estado)
+        retorno_feedback = None
         if callable(self.registrar_feedback):
             try:
-                self.registrar_feedback(
+                retorno_feedback = self.registrar_feedback(
                     "jogo" if ultima.get("dominio") == "jogo" else ultima.get("categoria"),
                     None, resultado="silencio",
+                    evento_feedback=self._evento_feedback_emissao(ultima, agora),
                 )
             except Exception as erro:
+                retorno_feedback = {"aprendizado_compartilhado": {"status": "falha"}}
                 self._falha("feedback_silencio", erro)
+        self._registrar_resultado_feedback_compartilhado(str(ultima.get("id_entrega") or ""), retorno_feedback)
         return {"resultado": "silencio", "categoria": ultima.get("categoria")}
 
     def _candidato_cotidiano(self, contexto: Mapping[str, Any], estado: dict[str, Any], agora: float) -> dict[str, Any]:

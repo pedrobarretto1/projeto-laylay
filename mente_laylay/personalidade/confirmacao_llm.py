@@ -12,21 +12,31 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
+from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
-from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
+    STATUS_RESULTADO_JA_SATISFEITO,
+)
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
+from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
 
 
 EMOCOES_PERMITIDAS = frozenset({
     "calma", "alegre", "debochada", "envergonhada", "surpresa",
     "triste", "irritada", "brava", "acalmando-se",
+})
+
+_PARAMETROS_AUTORIA = frozenset({
+    "acao", "alvo", "cor", "nome_app", "nome", "nome_arquivo",
+    "nome_playlist", "query", "site", "url", "brilho", "temperatura", "volume",
 })
 
 # Consultas e listagens carregam dados que uma paráfrase poderia apagar.
@@ -72,8 +82,8 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "app_focado": ("foco", "frente", "trouxe", "puxei"),
     "ja_aberto_focado": ("aberto", "foco", "frente"),
     "site_ja_aberto_focado": ("aberto", "foco", "frente", "aba"),
-    "ja_estava_ligado": ("ligado", "funcionando"),
-    "ja_estava_desligado": ("desligado", "quieto"),
+    "ja_estava_ligado": ("ligad", "funcionando"),
+    "ja_estava_desligado": ("desligad", "quiet"),
     "app_fechado": ("feche", "encerr"),
     "site_aberto": ("abri", "aberto", "navegador"),
     "url_aberta": ("abri", "aberto", "pagina"),
@@ -94,7 +104,7 @@ RAIZES_POR_STATUS: dict[str, tuple[str, ...]] = {
     "agendamento_cancelado": ("cancel", "agenda"),
     "indisponivel": ("nao respondeu", "indisponivel", "offline"),
     "nao_encontrado": ("nao encontrei", "nao achei", "nao apareceu"),
-    "falha_execucao": ("nao consegui", "falhou", "nao confirmou"),
+    "falha_execucao": ("nao consegui", "falhou", "nao confirmou", "nao foi concluid", "nao foi realizad", "nao foi executad", "nao foi possivel"),
     "app_aberto_sem_foco": ("nao consegui", "foco", "frente"),
 }
 
@@ -234,6 +244,16 @@ def _motivo_contrato_invalido(
         return "tamanho_invalido"
     if texto.count("?") > 0:
         return "pergunta_na_confirmacao"
+    if contem_ataque_pessoal(texto):
+        return "ataque_pessoal"
+    # Confirmar um toggle prova a operação, sem fornecer a direção final.
+    # Estado ligado/desligado exige um receipt que represente esse estado;
+    # os parâmetros atuais de alternância não transportam essa observação.
+    if _normalizar(resultado.status) == "midia_repeat_toggle" and re.search(
+        r"\b(?:(?:des)?ativ(?:ad[oa]s?|ei|ou|o|a|ar)|"
+        r"(?:des)?lig(?:ad[oa]s?|uei|ou|o|a|ar))\b", base,
+    ):
+        return "estado_final_do_toggle_nao_evidenciado"
     frases = [
         parte.strip()
         for parte in re.split(r"(?<=[.!?])\s+", texto)
@@ -241,6 +261,21 @@ def _motivo_contrato_invalido(
     ]
     if len(frases) > 2:
         return "fala_operacional_prolixa"
+    # Identificadores diagnósticos não viram fatos só por terem sido enviados
+    # ao reparo. Nomes legítimos continuam permitidos quando constam do alvo,
+    # dos parâmetros factuais publicados ou do detalhe do executor.
+    identificadores = lambda valor: {
+        item.casefold() for item in re.findall(r"\b\w*_\w+\b", str(valor or ""))
+    }
+    fontes_factuais = [resultado.alvo, resultado.detalhe, *[
+        str(valor) for chave, valor in resultado.params.items()
+        if chave in _PARAMETROS_AUTORIA and isinstance(valor, (str, int, float, bool))
+    ]]
+    identificadores_permitidos = set().union(*[
+        identificadores(fonte) for fonte in fontes_factuais
+    ])
+    if not identificadores(texto).issubset(identificadores_permitidos):
+        return "diagnostico_sem_evidencia"
     if re.search(
         r"\bn[aã]o\s+(?:fale|chame|toque|olhe|volte|v[aá]\s+embora)\b",
         base,
@@ -267,7 +302,8 @@ def _motivo_contrato_invalido(
         return "alvo_divergente"
     sinais_falha = re.search(
         r"\b(?:nao consegui|nao fiz|nao executei|falhou|indisponivel|offline|"
-        r"nao respondeu|nao encontrei|nao achei|nao apareceu|nao confirmou)\b",
+        r"nao respondeu|nao encontrei|nao achei|nao apareceu|nao confirmou|"
+        r"nao foi (?:concluid[oa]|realizad[oa]|executad[oa]|possivel))\b",
         base,
     )
     sinais_sem_acao = re.search(
@@ -278,6 +314,19 @@ def _motivo_contrato_invalido(
         r"nao vou (?:abrir|ligar|desligar|executar|fazer))\b",
         base,
     )
+    recusa_retrabalho = re.search(
+        r"\b(?:n[aã]o vou (?:repetir|refazer|fazer|executar|abrir|ligar|"
+        r"desligar|tocar|mexer)|me recuso|recuso o retrabalho)\b",
+        base,
+    )
+    if recusa_retrabalho and not (
+        classe == "sem_acao"
+        and resultado.executou is False
+        and resultado.confirmado is True
+        and _normalizar(resultado.status).replace(" ", "_")
+        in STATUS_RESULTADO_JA_SATISFEITO
+    ):
+        return "recusa_sem_redundancia_observada"
     if classe == "sucesso" and sinais_falha:
         return "sucesso_negado"
     if classe == "sem_acao" and not sinais_sem_acao:
@@ -580,6 +629,8 @@ def personalizar_confirmacao_llm(
         nivel=max(1, min(3, int(nivel or 1))),
     )
     retrato = dict(contexto or {})
+    if humor_bloqueado_por_preferencia(retrato):
+        return fallback
     # Durante jogo, latência e uso de hardware vencem variedade: a fala local
     # curta continua sendo o caminho oficial.
     if bool(retrato.get("modo_jogo_ativo")):
@@ -590,15 +641,37 @@ def personalizar_confirmacao_llm(
         return _com_motivo_fallback(fallback, "resultado_nao_elegivel")
 
     evento = dict(retrato.get("avaliacao_evento") or {})
+    evento_da_ocorrencia = bool(
+        resultado.origem == "executor"
+        and resultado.id_solicitacao
+        and evento.get("origem") == "resultado_operacional"
+        and str(evento.get("evidencia_ref") or "") == resultado.id_solicitacao
+        and _normalizar(evento.get("alvo")) == _normalizar(resultado.alvo)
+        and evento_pode_alterar_estado(evento)
+    )
+    recusa_retrabalho_confirmada = bool(
+        evento_da_ocorrencia
+        and classe == "sem_acao"
+        and resultado.executou is False
+        and resultado.confirmado is True
+        and _normalizar(resultado.status).replace(" ", "_")
+        in STATUS_RESULTADO_JA_SATISFEITO
+        and evento.get("arco") == "bronca_brincalhona"
+        and evento.get("responsabilidade") == "usuario"
+        and float(evento.get("confianca") or 0.0) >= 0.90
+    )
     reacao_causal = {
         chave: evento.get(chave)
         for chave in (
-            "responsabilidade", "confianca", "emocao", "nivel", "arco",
-            "permite_expressao", "repeticoes", "provocacao_usuario",
+            "responsabilidade", "emocao", "arco", "permite_expressao",
         )
         if chave in evento
     }
-    if not evento_pode_alterar_estado(evento):
+    if "nivel" in evento:
+        reacao_causal["intensidade"] = {
+            1: "leve", 2: "moderada", 3: "alta",
+        }.get(evento.get("nivel"), "indefinida")
+    if not evento_da_ocorrencia:
         reacao_causal["permite_expressao"] = False
     contrato = {
         "intent": resultado.intent,
@@ -606,11 +679,7 @@ def personalizar_confirmacao_llm(
         "alvo": resultado.alvo,
         "params": {
             chave: valor for chave, valor in resultado.params.items()
-            if chave in {
-                "acao", "alvo", "cor", "nome_app", "nome", "nome_arquivo",
-                "nome_playlist", "query", "site", "url", "brilho",
-                "temperatura", "volume",
-            } and isinstance(valor, (str, int, float, bool))
+            if chave in _PARAMETROS_AUTORIA and isinstance(valor, (str, int, float, bool))
         },
         "executou": resultado.executou,
         "confirmado": resultado.confirmado,
@@ -624,11 +693,15 @@ def personalizar_confirmacao_llm(
     }
     regra_reacao = (
         "A reação causal foi validada: inclua na mesma fala uma tirada curta coerente com "
-        "responsabilidade, confiança e intensidade. No nível 1, seja espirituosa; no nível "
-        "2, pode demonstrar deboche ou irritação clara; no nível 3, pode ficar genuinamente "
-        "brava, dar uma bronca curta e recusar o retrabalho redundante. Quando a responsabilidade "
-        "for do usuário, confronte diretamente o comportamento repetido, sem atacar o valor, a "
-        "inteligência ou a identidade da pessoa. Não dilua a emoção com gentileza artificial. "
+        "responsabilidade e intensidade. No nível 1, seja espirituosa; no nível "
+        "2, pode demonstrar deboche ou irritação clara; no nível 3, pode falar com firmeza "
+        "e mostrar que está brava com a causa observada. "
+        + (
+            "Pode dar uma bronca curta no comportamento repetido e recusar o retrabalho redundante. "
+            if recusa_retrabalho_confirmada else
+            "Não atribua repetição ao usuário nem recuse uma ação que foi executada ou falhou. "
+        )
+        + "Não dilua a emoção com gentileza artificial. "
         if reacao_causal.get("permite_expressao") else
         "Não atribua culpa nem invente irritação, distração ou provocação. "
     )
@@ -650,23 +723,34 @@ def personalizar_confirmacao_llm(
             "não trate como falha total e não afirme conclusão completa. "
         ),
     }.get(classe, "")
+    regra_efeito = (
+        "O receipt confirma somente a alternância da repetição; não confirma "
+        "ativação, desativação ou estado ligado/desligado. Diga que a repetição "
+        "foi alternada, sem inventar a direção do estado. "
+        if _normalizar(resultado.status) == "midia_repeat_toggle" else ""
+    )
     sistema = (
         f"{IDENTIDADE_VOZ_LAYLAY} "
         "Você está falando no cotidiano logo depois do resultado observado de um comando. "
         "Escreva uma única resposta completa na voz da Laylay; não cole uma confirmação técnica "
         "com outra frase pronta. Seja doce, jovem, natural e levemente debochada quando combinar. "
         "Use uma ou duas frases curtas. "
-        f"{regra_classe}"
+        f"{regra_classe}{regra_efeito}"
         "O contrato é verdade imutável: não altere ação, alvo, estado, números ou certeza; "
         "não prometa nem ofereça outra ação, não use 'se quiser', não faça pergunta e não "
         "acrescente fatos. A primeira frase deve começar pelo resultado e pelo alvo observados; "
         "só depois deles pode vir humor, emoção ou deboche. A personalidade deve continuar na "
         "mesma resposta, mas nunca esconder o status. "
-        "Varie "
-        "naturalmente começando pela recusa, pelo resultado, pela observação ou pela tirada, "
+        "Varie naturalmente começando pelo resultado, pela observação ou pela tirada, "
         "sem omitir os fatos obrigatórios. "
-        "A tirada pode brincar somente com a repetição observada do pedido; não invente celular, "
-        "gestos, aparência ou ambiente do usuário. Não use palavrão nem linguagem ofensiva. "
+        + (
+            "A tirada pode brincar somente com a repetição observada do pedido; "
+            if recusa_retrabalho_confirmada else
+            "A tirada deve mirar somente a causa observada do resultado; "
+        )
+        + "não invente celular, "
+        "gestos, aparência ou ambiente do usuário. Não ataque a inteligência, "
+        "aparência, identidade ou valor da pessoa. Não use palavrão nem linguagem ofensiva. "
         f"{regra_reacao}"
         "Responda somente com a fala final, sem JSON, rótulos ou explicações sobre o contrato."
     )
@@ -748,10 +832,9 @@ def personalizar_confirmacao_llm(
                     {
                         "role": "user",
                         "content": (
-                            "Sua proposta anterior foi rejeitada por "
-                            f"{motivo_contrato}. Escreva outra fala realmente nova, "
-                            "corrigindo exatamente esse ponto e preservando todos os "
-                            "fatos do contrato. Retorne somente a fala final."
+                            "Escreva outra fala curta usando somente os fatos do resultado "
+                            "fornecido e respeitando todas as restrições de comunicação "
+                            "acima. Retorne somente a fala final."
                         ),
                     },
                 ],
@@ -845,6 +928,15 @@ def personalizar_confirmacao_llm(
         except Exception:
             pass
 
+    # A inversão de cláusulas também produz uma nova candidata. Só a versão
+    # efetivamente entregue pode receber aprovação do contrato canônico.
+    fala_final, motivo_final = validar_dados({**dados, "fala": fala})
+    if motivo_final:
+        return _com_motivo_fallback(
+            fallback, f"contrato_nao_preservado:{motivo_final}",
+        )
+    fala = fala_final
+
     emocao_llm = _normalizar(dados.get("emocao"))
     if emocao_llm not in EMOCOES_PERMITIDAS:
         emocao_llm = fallback.emocao
@@ -853,6 +945,172 @@ def personalizar_confirmacao_llm(
     except (TypeError, ValueError):
         nivel_llm = fallback.nivel
     return ConfirmacaoPersonalizada(fala, emocao_llm, nivel_llm, usada_llm=True)
+
+
+def personalizar_confirmacao_composta_llm(
+    resultados: Sequence[ResultadoAcao],
+    fala_segura: str,
+    *,
+    enviar_mensagem: Callable[..., Any] | None,
+    contexto: Mapping[str, Any] | None = None,
+    informacoes: Mapping[str, str] | None = None,
+) -> ConfirmacaoPersonalizada:
+    """Uma autoria para vários receipts; cada trecho mantém sua certeza própria.
+
+    A fala é escrita inteira pela autora. Os trechos literais da mesma fala
+    permitem conferir cada resultado localmente, inclusive no sucesso parcial,
+    sem aplicar a certeza de uma etapa às outras nem pedir novas ações.
+    """
+    from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+    from mente_laylay.personalidade.planejador_resposta import (
+        classificar_resultado, fala_factual_resultados_compostos,
+    )
+
+    itens = tuple(resultados)
+    fallback = ConfirmacaoPersonalizada(str(fala_segura or "").strip(), "calma", 1)
+    retrato = dict(contexto or {})
+    informacoes = dict(informacoes or {})
+    if humor_bloqueado_por_preferencia(retrato):
+        return fallback
+    if not _ativada() or not callable(enviar_mensagem) or retrato.get("modo_jogo_ativo"):
+        return _com_motivo_fallback(fallback, "autoria_composta_indisponivel")
+    if not itens or any(not item.id_solicitacao or item.origem != "executor" for item in itens):
+        return _com_motivo_fallback(fallback, "receipt_composto_invalido")
+    classes = [classificar_resultado(item) for item in itens]
+    if any(classe not in {"sucesso", "sem_acao", "falha", "incerto"} for classe in classes):
+        return _com_motivo_fallback(fallback, "resultado_composto_nao_elegivel")
+    contrato = {"resultados": [{
+        "indice": indice,
+        "id_solicitacao": item.id_solicitacao,
+        "intent": item.intent, "status": item.status, "alvo": item.alvo,
+        "executou": item.executou, "confirmado": item.confirmado,
+        "classe_resultado": classe,
+        "fato_verificado": fala_factual_resultados_compostos([item], informacoes=informacoes),
+        "limite_evidencia": (
+            "abertura confirmada; foco e reprodução não foram confirmados"
+            if "abert" in item.status.casefold() and "focad" not in item.status.casefold()
+            else "declare apenas o resultado e a certeza informados"
+        ),
+        "params": {chave: valor for chave, valor in item.params.items()
+                   if chave in _PARAMETROS_AUTORIA and isinstance(valor, (str, int, float, bool))},
+        "informacao_literal": informacoes.get(item.id_solicitacao, ""),
+    } for indice, (item, classe) in enumerate(zip(itens, classes))]}
+    sistema = (
+        f"{IDENTIDADE_VOZ_LAYLAY} "
+        "Você terminou as etapas de um único pedido composto. Escreva uma resposta nova, "
+        "natural e curta que conte os resultados juntos, com o seu jeito. Não cole duas "
+        "confirmações prontas. Cada resultado é verdade imutável: preserve alvo, ação, "
+        "estado, números e certeza de cada etapa. Sucesso significa efeito confirmado; "
+        "sem_acao significa estado já satisfeito sem nova execução; falha precisa ser "
+        "admitida; incerto precisa dizer o que ainda não foi confirmado. A conclusão "
+        "de uma etapa não prova a conclusão das outras. Não acrescente ações, fatos, "
+        "promessas ou perguntas. Preserve informacao_literal integralmente quando houver. "
+        "Abertura de app, arquivo ou playlist não prova foco nem que música está tocando. "
+        "Use fato_verificado e limite_evidencia para preservar essa diferença. "
+        "Use uma ou duas frases. Devolva JSON com fala e trechos: fala é a mensagem inteira; "
+        "trechos é uma lista de strings, uma para cada resultado na MESMA ORDEM da lista de entrada. "
+        "O primeiro trecho relata o primeiro resultado, o segundo trecho relata o segundo resultado, "
+        "e assim por diante. Não troque os alvos. Escreva a fala nessa mesma ordem. "
+        "Não copie identificadores internos na saída. Cada trecho "
+        "deve ser uma cópia exata e não sobreposta da parte da fala que relata aquele "
+        "resultado, incluindo sua certeza. Todo o conteúdo deve estar nesses trechos, "
+        "exceto conectivos como e ou mas e pontuação. A cópia literal preserva maiúsculas. "
+        'Formato obrigatório, exemplo com outros alvos: {"fala":"Abri a agenda e criei a pasta fotos.",'
+        '"trechos":["Abri a agenda","criei a pasta fotos"]}. '
+        "Não devolva comandos."
+    )
+    try:
+        resposta = enviar_mensagem(
+            [{"role": "system", "content": sistema},
+             {"role": "user", "content": json.dumps(contrato, ensure_ascii=False)}],
+            _com_tools=False, max_tokens=min(768, 128 + 96 * len(itens)),
+            modo_rapido=False, timeout=_timeout_autoria_operacional(),
+            _prioridade_interativa=True, _permitir_durante_interacao=True,
+            _tipo_chamada="autoria_operacional", _classe_timeout="rapida",
+            _contexto_fechado=True,
+        )
+    except Exception as erro:
+        return _com_motivo_fallback(fallback, f"erro_chamada_{type(erro).__name__.lower()}")
+    dados = _extrair_json(resposta)
+    fala = re.sub(r"\s+", " ", str(dados.get("fala") or "")).strip()
+    trechos = dados.get("trechos")
+    if (
+        not 3 <= len(fala) <= 1000 or "?" in fala or contem_ataque_pessoal(fala)
+        or dados.get("comandos") not in (None, [], ())
+        or not isinstance(trechos, list) or len(trechos) != len(itens)
+    ):
+        return _com_motivo_fallback(fallback, "estrutura_composta_invalida")
+    por_id = {item.id_solicitacao: (item, classe) for item, classe in zip(itens, classes)}
+    cobertos: set[str] = set()
+    intervalos: list[tuple[int, int]] = []
+    for posicao, campo in enumerate(trechos):
+        if isinstance(campo, str):
+            # O host associa a lista congelada de receipts à mesma lista de
+            # trechos. A certeza, o alvo e a ação ainda precisam ser validados.
+            campo = {"indice": posicao, "trecho": campo}
+        if not isinstance(campo, dict):
+            return _com_motivo_fallback(fallback, "trecho_composto_invalido")
+        identidade = str(campo.get("id_solicitacao") or "").strip()
+        indice = campo.get("indice")
+        if indice is not None:
+            if type(indice) is not int or not 0 <= indice < len(itens):
+                return _com_motivo_fallback(fallback, "indice_composto_invalido")
+            identidade_host = itens[indice].id_solicitacao
+            if identidade and identidade != identidade_host:
+                return _com_motivo_fallback(fallback, "identidade_composta_divergente")
+            identidade = identidade_host
+        trecho = re.sub(r"\s+", " ", str(campo.get("trecho") or "")).strip()
+        inicio = fala.find(trecho) if trecho else -1
+        fim = inicio + len(trecho)
+        if (
+            identidade not in por_id or identidade in cobertos or inicio < 0
+            or any(inicio < b and fim > a for a, b in intervalos)
+        ):
+            return _com_motivo_fallback(fallback, "vinculo_composto_invalido")
+        item, classe = por_id[identidade]
+        status = item.status.casefold()
+        if "abert" in status and "focad" not in status:
+            # A certeza pertence a este receipt, não às outras etapas.
+            base_trecho = _normalizar(trecho)
+            if (re.search(r"\b(?:foco|focad[oa]|frente)\b", base_trecho)
+                and item.params.get("foco_confirmado") is not True):
+                return _com_motivo_fallback(fallback, "foco_composto_nao_confirmado")
+            if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
+                return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
+        literal = informacoes.get(identidade, "")
+        motivo = (
+            "informacao_composta_omitida" if literal and literal not in trecho else
+            "" if literal else _motivo_contrato_invalido(
+                trecho, resultado=item, classe=classe,
+                status_declarado=item.status, alvo_declarado=item.alvo,
+            )
+        )
+        if motivo:
+            return _com_motivo_fallback(fallback, f"contrato_composto_nao_preservado:{motivo}")
+        guardiao_trecho = validar_alegacoes_da_fala(
+            trecho, plano={"requer_execucao": True, "comandos": [item.como_dict()]},
+            origem="canal_voz",
+        )
+        if guardiao_trecho.get("problemas"):
+            return _com_motivo_fallback(fallback, "alegacao_do_trecho_sem_receipt")
+        cobertos.add(identidade)
+        intervalos.append((inicio, fim))
+    sem_cobertura = fala
+    for inicio, fim in sorted(intervalos, reverse=True):
+        sem_cobertura = sem_cobertura[:inicio] + " " + sem_cobertura[fim:]
+    if re.sub(r"\b(?:e|mas|enquanto|tambem|também)\b|[\W_]", "", sem_cobertura, flags=re.IGNORECASE):
+        return _com_motivo_fallback(fallback, "alegacao_composta_sem_receipt")
+    numeros = lambda texto: set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", texto))
+    evidencia = " ".join((fallback.fala, json.dumps(contrato, ensure_ascii=False)))
+    if not numeros(fala).issubset(numeros(evidencia)):
+        return _com_motivo_fallback(fallback, "detalhe_numerico_nao_evidenciado")
+    guardiao = validar_alegacoes_da_fala(
+        fala, plano={"requer_execucao": True, "comandos": [item.como_dict() for item in itens]},
+        origem="canal_voz",
+    )
+    if guardiao.get("problemas"):
+        return _com_motivo_fallback(fallback, "guardiao_composto_rejeitou")
+    return ConfirmacaoPersonalizada(fala, fallback.emocao, fallback.nivel, usada_llm=True)
 
 
 def personalizar_informacao_llm(
@@ -878,6 +1136,8 @@ def personalizar_informacao_llm(
     )
     retrato = dict(contexto or {})
     fatos = [re.sub(r"\s+", " ", str(fato or "")).strip() for fato in fatos_obrigatorios]
+    if humor_bloqueado_por_preferencia(retrato):
+        return fallback
     fatos = [fato for fato in fatos if fato]
     if (
         not _ativada()

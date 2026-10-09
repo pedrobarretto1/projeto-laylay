@@ -121,6 +121,33 @@ def desembrulhar_filename_literal(valor: str) -> str:
     return limpo
 
 
+def caminho_absoluto_literal(valor: str) -> str:
+    """Reconhece identidade absoluta sem normalizar grafia nem dar permissão.
+
+    Aspas pertencem à moldura, e não ao alvo. Um drive relativo (``C:nota``)
+    continua sendo relativo; URLs e nomes simples não ganham um diretório.
+    As raízes permitidas e a existência são verificadas pelo serviço executor.
+    """
+    limpo = desembrulhar_filename_literal(valor)
+    if not limpo or not aspas_globalmente_coerentes(limpo):
+        return ""
+    if any(caractere in limpo for caractere in ('\x00', '\r', '\n')):
+        return ""
+    if re.match(r"^[A-Za-z]:[\\/]", limpo):
+        return limpo
+    if re.match(r"^\\\\[^\\/\s]+[\\/][^\\/]+", limpo):
+        return limpo
+    if os.name != "nt" and limpo.startswith("/") and not limpo.startswith("//"):
+        return limpo
+    return ""
+
+
+def texto_contem_caminho_absoluto(texto: str) -> bool:
+    """Sinal de argumento literal; não classifica o ato nem autoriza efeito."""
+    bruto = str(texto or "")
+    return bool(re.search(r"(?<!\w)(?:[A-Za-z]:[\\/]|\\\\[^\\/\s]+[\\/])", bruto))
+
+
 def _restaurar_extensao_falada(nome: str) -> str:
     """Recoloca o ponto apenas para uma extensao textual conhecida no fim."""
     valor = str(nome or "").strip()

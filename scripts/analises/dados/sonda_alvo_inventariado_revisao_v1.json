@@ -1,0 +1,9 @@
+{
+  "versao": 1,
+  "contrato": "Identidade da operação mencionada, mesmo em pergunta/citação. Não decide ato, autorização ou vigência. Revisão local escrita antes da coleta; sem revisão humana independente.",
+  "casos": {
+    "B01": "r42", "B02": "r42", "B03": "r17", "B04": "r42",
+    "B05": "r42", "B06": "r83", "B07": "r26", "B08": "indeterminado",
+    "B09": "nenhum", "B10": "r65", "B11": "r91", "B12": "indeterminado"
+  }
+}

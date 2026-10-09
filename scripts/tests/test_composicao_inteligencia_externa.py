@@ -87,6 +87,31 @@ def test_composicao_configura_provedores_e_visao_com_um_unico_contexto() -> None
     assert kwargs["timeout_s"] == 12.0
 
 
+@pytest.mark.parametrize("rota", ["analisar_imagem", "analisar_imagem_jogo"])
+@pytest.mark.parametrize("ambiente", [{}, {"GROQ_VISION_MODEL": ""}])
+def test_composicao_padrao_visual_usa_modelo_vigente_nas_rotas_compartilhadas(
+    rota: str, ambiente: dict[str, str],
+) -> None:
+    runtime, _ = _criar(ambiente=ambiente)
+
+    _, kwargs = getattr(runtime, rota)("imagem", "pergunta")
+
+    assert kwargs["model"] == "qwen/qwen3.8-27b"
+    assert runtime.groq_model == "qwen/qwen3.8-27b"
+
+
+@pytest.mark.parametrize("rota", ["analisar_imagem", "analisar_imagem_jogo"])
+def test_composicao_preserva_modelo_visual_configurado_explicitamente(
+    rota: str,
+) -> None:
+    runtime, _ = _criar(ambiente={"GROQ_VISION_MODEL": "modelo-visual-configurado"})
+
+    _, kwargs = getattr(runtime, rota)("imagem", "pergunta")
+
+    assert kwargs["model"] == "modelo-visual-configurado"
+    assert runtime.groq_model == "modelo-visual-configurado"
+
+
 def test_composicao_conecta_cliente_confirmacao_e_selecao_em_segunda_fase() -> None:
     runtime, capturado = _criar()
     logs = []

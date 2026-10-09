@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import time
 import threading
+import hashlib
+import json
+import re
 from typing import Any, Callable
+
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
+    classificar_confirmacao_local, normalizar_confirmacao_texto,
+)
+from mente_laylay.memoria_mental.pendencia_acao import PendenciaAcaoRuntime
+from mente_laylay.memoria_mental.resultado_acao import ResultadoTratamentoOperacional
 
 
 def fechar_abas_sugeridas(
@@ -64,6 +73,7 @@ class PorteiroChromeRuntime:
         sleep: Callable[[float], Any] = time.sleep,
         log: Callable[[str], Any] = print,
         stop_event: threading.Event | None = None,
+        pendencias: PendenciaAcaoRuntime | None = None,
     ) -> None:
         self.abas_sugeridas = abas_sugeridas
         self.obter_ram_percent = obter_ram_percent
@@ -80,17 +90,88 @@ class PorteiroChromeRuntime:
         self.log = log
         self.ultima_sugestao_ts = 0.0
         self.stop_event = stop_event or threading.Event()
+        self.pendencias = pendencias
+        self._lock = threading.RLock()
+
+    def _referencia_abas(self) -> str:
+        material = json.dumps(list(self.abas_sugeridas), ensure_ascii=False)
+        return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+    def processar_confirmacao(
+        self, texto: str, *,
+        executar: Callable[[dict[str, Any], str], ResultadoTratamentoOperacional],
+        permitir_execucao: bool = True,
+    ) -> bool:
+        """Consome somente a oferta identificada; executor publica o receipt."""
+        with self._lock:
+            if self.pendencias is None:
+                return False
+            item = self.pendencias.obter()
+            if not item or item.get("origem") != "porteiro_chrome":
+                return False
+            decisao = classificar_confirmacao_local(texto, somente_aceite_generico=True)
+            # O domínio acrescenta apenas o verbo elíptico. Sim/não pertencem
+            # ao interpretador compartilhado de todas as habilidades.
+            fechamento = re.fullmatch(
+                r"(?:pode\s+)?(?:fechar|fecha|feche|limpa|limpe)"
+                r"(?:\s+as\s+abas(?:\s+(?:paradas|ociosas))?)?",
+                normalizar_confirmacao_texto(texto),
+            )
+            if decisao is None and fechamento:
+                decisao = True
+            if decisao is None or (decisao is True and not permitir_execucao):
+                return False
+            resultado = self.pendencias.resolver(
+                texto, id_esperado=item["id"],
+                classificar_dominio=lambda *_: "aceitar" if decisao else "recusar",
+                somente_aceite_generico=True,
+            )
+            status = resultado.get("status")
+            if status in {"concorrente", "em_processamento"}:
+                self.falar("O pedido está mudando ou já está em andamento. Aguarde um instante.", "calma", 1)
+                return True
+            if not resultado.get("tratado"):
+                return False
+            if status == "recusar":
+                self.pendencias.concluir(item["id"], "recusada")
+                self.abas_sugeridas.clear()
+                self.falar("Certo, mantive as abas abertas.", "calma", 1)
+                return True
+            if (
+                status != "aceitar"
+                or item.get("acao") != "fechar_abas_paradas"
+                or item.get("referencia") != self._referencia_abas()
+                or not self.abas_sugeridas
+            ):
+                self.pendencias.concluir(item["id"], "alvos_alterados")
+                self.falar("As abas sugeridas mudaram. Preciso confirmar a nova lista antes de fechar.", "calma", 1)
+                return True
+            try:
+                tratamento = executar({"intent": "CLOSE_IDLE_TABS", "params": {}}, texto)
+                final = "executada" if tratamento.confirmado is True else "falha_execucao"
+                if not tratamento.tratado:
+                    self.falar("Não consegui executar o fechamento das abas.", "calma", 1)
+            except Exception as erro:
+                self.log(f"[PORTEIRO] Falha na confirmação: {type(erro).__name__}")
+                final = "falha_execucao"
+                self.falar("Não consegui confirmar o fechamento das abas.", "calma", 1)
+            self.pendencias.concluir(item["id"], final)
+            return True
 
     def fechar_sugeridas(self) -> bool:
-        enviar = self.enviar_fechamento or (lambda _payload: None)
-        return fechar_abas_sugeridas(
-            self.abas_sugeridas,
-            enviar=enviar,
-            falar=self.falar,
-            log=self.log,
-        )
+        with self._lock:
+            enviar = self.enviar_fechamento or (lambda _payload: False)
+            return fechar_abas_sugeridas(
+                self.abas_sugeridas, enviar=enviar, falar=self.falar, log=self.log,
+            )
 
     def executar_ciclo(self) -> bool:
+        with self._lock:
+            return self._executar_ciclo()
+
+    def _executar_ciclo(self) -> bool:
+        if self.pendencias is not None and self.pendencias.obter():
+            return False
         ram_percent = float(self.obter_ram_percent())
         if ram_percent < self.ram_threshold:
             return False
@@ -126,7 +207,6 @@ class PorteiroChromeRuntime:
 
         ociosas.sort(key=lambda item: item["minutos"], reverse=True)
         candidatas = ociosas[:3]
-        self.ultima_sugestao_ts = agora
         self.abas_sugeridas[:] = [item["url"] for item in candidatas]
 
         nomes = ", ".join(item["titulo"] or item["url"][:30] for item in candidatas)
@@ -138,10 +218,32 @@ class PorteiroChromeRuntime:
             "Se quiser aliviar um pouco, eu fecho só as que estão paradas."
         )
         self.log(f"[PORTEIRO] {mensagem}")
+        pendencia = None
+        if self.pendencias is not None:
+            pendencia = self.pendencias.registrar(
+                origem="porteiro_chrome", acao="fechar_abas_paradas",
+                dominio="navegador", pergunta=mensagem,
+                referencia=self._referencia_abas(),
+                metadados={
+                    "intent": "CLOSE_IDLE_TABS", "quantidade": len(candidatas),
+                    "sobrevive_comando_independente": True,
+                },
+                ttl_s=300.0,
+            )
+            if not pendencia:
+                self.abas_sugeridas.clear()
+                return False
         try:
-            self.falar(mensagem, "calma", 1)
+            entregue = self.falar(mensagem, "calma", 1) is not False
         except Exception as erro:
             self.log(f"[PORTEIRO] Erro ao falar: {erro}")
+            entregue = False
+        if not entregue:
+            if pendencia:
+                self.pendencias.concluir(pendencia["id"], "falha_publicacao")
+            self.abas_sugeridas.clear()
+            return False
+        self.ultima_sugestao_ts = agora
         return True
 
     def daemon(self) -> None:

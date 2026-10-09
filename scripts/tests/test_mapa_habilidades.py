@@ -18,6 +18,69 @@ def test_mapa_cobre_catalogo_canonico_sem_autorizar_execucao() -> None:
     assert mapa.consultar("INTENT_INEXISTENTE")["motivo"] == "capacidade_nao_registrada"
 
 
+def test_personalidade_conhece_erro_proprio_limitado_a_prova_original() -> None:
+    mapa = MapaHabilidadesRuntime()
+    for pergunta in ("Você consegue reconhecer um erro seu?", "Você pode admitir uma proposta errada?"):
+        contexto = mapa.contexto_para_prompt(pergunta)
+        assert "- personalidade [disponivel]" in contexto
+        assert "proposta original" in contexto
+        resposta = mapa.responder_pergunta_capacidade(pergunta)
+        assert "proposta original" in resposta
+        assert "turno vigente" in resposta
+        assert "reparo concluído" in resposta
+    resposta = mapa.responder_pergunta_capacidade("Você pode ficar brava e agir sozinha?")
+    assert "não autoriza ações" in resposta
+
+
+def test_personalidade_explica_recusa_de_retrabalho_sem_veto_por_humor() -> None:
+    mapa = MapaHabilidadesRuntime()
+    pergunta = "Você pode recusar retrabalho redundante?"
+
+    contexto = mapa.contexto_para_prompt(pergunta)
+    resposta = mapa.responder_pergunta_capacidade(pergunta)
+
+    assert "- personalidade [disponivel]" in contexto
+    assert "repetição com estado já confirmado" in contexto
+    assert "repetição com estado já confirmado" in resposta
+    assert "não recuso um pedido novo só por humor" in resposta
+    assert mapa.responder_pergunta_capacidade("recuse esse pedido") == ""
+
+
+def test_personalidade_descreve_limite_da_resistencia_opcional() -> None:
+    mapa = MapaHabilidadesRuntime()
+    pergunta = "Você consegue resistir a um pedido opcional?"
+    contexto = mapa.contexto_para_prompt(pergunta)
+    resposta = mapa.responder_pergunta_capacidade(pergunta)
+
+    assert "- personalidade [disponivel]" in contexto
+    assert "controle de repetição" in contexto
+    assert "alternar a repetição" in resposta
+    assert "Urgência, segurança e acessibilidade" in resposta
+
+
+def test_termo_curto_de_aba_nao_contamina_pergunta_sobre_trabalho() -> None:
+    mapa = MapaHabilidadesRuntime()
+
+    pergunta_trabalho = mapa.responder_pergunta_capacidade(
+        "Você pode conversar sobre meu trabalho?"
+    )
+    pergunta_aba = mapa.responder_pergunta_capacidade(
+        "Você consegue ver uma aba do navegador?"
+    )
+
+    assert "navegador" not in pergunta_trabalho.casefold()
+    assert "navegador" in pergunta_aba.casefold()
+
+
+def test_plural_apps_segue_identificando_capacidade_de_sistema() -> None:
+    mapa = MapaHabilidadesRuntime()
+
+    assert "sistema" in mapa.dominios_relevantes("Você consegue abrir apps?")
+    assert "abr" in mapa.responder_pergunta_capacidade(
+        "Você consegue abrir apps?"
+    ).casefold()
+
+
 def test_prompt_seleciona_so_habilidades_relevantes_ao_turno() -> None:
     mapa = MapaHabilidadesRuntime()
 

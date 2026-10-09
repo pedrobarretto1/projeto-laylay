@@ -748,7 +748,9 @@ class RuntimeIoT:
                 intent=intent, status=status, alvo=ambiente or "dispositivos IoT",
                 executou=True, confirmado=True, texto_usuario=texto_original,
             )
-            plano = planejar_resposta_acao(contrato, fala, emocao_preferida="calma")
+            plano = planejar_resposta_acao(
+                contrato, fala, emocao_preferida="calma", contexto=self.estado_mental_getter(),
+            )
             if self.emitir_fala and not execucao_silenciosa:
                 self.falar(plano.fala, plano.emocao, plano.nivel)
             return {
@@ -866,6 +868,7 @@ class RuntimeIoT:
             ),
             fala,
             emocao_preferida="calma",
+            contexto=estado_mental,
         )
         fala = plano_fala.fala
         emocao_resultado = plano_fala.emocao

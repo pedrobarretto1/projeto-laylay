@@ -3,15 +3,81 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
+from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
 from mente_laylay.personalidade.higiene_fala import (
     remover_fragmento_final_incompleto,
 )
 
 
 MARCADOR_PRESENCA = "PRESENCA_JOGO_JSON:"
+
+
+def criar_contrato_saida_presenca_visual() -> ContratoSaidaEstruturada:
+    """Negocia a estrutura da proposta; a cognição conserva os gates semânticos."""
+    categorias = ["motivacao", "celebracao", "dica", "musica",
+                  "companhia", "curiosidade", "nenhuma"]
+    texto = {"type": "string", "maxLength": 360}
+    propriedades_reacao = {
+        "foco_evidencia": dict(texto), "trecho_ancora": dict(texto),
+        "humor": {"type": "boolean"}, "fala": dict(texto),
+    }
+    propriedades = {
+        "evidencias": {"type": "array", "maxItems": 5,
+                       "items": {**texto, "minLength": 1}},
+        "foco_evidencia": dict(texto),
+        "proposta_reacao": {"anyOf": [
+            {"type": "null"},
+            {"type": "object", "properties": propriedades_reacao,
+             "required": list(propriedades_reacao), "additionalProperties": False},
+        ]},
+        "relevante": {"type": "boolean"},
+        "categoria": {"type": "string", "enum": categorias},
+        "fala": dict(texto), "motivo": {"type": "string", "maxLength": 180},
+        "confianca": {"type": "number", "minimum": 0, "maximum": 1},
+        "momento_seguro": {"type": "boolean"},
+        "clima_musical": {"type": "string", "maxLength": 40},
+    }
+
+    def validar(dados: dict[str, Any]) -> None:
+        if set(dados) != set(propriedades):
+            raise ValueError("campos de presença não correspondem ao contrato")
+        for chave, limite in (("foco_evidencia", 360), ("fala", 360),
+                              ("motivo", 180), ("clima_musical", 40)):
+            if not isinstance(dados[chave], str) or len(dados[chave]) > limite:
+                raise ValueError("texto de presença inválido")
+        if type(dados["relevante"]) is not bool or type(dados["momento_seguro"]) is not bool:
+            raise ValueError("flag de presença deve ser booleana")
+        if dados["categoria"] not in categorias:
+            raise ValueError("categoria de presença inválida")
+        confianca = dados["confianca"]
+        if (type(confianca) not in (int, float) or not math.isfinite(confianca)
+                or not 0 <= confianca <= 1):
+            raise ValueError("confiança de presença inválida")
+        evidencias = dados["evidencias"]
+        if (not isinstance(evidencias, list) or len(evidencias) > 5
+                or any(not isinstance(item, str) or not item.strip()
+                       or len(item) > 360 for item in evidencias)):
+            raise ValueError("lista de evidências inválida")
+        reacao = dados["proposta_reacao"]
+        if reacao is not None:
+            if not isinstance(reacao, dict) or set(reacao) != set(propriedades_reacao):
+                raise ValueError("campos de reação não correspondem ao contrato")
+            if type(reacao["humor"]) is not bool or any(
+                not isinstance(reacao[chave], str) or len(reacao[chave]) > 360
+                for chave in ("foco_evidencia", "trecho_ancora", "fala")
+            ):
+                raise ValueError("estrutura de reação inválida")
+
+    return ContratoSaidaEstruturada(
+        nome="presenca_jogo_v1", marcador=MARCADOR_PRESENCA,
+        esquema={"type": "object", "properties": propriedades,
+                 "required": list(propriedades), "additionalProperties": False},
+        validar=validar,
+    )
 
 
 def _normalizar_evidencia(texto: str) -> str:
@@ -85,7 +151,7 @@ def extrair_presenca_visual(resposta: str) -> tuple[str, dict[str, Any]]:
     except (TypeError, ValueError):
         confianca = 0.0
     evidencias_limpas = [
-        str(item).strip()[:180] for item in evidencias if str(item).strip()
+        str(item).strip() for item in evidencias if str(item).strip()
     ][:5]
     fala_evento = remover_fragmento_final_incompleto(
         str(dados.get("fala") or fala_natural).strip()[:360]
@@ -103,6 +169,12 @@ def extrair_presenca_visual(resposta: str) -> tuple[str, dict[str, Any]]:
         "momento_seguro": bool(dados.get("momento_seguro")),
         "clima_musical": str(dados.get("clima_musical") or "").strip().casefold()[:40],
     }
+    if "foco_evidencia" in dados:
+        # A cognição confere o vínculo literal; o parser não decide relevância.
+        evento["foco_evidencia"] = dados["foco_evidencia"]
+    if "proposta_reacao" in dados or categoria in {"companhia", "curiosidade"}:
+        # Papel autoral separado dos fatos; validação pertence à cognição.
+        evento["proposta_reacao"] = dados.get("proposta_reacao")
     if not fala_evento:
         evento.update(relevante=False, categoria="nenhuma")
     fala_norm = evento["fala"].casefold()

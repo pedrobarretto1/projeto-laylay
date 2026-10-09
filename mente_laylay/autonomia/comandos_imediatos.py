@@ -72,6 +72,8 @@ from mente_laylay.memoria_mental.resultado_acao import (
     ResultadoTratamentoOperacional,
     interpretar_tratamento_operacional,
 )
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import classificar_confirmacao_local
+from mente_laylay.personalidade.politica_resistencia import validar_pedido_resistencia
 
 
 def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
@@ -401,6 +403,91 @@ class ComandosImediatosRuntime:
         self.memoria_pessoas = memoria_pessoas
         self.iot = iot
 
+    def _processar_resistencia_pendente(
+        self, texto: str, ns: Dict[str, Any], turno: Dict[str, Any],
+    ) -> bool:
+        pendencias = ns.get("_pendencia_acao_runtime")
+        if not callable(getattr(pendencias, "obter", None)):
+            return False
+        try:
+            pendencia = pendencias.obter()
+        except Exception:
+            return False
+        if not isinstance(pendencia, dict) or pendencia.get("origem") != "resistencia_personalidade":
+            return False
+        falar = ns.get("falar_com_lipsync")
+        if not callable(falar) or turno_tem_veto_execucao(turno):
+            return False
+        if classificar_confirmacao_local(texto) is None:
+            return False
+        pendencia_observada_id = str(pendencia.get("id") or "")
+        if not pendencia_observada_id:
+            falar("Não consegui validar o pedido pendente; a repetição não foi alterada.", "calma", 1)
+            return True
+        try:
+            decisao = pendencias.resolver(texto, id_esperado=pendencia_observada_id)
+        except Exception:
+            return False
+        if decisao.get("tratado") is not True:
+            return False
+        status = str(decisao.get("status") or "")
+        if status == "concorrente":
+            falar("O pedido pendente mudou; confirme o pedido atual antes de continuar.", "calma", 1)
+            return True
+        if status == "em_processamento":
+            falar("Já estou tratando essa confirmação; aguarde um instante.", "calma", 1)
+            return True
+        pendencia = decisao.get("pendencia")
+        if not (
+            isinstance(pendencia, dict)
+            and pendencia.get("id") == pendencia_observada_id
+            and pendencia.get("origem") == "resistencia_personalidade"
+            and pendencia.get("acao") == "retomar_controle_midia"
+        ):
+            if isinstance(pendencia, dict) and pendencia.get("id") == pendencia_observada_id:
+                pendencias.concluir(pendencia_observada_id, "pedido_invalido")
+            falar("Não consegui validar o pedido pendente; a repetição não foi alterada.", "calma", 1)
+            return True
+        pendencia_id = str(pendencia.get("id") or "")
+        if status == "recusar":
+            pendencias.concluir(pendencia_id, "recusada")
+            falar("Certo, não executei o controle de repetição.", "calma", 1)
+            return True
+        metadados = pendencia.get("metadados") or {}
+        pedido = validar_pedido_resistencia(
+            metadados.get("pedido") if isinstance(metadados, dict) else None,
+        )
+        pedido_valido = (
+            status == "aceitar"
+            and isinstance(metadados, dict)
+            and metadados.get("intent") == "MEDIA_CONTROL"
+            and metadados.get("acao") == "repeat_toggle"
+            and metadados.get("evento_ref") == pendencia.get("referencia")
+            and pedido is not None
+        )
+        if not pedido_valido:
+            pendencias.concluir(pendencia_id, "pedido_invalido")
+            falar("Não consegui validar o pedido pendente; a repetição não foi alterada.", "calma", 1)
+            return True
+        try:
+            tratamento = _executar_intencao_com_contrato(
+                ns, pedido, texto, origem="resistencia_personalidade",
+            )
+        except Exception as erro:
+            print(f"⚠️ [P17:RESISTÊNCIA] execução falhou: {type(erro).__name__}: {erro}")
+            pendencias.concluir(pendencia_id, "falha_execucao")
+            falar("Não consegui alterar a repetição.", "calma", 1)
+            return True
+        status_final = (
+            "executada" if tratamento.sucesso_habilidade
+            else "resultado_incerto" if tratamento.resultado_incerto
+            else "falha_execucao"
+        )
+        pendencias.concluir(pendencia_id, status_final)
+        if not tratamento.tratado:
+            falar("Não consegui alterar a repetição.", "calma", 1)
+        return True
+
     def _processar_resumo_pagina(
         self,
         texto: str,
@@ -675,6 +762,20 @@ class ComandosImediatosRuntime:
         contexto_prioritario["mente_integrada_estado"] = getattr(
             estado_runtime, "mental", {},
         )
+
+        porteiro = ns.get("_porteiro_runtime")
+        confirmar_abas = getattr(porteiro, "processar_confirmacao", None)
+        if callable(confirmar_abas) and confirmar_abas(
+            texto,
+            permitir_execucao=not turno_tem_veto_execucao(turno_prioritario),
+            executar=lambda pedido, fala: _executar_intencao_com_contrato(
+                ns, pedido, fala, origem="confirmacao_porteiro_chrome",
+            ),
+        ):
+            return True
+
+        if self._processar_resistencia_pendente(texto, ns, turno_prioritario):
+            return True
 
         # Uma repetição curta não carrega novamente o verbo da operação e,
         # por isso, pode ser classificada como conversa. A autorização vem do

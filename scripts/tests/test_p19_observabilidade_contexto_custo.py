@@ -37,7 +37,7 @@ def test_lote_proativo_publica_mesmo_retrato_causal_em_texto_e_voz() -> None:
         ajustar_estado_fala_cb=lambda *_args: None,
         proativa_permitida_cb=lambda: True,
         interrupt_event=threading.Event(),
-        publicar_texto_proativo_cb=lambda texto, emocao, nivel: saidas.append(
+        publicar_texto_proativo_cb=lambda texto, emocao, nivel, **_dados: saidas.append(
             ("texto", texto, emocao, nivel)
         ),
         log=lambda *_args: None,

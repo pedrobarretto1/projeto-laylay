@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 import time
 
+import pytest
+
 import mente_laylay.autonomia.coordenador_intencao as coordenador_intencao
 from mente_laylay.autonomia.coordenador_intencao import CicloComandosRuntime
 from mente_laylay.autonomia.coordenador_intencao import resolver_intencao
@@ -15,8 +17,11 @@ from mente_laylay.cognicao.decisao_turno import (
 from mente_laylay.cognicao.plano_turno import planejar_turno
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.orquestrador_turno_runtime import (
+    alinhar_identidade_plano_revisao,
     aplicar_repeticao_operacional_ao_turno,
 )
+from mente_laylay.cognicao.retrato_turno import construir_retrato_turno
+from mente_laylay.cognicao.revisao_turno import resolver_revisao_intra_turno
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     registrar_resultado_execucao,
     resolver_repeticao_ultima_acao,
@@ -169,6 +174,220 @@ def test_comando_json_continua_permitido_em_pedido_explicito() -> None:
 
     assert resultado["comandos"] == [comando]
     assert resultado["rejeitados"] == []
+
+
+def _contratos_reais_do_filtro(texto: str) -> tuple[dict, dict, dict]:
+    turno = classificar_modalidade_turno(texto)
+    retrato, _entidades = construir_retrato_turno(
+        texto, turno=turno, mente={}, contexto_perceptivo={},
+    )
+    turno["retrato_id"] = retrato["id"]
+    plano = planejar_turno(texto, turno=turno, mente={})
+    assert turno["id"] == plano["id"] == retrato["id"]
+    assert plano["decisao_turno"]["turno_id"] == turno["id"]
+    assert plano["retrato_id"] == turno["retrato_id"]
+    assert turno["autoriza_execucao"] is True
+    return turno, plano, retrato
+
+
+@pytest.mark.parametrize("texto, intent", [
+    ("cria a playlist foco", "PLAYLIST_CREATE"),
+    ("liga a lâmpada do quarto", "IOT_CONTROL"),
+])
+def test_filtro_aceita_comando_com_turno_plano_e_retrato_coerentes(texto: str, intent: str) -> None:
+    turno, plano, retrato = _contratos_reais_do_filtro(texto)
+    comando = {"intent": intent}
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is True
+    assert filtrado["comandos"] == [comando]
+    assert filtrado["rejeitados"] == []
+
+
+@pytest.mark.parametrize("divergencia", [
+    "turno_id", "plano_id", "decisao_turno_id", "retrato_id", "turno_retrato_id",
+    "plano_retrato_id", "turno_texto", "plano_texto", "retrato_texto", "retrato_sem_id",
+])
+def test_filtro_nao_combina_autoridade_com_snapshot_de_outra_ocorrencia(divergencia: str) -> None:
+    turno, plano, retrato = _contratos_reais_do_filtro("cria a playlist foco")
+    outro_id = turno["id"] + 1
+    if divergencia == "turno_id":
+        turno["id"] = outro_id
+    elif divergencia == "plano_id":
+        plano["id"] = outro_id
+    elif divergencia == "decisao_turno_id":
+        plano["decisao_turno"]["turno_id"] = outro_id
+    elif divergencia == "retrato_id":
+        retrato["id"] = outro_id
+    elif divergencia == "turno_retrato_id":
+        turno["retrato_id"] = outro_id
+    elif divergencia == "plano_retrato_id":
+        plano["retrato_id"] = outro_id
+    elif divergencia == "turno_texto":
+        turno["texto"] = "apaga o arquivo foco"
+    elif divergencia == "plano_texto":
+        plano["texto_usuario"] = "apaga o arquivo foco"
+    elif divergencia == "retrato_texto":
+        retrato["texto"] = "apaga o arquivo foco"
+    else:
+        retrato.pop("id")
+
+    filtrado = filtrar_comandos_pelo_turno(
+        [{"intent": "PLAYLIST_CREATE"}], turno=turno, plano=plano, retrato=retrato,
+    )
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+    assert "incoerente" in filtrado["rejeitados"][0]["motivo"]
+
+
+@pytest.mark.parametrize("texto, intent", [
+    ("cria a playlist foco", "DELETE_ITEM"),
+    ("liga a lâmpada do quarto", "APP_OPEN"),
+])
+def test_retrato_de_outro_turno_nao_libera_intent_alheio_ao_pedido(texto: str, intent: str) -> None:
+    turno, plano, retrato = _contratos_reais_do_filtro(texto)
+    comando = {"intent": intent}
+    controle = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+    assert controle["comandos"] == []
+    assert controle["rejeitados"][0]["motivo"] == "intenção incompatível com a operação explícita"
+    retrato.update(id=turno["id"] + 1, texto="pedido de outra ocorrência", intents_permitidos=[intent])
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+    assert "incoerente" in filtrado["rejeitados"][0]["motivo"]
+
+
+@pytest.mark.parametrize("texto, comando", [
+    ("Abre o Opera... não, abre a Calculadora.", {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}),
+    ("Liga a lâmpada... não, deixa desligada.", {"intent": "IOT_CONTROL", "params": {"acao": "desligar", "alvo": "lâmpada"}}),
+])
+def test_filtro_preserva_revisao_legitima_com_original_e_operacional_separados(
+    texto: str, comando: dict,
+) -> None:
+    revisao = resolver_revisao_intra_turno(texto)
+    assert revisao["detectada"] and revisao["resolvida"] and not revisao["cancelada"]
+    efetivo = revisao["texto_operacional_efetivo"]
+    turno, plano, retrato = _contratos_reais_do_filtro(efetivo)
+    turno.update(texto=texto, texto_original=texto, texto_operacional_efetivo=efetivo, revisao_intra_turno=revisao)
+    plano = alinhar_identidade_plano_revisao(
+        plano, texto_original=texto, texto_operacional_efetivo=efetivo, revisao_intra_turno=revisao,
+    )
+    assert plano["texto_usuario"] != retrato["texto"]
+    assert plano["texto_operacional_efetivo"] == retrato["texto"]
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is True
+    assert filtrado["comandos"] == [comando]
+
+
+@pytest.mark.parametrize("retrato", [None, {}])
+def test_filtro_preserva_contrato_legado_sem_referencia_a_retrato(retrato: dict | None) -> None:
+    turno = classificar_modalidade_turno("abre a Calculadora")
+    plano = planejar_turno("abre a Calculadora", turno=turno, mente={})
+    assert not turno.get("retrato_id") and not plano.get("retrato_id")
+    comando = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is True
+    assert filtrado["comandos"] == [comando]
+
+
+def test_filtro_nao_ignora_retrato_referenciado_que_desapareceu() -> None:
+    turno, plano, _retrato = _contratos_reais_do_filtro("cria a playlist foco")
+
+    filtrado = filtrar_comandos_pelo_turno(
+        [{"intent": "PLAYLIST_CREATE"}], turno=turno, plano=plano, retrato={},
+    )
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+
+
+def test_filtro_sem_retrato_tambem_recusa_plano_com_id_divergente() -> None:
+    turno = classificar_modalidade_turno("abre a Calculadora")
+    plano = planejar_turno("abre a Calculadora", turno=turno, mente={})
+    plano["id"] = turno["id"] + 1
+
+    filtrado = filtrar_comandos_pelo_turno([{"intent": "APP_OPEN"}], turno=turno, plano=plano)
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+
+
+@pytest.mark.parametrize("dono, campo", [
+    ("turno", "id"), ("plano", "id"), ("decisao", "turno_id"),
+    ("turno", "retrato_id"), ("plano", "retrato_id"),
+    ("turno", "texto"), ("plano", "texto_usuario"), ("retrato", "texto"),
+])
+def test_filtro_moderno_recusa_identidade_incompleta(dono: str, campo: str) -> None:
+    turno, plano, retrato = _contratos_reais_do_filtro("cria a playlist foco")
+    contratos = {"turno": turno, "plano": plano, "retrato": retrato, "decisao": plano["decisao_turno"]}
+    contratos[dono].pop(campo)
+
+    filtrado = filtrar_comandos_pelo_turno(
+        [{"intent": "PLAYLIST_CREATE"}], turno=turno, plano=plano, retrato=retrato,
+    )
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+    assert "incoerente" in filtrado["rejeitados"][0]["motivo"]
+
+
+def test_filtro_recusa_visao_operacional_divergente_apos_revisao() -> None:
+    original = "Abre o Opera... não, abre a Calculadora."
+    revisao = resolver_revisao_intra_turno(original)
+    efetivo = revisao["texto_operacional_efetivo"]
+    turno, plano, retrato = _contratos_reais_do_filtro(efetivo)
+    turno.update(texto=original, texto_original=original, texto_operacional_efetivo=efetivo)
+    plano = alinhar_identidade_plano_revisao(
+        plano, texto_original=original, texto_operacional_efetivo=efetivo, revisao_intra_turno=revisao,
+    )
+    plano["texto_operacional_efetivo"] = "abre o Opera"
+
+    filtrado = filtrar_comandos_pelo_turno(
+        [{"intent": "APP_OPEN"}], turno=turno, plano=plano, retrato=retrato,
+    )
+
+    assert filtrado["autoriza_execucao"] is False
+    assert filtrado["comandos"] == []
+
+
+def test_filtro_preserva_ids_serializados_e_limite_textual_canonico() -> None:
+    texto = "cria a playlist foco " + "x" * 510
+    turno, plano, retrato = _contratos_reais_do_filtro(texto)
+    assert len(plano["texto_usuario"]) == len(retrato["texto"]) == 500
+    turno["texto"] = "  " + texto + "  "
+    plano["id"] = str(plano["id"])
+    plano["decisao_turno"]["turno_id"] = str(plano["decisao_turno"]["turno_id"])
+    comando = {"intent": "PLAYLIST_CREATE"}
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is True
+    assert filtrado["comandos"] == [comando]
+
+
+def test_filtro_preserva_lista_legada_sem_identidade_de_retrato() -> None:
+    turno = _turno("comando", autoriza=True)
+    plano = planejar_turno("abre o YouTube", turno=turno, mente={})
+    retrato = {"intents_permitidos": ["OPEN_URL"]}
+    comando = {"intent": "OPEN_URL"}
+
+    filtrado = filtrar_comandos_pelo_turno([comando], turno=turno, plano=plano, retrato=retrato)
+
+    assert filtrado["autoriza_execucao"] is True
+    assert filtrado["comandos"] == [comando]
+    recusado = filtrar_comandos_pelo_turno(
+        [{"intent": "DELETE_ITEM"}], turno=turno, plano=plano, retrato=retrato,
+    )
+    assert recusado["comandos"] == []
+    assert recusado["rejeitados"][0]["motivo"] == "intenção incompatível com a operação explícita"
 
 
 def test_detector_sem_candidato_nao_revoga_pedido_explicito() -> None:

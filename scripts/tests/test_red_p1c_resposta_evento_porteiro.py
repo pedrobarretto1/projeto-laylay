@@ -87,9 +87,11 @@ def test_red_p1c_evento_entra_no_modelo_como_evento_e_comandos_sao_vetados() -> 
         log=lambda _texto: None,
     )
 
+    # P18 reserva a materialização do jogo ao compositor local. O contrato
+    # de autoria da LLM e descarte de comandos permanece no cotidiano.
     resultado = runtime.processar(
         _turno_evento(),
-        dominio="jogo",
+        dominio="cotidiano",
         categoria="celebracao",
         emocao="animada",
         nivel=2,
@@ -99,8 +101,10 @@ def test_red_p1c_evento_entra_no_modelo_como_evento_e_comandos_sao_vetados() -> 
     assert resultado["autoriza_execucao"] is False
     assert resultado["comandos_descartados"] == 1
     assert resultado["emissao_fisica"] is False
+    # O envelope legado não tem causa emocional. O argumento livre animada/2
+    # não pode substituir uma ocorrência causal vigente (compatibilidade P18).
     assert agendamentos == [(
-        "presenca_jogo", "Esse salto cobrou caro, hein?", "animada", 2, {},
+        "observacao", "Esse salto cobrou caro, hein?", "calma", 1, {},
     )]
 
     pedido = modelo.pedidos[0]
@@ -213,7 +217,7 @@ def test_red_p1c_porteiro_real_bloqueia_antes_da_fila_fisica() -> None:
     )
 
     resultado = runtime.processar(
-        _turno_evento(), dominio="jogo", categoria="celebracao",
+        _turno_evento(), dominio="cotidiano", categoria="celebracao",
     )
 
     assert resultado["status"] == "bloqueada_porteiro"

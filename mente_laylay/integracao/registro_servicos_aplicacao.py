@@ -27,6 +27,7 @@ from mente_laylay.integracao.composicao_estado_aplicacao import (
 )
 from mente_laylay.integracao.contexto_execucao_ia import (
     DEPENDENCIAS_EXECUCAO_INTENCAO,
+    DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO,
 )
 from mente_laylay.personalidade.composicao_resposta_conversacional import (
     DEPENDENCIAS_RESPOSTA_CONVERSACIONAL,
@@ -72,6 +73,7 @@ def _uniao_dependencias() -> frozenset[str]:
     grupos = (
         DEPENDENCIAS_CICLO_COMANDOS,
         DEPENDENCIAS_EXECUCAO_INTENCAO,
+        DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO,
         DEPENDENCIAS_PREFERENCIAS_SUGESTOES,
         DEPENDENCIAS_ORQUESTRACAO_TURNO,
         DEPENDENCIAS_AMBIENTE_NAVEGACAO,

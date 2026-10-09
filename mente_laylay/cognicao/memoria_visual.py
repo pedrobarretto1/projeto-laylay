@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
+from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+
 MAX_MEMORIAS_VISUAIS_DIA = 5
 RETENCAO_MEMORIA_VISUAL_DIAS = 7
 _INDICE_LOCK = threading.RLock()
@@ -160,7 +162,7 @@ def executar_captura_tela(
         return resultado_async if retornar_resultado else True
     if str(destino or "").strip().lower() == "pc_b":
         if falar_progresso:
-            falar("Vou pedir ao PC B uma captura protegida; se for segura, a imagem será enviada ao serviço externo de análise.", "calma", 1)
+            falar("Vou pedir ao PC B uma captura protegida; se for segura, a imagem será analisada pelo modelo visual configurado.", "calma", 1)
         confirmado = bool(enviar_pc_b({
             "action": "capturar_tela",
             "pergunta": pergunta,
@@ -204,9 +206,10 @@ def executar_captura_tela(
                 })
                 return
             if falar_progresso and resultado_async.pode_publicar():
-                falar("A imagem será enviada ao serviço externo de análise visual agora.", "calma", 1)
+                falar("Vou analisar a imagem com o modelo visual configurado agora.", "calma", 1)
             descricao = str(analisar_imagem(imagem, pergunta) or "").strip()
-            if not descricao:
+            if (not descricao or eh_estado_tecnico_llm(descricao)
+                or re.match(r"^(?:erro|falha)(?:\b|:)", descricao, re.I)):
                 descricao_falha = "Capturei a tela, mas o serviço visual não devolveu uma descrição."
                 if resultado_async.pode_publicar():
                     falar(descricao_falha, "calma", 1)

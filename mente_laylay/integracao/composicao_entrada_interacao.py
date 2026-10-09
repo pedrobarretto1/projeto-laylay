@@ -58,6 +58,8 @@ DEPENDENCIAS_COMANDOS_IMEDIATOS = (
     "_registrar_autoaprimoramento", "_falar_falha_contextual",
     "resumir_pagina_ou_video", "falar_com_lipsync",
     "_estado_compartilhado_runtime", "_detectar_comando_governanca_iniciativa",
+    "_pendencia_acao_runtime",
+    "_porteiro_runtime",
     "_processar_governanca_iniciativa", "_detectar_pedido_diagnostico_mente",
     "_mostrar_diagnostico_mente", "detectar_comando_saude", "_falar_status_saude",
     "detectar_intencao_deterministica",
