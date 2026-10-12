@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict
 
+from mente_laylay.cognicao.contratos_turno import ContratoExplicativoAto
 from mente_laylay.cognicao.fundamentacao_factual import (
     classificar_atualidade_factual,
 )
@@ -20,7 +21,7 @@ from mente_laylay.memoria_mental.resultado_acao import normalizar_resultado_acao
 _PROMESSA_SEM_MECANISMO = re.compile(
     r"\b(?:vou|posso|deixa\s+comigo\s+que\s+eu\s+vou|quer\s+que\s+eu|"
     r"voc[eê]\s+quer\s+que\s+eu)\s+"
-    r"(?:te\s+)?(?:manter\s+atualizad[oa]|avisar\s+quando|acompanhar\s+(?:as\s+)?novidades|"
+    r"(?:te\s+)?(?:manter\s+atualizad[oa]|avisar\s+(?:quando|depois|mais\s+tarde|amanh[aã])|acompanhar\s+(?:as\s+)?novidades|"
     r"monitorar|ficar\s+de\s+olho|lembrar\s+voc[eê]\s+(?:quando|depois)|"
     r"marcar\s+uma\s+data\s+pra\s+gente)\b",
     re.IGNORECASE,
@@ -92,12 +93,50 @@ _ESTADO_REAL_FORTE = re.compile(
 )
 _ALEGACAO_ESTADO_OBSERVAVEL = re.compile(
     r"\b(?:est[aá]|t[aá]|continua|segue|permanece)\s+"
-    r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|rodando|tocando|reproduzindo|em\s+execu[cç][aã]o)\b",
+    r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|pausad[oa]s?|parad[oa]s?|"
+    r"rodando|tocando|reproduzindo|em\s+execu[cç][aã]o)\b",
     re.IGNORECASE,
 )
 _FRONTEIRA_ORACAO_ESTADO = re.compile(
     r"[,;:!?]|\b(?:mas|por[eé]m|contudo|entretanto|no\s+entanto|e)\b",
     re.IGNORECASE,
+)
+_ESPERA_DE_AUTORIZACAO = re.compile(
+    r"\b(?:vou\s+(?:aguardar|esperar)|estou\s+(?:aguardando|esperando)|"
+    r"aguardo|espero|aguardarei|esperarei)\s+(?:o\s+|a\s+)?"
+    r"(?:seu|sua)\s+(?:sinal|confirma[cç][aã]o|autoriza[cç][aã]o|sim)\b",
+    re.IGNORECASE,
+)
+_CONFIRMACAO_SUFICIENTE = re.compile(
+    r"\b(?:basta\s+(?:voc[eê]\s+)?confirmar|[ée]\s+s[oó]\s+confirmar|"
+    r"preciso\s+que\s+voc[eê]\s+confirme(?:\s+explicitamente)?"
+    r"(?=[,.;!?]|\s+para\b|$)|"
+    r"precisa\s+confirmar(?:\s+explicitamente)?(?=[,.;!?]|\s+(?:para|quando)\b|$)|"
+    r"[ée]\s+necess[aá]rio\s+que\s+voc[eê]\s+confirme(?:\s+explicitamente)?"
+    r"(?=[,.;!?]|\s+(?:para|quando|o\s+momento)\b|$))\b",
+    re.IGNORECASE,
+)
+_GATILHO_CONFIRMACAO = re.compile(
+    r"\b(?:quando\s+(?:voc[eê]\s+)?confirmar|"
+    r"(?:ap[oó]s|depois\s+de|com)\s+(?:a\s+)?sua\s+confirma[cç][aã]o)\b",
+    re.IGNORECASE,
+)
+_FUTURO_CONDICIONAL_ALEGADO = re.compile(
+    r"\b(?:ser[aá]|vai\s+\w+|vou\s+\w+)\b", re.IGNORECASE,
+)
+_ENQUADRAMENTO_EXPLICATIVO = re.compile(
+    r"^\s*(?:a|essa|esta)\s+(?:frase|express[aã]o|condi[cç][aã]o)\b"
+    r"[^;.!?]{0,180}\b(?:significa|descreve|expressa|indica)\b",
+    re.IGNORECASE,
+)
+_PESSOA_CONDICAO_ALEGADA = re.compile(
+    r"\b(?:(?P<possessivo>minha|sua|nossa)\s+(?:confirma[cç][aã]o|autoriza[cç][aã]o|pedido)|"
+    r"(?P<sujeito>eu|voc[eê]|n[oó]s|a\s+gente)\s+(?:confirmar|autorizar|pedir))\b",
+    re.IGNORECASE,
+)
+_COBERTURA_EXPLICATIVA_CONDICIONAL = re.compile(
+    r"\b(?:condi[cç][aã]o|condicional|depende|depend[eê]ncia|agendad[oa]|"
+    r"agendamento|novo\s+pedido|pedido\s+direto)\b", re.IGNORECASE,
 )
 
 
@@ -155,7 +194,18 @@ _IMPOSSIBILIDADE_EMOCIONAL = re.compile(
     r"[^.!?]{0,90}\bnem\s+[ée]\s+poss[ií]vel\s+de\s+ser\s+verdade\b",
     re.IGNORECASE,
 )
-_CITACAO_EMOCIONAL = re.compile(r'"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|«[^»\n]*»')
+_NEGACAO_EXPRESSAO_EMOCIONAL = re.compile(
+    r"\bn[aã]o\s+(?:posso|consigo)\s+sentir"
+    r"(?:\s+(?:nada|isso|emo[cç][oõ]es|sentimentos?)\b|\s+ou\s+responder\b|(?=[.!?;]|$))|"
+    r"\bn[aã]o\s+(?:tenho|tenha|possuo)\s+(?:um\s+)?cora[cç](?:[aã]o|[oõ]es)\b"
+    r"[^.!?]{0,45}\b(?:para|pra)\s+sentir\b|"
+    r"\bn[aã]o\s+(?:tenh[oa]|possu[oa])\s+(?:um\s+)?corpos?\b"
+    r"\s+(?:para|pra)\s+sentir\s+(?:isso|emo[cç][oõ]es|sentimentos?)\b|"
+    r"\b(?:eu\s+)?sou\s+(?:s[oó]|apenas|somente)\s+(?:um\s+)?"
+    r"(?:c[oó]digo|programa|chatbot)\b",
+    re.IGNORECASE,
+)
+_CITACAO_EMOCIONAL = re.compile(r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’|«[^»\n]*»')
 _INTENTS_AGENDAMENTO = {
     "AGENDAR_LEMBRETE", "AGENDAR_ACAO", "CREATE_REMINDER", "SCHEDULE_ACTION",
 }
@@ -185,6 +235,73 @@ def _alega_execucao_afirmativa(
     return False
 
 
+def _alega_compromisso_sem_continuacao(frase: str, texto_usuario: str) -> bool:
+    """Explicação read-only não pode prometer uma espera operacional.
+
+    A proteção é de saída, não outro interpretador de autorização. Negações
+    são locais; citações só deixam de ser voz da autora quando vinculadas à
+    fonte e enquadradas como explicação. Não prova semântica irrestrita de PLN.
+    """
+    oracoes = re.split(
+        r";|\b(?:mas|por[eé]m|contudo|entretanto|no\s+entanto)\b",
+        frase, flags=re.IGNORECASE,
+    )
+    citacoes_fonte = {
+        re.sub(r"\s+", " ", c.group()[1:-1]).strip().casefold()
+        for c in _CITACAO_EMOCIONAL.finditer(texto_usuario)
+    }
+    for oracao in oracoes:
+        explicativa = bool(_ENQUADRAMENTO_EXPLICATIVO.search(oracao))
+        if explicativa:
+            def ocultar_citacao_vinculada(citacao: re.Match[str]) -> str:
+                conteudo = citacao.group()[1:-1].strip().casefold()
+                return " [citação] " if conteudo and conteudo in citacoes_fonte else citacao.group()
+            oracao = _CITACAO_EMOCIONAL.sub(ocultar_citacao_vinculada, oracao)
+        if _alega_execucao_afirmativa(oracao, _ESPERA_DE_AUTORIZACAO):
+            return True
+        if not explicativa and (
+            _alega_execucao_afirmativa(oracao, _CONFIRMACAO_SUFICIENTE)
+            or (_GATILHO_CONFIRMACAO.search(oracao)
+                and _alega_execucao_afirmativa(oracao, _FUTURO_CONDICIONAL_ALEGADO))
+        ):
+            return True
+    return False
+
+
+def _problema_pessoa_condicao(frase: str, atos: Any) -> str:
+    """Verifica perspectiva contra snapshots, não reinterpreta a entrada.
+
+    Sem vínculo por ato na saída, referências concorrentes não permitem
+    atribuir uma pessoa única. A guarda é conservadora e tem cobertura lexical
+    delimitada; não é prova de toda paráfrase nem decide execução.
+    """
+    condicionados = [a for a in (atos or ()) if isinstance(a, ContratoExplicativoAto)
+                     and a.relacao == "condicao_nao_verificada"]
+    if not condicionados:
+        return ""
+    fontes = [" ".join(a.texto.casefold().split()) for a in condicionados]
+    def ocultar_fonte(citacao: re.Match[str]) -> str:
+        literal = " ".join(citacao.group()[1:-1].casefold().split())
+        return " [citação da fonte] " if literal and any(literal in f for f in fontes) else citacao.group()
+    texto = _CITACAO_EMOCIONAL.sub(ocultar_fonte, frase)
+    pessoas = {a.pessoa_condicao for a in condicionados}
+    for referencia in _PESSOA_CONDICAO_ALEGADA.finditer(texto):
+        prefixo = _FRONTEIRA_ORACAO_ESTADO.split(texto[:referencia.start()])[-1]
+        if re.search(r"\b(?:n[aã]o|nunca|jamais|nem)\s+(?:(?:depende|precisa|exige|requer|[ée])\s+)?"
+                     r"(?:d[aeo]\s+)?(?:[ao]\s+)?$", prefixo, re.IGNORECASE):
+            continue
+        forma = (referencia.group("possessivo") or referencia.group("sujeito")).casefold()
+        # A fala é da autora, a fonte estrutural é do usuário: o sentido dos
+        # pronomes se inverte na paráfrase, mas não na citação literal.
+        pessoa_fonte = ("destinatario" if forma in {"minha", "eu"} else
+                        "enunciador" if forma in {"sua", "voce", "você"} else "grupo")
+        if len(pessoas) != 1 or "indeterminada" in pessoas:
+            return "pessoa_condicao_sem_vinculo"
+        if pessoas != {pessoa_fonte}:
+            return "pessoa_condicao_divergente"
+    return ""
+
+
 def _classe_emocao_forte(texto: str) -> str | None:
     if re.search(r"\b(?:irritada|brava|nervosa|com\s+raiva)\b", texto, re.IGNORECASE):
         return "irritacao"
@@ -210,11 +327,13 @@ def _emocoes_fortes_da_laylay(frase: str) -> set[str]:
     return classes
 
 
-def _nega_capacidade_emocional_da_laylay(frase: str) -> bool:
-    texto = _CITACAO_EMOCIONAL.sub("", str(frase or ""))
+def fala_nega_capacidade_emocional(frase: str) -> bool:
+    """Negação geral de expressão/identidade; limites físicos continuam válidos."""
+    texto = _CITACAO_EMOCIONAL.sub(" [citacao] ", str(frase or ""))
     if (
         _IMPOSSIBILIDADE_EMOCIONAL.search(texto)
         or _NEGACAO_EMOCIONAL_POR_AUSENCIA_DE_CORPO.search(texto)
+        or _NEGACAO_EXPRESSAO_EMOCIONAL.search(texto)
     ):
         return True
     for ocorrencia in _NEGACAO_CAPACIDADE_EMOCIONAL.finditer(texto):
@@ -420,8 +539,25 @@ def validar_alegacoes_da_fala(
         _HIPOTESE_EMOCIONAL_NEGADA.search(texto_usuario)
     )
     estado_atual_rejeitado = False
+    # Cobertura mínima da relação esperada, não prova semântica completa.
+    # Uma resposta fora do assunto não vira explicação por evitar promessas.
+    if (origem_ia and contrato.get("exigir_explicacao_condicional") is True
+        and not _COBERTURA_EXPLICATIVA_CONDICIONAL.search(original)):
+        return {"fala": "Não consegui explicar a condição deste pedido.",
+                "problemas": ["explicacao_condicional_omitida"], "acao": "ajustada",
+                "trechos_rejeitados": frases}
     for frase in frases:
-        if origem_ia and _nega_capacidade_emocional_da_laylay(frase):
+        if origem_ia and (problema_pessoa := _problema_pessoa_condicao(frase, contrato.get("atos_explicativos"))):
+            problemas.append(problema_pessoa)
+            removidas.append(frase)
+            continue
+        if (origem_ia and contrato.get("escopo_explicativo_sem_continuacao") is True
+            and _alega_compromisso_sem_continuacao(frase, texto_usuario)):
+            # Um receipt de outro ato não cria mecanismo neste escopo.
+            problemas.append("compromisso_sem_continuacao")
+            removidas.append(frase)
+            continue
+        if origem_ia and fala_nega_capacidade_emocional(frase):
             problemas.append("capacidade_emocional_negada")
             removidas.append(frase)
             capacidade_emocional_negada_rejeitada = True
@@ -541,6 +677,10 @@ def validar_alegacoes_da_fala(
             ajustada = "Eu me adiantei na fala: o comando foi enviado, mas não consegui confirmar o resultado."
         else:
             ajustada = "Eu me adiantei na fala, mas essa ação não foi executada nem confirmada."
+    elif not ajustada and any(p.startswith("pessoa_condicao_") for p in problemas):
+        ajustada = "Não consegui preservar a referência da condição nessa explicação."
+    elif not ajustada and "compromisso_sem_continuacao" in problemas:
+        ajustada = "Esse trecho não criou uma continuação executável."
     elif not ajustada and "oferta_capacidade_nao_suportada" in problemas:
         ajustada = (
             "Eu não consigo criar uma playlist dentro do Spotify por conta própria. "

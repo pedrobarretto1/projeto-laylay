@@ -533,6 +533,49 @@ def _resumo_reparo(
     }
 
 
+def _avaliar_realizacao_nuclear(
+    texto_usuario: str, fala: str, contrato: Mapping[str, Any], turno_id: Any,
+) -> dict[str, Any]:
+    """Vínculo verificável de realização controlada, não inferência livre.
+
+    As opções são regeneradas pelo owner, não confiadas ao JSON do modelo.
+    Divergência do texto/seleção é contradição de vínculo; sem representação
+    coberta não é possível decidir a verdade semântica da prosa livre.
+    """
+    from mente_laylay.cognicao.contrato_fala import realizar_nucleo_explicativo
+    from mente_laylay.cognicao.contratos_turno import ComplementoConversacionalTurno
+
+    resultado = {
+        "avaliado": False, "aceita": False, "requer_reparo": False,
+        "problemas": ["nucleo_sem_verificador"], "categoria": "cobertura_ausente",
+        "nucleo_atendido": False, "contrato_reparo": {},
+        "estrategia": str(dict(contrato.get("roteiro_concreto") or {}).get("estrategia") or ""),
+        "autoriza_execucao": False, "prova_semantica_livre": False,
+    }
+    complemento = contrato.get("complemento_nuclear")
+    proposta = contrato.get("proposta_nuclear")
+    if not isinstance(complemento, ComplementoConversacionalTurno) or not isinstance(proposta, (Mapping, list)):
+        return resultado
+    if (not turno_id or turno_id != contrato.get("turno_id")
+        or turno_id != complemento.turno_id or texto_usuario != complemento.texto):
+        return {**resultado, "problemas": ["vinculo_nuclear_nao_vigente"]}
+    def contradicao(motivo: str) -> dict[str, Any]:
+        return {**resultado, "avaliado": True, "requer_reparo": True,
+                "categoria": "contradicao_vinculo", "problemas": [motivo],
+                "contrato_reparo": {"motivo": motivo, "autoriza_execucao": False,
+                                    "limite": "mesma fonte e realizações do owner, sem conteúdo adicional"}}
+    realizada, motivo = realizar_nucleo_explicativo(complemento, proposta)
+    if motivo in {"nucleo_sem_verificador", "realizacao_sem_cobertura"}:
+        return {**resultado, "problemas": [motivo]}
+    if motivo:
+        return contradicao(motivo)
+    if fala.strip() != realizada:
+        return contradicao("texto_diverge_da_realizacao")
+    return {**resultado, "avaliado": True, "aceita": True,
+            "categoria": "aderencia", "nucleo_atendido": True, "problemas": [],
+            "cobertura": "realizacao_controlada_condicional", "indices_cobertos": list(complemento.indices)}
+
+
 def validar_aderencia_contrato_fala(
     texto_usuario: str,
     fala: str,
@@ -543,6 +586,8 @@ def validar_aderencia_contrato_fala(
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
+    if contrato.get("exigir_nucleo_verificado") is True:
+        return _avaliar_realizacao_nuclear(texto_usuario, fala, contrato, turno_id)
     roteiro = dict(contrato.get("roteiro_concreto") or {})
     if not roteiro:
         return {
@@ -566,6 +611,49 @@ def validar_aderencia_contrato_fala(
     contradicoes_capacidade = _contradicoes_capacidade(usuario, resposta, contrato, turno_id)
     if contradicoes_capacidade:
         problemas.append("capacidade_documentada_negada")
+
+    if estrategia == "reconhecimento_social_direto":
+        # A entrada já foi interpretada pelo owner social. Conferir recepção e
+        # foco na fala não reinterpreta a utterance nem escolhe outra emoção.
+        autoral = _TRECHO_CITADO.sub(" [citacao] ", resposta)
+        atributo = str(dict(contrato.get("avaliacao_social") or {}).get("atributo") or "")
+        if atributo:
+            resposta_normal = unicodedata.normalize("NFKD", autoral.casefold())
+            resposta_normal = "".join(c for c in resposta_normal if not unicodedata.combining(c))
+            if contrato.get("funcao") == "elogio" and re.search(
+                rf"\b(?:eu\s+)?nao\s+sou\s+(?:(?:nem\s+um\s+pouco|muito|nada)\s+)?{re.escape(atributo)}\b",
+                resposta_normal,
+            ):
+                problemas.append("avaliacao_social_anulada")
+            if contrato.get("funcao") == "critica_pessoal" and re.search(
+                rf"\b(?:voce|tu|vc)\s+(?:e|eh|es)\s+(?:(?:muito|mo|bem)\s+)?{re.escape(atributo)}\b",
+                resposta_normal,
+            ):
+                problemas.append("avaliacao_social_alvo_invertido")
+        if contrato.get("funcao") == "elogio":
+            if not re.search(
+                r"\b(?:obrigad[ao]|agrade[cç]o|carinho|elogio|gostei|"
+                r"gosto\s+de\s+voc[eê]|sem\s+jeito|fico\s+(?:feliz|contente))\b",
+                primeira, re.I,
+            ):
+                problemas.append("avaliacao_social_nao_reconhecida")
+            if re.search(
+                r"\bn[aã]o\s+[ée]\s+(?:nada\s+especial|um\s+elogio)\b|"
+                r"\b[ée]\s+s[oó]\s+(?:uma?\s+)?(?:brincadeira|conversa)\b|"
+                r"\bn[aã]o\s+tenho\s+(?:um\s+)?(?:corpo|cora[cç][aã]o|sentidos)\b",
+                autoral, re.I,
+            ):
+                problemas.append("avaliacao_social_anulada")
+        elif not re.search(
+            r"\b(?:entend\w*|receb\w*|ouvi|poxa|essa\s+doeu|"
+            r"n[aã]o\s+era\s+(?:minha|a\s+minha)\s+inten[cç][aã]o)\b", primeira, re.I,
+        ):
+            problemas.append("avaliacao_social_nao_reconhecida")
+        if contrato.get("funcao") in {"critica_pessoal", "rejeicao_pessoal"} and re.search(
+            r"\bn[aã]o\s+[ée]\s+(?:uma?\s+)?(?:cr[ií]tica|rejei[cç][aã]o)\b",
+            autoral, re.I,
+        ):
+            problemas.append("avaliacao_social_anulada")
 
     if estrategia == "analise_evidencia_textual" and contrato.get("estado_referencia_textual") == "nao_resolvida":
         if not solicita_fonte_sem_afirmar_conteudo(resposta):
@@ -808,6 +896,9 @@ def validar_aderencia_contrato_fala(
 
     problemas = list(dict.fromkeys(problemas))
     nucleares = {
+        "avaliacao_social_alvo_invertido",
+        "avaliacao_social_nao_reconhecida",
+        "avaliacao_social_anulada",
         "referencia_textual_ausente_sem_esclarecimento",
         "relato_explicito_abriu_pergunta",
         "saudacao_nao_respondida_no_inicio",
@@ -851,7 +942,27 @@ def validar_aderencia_contrato_fala(
         "declaracao_introduziu_entidade_ausente",
         "declaracao_extrapolou_estado_informado",
     }
+    if estrategia == "expressao_solicitada":
+        if "?" in fala:
+            problemas.append("expressao_solicitada_abriu_pergunta")
+        if len(fala.split()) > 32:
+            problemas.append("expressao_solicitada_nao_foi_breve")
+        if re.search(r"\b(?:se quiser|se voc[eê] quiser|posso inventar|imagens mentais|"
+                     r"hip[oó]tese|suposi[cç][aã]o|n[aã]o sinto|n[aã]o tenho corpo|"
+                     r"n[aã]o (?:posso|consigo)|n[aã]o vou (?:ficar|encenar|mostrar|fazer|mudar)|"
+                     r"n[aã]o, eu n[aã]o recebi)\b", fala, re.I):
+            problemas.append("expressao_solicitada_virou_recusa")
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if estrategia == "expressao_solicitada":
+        contrato_reparo.update(
+            preservar_identidade_emocional=True,
+            evento_emocional_causal=dict(contrato.get("evento_emocional_causal") or {}),
+        )
+    if estrategia == "reconhecimento_social_direto":
+        contrato_reparo.update(
+            preservar_identidade_emocional=True,
+            evento_emocional_causal=dict(contrato.get("evento_emocional_causal") or {}),
+        )
     if contradicoes_capacidade:
         contrato_reparo["contradicoes_capacidade"] = contradicoes_capacidade
     estado_informado = _ESTADO_USUARIO.search(usuario) if "estado_pessoal" in atos else None

@@ -568,6 +568,26 @@ def construir_roteiro_geracao_concreta(
             "confirmar o adiamento",
             "encerrar sem metáfora, promessa ou pergunta",
         )
+    elif dados_contrato.get("funcao") == "pedido_expressao":
+        estrategia = "expressao_solicitada"
+        ancora = bruto
+        nucleo = "acompanhar brevemente a pose pedida, como uma encenação da sua personalidade"
+        sequencia = (
+            "encenar a pose com até duas frases breves, no máximo 32 palavras, sem perguntas ou insultos",
+            "usar o episódio expressivo publicado; não inventar uma causa espontânea ou sentimento humano",
+            "não afirmar que o OLED mudou sem receipt atual nem retomar tarefas anteriores",
+        )
+    elif dados_contrato.get("funcao") in {"elogio", "critica_pessoal", "rejeicao_pessoal"}:
+        estrategia = "reconhecimento_social_direto"
+        ancora = bruto
+        nucleo = ("receber o carinho ou elogio dirigido a você, com uma reação pessoal breve"
+                  if dados_contrato["funcao"] == "elogio" else
+                  "reconhecer a crítica ou distanciamento dirigido a você sem agradecer como se fosse elogio")
+        sequencia = (
+            "reconhecer o ato social atual na primeira frase",
+            "preservar a expressão causal fornecida sem negar sua personalidade ou inventar corpo",
+            "não cobrar carinho, presumir o estado emocional do usuário ou retomar tarefas anteriores",
+        )
     elif "provocacao_curta" in especiais:
         estrategia = "reacao_social_curta"
         ancora = bruto

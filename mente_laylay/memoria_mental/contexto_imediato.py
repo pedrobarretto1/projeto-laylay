@@ -6,7 +6,8 @@ import os
 import re
 import time
 import random
-from typing import Any, Callable, Dict, Iterable, Tuple
+import math
+from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
 from mente_laylay.integracao.registro_iot import PortaIoT
 
@@ -20,7 +21,9 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     descrever_quarentena_referencia_app,
     foco_por_dominio,
 )
-from mente_laylay.memoria_mental.continuidade_geral import selecionar_continuidade
+from mente_laylay.memoria_mental.continuidade_geral import (
+    selecionar_continuidade, selecionar_operacao_reexecutavel_compativel,
+)
 from mente_laylay.memoria_mental.continuidade_semantica import (
     aprender_correcao_semantica,
     interpretar_continuidade_semantica_llm,
@@ -258,6 +261,23 @@ def _resultado_compativel_com_dominio(
         return True
     return _dominio_intent_contextual(str(resultado.get("intent") or "")) == restrito
 
+
+
+def _referencia_de_continuidade(registro: Mapping[str, Any]) -> Dict[str, Any]:
+    """Projeção de subtipo compartilhada; o chamador qualifica sua fonte."""
+    dominio = str(registro.get("dominio") or "").strip()
+    intent = str(registro.get("intent") or "").upper().strip()
+    tipo = {
+        "musica": "playlist" if "PLAYLIST" in intent else "midia",
+        "playlist_laylay": "playlist_laylay", "arquivos": "arquivo",
+    }.get(dominio, dominio)
+    if intent == "VOLUME":
+        tipo = "volume"  # domínio sistema não substitui o subtipo do parâmetro
+    alvo = str(registro.get("alvo") or registro.get("topico") or "").strip()
+    if not alvo and tipo not in {"midia", "volume"}:
+        return {}
+    return {"tipo": tipo, "alvo": alvo or ("musica" if tipo == "midia" else tipo),
+            "intencao": intent, "params": dict(registro.get("params") or {})}
 
 
 def referencia_contextual_imediata(
@@ -501,20 +521,10 @@ def referencia_contextual_imediata(
         ttl_s=ttl_s,
     )
     if continuidade:
-        dominio_cont = str(continuidade.get("dominio") or "").strip()
-        tipo_ref = {
-            "musica": "playlist" if "PLAYLIST" in str(continuidade.get("intent") or "") else "midia",
-            "playlist_laylay": "playlist_laylay",
-            "arquivos": "arquivo",
-        }.get(dominio_cont, dominio_cont)
-        alvo_cont = str(continuidade.get("alvo") or continuidade.get("topico") or "").strip()
-        params_cont = dict(continuidade.get("params") or {})
-        if alvo_cont or tipo_ref in {"midia", "volume"}:
+        referencia = _referencia_de_continuidade(continuidade)
+        if referencia:
             return {
-                "tipo": tipo_ref,
-                "alvo": alvo_cont or ("musica" if tipo_ref == "midia" else tipo_ref),
-                "intencao": str(continuidade.get("intent") or ""),
-                "params": params_cont,
+                **referencia,
                 "dominio_explicito": bool(dominio_pedido),
                 "origem_continuidade": "geral",
             }
@@ -618,6 +628,86 @@ def referencia_contextual_imediata(
     if ultima_playlist and ultima_intencao == "MUSIC_SEARCH":
         return {"tipo": "playlist", "alvo": ultima_playlist, "intencao": ultima_intencao, "params": ultimo_params}
     return {}
+
+
+_AJUSTE_NUMERICO_CONTEXTUAL = re.compile(
+    r"(?:(?P<verbo>coloca|coloque|bota|deixa|poe|põe)\s+)?"
+    r"(?:o\s+)?(?:em|no|para|pra)?\s*(?P<nivel>\d{1,3})\s*%?"
+)
+
+
+def texto_pede_ajuste_numerico_contextual(texto: str) -> bool:
+    """Forma de atribuição sem nome do parâmetro; não escolhe habilidade."""
+    ajuste = _AJUSTE_NUMERICO_CONTEXTUAL.fullmatch(str(texto or "").strip().casefold())
+    return bool(ajuste and ajuste.group("verbo"))
+
+
+def resolver_continuacao_operacional_confirmada(
+    texto: str,
+    estado: Mapping[str, Any] | None,
+    *,
+    normalizar_texto: Callable[[str], str] | None = None,
+    ttl_s: float = 300.0,
+) -> Dict[str, Any] | None:
+    """Dá precedência a uma referência qualificada, nunca ao verbo isolado.
+
+    Reutiliza modalidade, referência e gramática gerais. Não executa, não
+    publica receipt e não busca outro alvo quando o último contrato é inválido.
+    Outros domínios só entram se a gramática existente os resolver igualmente.
+    """
+    from mente_laylay.cognicao.modalidade_turno import (
+        autoriza_execucao_efetiva, classificar_modalidade_turno,
+    )
+
+    mente = dict(estado or {})
+    contrato = mente.get("ultima_acao_contrato")
+    if not isinstance(contrato, Mapping):
+        return None
+    contrato = dict(contrato)
+    intent = str(contrato.get("intent") or "").upper().strip()
+    if (not contrato.get("id_solicitacao") or contrato.get("origem") != "executor"
+        or intent != str(mente.get("ultima_acao_intent") or "").upper().strip()
+        or not contrato_confirma_referencia_operacional(
+            intent=intent, status=str(contrato.get("status") or ""),
+            executou=contrato.get("executou"), confirmado=contrato.get("confirmado"))
+        ):
+        return None
+    # O contrato atômico não contém params. O mesmo publicador mantém o slot
+    # oficial com identidade e parâmetros; não presumir que são campos do receipt.
+    registro = selecionar_operacao_reexecutavel_compativel(
+        mente, intents_permitidos={intent}, ttl_s=ttl_s,
+    )
+    if (registro.get("id_solicitacao") != contrato["id_solicitacao"]
+        or not isinstance(registro.get("params"), Mapping)
+        or dict(registro["params"]) != dict(mente.get("ultima_acao_params") or {})):
+        return None
+    try:
+        idade = time.time() - float(mente.get("ultima_acao_ts") or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(idade) or idade < -5.0 or idade > ttl_s:
+        return None
+    turno = classificar_modalidade_turno(texto, normalizar_texto=normalizar_texto)
+    if len(turno.get("segmentos") or []) != 1 or not autoriza_execucao_efetiva(turno):
+        return None
+    # O foco de conversa é atualizado antes da resolução no runtime instalado.
+    # Não voltar a disputá-lo depois de selecionar uma ocorrência operacional.
+    referencia = _referencia_de_continuidade(registro)
+    if str(referencia.get("intencao") or "").upper().strip() != intent:
+        return None
+    candidato = resolver_comando_acao_geral_contextual(
+        _normalizar_com_callback(texto, normalizar_texto), referencia,
+    )
+    if not candidato:
+        return None
+    candidato["params"].setdefault("referencia_contextual", True)
+    # Destino pertence ao receipt do referente, não ao novo detector de verbo.
+    destino = registro["params"].get("target")
+    if destino is not None:
+        if destino not in {"pc_a", "pc_b"}:
+            return None
+        candidato["params"].setdefault("target", destino)
+    return candidato
 
 
 def resolver_comando_acao_geral_contextual(
@@ -801,12 +891,9 @@ def resolver_comando_acao_geral_contextual(
             return {"intent": "VOLUME", "params": {"acao": "unmute", "referencia_contextual": True}}
         if re.fullmatch(r"(?:muta|mutar|mute|deixa mudo|fica sem som)", t):
             return {"intent": "VOLUME", "params": {"acao": "mute", "referencia_contextual": True}}
-        nivel = re.fullmatch(
-            r"(?:(?:coloca|coloque|bota|deixa|poe|põe)\s+)?(?:o\s+)?(?:em|no|para|pra)?\s*(\d{1,3})\s*%?",
-            t,
-        )
+        nivel = _AJUSTE_NUMERICO_CONTEXTUAL.fullmatch(t)
         if nivel:
-            valor = max(0, min(100, int(nivel.group(1))))
+            valor = max(0, min(100, int(nivel.group("nivel"))))
             print(f"🔊 [CONTEXTO-GERAL] ajustando volume recente -> {valor}%")
             return {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": valor, "referencia_contextual": True}}
 
@@ -838,6 +925,32 @@ def resolver_comando_acao_geral_contextual(
 
     if not (pedido_de_volta or pedido_fechar_ref or pedido_fechar_aba or pedido_retomar_musica or pedido_add_playlist_ref):
         return None
+
+    # Repetição modifica a operação, não apaga um argumento dito agora.
+    # A busca de pronome em qualquer ponto também não prova que ele seja o
+    # alvo principal ("abre Firefox e deixa ele em foco"). Reutilizar o
+    # referente só quando o operando inteiro é referencial ou foi omitido.
+    # Nomes novos ficam com o detector explícito; não os interpretamos aqui.
+    reuso = re.match(
+        r"^(?:(?:pode|poderia|consegue)\s+)?"
+        r"(?:abr\w*|coloc\w*|bot\w*|toc\w*|quer\w*|fech\w*|encerr\w*)\s+"
+        r"(?P<alvo>.+)$", t,
+    )
+    if reuso and (tem_referencia or tem_repeticao):
+        operando = re.sub(
+            r"(?:^|\s)(?:de\s+novo|novamente|outra\s+vez)[.!?]*$",
+            "", reuso.group("alvo"),
+        ).strip(" .!?")
+        operando, _ = separar_alvo_e_complemento_foco(operando)
+        operando = re.sub(r"\s+(?:em\s+foco|na\s+frente)$", "", operando).strip()
+        janela_anterior = bool(re.fullmatch(
+            r"(?:o\s+)?(?:programa|app|aplicativo|janela)\s+que\s+"
+            r"(?:voce\s+)?(?:acabou\s+de\s+)?abrir|"
+            r"(?:o\s+|a\s+)?ultim[oa]\s+(?:programa|app|aplicativo|janela)",
+            operando,
+        ))
+        if operando and not valor_e_referencia_contextual(operando) and not janela_anterior:
+            return None
 
     # Uma referencia explicita a aba nunca deve encerrar o navegador inteiro.
     if pedido_fechar_aba:
@@ -1488,6 +1601,10 @@ class ContextoImediatoRuntime:
         t = ns["_normalizar_texto_com_apelidos"](texto)
         if not t:
             return None
+        if texto_pede_ajuste_numerico_contextual(t):
+            return resolver_continuacao_operacional_confirmada(
+                texto, self._estado().mental, normalizar_texto=ns["_normalizar_texto_com_apelidos"],
+            )
         return resolver_comando_acao_geral_contextual(
             t,
             self.referencia(
@@ -1577,6 +1694,10 @@ class ContextoImediatoRuntime:
     def resolver(self, texto: str) -> Dict[str, Any] | None:
         ns = self._namespace()
         t = ns["_normalizar_texto_com_apelidos"](texto)
+        if texto_pede_ajuste_numerico_contextual(t):
+            return resolver_continuacao_operacional_confirmada(
+                texto, self._estado().mental, normalizar_texto=ns["_normalizar_texto_com_apelidos"],
+            )
         if re.search(
             r"\b(?:daqui|em)\s+\d{1,4}\s*(?:segundos?|seg|minutos?|min|horas?)\b", t
         ) or re.search(r"\b(?:as|às)\s+\d{1,2}:\d{2}\b", t):

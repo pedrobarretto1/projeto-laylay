@@ -182,6 +182,8 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
 )
 
 DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO = (
+    "_corpo_motor_runtime",
+    "_resolver_repeticao_ultima_acao",
     "_agrupar_resultados_operacionais", "_acumular_resultado_operacional",
 )
 

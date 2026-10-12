@@ -1,0 +1,225 @@
+{
+  "motor_enviado": false,
+  "amostras": [
+    {
+      "tempo_s": 0.25,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 0.5,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 0.75,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 1.0,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 1.25,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 1.5,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 1.75,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 2.0,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 2.25,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 2.5,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 2.75,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 3.0,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 3.25,
+      "face_confirmado": false,
+      "motivo": "TimeoutError:autenticacao_corpo_expirada"
+    },
+    {
+      "tempo_s": 3.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 3.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 4.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 4.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 4.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 4.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 5.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 5.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 5.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 5.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 6.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 6.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 6.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 6.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 7.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 7.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 7.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 7.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 8.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 8.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 8.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 8.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 9.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 9.25,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 9.5,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 9.75,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    },
+    {
+      "tempo_s": 10.0,
+      "face_confirmado": true,
+      "motivo": "frame_confirmado_pelo_esp"
+    }
+  ],
+  "falhas": [
+    {
+      "classe": "degradacao",
+      "erro": "autenticacao_corpo_expirada"
+    }
+  ],
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  }
+}

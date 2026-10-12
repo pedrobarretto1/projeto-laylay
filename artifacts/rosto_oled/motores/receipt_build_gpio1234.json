@@ -1,0 +1,22 @@
+{
+  "ts_utc": "2026-10-11T04:00:54.532433+00:00",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "programa_bytes": 383732,
+  "ram_estatica_bytes": 15772,
+  "perfil": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "pinout": {
+    "AIN1": 1,
+    "AIN2": 2,
+    "BIN1": 3,
+    "BIN2": 4,
+    "SLEEP": 7
+  },
+  "fonte_sha256": "0c8916f8c2d53826be82a06dab9371f9890d0ed54bc6ec4378f22a0eaee21990",
+  "binario_sha256": "9d76c217c087814533e8987280beaf2187d5e5c6e4ef6316b4d20dfd781d6ce7",
+  "opcoes": "compiler.cpp.extra_flags=-DLAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "upload": "COM4 gravada com hash verificado",
+  "chip": "ESP32-C3",
+  "mac": "ac:27:6e:72:ba:70",
+  "gpio_pwm_host": "GREEN ambos perfis, sem prova de giro"
+}

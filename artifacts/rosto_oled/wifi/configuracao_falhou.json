@@ -1,0 +1,4 @@
+{
+  "tipo": "ConnectionError",
+  "motivo": "O ESP32 não entrou na rede. Confira o nome, a senha e o Wi‑Fi de 2,4 GHz."
+}

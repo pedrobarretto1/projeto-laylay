@@ -1,0 +1,26 @@
+{
+  "ts_utc": "2026-10-11T04:53:26.295058+00:00",
+  "head": "2566b621d2c8ee88ff7086c6c36019da85c8a4cd",
+  "core": "3.3.12",
+  "motor": 1,
+  "programa_bytes": 1090491,
+  "ram_bytes": 41368,
+  "porta": "COM4",
+  "flash_hash_verificado": true,
+  "fontes": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "835c8467099aa961d41d6825e87d43d854794932fde901d8b8f5b3e03103fc93",
+    "firmware/rosto_laylay/transporte_wifi.h": "b8c65224a1156f746ea8e8d640c59d2f18df23c16f81dcb42b0fa6c5d0703632",
+    "mente_laylay/especialistas/rosto_oled_runtime.py": "7cc5eda15e8f7d02c65c21e9f4e18102e0317eabab50b49ff388f4f0ed2be919",
+    "mente_laylay/especialistas/corpo_wifi_transporte.py": "c680f412600e1ef964744535ecffeea5058f98bbc216f49b81b6344eba3c2251"
+  },
+  "pytest_passed": 462,
+  "subtests_passed": 22,
+  "host_wifi_passou": true,
+  "regressivos_host_visuais_motores_passaram": true,
+  "conexao_fisica_confirmada": false,
+  "prova_rotacao": false,
+  "prova_optica": false,
+  "perfil_potencia_reduzida": true,
+  "diagnostico_atual": "AUTH_EXPIRE_2",
+  "associacao_potencia_reduzida_confirmada": false
+}

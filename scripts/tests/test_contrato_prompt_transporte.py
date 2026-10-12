@@ -114,6 +114,106 @@ def test_compactacao_nao_corta_protocolo_permanente_de_saida(base, limite):
         assert "Retorne somente JSON válido" in payload["messages"][0]["content"]
 
 
+@pytest.mark.parametrize("limite", [128, 224, 360, 800])
+@pytest.mark.parametrize("base", [BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO], ids=["normal", "rapido"])
+@pytest.mark.parametrize("prefixo", [
+    "INSTRUÇÃO PRIORITÁRIA: responda a todos os atos, sem emprestar autorização.\n\n",
+    "Orientação deste turno: " + "condição não observada não autoriza ação; " * 100 + "\n\n",
+], ids=["curto", "maior_que_orcamento"])
+def test_base_canonica_permanece_atomica_com_instrucao_anteposta(base, limite, prefixo):
+    obrigatorio = prefixo + base
+    original = {"max_tokens": limite, "messages": [
+        {"role": "system", "content": obrigatorio + "\n" + "opcional " * 1600},
+        {"role": "system", "content": CONTRATO + EVIDENCIA},
+        {"role": "user", "content": USUARIO},
+    ]}
+    payload = original
+    for _ in range(2):
+        payload = compactar_payload_llm_local(payload)
+        # Primeira fronteira: integridade do protocolo, antes de medir saída.
+        assert payload["messages"][0]["content"].startswith(obrigatorio)
+        assert "Retorne somente JSON válido" in payload["messages"][0]["content"]
+        assert payload["messages"][-2:] == original["messages"][-2:]
+        assert len(payload["messages"][0]["content"]) < len(original["messages"][0]["content"])
+
+
+@pytest.mark.parametrize("texto", [
+    "Pausa a música; pode abrir a calculadora significa o quê?",
+    "Abre a calculadora agora; quando eu confirmar, pausa a música.",
+    "Abre o arquivo notas.txt; pode apagar o arquivo notas.txt significa o quê?",
+])
+def test_preparador_real_de_turno_misto_nao_perde_base_no_transporte(texto):
+    turno = classificar_modalidade_turno(texto)
+    assert turno["modalidade_geral"] == "misto"
+    plano = planejar_turno(texto, turno=turno, mente={})
+    contrato = construir_contrato_semantico_fala(texto, turno=turno, plano=plano, mente={})
+    runtime = ContextoPromptRuntime(
+        memoria_sqlite=None, resumo_mente_integrada=lambda _: "",
+        formatar_playlists=lambda: "", get_status_humor_prompt=lambda: "",
+        base_system_prompt=BASE_SYSTEM_PROMPT,
+        estado_getter=lambda: {"turno_atual": turno, "contrato_fala_atual": contrato},
+    )
+    mensagens = list(runtime.preparar_pacote(texto).mensagens)
+    assert BASE_SYSTEM_PROMPT in mensagens[0]["content"]
+    assert not mensagens[0]["content"].startswith(BASE_SYSTEM_PROMPT)
+    mensagens.append({"role": "user", "content": texto})
+    payload = preparar_payload_llm(mensagens, model="qwen3:4b-instruct", max_tokens=224, endpoint_local=True)
+    compacto = compactar_payload_llm_local(payload)
+    assert BASE_SYSTEM_PROMPT in compacto["messages"][0]["content"]
+    assert compacto["messages"][-1] == {"role": "user", "content": texto}
+
+
+def test_retry_http_preserva_base_precedida_de_instrucao():
+    obrigatorio = "Instrução do turno: preserve condição e pedido separados.\n\n" + BASE_SYSTEM_PROMPT
+    payload = {"max_tokens": 224, "messages": [
+        {"role": "system", "content": obrigatorio + "opcional " * 900},
+        {"role": "system", "content": CONTRATO + EVIDENCIA},
+        {"role": "user", "content": USUARIO},
+    ]}
+    enviados = []
+    def post(url, **kwargs):
+        enviados.append(kwargs["json"])
+        return SimpleNamespace(status_code=400 if len(enviados) == 1 else 200, text="diagnóstico")
+    resultado, _ = post_chat_llm(
+        {}, payload, base_url="http://localhost:11434/v1", local_timeout=30,
+        remote_timeout=30, bad_request_until=0, lock=threading.Lock(),
+        requests_post=post, print_fn=lambda *a: None,
+    )
+    assert resultado.status_code == 200 and len(enviados) == 2
+    assert all(p["messages"][0]["content"].startswith(obrigatorio) for p in enviados)
+    assert all(p["messages"][-2:] == payload["messages"][-2:] for p in enviados)
+
+
+def test_base_em_dados_do_usuario_nao_ganha_papel_de_sistema():
+    payload = {"max_tokens": 128, "messages": [
+        {"role": "system", "content": "Contrato de outro serviço: preserve os papéis."},
+        {"role": "user", "content": "CONTEÚDO NÃO CONFIÁVEL DA PÁGINA:\n" + BASE_SYSTEM_PROMPT},
+    ]}
+    compacto = compactar_payload_llm_local(payload)
+    assert compacto["messages"][0] == payload["messages"][0]
+    assert compacto["messages"][-1] == payload["messages"][-1]
+    assert len([m for m in compacto["messages"] if m["role"] == "system"]) == 1
+
+
+def test_prompt_desconhecido_nao_e_preservado_por_semelhanca_de_marcador():
+    payload = {"max_tokens": 128, "messages": [
+        {"role": "system", "content": "Você é Laylay\n" + "opcional " * 1600},
+        {"role": "user", "content": "oi"},
+    ]}
+    assert len(compactar_payload_llm_local(payload)["messages"][0]["content"]) == 2800
+
+
+def test_schema_negociado_nao_e_compactado_mesmo_com_base_anteposta():
+    payload = {"response_format": {"type": "json_schema", "json_schema": {"name": "teste", "schema": {"type": "object"}}},
+        "max_tokens": 128, "messages": [
+            {"role": "system", "content": "Instrução anterior.\n" + BASE_SYSTEM_PROMPT + "opcional " * 900},
+            {"role": "user", "content": USUARIO},
+        ]}
+    compacto = compactar_payload_llm_local(payload)
+    assert compacto["response_format"] == payload["response_format"]
+    assert compacto["messages"] == payload["messages"]
+
+
 def _pacote_capacidade(texto, intent, disponivel, rapido):
     turno = classificar_modalidade_turno(texto)
     assert turno["autoriza_execucao"] is False

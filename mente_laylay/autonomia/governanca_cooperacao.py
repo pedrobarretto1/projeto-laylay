@@ -35,6 +35,14 @@ class GovernancaPlanoCooperativoRuntime:
         self.log = log
         self._lock = threading.RLock()
         self._finalizados: set[str] = set()
+        self._autorizadores_escopo: dict[str, Callable[..., Mapping[str, Any]]] = {}
+
+    def registrar_autorizador_escopo(self, escopo: str, validar: Callable[..., Mapping[str, Any]]) -> None:
+        """Instalado pela composição; metadados de um plano não concedem autoridade."""
+        if not escopo or not callable(validar):
+            raise ValueError("autorizador de escopo inválido")
+        with self._lock:
+            self._autorizadores_escopo[escopo] = validar
 
     def avaliar_autorizacao(
         self,
@@ -50,6 +58,17 @@ class GovernancaPlanoCooperativoRuntime:
             return {"permitido": False, "motivo": "autorizacao_do_plano_invalida"}
         if risco in self.RISCOS_COM_CONFIRMACAO and not confirmado:
             return {"permitido": False, "motivo": "confirmacao_explicita_necessaria"}
+        escopo = str((plano.get("metadados") or {}).get("escopo_autorizacao") or "")
+        if escopo:
+            validar = self._autorizadores_escopo.get(escopo)
+            if autorizacao != "autonomia_previamente_concedida" or not callable(validar):
+                return {"permitido": False, "motivo": "concessao_de_escopo_ausente"}
+            try:
+                decisao = dict(validar(plano, etapa) or {})
+                return {"permitido": decisao.get("permitido") is True,
+                        "motivo": str(decisao.get("motivo") or "concessao_negada")}
+            except Exception:
+                return {"permitido": False, "motivo": "validador_de_escopo_indisponivel"}
         if not callable(self.autorizar_acao):
             self.log(
                 "⚠️ [COOPERAÇÃO] porteiro canônico ausente; execução bloqueada"

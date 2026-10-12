@@ -1,0 +1,54 @@
+{
+  "ts_utc": "2026-10-11T04:00:29.722886+00:00",
+  "pinout": {
+    "AIN1": 1,
+    "AIN2": 2,
+    "BIN1": 3,
+    "BIN2": 4,
+    "SLEEP": 7
+  },
+  "fonte_sha256": "0c8916f8c2d53826be82a06dab9371f9890d0ed54bc6ec4378f22a0eaee21990",
+  "hardware_simulado": false,
+  "composicao_serial_instalada": true,
+  "perfil_build": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "autorizacao": "Pedro: liberar motores de teste distintos dos N20; mapa confirmado e montagem na protoboard sem rodas",
+  "prova_rotacao": true,
+  "prova_parada_fisica": false,
+  "comandos_naturais_instalados": false,
+  "pulsos": [
+    {
+      "nome": "esquerdo sentido A",
+      "enviado": "MOTOR 1 5c07333b 1 180 0 250",
+      "receipt_pwm": "MACK 1 5c07333b 1 180 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido A",
+      "enviado": "MOTOR 1 5c07333b 2 0 180 250",
+      "receipt_pwm": "MACK 1 5c07333b 2 0 180 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "esquerdo sentido B",
+      "enviado": "MOTOR 1 5c07333b 3 -180 0 250",
+      "receipt_pwm": "MACK 1 5c07333b 3 -180 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido B",
+      "enviado": "MOTOR 1 5c07333b 4 0 -180 250",
+      "receipt_pwm": "MACK 1 5c07333b 4 0 -180 250",
+      "stop_confirmado": true
+    }
+  ],
+  "porta": "COM4",
+  "configuracao_pwm_confirmada": true,
+  "parada_final_confirmada": true,
+  "avaliacao_humana": {
+    "resposta": "girou porem muito fraco, se puder na proximo deixar mais forte",
+    "origem": "resposta direta de Pedro após repetição",
+    "escopo": "giro percebido no mapa GPIO1/2/3/4, intensidade180",
+    "prova_rotacao": true,
+    "confirma_cada_motor_e_sentido": false
+  }
+}

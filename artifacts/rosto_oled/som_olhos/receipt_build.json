@@ -1,0 +1,25 @@
+{
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "flags": "-DLAYLAY_WIFI=0 -DLAYLAY_HABILITAR_MOTORES_BANCADA=1 -DLAYLAY_SOM_PONTE=0",
+  "flash_bytes": 390814,
+  "globais_bytes": 17372,
+  "porta": "COM4",
+  "upload_exit_code": 0,
+  "hash_upload_verificado": true,
+  "bin_sha256": "f2c530927541763bdce2932bd0861bbfb1c9a0dc9329b953fbf510e715cb9f48",
+  "bin_demo_anterior_sha256": "5dbeab0978848ac54b596281e958471dd4c1a26e88f81c280ed967e3be5e7930",
+  "fonte_sha256": "a95c822571854abc6057f83ffe3379c81f9b83049ac135dc37eebd4b7185d1df",
+  "som_sha256": "75d7941d604fa865537ee6175db5cf9dd2f310bd71853958c5281faf33cd6000",
+  "header_compilado_confere_ignorando_line": true,
+  "testes_passaram_por_lotes": 336,
+  "suite_unica": "335 passed; 1 interferencia de estado entre teste de falha VOLUME42 e repeticao no teste companhia, reproduzida sem novos testes de som",
+  "linhas_serial_finais": [
+    "READY 1 65bbac03 SSD1306 128 64",
+    "SCAPS 1 65bbac03 SOM1",
+    "MCAPS 1 65bbac03 MOTOR1",
+    "SACK 1 65bbac03 1"
+  ],
+  "prova_fisica": "12 passos confirmados; humano confirmou olhos e bips; nenhum movimento enviado",
+  "normal_ui": "aplicacao mantida fechada para abertura pelo usuario"
+}

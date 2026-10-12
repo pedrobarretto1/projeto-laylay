@@ -53,6 +53,8 @@ DEPENDENCIAS_CONTEXTO_IA = (
 )
 
 DEPENDENCIAS_INICIALIZACAO = (
+    "_corpo_motor_runtime",
+    "_rosto_oled_runtime",
     "_renovar_sessao_conversa", "carregar_memoria", "_rede_associativa_runtime",
     "_preparar_autonomia_segura_padrao", "_preparar_sugestoes_proativas_jogo",
     "init_memoria_contexto_diaria", "_carregar_playlists_para_memoria",

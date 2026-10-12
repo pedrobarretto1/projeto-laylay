@@ -758,6 +758,22 @@ class ComandosImediatosRuntime:
                 )
                 texto = texto_final
 
+        # A autoridade agregada de um turno misto não autoriza todos os seus
+        # atos. O ato vetado permanece na mente; detectores e cadeias recebem
+        # somente as ordens independentes que o owner canônico autorizou.
+        # Não reinterpretar o veto aqui nem herdar permissão do conjunto.
+        if (
+            autoriza_execucao_efetiva(turno_prioritario)
+            and any(
+                bool(s.get("veto_execucao_operacional"))
+                for s in turno_prioritario.get("segmentos", [])
+                if isinstance(s, dict)
+            )
+        ):
+            texto = str(turno_prioritario.get("texto_operacional") or "").strip()
+            if not texto:
+                return False
+
         contexto_prioritario = dict(ns)
         contexto_prioritario["mente_integrada_estado"] = getattr(
             estado_runtime, "mental", {},

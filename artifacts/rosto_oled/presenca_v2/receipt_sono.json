@@ -1,0 +1,7 @@
+{
+  "falha": "",
+  "boa_noite_confirmada": true,
+  "comandos_motor": 0,
+  "observacao_humana": "Sim, agora ficou suave",
+  "curva": "quintica, acordar3200ms e adormecer3000ms; geometria preservada"
+}

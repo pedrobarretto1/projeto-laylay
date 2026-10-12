@@ -26,6 +26,7 @@ from mente_laylay.personalidade.proporcao_resposta import parece_problema_matema
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
 from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
 from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal, ContratoRespostaTurno
+from mente_laylay.cognicao.modelo_corporal import formatar_realidade_corporal
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
@@ -468,6 +469,21 @@ def preparar_resposta_para_execucao(
         modelo_llm=modelo_llm,
         enviar_mensagem=enviar_mensagem_cb,
     )
+    contexto_com = dict(contexto_comunicacao or {})
+    realidade_corporal = formatar_realidade_corporal(contexto_com.get("modelo_corporal"))
+    if realidade_corporal and callable(enviar_mensagem_cb):
+        enviar_original = enviar_mensagem_cb
+        def enviar_com_realidade_corporal(mensagens: list[Mapping[str, Any]], **kwargs: Any) -> Any:
+            # Todas as reescritas consomem a mesma observação do host. Não
+            # recuperam a proposta corporal nem escolhem outra intenção.
+            mensagens = [dict(m) for m in mensagens]
+            sistema = next((m for m in mensagens if m.get("role") == "system"), None)
+            if sistema is not None:
+                sistema["content"] = str(sistema.get("content") or "") + "\n" + realidade_corporal
+            else:
+                mensagens.insert(0, {"role": "system", "content": realidade_corporal})
+            return enviar_original(mensagens, **kwargs)
+        enviar_mensagem_cb = enviar_com_realidade_corporal
     registrar_log = log or print
     texto = str(texto_usuario or "").strip()
     bot_raw = resposta_bruta
@@ -573,7 +589,6 @@ def preparar_resposta_para_execucao(
         )
     else:
         fala_limpa, comandos = decodificacao_original.como_legado()
-    contexto_com = dict(contexto_comunicacao or {})
     plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
     # Consumir a decisão do dono do turno ANTES de escolher o caminho de
     # comunicação. Uma proposta sem autoridade não pode pular o reparo da fala.
@@ -607,7 +622,9 @@ def preparar_resposta_para_execucao(
                             "Reescreva a resposta mantendo a personalidade natural da Laylay, mas "
                             "remova experiências físicas, sentidos corporais, promessas de cozinhar "
                             "ou entregar objetos e acontecimentos compartilhados que não foram "
-                            "afirmados pelo usuário. Laylay não tem corpo físico. Imaginação e humor "
+                            "afirmados pelo usuário ou observados pelo host. Emoções podem expressar "
+                            "estados funcionais; sensações físicas exigem observação. Não deduza "
+                            "presença nem ausência de hardware sem evidência. Imaginação e humor "
                             "podem continuar, mas devem ser apresentados claramente como hipótese ou "
                             "brincadeira atual, nunca como lembrança real. Ao falar de si, use flexões "
                             "femininas, como 'obrigada'. Se o usuário estiver corrigindo um erro, reconheça a "

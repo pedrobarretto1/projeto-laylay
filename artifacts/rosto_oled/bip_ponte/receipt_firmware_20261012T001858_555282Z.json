@@ -1,0 +1,24 @@
+{
+  "timestamp_utc": "2026-10-12T00:18:58.555282+00:00",
+  "porta": "COM4",
+  "fonte_sha256": "2a7daad0240ae29507d0027dc8e3498516df7d41d191f5d784bb4c589fdcb0d6",
+  "bin_sha256": "e07b86dcd53e4e1b8d54e7a3cf1777604dc929dc59750e77f935d91e1890b57d",
+  "perfil_build": "LAYLAY_WIFI=0; LAYLAY_HABILITAR_MOTORES_BANCADA=1; LAYLAY_SOM_PONTE=1",
+  "pinos_som": [
+    6,
+    5
+  ],
+  "resistor_informado_ohms": 220,
+  "frequencia_programada_hz": 1200,
+  "duracao_programada_ms": 2000,
+  "stop_bip_observado": false,
+  "motor1_confirmado": true,
+  "parada_confirmada": true,
+  "movimento_enviado": false,
+  "audio_humano": "pendente",
+  "linhas_serial": [
+    "READY 1 65bbac02 SSD1306 128 64",
+    "MCAPS 1 65bbac02 MOTOR1",
+    "SACK 1 65bbac02 1"
+  ]
+}

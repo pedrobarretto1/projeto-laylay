@@ -540,6 +540,7 @@ class VozRuntime:
         pitch: str,
         volume: str,
     ):
+        self._preparar_transporte_edge()
         try:
             return self.edge_tts.Communicate(
                 texto,
@@ -551,6 +552,28 @@ class VozRuntime:
         except TypeError:
             # Compatibilidade com versões antigas do edge-tts.
             return self.edge_tts.Communicate(texto, voice=voice)
+
+    def _preparar_transporte_edge(self) -> None:
+        """Compatibilidade com o endpoint legado recusado desde outubro/2026.
+
+        O edge-tts consulta WSS_URL no módulo communicate. Ajustamos somente
+        o endereço legado conhecido; versões futuras e destinos personalizados
+        conservam seu transporte. Não muda voz, token, timeout ou receipts.
+        Referência: https://github.com/rany2/edge-tts/pull/491
+        """
+        comunicacao = getattr(self.edge_tts, "communicate", None)
+        constantes = getattr(self.edge_tts, "constants", None)
+        token = getattr(constantes, "TRUSTED_CLIENT_TOKEN", "")
+        legado = (
+            "wss://speech.platform.bing.com/consumer/speech/synthesize/"
+            f"readaloud/edge/v1?TrustedClientToken={token}"
+        )
+        if token and getattr(comunicacao, "WSS_URL", None) == legado:
+            comunicacao.WSS_URL = (
+                "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1"
+                f"?Ocp-Apim-Subscription-Key={token}"
+            )
+            self.log("ℹ️ [VOZ] Transporte neural atualizado para o endpoint atual da Microsoft.")
 
     def _sintetizar_edge(
         self,

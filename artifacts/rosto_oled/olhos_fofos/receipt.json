@@ -1,0 +1,18 @@
+{
+  "fonte_sha256": "2b53bc4350b5ec573de83efd7921bc5385727405767d372460788acad353f959",
+  "bin_sha256": "2826889b498d534457953e12d34663ca4ae3b2129b432d2d33b37e97efede193",
+  "flash_bytes": 391220,
+  "globais_bytes": 17380,
+  "porta": "COM4",
+  "upload_verificado": true,
+  "linhas_serial": [
+    "READY 1 65bbac04 SSD1306 128 64",
+    "SCAPS 1 65bbac04 SOM1",
+    "MCAPS 1 65bbac04 MOTOR1",
+    "SACK 1 65bbac04 1",
+    "DEMO 1 ATIVA"
+  ],
+  "movimento_enviado": false,
+  "modo": "DEMO visual local; abrir Laylay substitui pela sessao normal",
+  "observacao_humana": "pendente"
+}

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 
 _INTENTS_REEXECUTAVEIS_PADRAO = frozenset({
+    "CORPO_MOVER", "CORPO_PARAR",
     "APP_OPEN", "CLOSE_APP", "OPEN_URL", "CLOSE_TAB", "PLAYLIST_PLAY",
     "PLAYLIST_ADD", "MUSIC_SEARCH", "VOLUME", "MEDIA_CONTROL", "WEATHER",
     "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS", "BRIEFING_REPEAT",
@@ -21,6 +22,7 @@ _INTENTS_POR_ACAO_SEMANTICA = {
 }
 
 _PARAMS_EXTRAS_REEXECUCAO = {
+    "CORPO_MOVER": frozenset({"direcao", "pwm", "duracao_ms"}),
     "EMAIL_READ": frozenset({"urgentes"}),
 }
 

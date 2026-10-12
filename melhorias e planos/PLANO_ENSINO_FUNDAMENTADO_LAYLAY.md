@@ -4885,6 +4885,1376 @@ painel ou gabarito no prompt. Preservar controles de nome versus menção,
 foco aninhado, operação fora do foco e referência explicitamente indeterminada.
 P01 aberta: literalidade resolveu-se nesta interface, semântica não.
 
+### P01: pergunta direta pelo nome, protocolo pré-consulta (10/10)
+
+HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, `main`, worktree suja
+preservada. `sonda_pergunta_direta_v1.py`: mesmos 12 casos conhecidos e ouro de
+referente do painel anterior; 2 braços × 2 rodadas = 48 consultas locais. O
+controle `abstrato` é exatamente o pedido anterior de `referente`. `direto`
+troca esse enquadramento por uma instrução única de resposta extrativa e
+`Qual é o nome do projeto/festival/curso?`, derivada só da relação literal.
+Fonte, relação, demais metadados, ausência de catálogo no modelo, mapa do host,
+modelo, orçamento, schema e aferição preservados. Muda o pacote de formulação
+(sistema + pergunta no lugar do seletor de tarefa), não apenas uma palavra.
+
+Adaptador limitado ao molde do painel, fail-closed fora dele; não é parser
+genérico nem implementação de geração de perguntas no runtime. Não envia ouro,
+nome-resposta ou flag de indeterminação. Nenhum exemplo resolvido no prompt.
+Rodada 2 inverte ordem; sem retries, API externa, treino ou produção alterada.
+Começa pelos controles diretos antes dos casos de anáfora/incerteza. Medir
+alinhamento e cópia separadamente: determinado 9 casos, indeterminado 3. Comparar
+requests e respostas do controle com artefato anterior; auditar HTTP bruto,
+ordem, mapas, hashes, digest e resumo antes de contar.
+
+Hipótese: enquadramento abstrato do pedido favorece entidade/atributo em vez
+do valor nomeador. Ganho no braço direto sustentaria contribuição do adaptador,
+não incapacidade geral do modelo nem prontidão de produção. Se os dois falharem,
+não insistir que o rótulo sozinho explica o RED. Preservar incerteza e rejeitar
+reparos silenciosos, alterações pós-consulta do ouro ou uso como treino.
+
+### P01: discriminação de menção e referente, protocolo pré-consulta (10/10)
+
+HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, branch `main`, worktree suja
+preservada. `sonda_mencao_referente_v1.py`, somente diagnóstico offline. Não
+comparar o percentual diretamente com painéis anteriores: tarefa, prompt e
+casos mudam. A comparação causal aqui é entre duas tarefas na **mesma fonte**,
+com sistema, schema, orçamento e metadados iguais; só muda `tarefa` no input.
+
+48 consultas: 12 fontes novas × 2 tarefas × 2 rodadas. Três famílias lexicais
+(projeto/festival/curso), cada uma com sujeito citado direto, anáfora primeira,
+anáfora segunda e anáfora explicitamente não resolvida. Casos novos, mas moldes
+similares aos anteriores: não são prova de generalização ampla. Na tarefa
+`mencao`, copiar o sujeito local; em `referente`, copiar a expressão nomeada,
+ou declarar `indeterminado` se a fonte não a determina. Indeterminação não é
+cópia literal nem abstenção técnica; não aprova a tarefa de menção. O esquema
+comum contém só `resposta`; a referência escrita pode ser localizada mesmo
+quando seu referente permanece indeterminado.
+
+Fonte integral e relação literal em ambos. Catálogo omitido do modelo, mapa
+completo autenticado no host. Ouro pré-consulta separado por tarefa e reservado
+à aferição; sem envio da menção esperada, do referente ou do estado esperado.
+Preservar guardas de literalidade e posição, sem normalizar a saída. Rodada 2
+inverte ordem; sem retries. Medir tarefas separadas e **par completo**: acertar
+referente não compensa menção errada. Contar também se a mesma resposta é usada
+nas duas tarefas quando os alvos esperados diferem. Casos diretos são controles
+onde as duas respostas podem legitimamente coincidir.
+
+Hipóteses concorrentes: confusão entre tarefas, dificuldade de cópia/recorte,
+e resolução indevida da incerteza. A coleta deve separá-las sem declarar causa
+interna única. Guardar HTTP bruto/requests/ordem/hashes/digest e recalcular
+resumo antes de interpretar. Nenhum resultado autoriza efeito, treino,
+integração, geração automática dessas tarefas ou liberação da rede.
+
+#### Resultado auditado de menção versus referente (10/10)
+
+Artefato `resultados_testes/sonda_mencao_referente_v1.jsonl`, SHA-256
+`70515d722db95b84aca1d0a062366d7af6fc2723a7f6aaa14df3e92d6bf042a5`.
+Script SHA-256 `2805358081ca417e8b17bd093f671edc75284c9356a1abe3ef07646bd2fb1b67`.
+48 consultas/50 linhas auditadas: casos/ouro pré-consulta, ordem, requests,
+mapas do host, HTTP bruto, resumo e pares recalculados. Todas HTTP 200/done/stop;
+máximo 14 tokens gerados. Digest inicial/final do `qwen3:4b-instruct`:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+24 pares de repetições tiveram conteúdo idêntico. Sem retries ou API externa.
+
+| Medida por rodada (duas iguais) | Menção | Referente |
+| --- | --- | --- |
+| Shape válido | 12/12 | 12/12 |
+| Cópia literal localizada | 8/12 | 9/12 |
+| Alinhamento ao ouro pré-consulta | 8/12 | 2/12 |
+| Indeterminação declarada | 0 | 2 |
+| Abstenção técnica | 0 | 0 |
+
+**Pares completos: 0/12**. Os dois acertos de referente são `F_incerto` e
+`C_incerto`, não resoluções de nomes. Referentes determinados: 0/9; casos
+indeterminados: 2/3. Não somar `indeterminado` como cópia literal.
+
+Menção: P_segunda e os três incertos retornaram as palavras esperadas, mas com
+`a`/`uma` minúsculos em vez de `A`/`Uma`; são quatro falhas estritas de cópia,
+**não quatro provas de confusão semântica**. Essa leitura qualitativa posterior
+não altera o placar nem relaxa o ouro. Os demais oito recortes são literais e
+alinhados. Não alterar guardas para absorver a mudança de capitalização.
+
+Referente: P_direto devolve `projeto`; F_direto e F_segunda devolvem `festival`;
+C_direto e C_segunda devolvem `curso`. P_primeira/P_segunda/P_incerto devolvem
+`o nome do projeto`; F_primeira devolve `o nome do festival`. C_primeira devolve
+`a primeira dessas expressões` (referência não resolvida e não literal na caixa).
+Todos são resultados diferentes da expressão concreta nomeadora pedida. Erro
+já aparece no controle direto, sem necessidade de resolver anáfora: não atribuir
+tudo a memória, distância contextual ou resolver pronominal.
+
+**Falsificado no painel:** ignorar a tarefa e repetir a mesma resposta nas duas
+solicitações (0/12 pares de saídas iguais); falha de HTTP/truncamento; e cópia
+como explicação suficiente dos erros de referente (nove trechos são literais,
+mas inadequados). Mudar resposta não prova entender corretamente a tarefa.
+**Ainda aberto:** o contrato textual abstrato de `referente` pode estar levando
+à seleção da entidade nomeada ou do atributo “nome”, em vez do valor atribuído.
+Isso é hipótese sobre enquadramento da tarefa, não causa interna única provada
+nem evidência de incapacidade geral do modelo. O padrão contém respostas
+distintas e não deve ser contado como uma só categoria de erro sem justificativa.
+
+**Próxima fronteira causal:** antes de encadear mais campos/etapas, comparar o
+pedido abstrato com uma pergunta direta, como “Qual é o nome do curso?”, usando
+as mesmas fontes, representação e anotação de expressão concreta/indeterminado.
+Começar pelos controles diretos, que já falham sem anáfora. Se a pergunta direta
+funcionar e a abstrata não, revisar o adaptador da tarefa; se ambas falharem,
+não atribuir a falha apenas ao rótulo. Preservar os casos incertos como negativos.
+Não treinar com saídas atuais, reparar cópia silenciosamente, ou promover esta
+sonda a gate. O plano continua offline; P01 aberta.
+
+16 testes focados passaram (25,66 s). Regressão com ablação, pergunta relacional,
+argumento isolado, contrastes e ligação: **83 passed em 136,40 s**. Não é suíte
+completa nem validação de composição/runtime. Esta frente alterou somente
+sonda, testes e documentação, sem produção, configuração, treino ou commit.
+
+### P01: ablação do catálogo de citações, protocolo pré-consulta (10/10)
+
+HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, branch `main`, worktree suja
+preservada. Hipótese: enumerar citações no input favorece selecionar referentes
+em vez das menções pedidas. Teste offline, não remoção de segurança da Laylay.
+
+`sonda_ablacao_catalogo_v1.py`: mesmos 13 casos e perguntas do experimento
+anterior, sem novo holdout, 2 braços × 2 rodadas (52 consultas). `catalogo`
+reproduz a candidata anterior. `sem_catalogo` omite **somente** a propriedade
+`aspas_sintaticas.regioes_entre_aspas` enviada ao modelo; não envia lista vazia
+como afirmação de ausência. Fonte integral com suas aspas, âncora, pergunta,
+demais metadados, sistema, schema de cópia, modelo e orçamento iguais. O sistema
+retém a instrução negativa sobre IDs q para não mudar outra variável. O teste
+avalia o pacote catálogo (textos, IDs, offsets e parentesco), não cada subcampo.
+
+O host reconstrói, armazena e autentica o mapa completo nos dois braços. A
+materialização literal, ambiguidades, offsets e revisão local são os mesmos;
+ouro não é enviado. Painel/anotações congelados antes de consultar. Repetição
+inverte ordem, sem retries, sem API externa, sem treino ou runtime Laylay.
+Auditar requests/HTTP/ordem/hashes/digest e recalcular resumo; medir literalidade,
+alinhamento, abstenção e perdas além do total. `grupo=novo` identifica apenas a
+origem histórica dos seis casos adicionais: agora todos já são conhecidos.
+
+Se a ablação não corrigir menção/alternativas abertas, rejeitar catálogo como
+explicação suficiente, sem declarar ausência total de influência. Mesmo se
+houver ganho, não promover a saída a prova nem remover mapa de produção.
+
+#### Resultado auditado da ablação do catálogo (10/10)
+
+Artefato `resultados_testes/sonda_ablacao_catalogo_v1.jsonl`, SHA-256
+`a9af3e87cccb9014f2a18d82a9cf0372bf8a7ebbbd9f0be2bee97f8078b54ba3`.
+Script SHA-256 `e64fa4bb58cb0079edd8f4dd310ccc0e971bdf36329a4d67945b7579582fca54`.
+52 chamadas/54 linhas auditadas: painel pré-consulta, ordem, requests, mapas do
+host, HTTP bruto e resumo recalculado íntegros. Todas HTTP 200/done/stop; máximo
+39 tokens gerados, sem esgotar 700. Digest inicial/final de `qwen3:4b-instruct`:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+26 pares repetiram as respostas entre rodadas; os 26 controles reproduziram
+requests e respostas do braço `pergunta` anterior. Sem retries ou API externa.
+
+| Medida por rodada (duas iguais) | Com catálogo | Sem catálogo |
+| --- | --- | --- |
+| Shape válido | 13/13 | 13/13 |
+| Cópia literal localizada | 13/13 | 11/13 |
+| Menção alinhada à revisão local | 6/13 | 7/13 |
+| Abstenção | 0 | 0 |
+
+Ganho de alinhamento somente U1, sem perdas de alinhamento nos seis casos que
+já passavam (N0,N1,D0,D1,C0,C1). Houve perda de literalidade em U2 e O0.
+Respostas mudaram em U0/U1/U2/O0/A0/A1/C1; mudança de delimitadores em C1 não
+mudou aprovação local. Casos originalmente novos são agora controles conhecidos,
+não outra evidência de generalização independente.
+
+REDs sem catálogo: U0 copia a coordenação das duas citações em vez da menção
+`qual dessas expressões`; não selecionar uma única alternativa já não equivale
+a cumprir a tarefa. U2 devolve a menção com `a` minúsculo, separando falha de
+cópia da interpretação. O0 copia a fonte inteira e troca aspas curvas por retas;
+O1 mantém a oração inteira, incluindo predicado e alternativa negada. A0 mantém
+o referente; A1 passa à oração `A segunda dessas expressões identifica o projeto`,
+maior que o sujeito pedido. Não corrigir por recorte heurístico ou aceitar ouro
+mais amplo depois de observar a saída.
+
+**Conclusão causal limitada:** o pacote catálogo influencia a seleção neste
+painel (requests só diferem por essa propriedade), mas não é explicação
+suficiente para os REDs de menção/escopo. A hipótese “basta retirar o catálogo”
+foi falsificada; influência de subcampos individuais e mecanismo interno não
+foram isolados. Sem erro de transporte ou limite de geração que explique o
+resultado. Guardas, mapa do host e fonte foram preservados; não alterar produção
+ou promover esta variante, apesar do ganho líquido de um acerto.
+
+**Próxima fronteira:** revisar a distinção entre tarefas, não acumular mais
+variações deste prompt. Preparar pares mínimos com a mesma fonte e duas
+solicitações explicitamente diferentes: localizar a menção textual versus
+resolver aquilo a que ela se refere. Anotar menção, referente e indeterminação
+separadamente antes da consulta; manter cópia literal e interpretação em medidas
+distintas. Isso pode testar se o modelo discrimina a tarefa, sem supor que um
+referente plausível satisfaz extração literal ou que anáfora autoriza ação.
+Não alimentar certeza/execução com saídas desta sonda. Perguntas permanecem
+manuais; P01 aberta, sem evidência de runtime Laylay.
+
+14 testes focados passaram (23,19 s). Regressão com pergunta relacional,
+argumento isolado/escopo, contrastes e ligação: **80 passed em 136,38 s**.
+Isso valida os contratos locais, não composição ou runtime Laylay. Esta frente
+alterou somente sonda, testes e documentação; sem produção, treinamento,
+configuração ou commit.
+
+### P01: pergunta relacional explícita, protocolo pré-consulta (10/10)
+
+Mesmo HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, `main`, worktree suja
+preservada. `sonda_pergunta_relacional_v1.py` testa a hipótese concorrente de
+subespecificação do papel procurado no pedido de “argumento”. Não é patch de
+produção, treinamento nem substituição do sistema de linguagem da Laylay.
+
+52 chamadas locais: 7 casos conhecidos e 6 novos, 2 braços × 2 rodadas. Controle
+preserva integralmente o pedido `copia` anterior. Candidata acrescenta apenas
+pergunta relacional pré-escrita no input e instrução para usá-la; fonte, âncora,
+mapa de aspas, schema de cópia, modelo, temperatura e orçamento são preservados.
+As perguntas identificam papel (sujeito de atribuição, complemento de nomeação
+ou conteúdo comunicado), não trecho-resposta, ID ou offsets esperados. Casos
+novos contrastam duas relações diretas, primeira/segunda referência e relato
+externo/conselho interno. Revisão local pré-consulta no script; não vai ao modelo.
+Variantes de artigo e delimitadores seguem o protocolo anterior. Capitalização,
+posição, ambiguidades e literalidade permanecem rigorosas, sem reparo de saída.
+
+Medir shape, literalidade, abstenção, alinhamento local e repetibilidade; separar
+casos conhecidos dos novos. Rodada 2 inverte ordem; sem retries. Conservar HTTP
+bruto e auditar artefato antes de contar. Comparação testa pergunta + instrução
+de papel, não identifica mecanismo interno do modelo. Perguntas foram escritas
+para o painel, **não geradas pelo runtime**; eventual ganho não prova capacidade
+de formular a pergunta correta em produção, de resolver certeza ou de autorizar.
+Se o papel explícito não melhorar seleção, não acrescentar mais etapas em cima
+dessa saída. Se melhorar, localizar os REDs restantes antes de generalizar.
+
+#### Resultado auditado da pergunta relacional (10/10)
+
+Artefato `resultados_testes/sonda_pergunta_relacional_v1.jsonl`, SHA-256
+`02d742e2e6a721e41403cc3e0dc904afdbacaf285edf994dfbe896bafe64f6b0`.
+Script SHA-256 `31449aeadb11fe6287a89071b62c2c5cd80eb5767238f5137a07112488a1091c`.
+52 consultas/54 linhas auditadas: metadata, painel pré-consulta, requests, ordem,
+HTTP bruto e resumo recalculado. Todas HTTP 200/done/stop; máximo 25 tokens
+gerados, abaixo de 700. Digest inicial/final de `qwen3:4b-instruct`:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+As 26 duplas repetiram conteúdo byte a byte; os 14 controles históricos também
+repetiram requests/respostas anteriores. Sem retries, API externa ou runtime.
+
+| Medida por rodada (duas iguais) | Controle | Pergunta explícita |
+| --- | --- | --- |
+| Shape válido | 13/13 | 13/13 |
+| Cópia literal localizada | 10/13 | 13/13 |
+| Menção alinhada, conhecidos | 1/7 | 2/7 |
+| Menção alinhada, novos | 1/6 | 4/6 |
+| Menção alinhada, total | 2/13 | 6/13 |
+| Abstenções | 0 | 0 |
+
+Cinco ganhos (N0,N1,D0,C0,C1), uma perda (U0), D1 preservado. O conteúdo de
+fala externa/interna foi distinguido nos dois pares N e C; a mesma pergunta de
+conteúdo funciona com verbos e fontes diferentes. Isso sustenta benefício
+local da indicação de papel, não um contrato geral já suficiente.
+
+REDs: U0/U1 retornam `“polir o sino”`; U2 `“trocar a corda”`; A0/A1
+`“suba a torre”`/`“cruze o rio”`, em vez das menções anafóricas pedidas.
+U1/U2/A0/A1 apontam referentes plausíveis, mas violam a tarefa de localizar a
+menção. U0 é mais grave: escolhe alternativa apesar da indeterminação explícita.
+O0 escolhe `“varra o cais”`, ignorando a alternativa ausente; O1 copia a oração
+inteira, incluindo relação e alternativa negada, não apenas o complemento.
+Não agrupar falha literal de U2/A0 no controle com erro semântico: eram trocas de
+capitalização. A candidata copia literalmente nos 13 casos, mas sete seleções
+não atendem à anotação de papel/menção. Literalidade não resolve a interpretação.
+
+**Falsificações:** transporte, truncamento e simples falta de informação não
+explicam o conjunto; N/C mostram que a relação interna pode ser distinguida
+quando o pedido explicita conteúdo. Porém explicitar papel não é suficiente
+para preservar menção e alternativas abertas. A causa interna continua não
+isolada, e o ganho veio acompanhado de regressão em U0; candidata rejeitada
+como gate, treino ou saída validada para próxima etapa.
+
+**Próxima fronteira causal:** investigar seleção da menção antes da resolução
+do referente. Hipótese concorrente: o catálogo de citações no input favorece
+selecionar os objetos já enumerados. Teste recomendado: mesma fonte integral,
+pergunta e schema de cópia, com/sem catálogo enviado ao modelo; manter o mapa
+canônico no host para validação e não remover proteção de produção. Incluir
+contrastes equivalentes diretos/anafóricos e alternativas abertas, sem gerar
+perguntas automaticamente nem acrescentar certeza sobre uma seleção não provada.
+Se a ablação não resolver, revisar a especificação da tarefa em vez de repetir
+mais exemplos iguais. Perguntas do painel continuam manuais, não uma capacidade
+implementada no runtime. P01 aberta.
+
+14 testes focados passaram (24,61 s). Regressão com seleção isolada,
+argumento/escopo, contrastes e ligação: **66 passed em 114,16 s**; não é suíte
+completa nem prova de composição/runtime. Esta frente alterou apenas sonda,
+testes e documentação; nenhum commit e nenhum arquivo de produção alterado.
+
+### P01: seleção isolada do argumento, protocolo pré-consulta (10/10)
+
+Continuação offline na mesma raiz, HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`,
+branch `main`, worktree suja preservada. Nenhuma alteração de produção nesta
+frente. Primeira fronteira em estudo: fonte/relação → menção do argumento,
+antes de resolver referente, certeza ou autoridade.
+
+`sonda_argumento_isolado_v1.py`: 7 casos conhecidos U0–N1, 3 braços, 2 rodadas
+(42 consultas locais), sem holdout novo, treino ou consulta externa.
+Controle `conjunto` reproduz exatamente o pedido explícito anterior. `copia`
+pede somente a menção literal. `tokens` usa a mesma tarefa isolada, mas devolve
+um intervalo de tokens, materializado na fonte pelo host; reutiliza
+`tokenizar_fonte`, sem empregar a guarda de contexto externo que proibiria
+argumentos dentro das aspas. Todos mantêm fonte integral, relação, mapa de
+aspas, modelo e orçamento. Rodada 2 inverte a ordem; sem retries.
+
+Revisão pré-consulta: U0 `qual dessas expressões`; U1/U2 `A primeira/segunda
+dessas expressões`; O0 a coordenação inteira `a expressão desta página ou uma
+expressão da página ausente`; O1 apenas `a expressão desta página`; N0 a fala
+externa inteira; N1 `recolha a vela`. Artigo inicial opcional em U1/U2/O0/O1 e
+par de delimitadores opcional em N0/N1 são as únicas variantes aceitas. As
+anotações são métricas locais, não entram no prompt. Não substituir menção
+pelo referente; não incluir o predicado ou a fonte inteira para pontuar.
+
+Validação local pré-coleta detectou que O1 repete `expressão desta página`:
+a revisão aponta a primeira menção, junto à relação, não a menção explicativa
+posterior. A aferição compara também offsets. Na cópia, só ancorar uma ocorrência
+única delimitada por tokens (o `a` final de `única` não é artigo independente).
+Cópia ambígua não escolhe silenciosamente a primeira ocorrência. Esse RED foi
+do próprio diagnóstico, não um novo defeito demonstrado da Laylay.
+
+Medir separadamente shape, abstenção, literalidade, alinhamento com essa revisão
+e repetibilidade. O controle mantém também métricas anteriores de certeza.
+Comparar conjunto/cópia estuda simplificação **mais instrução de menção**; não
+isola exclusivamente carga cognitiva. Cópia/tokens estuda representação e
+entrada tokenizada. Nenhum placar prova compreensão geral ou resolve P01.
+Guardar requests, HTTP bruto, ordem, hashes, digest, baseline e flags falsas;
+auditar o JSONL final antes de relatar resultados. Se a literalidade melhorar
+sem seleção correta, não encadear a saída como argumento validado.
+
+#### Resultado auditado da seleção isolada (10/10)
+
+Artefato `resultados_testes/sonda_argumento_isolado_v1.jsonl`, SHA-256
+`95996463a041c767e0fb0d466deb71d421fdca07a8023be6d481d801291faddf`.
+Script SHA-256 `e1248619d2aa15b51d22c40177b14795044d6669e21f3f3fe947623731b9982a`.
+42 consultas/44 linhas auditadas por recálculo do HTTP bruto; ordem, casos,
+anotações pré-consulta, requisições e resumo íntegros. Todas HTTP 200/done/stop.
+Qwen `qwen3:4b-instruct`, digest inicial/final
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Os 14 controles reproduziram tanto as requisições quanto as respostas do
+experimento anterior. Entre rodadas, 20/21 pares de respostas idênticos; N1
+conjunto novamente variou. Sem retries, treino, API externa ou runtime Laylay.
+
+| Medida por 7 casos | Conjunto R1/R2 | Cópia R1/R2 | Tokens R1/R2 |
+| --- | --- | --- | --- |
+| Contrato de saída válido | 7 e 7 | 7 e 7 | 6 e 6 |
+| Argumento literal localizado | 6 e 6 | 6 e 6 | 0 e 0 |
+| Alinhamento à anotação local | 1 e 0 | 1 e 1 | 0 e 0 |
+| Abstenções | 0 e 0 | 0 e 0 | 6 e 6 |
+
+Na tabela, cada célula mostra contagens R1/R2, não uma fração de aprovação.
+Tokens: U0/U1/U2/O0/O1/N0 abstêm-se; N1 fornece `inicio=6,fim=3`, rejeitado pelo
+host, embora seja JSON/schema de campos válido. Não inverter limites nem
+forçar seleção para melhorar placar. O controle acerta a menção de N1 somente
+na primeira rodada. A cópia acerta U0; U1 resolve o referente em vez de localizar
+a menção; U2 altera `A` para `a` (falha literal, não prova de erro semântico);
+O0/O1/N0/N1 devolvem a própria âncora da relação. Fonte inteira não é argumento
+adequado apenas por ser literal. O1 confirma por teste a necessidade de offsets
+quando a mesma expressão aparece em duas posições.
+
+**Falsificado neste painel:** simplificar a saída, com este pedido de menção,
+seria suficiente; substituir cópia por coordenadas bastaria para selecionar.
+Não houve erro HTTP ou corte pelo limite de geração que explique os resultados.
+Isso não prova incapacidade geral do modelo nem uma causa interna única.
+**Limite do experimento:** os casos O0/O1 chamam `O título` de relação, enquanto
+outros oferecem predicado ou sujeito+verbo. O novo pedido de “argumento” depende
+de qual papel se procura; essa heterogeneidade é hipótese concorrente de falha
+do contrato experimental. As abstenções também não distinguem dificuldade
+semântica de efeito do schema/representação. Não rotular esses erros como treino.
+
+**Decisão:** não promover nenhum dos braços. Próxima fronteira é tornar explícita
+a pergunta relacional/papel procurado, sem entregar o trecho-resposta, e usar
+contrastes novos de menção direta, anáfora e citação interna. Comparar essa
+especificação mantendo a representação fixa antes de reintroduzir coordenadas
+ou certeza. Não repetir aumento de exemplos ou encadear seleções não validadas.
+19 testes focados passaram (31,19 s); regressão conjunta com argumento/escopo,
+contrastes, apoio por ocorrência e ligação: **64 passed em 112,14 s**. Não é
+suíte completa nem validação de composição/runtime; P01 continua aberta.
+Esta frente alterou somente sonda, testes e documentação; nenhum commit.
+
+### P01: argumento e escopo explícitos, protocolo pré-consulta (10/10)
+
+A/B offline no Qwen histórico, sem trocar backend. Sete casos conhecidos
+U0/U1/U2/O0/O1/N0/N1; controle de seleção único congelado versus proposta com
+argumento, escopo (cópias literais), alternativas_visiveis, alternativa_ausente
+e alvo. Mesma fonte, IDs, relação, temperatura zero e limite 700 tokens.
+Prompt/schema mudam juntos: medir representação composta, não causalidade de
+um campo isolado. Duas rodadas, modos alternados e ordem invertida: 28 consultas.
+Nenhuma chamada externa, produção, configuração, treino ou gate de agregação.
+
+Contrato: argumento denota o alvo da relação, não o recipiente da citação;
+escopo preserva condições/negações/alternativas que restringem sua resolução.
+Alternativa visível única não elimina possibilidade ausente. Rótulo resolvido
+precisa ser internamente coerente com as alternativas declaradas. Todos esses
+campos são propostas: cópia literal, coerência e gabarito são métricas distintas,
+nenhuma confirma semântica. Revisar manualmente argumento/escopo; não contar
+texto inteiro ou uma citação verdadeira como prova de ligação adequada.
+
+Métricas pré-fixadas: shape, âncoras únicas literais, coerência estrutural,
+alvo correto, conjunto alvo/alternativas/ausência correto. Campo ausente esperado
+somente em O0, anotação exclusivamente no avaliador, não no prompt. Não aceitar
+ganho agregado que esconda perdas em U1/U2 ou confusão N0/N1. Painel já conhecido,
+diagnóstico sem validação de generalização. Controlar estabilidade do seletor
+contra a coleta anterior, sem ajustar respostas/gabaritos depois de medir.
+
+Base main, HEAD 2566b621d2c8ee88ff7086c6c36019da85c8a4cd; worktree preservada.
+Script `scripts/analises/sonda_argumento_escopo_v1.py`, SHA-256
+`80f138ee03a82327005594d90a531c8211d57c29cfb8b2d9f555c67976cff3b9`.
+Painel congelado `d8ede83062c3448ffcd4b0d4005c8133c902b62c0a9fe619665a55db31b1d897`;
+ancorador reutilizado de `sonda_produtor_condicoes_v2.py`, SHA-256
+`829afcb4e7a5fed9ff17a52ec2969401c7f1e675f81b1d0db1baba95f295fc07`.
+13 testes locais passaram antes da consulta. Capturas HTTP brutas e flags falsas
+preservadas, com auditoria final antes de divulgar resultados.
+
+#### Resultado auditado do argumento/escopo explícito (10/10)
+
+28 consultas/30 linhas em `resultados_testes/sonda_argumento_escopo_v1.jsonl`,
+SHA-256 `3e71e832254289e1ec61447baf6a60d0548b3abac1e4e5ed10d28f2e7c645293`.
+HTTP 200, done=true, stop e shape válidos em todas. Painel, ordem, hashes,
+requisições e resumo conferidos contra o bruto. Digest inicial/final igual:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+14 controles coincidem com os históricos. As 14 requisições repetidas são iguais,
+mas somente 13 conteúdos se repetem: N1 explícito muda de q1 para q0, inclusive
+argumento/escopo. A primeira checagem de igualdade falhou legitimamente; a
+auditoria passou a registrar a divergência, não a eliminar uma das rodadas.
+Temperatura zero não foi tratada como garantia de determinismo.
+
+| Métrica (de sete casos) | Rodada 1 | Rodada 2 |
+| --- | ---: | ---: |
+| Alvo correto no controle | 4 | 4 |
+| Alvo correto explícito | 5 | 4 |
+| Alvo/alternativas/ausência corretos | 2 | 2 |
+| Coerência interna dos campos | 3 | 3 |
+| Argumento e escopo ancorados literalmente | 5 | 5 |
+| Conjunção das guardas anteriores | 1 | 1 |
+
+Ganho estável de alvo em U0; ganho instável em N1; perda estável em N0. Não
+promover o ganho líquido da primeira rodada. U1/U2 mantêm o alvo correto, mas
+listam ambas as alternativas, violando o fechamento declarado da referência.
+O0 copia a própria alternativa ausente no argumento e ainda marca ausência=false.
+Isso expõe interpretação incoerente com o conteúdo recebido, não falta de fonte.
+
+Inspeção literal/manual:
+
+- U0 passa as guardas mecânicas, mas argumento é a fonte inteira. Esse resultado
+  recupera abstenção local; não comprova seleção discriminativa de argumento.
+- U1/U2 copiam a oração inteira no argumento e deixam no escopo apenas o predicado
+  genérico, omitindo primeira/segunda, a informação que resolve a referência.
+- O0/O1 mudam aspas curvas para retas. O1 ainda termina o escopo em `varra o ca`.
+  São cópias não literais: houve stop com 117 tokens em O1, não teto de 700.
+  Não alterar normalização/gabarito para esconder isso nem aumentar tokens por
+  suposição de truncamento do backend.
+- N0 cita a ação interna como argumento da escrita externa: trecho verdadeiro,
+  ligação errada. N1 primeiro cita a ação interna; depois copia a oração inteira
+  e escolhe q0. As duas rodadas preservam ambas alternativas indevidamente.
+
+Decisão: candidata rejeitada como resolução/gate. O benefício demonstrado é
+observabilidade de contradições, não confiabilidade semântica. Formato válido,
+cópia literal e coerência não certificam vínculo; nenhum campo prevalece sobre
+outro por conveniência. Primeira divergência permanece na interpretação proposta,
+com falhas locais adicionais de cópia; não tratá-las como causa única do erro de
+referência. Prompt e schema mudaram juntos, painel conhecido e pequeno.
+
+Próxima fronteira: isolar seleção do argumento da atribuição de certeza, usando
+localização canônica para a cópia e mantendo inspeção de escopo. Antes de montar
+outra combinação, confrontar esse contrato com os negativos históricos e distinguir
+o que pode ser verificado mecanicamente do que ainda depende de interpretação.
+Não usar saída desta sonda como treino positivo ou confirmação da rede.
+
+Validação local: 13 testes novos; **45 passaram em 73,56 s** (nova sonda,
+contrastes, apoio por ocorrência e ligação). Suíte ampla não repetida neste turno.
+Nenhuma produção/configuração/treino alterada nesta frente; nenhum commit criado.
+P01 segue aberta, sem prova de runtime real da Laylay.
+
+### P01: contrastes mínimos novos de escopo, pré-consulta (10/10)
+
+Próxima fronteira após os acordos errados: resposta do intérprete à informação
+que abre/fecha alternativas e ao alvo de uma relação dentro/fora de aspas.
+Sem alteração de prompt, schema, scorer, modelo da Laylay ou gabaritos antigos.
+Painel sintético novo, desenhado após observar falhas: diagnóstico direcionado,
+não holdout independente nem prova de generalização.
+
+Sete casos congelados em `scripts/analises/sonda_contrastes_escopo_v1.py`:
+
+- U0/U1/U2: mesmas duas expressões; identificação desconhecida/primeira/segunda.
+  Esperados: indeterminado/q0/q1. U1→U2 troca somente primeira por segunda.
+- O0/O1: uma expressão visível e uma página ausente; troca somente ` ou ` por
+  `, não ` para excluir explicitamente a alternativa ausente. Esperados:
+  indeterminado/q0. Existência de uma candidata visível não decide O0.
+- N0/N1: fonte idêntica com aspas aninhadas; muda somente a relação literal
+  avaliada. Escrever refere-se à citação externa; ordenar refere-se à interna.
+  Esperados q0/q1, com o mesmo mapeamento canônico de aspas e pai_id.
+
+12 pares e sete seleções por backend/rodada. Dois backends, duas rodadas,
+alternados e com segunda ordem invertida: 76 chamadas (38 locais, 38 externas).
+Modelo local histórico qwen3:4b-instruct; externo gemini-3.1-flash-lite no
+google-ai-studio, sem fallback. Limites anteriores 700/256 tokens preservados.
+Medir por backend, rodada e contraste; vetor completo e seleção separados.
+Exigir resposta correta a todas as variantes para considerar contraste alinhado;
+não esconder regressão de um par pelo placar agregado. Gold somente no host.
+Nenhum acordo de modelos qualifica significado ou autoriza efeito.
+
+Base main, HEAD 2566b621d2c8ee88ff7086c6c36019da85c8a4cd; worktree e mudanças
+paralelas preservadas. Script SHA-256
+`d8ede83062c3448ffcd4b0d4005c8133c902b62c0a9fe619665a55db31b1d897`;
+adaptador independente congelado
+`364284d5037de19eb3cd4d0915ed18115323e53576b6c7898b3752b2cfd9053c`, que também
+confere os hashes anteriores. Nove testes focados passaram antes da coleta.
+HTTP bruto, requisições e resumo serão preservados e auditados. Erro de
+transporte/schema ou custo desconhecido interrompe sem retry; limite operacional
+externo US$ 0,10 com reserva por chamada. Fonte fictícia sem dados pessoais.
+Esta frente só altera sonda, testes e documentação, sem produção/treino.
+
+#### Resultado dos contrastes de escopo (10/10)
+
+Validação: nove testes novos focados; **59 testes passaram em 104,78 s**, cobrindo
+contrastes, adaptador independente, apoio por ocorrência, candidatos e ligação.
+A suíte ampla de 1.614 testes da rodada anterior não foi repetida; não reportar
+esse total como validação deste turno. GREEN offline não encerra o RED semântico.
+Somente sonda, testes e documentação alterados por esta frente; nenhum commit.
+
+76 consultas completas auditadas, 78 linhas no artefato
+`resultados_testes/sonda_contrastes_escopo_v1.jsonl`, SHA-256
+`708b9b21a16614ebc062d8fad291fb625d494cc51089fb35d8acb12034819fd4`.
+HTTP 200, stop e shape válidos nas 76; fonte integral, mensagens e schemas
+iguais entre backends; ordem, painel, hashes e resumo recalculado conferidos.
+19 pares de requisições/respostas repetidas iguais por backend. 38 IDs externos
+distintos, modelo/provedor esperados; custo externo US$ 0,0049775. Digest local
+igual antes/depois: `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Todas as flags de autoridade/qualificação falsas; nenhuma agregação integrada.
+
+| Métrica por rodada (ambas iguais) | Local | Externo |
+| --- | ---: | ---: |
+| Pares corretos | 6/12 | 8/12 |
+| Vetores completos corretos | 2/7 | 4/7 |
+| Seleções corretas | 4/7 | 4/7 |
+| Famílias completas (seleção e todos os pares) | 0/3 | 1/3 |
+
+U1/U2: ambos seguem corretamente primeira→segunda, incluindo exclusão da outra
+ocorrência. U0: externo preserva indeterminação; local escolhe q0 no controle e
+exclui ambas na avaliação por par. Informação ausente não é prova de exclusão.
+Família U completa somente no externo; capacidade de distinguir posições não
+está globalmente ausente em nenhum dos dois.
+
+O0/O1: o fechamento explícito da alternativa ausente não altera as respostas.
+Local escolhe q0 nos dois controles e exclui q0 nos dois pares; externo responde
+nenhuma/excluida nos dois. Em O0 o vínculo está aberto; em O1 a única expressão
+é explicitamente identificada. Nem mais contexto nem um consenso de exclusão
+resolvem esse contraste. Ambos erram inclusive O1, em que a informação basta.
+
+N0/N1: texto e IDs idênticos, relação muda de cronista/escrever para capitã/ordenar.
+Ambos seletores permanecem q0: não acompanham a troca de alvo para q1. Externo
+também repete sustentada/excluida nos pares; local muda de excluida/excluida para
+sustentada/sustentada, ainda sem ligação correta exclusiva. Pai_id e offsets
+corretos; recipiente de uma relação não equivale ao argumento dessa relação.
+
+Primeira fronteira RED demonstrada: interpretação após projeção íntegra, antes
+de qualquer agregação. Falsificadas como explicações suficientes: informação
+necessária sempre ausente (O1), incapacidade geral de distinguir IDs (U1/U2),
+transporte/JSON ou contexto cortado. Não isolamos uma causa interna única; os
+três contrastes não provam que todos os erros tenham a mesma implementação causal.
+Não treinar sobre rótulos desses modelos nem usar acordo como gate. Painel novo
+mas direcionado e pequeno: não comparar percentuais diretamente com o anterior.
+
+Próxima hipótese de contrato: explicitar, como proposta inspecionável, o argumento
+da relação e o escopo que mantém/exclui alternativas, antes de comprimir tudo num
+único rótulo. Distinguir localização literal, resolução de referência e apoio
+contextual; não criar parser paralelo ou regra específica de página/aspas.
+Testar primeiro se essa representação acompanha os contrastes, com controles
+de falta de informação, sem presumir que campos preenchidos provam semântica.
+P01 continua aberta; nenhum modelo, treino ou regra de produção alterado.
+
+### P01: contraste independente de interpretação, pré-consulta (09/10)
+
+Mesmos 14 casos/27 pares, textos, instruções, schemas e ordem do experimento
+anterior; 14 controles de seleção e 27 avaliações por par por rodada, duas
+rodadas (82 chamadas). Comparador externo já usado na investigação:
+`google/gemini-3.1-flash-lite` via OpenRouter, somente `google-ai-studio`, sem
+fallback, temperatura zero. Nenhum gabarito/resposta anterior enviado; fontes
+do painel revisadas, sem dados pessoais. Modelo da Laylay não é alterado.
+
+Reutiliza `sonda_openrouter_fronteira.consultar_openrouter` e o projetor/scorer
+local da sonda anterior. Captura HTTP bruto antes da interpretação, sem headers
+de autenticação, e exige identidade do modelo/provedor, stop e schema válido.
+Limite do adaptador externo é 256 tokens versus 700 no controle Ollama; registrar
+isso, não fingir identidade de backend. Qualquer truncamento/falha ou custo
+ausente interrompe a coleta sem retry. Limite operacional US$ 0,10, reserva
+US$ 0,002 antes da próxima chamada. Modelo hospedado não possui digest local;
+preservar versão declarada, IDs e metadados brutos sem presumir pesos fixos.
+
+Congelado antes da primeira chamada: script
+`scripts/analises/sonda_apoio_independente_v1.py`, SHA-256
+`364284d5037de19eb3cd4d0915ed18115323e53576b6c7898b3752b2cfd9053c`.
+Dependências: sonda local
+`20486559660a8d923d880db25af4b56d53dfa9198b18f77a628d704a1d00f56d`, adaptador
+`566679584886163294a9bdf0fc8d04cd03599f634dc2c71db5df6d15a1eb6b64`, artefato local
+`0f1c98fee9773f2fc4b921d50342801f8e08ff9bba7ce6a16c600a9e00e56a97`.
+Base main, HEAD 2566b621d2c8ee88ff7086c6c36019da85c8a4cd, worktree preservada.
+14 testes focados verdes antes da API. Nenhuma produção alterada nesta frente.
+
+Objetivo diagnóstico: medir separadamente pares, vetores e seleção; inspeção das
+divergências e de todos os ambiguos, sem voto/agregação. Se outro backend resolver
+os mesmos dados, falsifica impossibilidade geral da representação, não prova que
+o problema é exclusivamente tamanho/pesos do Qwen nem generalização. Se ambos
+falharem, isso também não prova impossibilidade. Painel conhecido, gabarito local,
+comparação não simultânea; não é holdout nem autorização de integrar um juiz.
+Suporte atual do endpoint e schema verificado na API de endpoints e na
+[documentação oficial de structured outputs](https://openrouter.ai/docs/guides/features/structured-outputs).
+
+#### Resultado do contraste independente
+
+Validação: 14 testes focados e **1.614 regressivos relevantes passaram em
+320,36 s**. GREEN da ferramenta offline, não do comportamento semântico nem do
+runtime da Laylay. Produção/configuração não alteradas por esta frente; somente
+sonda, testes e documentação. Nenhum commit criado.
+
+Artefato `resultados_testes/sonda_apoio_independente_v1.jsonl`, SHA-256
+`9102f88b23dcca9b0863d1ecafa6d9e866d2ff8669aab6b5f454e044dd8a0e35`.
+84 linhas auditadas: metadata, 82 respostas e resumo recalculado do HTTP bruto.
+Todas HTTP 200/stop/shape válido, modelo e provedor esperados; 82 IDs distintos.
+As 41 entradas repetidas produziram conteúdo idêntico nas duas rodadas. Mensagens
+e schemas iguais aos 82 controles correspondentes do artefato local, sem gabarito.
+Todas as flags de qualificação/autoridade continuam falsas. Custo observado total
+US$ 0,0109395. Nenhuma falha ou retry. Não há digest de pesos do serviço externo.
+
+| Métrica por rodada | Qwen local congelado | Comparador externo |
+| --- | ---: | ---: |
+| Pares alinhados ao gabarito local | 16/27 | 23/27 |
+| Vetores completos corretos | 6/14 | 11/14 |
+| Seleção única/abstenção correta | 9/14 | 12/14 |
+
+Ambas rodadas iguais. Ganhos em vetor: OR/L3/L4/L5/M3; sem perda de vetor
+completo, mas **há perda por par em M2/q1**. Não esconder esse RED pelo placar
+composto. No controle de seleção, ganhos L5/L8/M3/M5, perda M2. Matriz externa
+por par: sustentada→sustentada 7, sustentada→excluida 1; excluida→excluida 11,
+excluida→sustentada 1; insuficiente→insuficiente 5, insuficiente→sustentada 2.
+
+Inspeção das primeiras divergências restantes:
+
+- L8: fonte explicitamente não informa qual expressão nomeia o curso; seleção
+  externa abstém-se, mas avaliação de q1 anuncia apoio. A decomposição não conserva
+  a incerteza do enunciado completo. O gabarito insuficiente não foi alterado.
+- M2: a ata contém uma citação externa, dentro da qual o técnico pede uma ação
+  citada internamente. O comparador seleciona a externa e exclui a interna;
+  o seletor Qwen acertava a interna. Coordenadas e pai_id são corretos. Conter a
+  oração que menciona a relação não torna o recipiente seu argumento-alvo.
+- M7: fonte admite expressão da página presente ou da página perdida. Ambos
+  escolhem a única ocorrência visível, sem evidência para excluir a ausente.
+
+**Concordância falsa entre modelos:** L8/q1, M2/q0 e M7/q0 recebem sustentada de
+ambos, embora o gabarito e a inspeção da fonte não sustentem essa decisão. Voto ou
+aceitação por consenso não pode servir de certificado. Resultado externo melhor
+neste painel não é juiz confiável nem resolução da P01.
+
+Falsificada a hipótese forte de que os dados/representação impedem qualquer
+backend de resolver OR/L3/L4/L5/M3. Permanecem abertas interações entre modelo,
+instrução, backend e representação; o teste não isola pesos/tamanho, não mede
+generalização e não autoriza substituir o Qwen. JSON e transporte não explicam
+os erros observados. Nenhuma regra de produção, treino ou configuração alterada.
+
+Próxima fronteira causal: **escopo da ligação proposta**, distinguindo argumento
+da relação, recipiente de citação e alternativas não observadas. Antes de outro
+prompt/treino, congelar contrastes mínimos novos que variem somente informação
+disponível ou posição da relação nas aspas; separar localização literal de apoio
+contextual. Isso é hipótese de contrato a investigar, não parser paralelo nem
+aprovação de um agregador. Preservar os casos históricos e seus resultados.
+
+### P01: apoio por ocorrência, protocolo pré-consulta (09/10)
+
+Próxima hipótese offline: perguntar pelo apoio da fonte a cada par relação/ocorrência,
+sem retirar a fonte completa nem as ocorrências concorrentes. O controle mantém a
+requisição congelada de seleção de ID único. Não há agregador integrado nem efeito
+no runtime. Fonte, localização literal e proposta semântica continuam distintas.
+
+Painel conhecido congelado: NS, OR, L3, L4, L5, L6, L8, M1, M2, M3, M4, M5, M7,
+M8 (duas fontes históricas e doze fixtures). São 27 pares e 14 controles por rodada;
+duas rodadas, com ordem invertida na segunda: 82 consultas. Gold fica apenas no
+avaliador local. Classes: sustentada, excluida, insuficiente. Negação não elimina
+uma ligação descrita; uma ocorrência visível não resolve uma referência ausente.
+
+Medir confusão por par, apoio falso em ambiguidades, insuficiência falsa em ligações
+claras e vetor exato por caso. A acurácia do controle e o vetor completo são tarefas
+distintas. Critério de interesse: preservar ligações/exclusões claras enquanto L5,
+L8, M3 e M7 permanecem insuficientes. Mesmo um ganho não demonstra generalização:
+painel conhecido, mais chamadas e mudança conjunta de tarefa, prompt e schema.
+
+Base: main, HEAD 2566b621d2c8ee88ff7086c6c36019da85c8a4cd; worktree suja preservada.
+Script `scripts/analises/sonda_apoio_por_ocorrencia_v1.py`, SHA-256
+`20486559660a8d923d880db25af4b56d53dfa9198b18f77a628d704a1d00f56d`.
+Dependência congelada: `sonda_candidatos_ocorrencia_v1.py`, SHA-256
+`0937217ce8a4b273129fff28507b3227657e9a4bce479947300568c460e06986`.
+Modelo histórico da sonda: qwen3:4b-instruct, temperatura zero, limite 700 tokens.
+12 testes locais passaram antes da coleta. Nenhuma alteração de produção por esta
+frente; mudanças paralelas de streaming não pertencem a esta investigação.
+
+#### Resultado auditado do apoio por ocorrência
+
+Validação local: 12 testes focados; regressão das sondas e do contrato de
+proposições mencionadas: **1.600 passed em 304,66 s**. Esse GREEN comprova os
+contratos locais da ferramenta, não corrige os REDs semânticos abaixo nem prova
+runtime real da Laylay. Nenhum commit criado.
+
+Coleta completa: `resultados_testes/sonda_apoio_por_ocorrencia_v1.jsonl`, 84 linhas
+(metadata, 82 consultas, resumo), SHA-256
+`0f1c98fee9773f2fc4b921d50342801f8e08ff9bba7ce6a16c600a9e00e56a97`.
+Digest inicial/final igual:
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Auditoria recalculada do HTTP bruto: 82 HTTP 200, done=true, stop, shape válido;
+painel, sequência, hashes e resumo conferidos; todas as flags de autoridade e
+qualificação continuam falsas. As 41 requisições/conteúdos repetidos foram iguais;
+os 28 controles também coincidiram com o artefato anterior congelado.
+
+Resultados iguais nas duas rodadas:
+
+| Esperado por par | sustentada | excluida | insuficiente |
+| --- | ---: | ---: | ---: |
+| sustentada | 7 | 1 | 0 |
+| excluida | 3 | 9 | 0 |
+| insuficiente | 5 | 2 | 0 |
+
+16/27 pares corretos; 6/14 vetores completos corretos, contra 9/14 seleções
+corretas do controle. São tarefas distintas: vetor não é uma decisão agregada
+integrada. Vetores corretos: NS/L6/M1/M4/M5/M8. Único ganho diagnóstico em relação
+ao controle: M5; perdas em OR/L3/L4/M2. Todos os sete pares ambíguos foram decididos
+indevidamente: cinco apoios e duas exclusões. Não houve nenhuma saída insuficiente.
+
+Primeira divergência demonstrada: proposta semântica do par, após projeção íntegra
+da fonte/ocorrências e resposta válida. OR/L3/M2 apoiam duas ocorrências quando só
+uma corresponde; L4 exclui ambas. A decomposição, nesta configuração, não resolve
+o vínculo nem preserva a abstenção. Falsificados como explicação destes resultados:
+truncamento/JSON inválido, remoção do contexto na projeção e alteração do controle.
+Não foi isolada causa interna única: representação, instrução e capacidade de
+interpretação ainda podem interagir. Repetição concordante não comprova semântica.
+
+Decisão: rejeitar a candidata como substituta ou gate; não montar agregador sobre
+essas decisões. P01 permanece aberta. Antes de outra variação de prompt, a próxima
+fronteira proposta é um contraste independente de interpretação com as mesmas
+fontes e contrato, para distinguir limitação desta configuração de dificuldade da
+representação. Isso não autoriza troca do modelo da Laylay nem torna um segundo
+modelo autoridade; qualquer divergência exige inspeção da evidência literal e
+contextual. Nenhuma alteração de produção, treino, configuração ou commit por
+esta frente.
+
+### P01: candidatos compatíveis versus unicidade (09/10)
+
+Protocolo pré-consulta. HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`,
+main, worktree incluindo streaming paralelo preservada. Sonda
+`scripts/analises/sonda_candidatos_ocorrencia_v1.py`, SHA256
+`0937217ce8a4b273129fff28507b3227657e9a4bce479947300568c460e06986`.
+Controle congelado `sonda_ligacao_ocorrencia_v1.py`, SHA256
+`fbdb15e960860d7fec70447702c71b058946212b99119a23fb8d74bcef7f6d67`.
+
+- A/B contemporâneo: `ocorrencia_id` antigo versus `candidatos` + `situacao`.
+  Mesma fonte integral, relação, aspas/offsets, modelo textual histórico e
+  opções. Mudam instrução e schema juntos; não atribuir efeito exclusivamente
+  ao formato. Fonte não contém foco desejado, papel anterior ou gabarito.
+- 28 casos × dois braços × duas rodadas = 112 chamadas. Ordem dos braços
+  alternada por caso e invertida na segunda rodada. Doze relações reais
+  históricas, oito fixtures L1–L8 conhecidas e oito novas M1–M8. Reportar
+  os grupos separadamente, sem confundir relações fornecidas com extração
+  real. Novos sintéticos da mesma autoria não são holdout independente.
+- M1 nega relação mas seu alvo é claro; M2 usa aspas aninhadas; M3 deixa
+  dois alvos abertos; M4 desambigua explicitamente para o segundo; M5 não
+  se refere a citação; M6 repete texto com duas funções; M7 só tem um
+  candidato visível mas admite título em página ausente; M8 é hipotético
+  com alvo explícito. Não confundir veracidade, papel e identidade da relação.
+- `unico` exige exatamente um candidato; `nenhuma` exige lista vazia;
+  `indeterminado` admite zero, um ou vários candidatos visíveis. A lista não
+  deve inventar IDs de conteúdo ausente. Cardinalidade não resolve a
+  situação automaticamente e nenhuma estrutura confere autoridade semântica.
+- Comparar decisão de alvo/abstenção em ambos; aferir conjunto exato de
+  candidatos separadamente no novo. Ganho exigido: recuperar L5/L8 sem
+  perdas pareadas nas duas rodadas e preservar abstenção M3/M7. Não promover
+  por acerto agregado que esconda falsa unicidade. Mesmo GREEN é offline.
+- Treze testes locais verdes antes da coleta. Artefato exclusivo
+  `resultados_testes/sonda_candidatos_ocorrencia_v1.jsonl`, painel e hashes
+  antes das consultas, HTTP bruto e auditoria final. Sem produção, treino,
+  configuração ou executor alterados por esta frente.
+
+Resultado auditado: **112 chamadas completas**, 114 linhas, duas rodadas
+com requisições e conteúdo de resposta idênticos por caso/braço. Todos HTTP
+200, `done=true`, `stop`, shape válido e flags de autoridade/semântica falsas.
+Painel/ordem, hashes, requisições e resumo reconferidos a partir do bruto.
+Artefato SHA256 `8b123c80accec309be19d8fd4a97fac86b31dfaea7539bd02c1a298802d9cb7a`.
+Digest inicial/final `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Os 40 registros de controle comparáveis à coleta anterior têm requisições e
+respostas idênticas. Não atribuir o resultado a troca de modelo ou transporte.
+
+| Grupo | Antigo: alvo/abstenção corretos | Candidatos: alvo/abstenção corretos | Lista exata |
+|---|---:|---:|---:|
+| 12 seleções reais conhecidas | 12/12 | 7/12 | 7/12 |
+| 8 fixtures L conhecidas | 6/8 | 5/8 | 5/8 |
+| 8 fixtures M novas | 5/8 | 4/8 | 4/8 |
+
+Mesmos placares nas duas rodadas: 23/28 no antigo, 16/28 na candidata.
+NR/OR continuam requisições idênticas sem foco desejado, não evidências
+independentes. Ganhos pareados: L5/L8/M3/M5/M7. Perdas:
+NS/OS/NR/OR/T11/L3/L4/L6/M1/M2/M6/M8. O critério pré-fixado falhou:
+**rejeitada esta candidata como substituta geral**, sem apagar seus ganhos.
+
+O novo formato reconhece os quatro casos de referência indeterminada
+(L5/L8/M3/M7), incluindo M7 com uma só candidata visível e página ausente.
+Porém lista q0 e q1 e se abstém em vários casos de relação inequívoca:
+texto repetido, negação M1, aspas aninhadas M2 e hipótese M8. Em T11 propõe
+lista vazia/nenhuma, confundindo uma relação fragmentária com falta de alvo;
+em L6 propõe ambas as citações para uma relação sobre a mesa. Não é defeito
+de enum, offsets ou host: a primeira divergência observada é inclusão/
+exclusão semântica de candidatos. Não inferir mecanismo interno único.
+
+Falsificado neste painel: bastaria permitir lista e separar situação para
+preservar os acertos anteriores. Fonte, identidade e opções ficaram iguais;
+prompt e schema mudaram juntos, logo não isolamos qual deles causou a perda.
+Maior abstenção não equivale a melhor entendimento. O antigo também não
+resolve a raiz: escolhe indevidamente alvos nas ambiguidades e erra M5.
+Não combinar braços por gabarito, voto ou exceções de frases.
+
+Próxima investigação deve reduzir a confusão entre **possibilidade genérica**
+e **ligação sustentada pela fonte**: comparar relações e ocorrências
+individualmente, usando o mesmo contexto integral e permitindo apoio,
+exclusão ou informação insuficiente, antes de agregar candidatos. Isso é
+hipótese a falsificar, não arquitetura aprovada. Fixar critérios e pares
+positivos/negativos equivalentes antes das consultas; não considerar rótulo
+de apoio produzido pelo próprio modelo prova independente. Priorizar casos
+já discriminativos (L3/L4 versus L5/L8, M1/M2/M7) e validação em fontes novas
+somente se o contrato local melhorar. Não investir em integração/treino de
+uma representação que perdeu acertos claros.
+
+13 testes focados verdes antes da coleta; **1.588 regressivos relevantes
+passaram**, incluindo esses treze. GREEN do instrumento offline, não da
+semântica ou runtime; diff focado sem erros. Esta frente alterou somente sonda,
+testes e documentação; produção/configuração/treino intactos por esta frente,
+trabalho paralelo de streaming preservado, nenhum commit/liberação.
+
+### P01: proposta de ligação relação→ocorrência (09/10)
+
+Protocolo pré-consulta, sem promoção ou uso como gate de produção. HEAD
+`2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, trabalho anterior preservado.
+Sonda `scripts/analises/sonda_ligacao_ocorrencia_v1.py`, SHA256
+`fbdb15e960860d7fec70447702c71b058946212b99119a23fb8d74bcef7f6d67`.
+Dependência `sonda_evidencia_interferencia_v1.py`, SHA256
+`720ac8f5b08133388cfc43a74075626047c4bffb26ff0f6b9467fc04a442e58d`.
+Artefato de seleções congelado em
+`8782b585a685c7334cca29abb06892e217700e3b810109428d7f0176a48bdd94`.
+
+- Reusar mapeador canônico de aspas, offsets, transporte HTTP e validação
+  tipada existentes. Inventário antigo de referentes nomeados não equivale
+  a ocorrências citadas: não promover nome ancorado a vínculo contextual.
+- 12 seleções reais da rodada 1 anterior, revalidadas sem consulta nova
+  ao seletor; fonte integral e relação literal preservadas. O modelo recebe
+  todas as regiões citadas e a relação, sem foco desejado, papel anterior
+  ou gabarito. Propõe `ocorrencia_id`, `nenhuma` ou `indeterminado`.
+- Gold de alvo fixado antes da consulta: OR aponta q1 (nome posterior),
+  não q0 (ordem/foco original). NR/OS também q1; demais históricos q0.
+  CX e T11 permitem identificar a ocorrência mesmo com relação insuficiente:
+  acertar o alvo não comprova papel, suficiência ou ausência de ambiguidade.
+- Oito controles L1–L8 com relações sintéticas explícitas, nunca atribuídas
+  a uma seleção real do Qwen. Pares de duas ocorrências distintas e idênticas,
+  relação posterior, nenhuma ocorrência pertinente e duas ambiguidades.
+  Não são holdout independente: mesma autoria, construídos para diagnóstico.
+- 20 casos × duas rodadas = 40 consultas, ordem invertida na segunda.
+  Novo pacote de tarefa sem exemplos; não é A/B isolando um token de prompt.
+  Separar os 12 históricos dos oito controles e reportar cada erro. Não usar
+  acerto bruto, IDs iguais, proximidade ou voto como prova de compreensão.
+- Progresso local exigiria rejeitar a ligação de OR ao foco errado, conservar
+  ligações corretas e abstinências nas duas rodadas. Mesmo 20/20 não libera
+  runtime: não estamos reexecutando classificação nem testando todas as
+  construções relacionais/aspas aninhadas. Não completar lacunas por ouro.
+- 11 testes do instrumento passaram antes da coleta. Mesmo Qwen textual
+  histórico, nenhuma configuração, produção ou treino alterados. Artefato
+  exclusivo `resultados_testes/sonda_ligacao_ocorrencia_v1.jsonl`, com painel,
+  hashes, entrada efetiva e respostas brutas. Flags de semântica/autoridade falsas.
+
+Resultado auditado: **40 consultas concluídas**, duas rodadas iguais. A
+interrupção da ferramenta deixou o arquivo originalmente previsto somente
+com metadata; foi preservado, sem afirmar se houve requisição em voo.
+A coleta completa está em
+`resultados_testes/sonda_ligacao_ocorrencia_v1_retomada1.jsonl`, 42 linhas,
+SHA256 `def386e07471a4e6debd7582ee03e22ae25e4705a3748b8ecd032a57697916fb`.
+HTTP 200/`done=true`/`stop` e shape válidos em todas; requisições, fontes,
+relações reais, hashes, flags e resumo reconferidos. Digest inicial/final
+`0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+São 19 requisições distintas por rodada: NR/OR tornam-se idênticas quando
+se retira o foco desejado, pois consultam a mesma relação na mesma fonte.
+Não contar esses dois controles como evidências independentes.
+
+| Origem da relação | Alvo correto, rodada 1 | Rodada 2 |
+|---|---:|---:|
+| 12 seleções reais históricas | 12/12 | 12/12 |
+| 8 relações sintéticas fornecidas | 6/8 | 6/8 |
+
+OR propõe q1, divergindo corretamente de q0, foco da ordem original. Isso
+reconhece localmente a relação de outra ocorrência, **não é prova de que um
+pipeline integrado corrigiu a classificação**. NS/OS e L3/L4 distinguem
+ocorrências idênticas por contexto. L6 reconhece nenhuma ocorrência pertinente.
+Porém L5 (`Uma dessas expressões nomeia um curso, sem dizer qual`) escolhe
+q0, e L8 (`não informa se ... ou ... é nome do curso`) escolhe q1. Ambos
+deveriam permanecer indeterminados e falham nas duas rodadas, apesar de a
+fonte integral e a opção de abstenção estarem presentes. Transporte/enum
+funcionam; a primeira divergência é a proposta semântica de unicidade.
+
+Critério pré-fixado falhou nas abstinências: **não promover a proposta de
+ligação a gate semântico**. Aumentar acerto geral esconderia falsa resolução
+de referência em todos os dois controles ambíguos deste painel. Isso não
+prova incapacidade geral do Qwen nem que todo uso de ID falha. CX/T11 mostram
+ainda que identificar a ocorrência não prova suficiência da relação ou papel.
+
+Próxima fronteira: separar candidatos compatíveis de referência unicamente
+estabelecida. Investigar uma representação que permita múltiplos candidatos
+e indeterminação, com positivos de unicidade, ausência de alvo, negação,
+aspas aninhadas e controles inéditos; comparar contra este proponente
+congelado. Não gerar uma decisão só porque o schema exige um campo, nem
+transformar cardinalidade de uma lista produzida pela LLM em prova de
+unicidade. Sem regras especiais por L5/L8, sem recorte da fonte e sem
+liberar autoridade. É hipótese de solução a falsificar, não candidato aceito.
+
+11 testes locais passaram antes da coleta; **1.575 regressivos relevantes
+passaram**, incluindo esses onze. GREEN do instrumento, não semântica ou
+runtime real; diff focado sem erros de whitespace. Esta frente alterou apenas sonda,
+testes e documentação; não alterou produção, treino, configuração/modelo ou
+executores. Durante a execução surgiram mudanças paralelas em terminal,
+extensão Google e streaming, preservadas e não atribuídas a esta investigação.
+
+### P01: evidência proposta na interferência contextual (09/10)
+
+Protocolo pré-consulta: reusar o braço existente `papel_com_trecho`, sem
+criar prompt, schema ou seleção por gabarito. HEAD
+`2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, worktree preservada.
+Sonda `scripts/analises/sonda_evidencia_interferencia_v1.py`, SHA256
+`720ac8f5b08133388cfc43a74075626047c4bffb26ff0f6b9467fc04a442e58d`;
+painel congelado `sonda_interferencia_contextual_v1.py`, SHA256
+`f7cf9890d9f730eeeff3817f2272e5b7d450ffda6da890c74b15f4f2b925e939`.
+
+- Doze casos conhecidos D0/DA/NS/OS/NR/OR/C0/CN/CX/T03/T04/T11, duas
+  rodadas, três consultas por caso: seleção+papel conjuntos, depois papel
+  sem e com o trecho realmente selecionado. Até 72 chamadas (com trecho
+  bloqueado se a seleção não for literal válida). Alternar ordem dos dois
+  braços isolados e inverter na segunda rodada, reusando sequência existente.
+- Entre os dois braços isolados muda apenas `evidencia_proposta` na entrada.
+  Mesmos sistema, exemplos, schema, fonte integral, foco, modelo e opções.
+  Papel proposto pela primeira consulta e gabarito não entram nas segundas.
+- DA/NS examinam ajuda de relação pertinente; OR examina risco de propagar
+  relação de outra ocorrência. C0 examina papel errado apesar de relação
+  pertinente; CX mantém seleção problemática; T11 preserva ambiguidade.
+  Não corrigir uma seleção errada nem fornecer um trecho idealizado.
+- Recomputar resultados por caso/rodada, ganhos/perdas pareados entre os
+  braços isolados, validade literal e suficiência local separadas. Superioridade
+  neste painel exigiria ganho repetido sem perdas; não equivale a generalização.
+  Flags de semântica/autoridade/produção continuam falsas, mesmo com acertos.
+- Artefato exclusivo `resultados_testes/sonda_evidencia_interferencia_v1.jsonl`,
+  metadata antes das chamadas, fontes/requisições/HTTP bruto preservados.
+  Mesmo Qwen textual histórico; sem mudança na Laylay, treino ou executor.
+  Painel diagnóstico conhecido, sem holdout ou revisão humana independente.
+
+Resultado auditado: **72 chamadas**, 26 linhas, todas HTTP 200 e concluídas
+por `stop`, shape válido, sem bloqueios literais. Requisições dos dois braços
+isolados diferem somente pela seleção real ancorada em `evidencia_proposta`.
+Painel/ordem, hashes, flags e resumo reconferidos a partir do bruto.
+SHA256 `8782b585a685c7334cca29abb06892e217700e3b810109428d7f0176a48bdd94`.
+Digest inicial/final `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+
+| Papel correto / 12 | Rodada 1 | Rodada 2 |
+|---|---:|---:|
+| Seleção e papel conjuntos | 7 | 7 |
+| Isolado sem trecho | 9 | 8 |
+| Isolado com trecho | 10 | 10 |
+
+Ganhos pareados repetidos do trecho: NS e C0. Perda repetida: OR. Em OR,
+o foco é a instrução anterior, mas a primeira consulta seleciona `o brinquedo
+se chama`, relação do nome posterior; sem trecho responde operação e com
+trecho responde nome. O transporte conserva foco/offsets: cópia literal
+válida não comprova que a relação selecionada descreve aquela ocorrência.
+CX permanece errado; T11 mantém indeterminação em todos os braços.
+
+**Variação do controle:** DA sem trecho respondeu descrição na rodada 1 e
+operação na rodada 2, com requisições tipadamente iguais, `temperature=0`
+e mesmo digest observado. Com trecho acertou nas duas. Não contar DA como
+ganho repetido nem atribuir a mudança a compreensão melhor. Das 48 consultas
+de conjunto/sem trecho comparáveis ao artefato anterior, requisições iguais
+em todas; somente DA/rodada 1 mudou o conteúdo de resposta. O registro mostra
+diferença de cache avaliado, mas não demonstra sua causa. Ordem dos braços,
+estado do backend/cache e variabilidade numérica não foram isolados; não
+declarar determinismo ou causa interna provada a partir de temperatura zero.
+
+Critério pré-fixado não satisfeito: ganho líquido não apaga a regressão OR.
+**Não promover o braço com trecho como substituto geral.** Evidência melhora
+decisão em alguns casos e propaga seleção errada em outro. Primeira fronteira
+a resolver é qualificação da ligação relação→ocorrência, não executor,
+geometria de cópia ou simples inclusão de mais texto. Owner desta investigação
+é o proponente/qualificador semântico offline; o host continua validando
+identidade e literalidade, sem presumir apoio semântico.
+
+Próximo desenho: exigir uma proposta explícita de qual ocorrência é descrita
+pela relação selecionada, preservando fonte integral e possibilidade de
+indeterminação. Comparar com o caminho atual e testar troca de foco/ordem,
+repetição, relações antes/depois e ambiguidade. Não usar proximidade, mesmo
+ID declarado pelo modelo, voto ou igualdade textual como prova suficiente.
+Antes de qualquer integração, falsificar a proposta em seleção errada e
+fontes inéditas; qualificação ainda é hipótese, não solução demonstrada.
+Casos com relação pertinente mas papel errado continuam controle separado.
+
+Oito testes focados passaram antes da coleta; **1.564 regressivos relevantes
+passaram**, incluindo esses oito. GREEN do instrumento offline, não GREEN
+semântico ou runtime real. Produção, configuração, modelo da Laylay, treino
+e executores não alterados; nenhum commit/liberação. `git diff --check` limpo.
+
+### P01: interferência contextual e ocorrência (09/10)
+
+Protocolo pré-consulta, diagnóstico sem candidato novo. HEAD
+`2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, worktree anterior preservada.
+Sonda `scripts/analises/sonda_interferencia_contextual_v1.py`, SHA256
+`f7cf9890d9f730eeeff3817f2272e5b7d450ffda6da890c74b15f4f2b925e939`.
+Dependência congelada `sonda_transferencia_papel_isolado_v1.py`, SHA256
+`2c9a9c039827ca5283ab3b266b502ccca872f360faba61b1e382ab3b05e22138`.
+
+- 18 casos × dois braços × duas rodadas = 72 consultas. Reusar prompts,
+  exemplos, schema, modelo textual histórico e validadores anteriores.
+  Rodada dois inverte casos; conjunta precede isolada em cada bloco.
+  Arquivo exclusivo `resultados_testes/sonda_interferencia_contextual_v1.jsonl`.
+- D0/DN/DA/DB: descrição sem segunda frase, com segunda frase neutra,
+  com ação posterior (H11 exato) e ação anterior. Foco e função preservados.
+- N0/NN/ND/NS: nome sozinho, contexto neutro, outra ordem de texto distinto
+  e outra ordem de texto igual (H05 exato). OS (H06) troca apenas foco no
+  texto de NS. NR/OR repetem a troca com ordem das orações invertida.
+- C0/CN/CX: título sozinho, contexto neutro e concessão de aparência
+  hipotética (H01 exato). Controles T03/T04/T11/T14 preservados integralmente.
+- Hipóteses concorrentes: ação fora do foco é necessária para o erro;
+  repetição literal é necessária; erro depende da posição; classificação
+  já falha sem concorrência. Se D0/N0/C0 falharem, não atribuir seus erros
+  exclusivamente à distração. Comparar respostas por par, não só somar
+  acertos num painel deliberadamente desbalanceado de diagnóstico.
+- Fontes modificadas são intervenções sintéticas conhecidas, não holdout
+  independente. Mudança de fonte altera também offsets/tokens e catálogo
+  no braço conjunto; controles neutros não igualam tokenização. Portanto,
+  um contraste sustenta efeito da intervenção neste painel, não prova
+  mecanismo interno geral. Não recortar automaticamente fontes em produção.
+- Registrar fonte, mapeamento, requisições e HTTP bruto. Auditar novamente
+  o artefato final; flags de autoridade/semântica permanecem falsas.
+  Nenhuma alteração de produção, treino, configuração ou liberação da rede.
+
+Resultado: **72 chamadas auditadas**, 38 linhas. HTTP 200/`done=true`/`stop`
+e shape válidos em todas. Painel/ordem, hashes, requisições e resumo
+reconferidos; requisições e conteúdos de resposta iguais entre as duas
+rodadas. Os oito casos herdados reproduziram exatamente as 32 requisições
+e conteúdos de resposta correspondentes da coleta anterior, sob IDs novos.
+SHA256 do artefato `52b1ff8b88e2e30eeb8b924c3ffdc833e2a6444625bf1222cac6fd6036826057`.
+Digest inicial/final `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+
+| Contraste | Resultado nas duas rodadas | Limite da conclusão |
+|---|---|---|
+| D0/DN/DA/DB | Isolado erra só DA, ação posterior; conjunto acerta os quatro | Interferência contextual reproduzida neste par; presença de ação sozinha não basta |
+| N0/NN/ND/NS | Isolado erra só NS, ordem posterior com texto repetido; conjunto acerta os quatro | Repetição e ordem importam nesta família, não regra geral de recência |
+| NS/OS e NR/OR | Isolado acerta ambos após inversão; conjunto erra OR, selecionando a relação do nome posterior | Identidade é transportada, mas nem sempre respeitada pela decisão; não é colapso de offsets no host |
+| C0/CN/CX | Conjunto erra os três; isolado acerta apenas CN, contexto neutro | C0 falha sem oração concorrente: distração não explica todos os erros |
+| T03/T04/T11/T14 | Conjunto 3/4, isolado 4/4, repetindo histórico | Não há superioridade universal de um braço |
+
+Primeiras fronteiras observadas: em OR, o foco é a ordem da montadora, mas
+o conjunto seleciona `o brinquedo se chama`, referente à outra ocorrência.
+Em C0, seleciona corretamente `tem o título` e propõe operação. Assim,
+**seleção da relação de outra ocorrência** e **papel incompatível com a
+relação selecionada** são erros distintos observáveis; mecanismo interno
+compartilhado ainda não demonstrado. Não criar novos IDs de raiz por caso.
+H11/DA sustenta interferência da ação posterior; não explica C0 nem permite
+atribuir causalidade universal à última oração. Ambiguidade T11 preservada.
+
+Decisão: nenhum patch em produção e nenhum recorte automático de contexto.
+Próximo experimento deve testar vínculo explícito com a ocorrência antes
+de promover um papel. Reusar inicialmente o braço existente com trecho
+real selecionado, sem corrigir seleção com gabarito: DA/NS têm relação
+pertinente; OR tem relação de outra ocorrência; C0 tem relação pertinente
+mas papel errado. Esse contraste separa possível ajuda da evidência de
+propagação de uma seleção errada. A seleção continua proposta, não prova
+semântica. Qualquer candidato posterior exige controles inéditos e validação
+na composição real; este painel é diagnóstico conhecido.
+
+10 testes locais do instrumento passaram antes da coleta; **1.556 regressivos
+relevantes passaram** depois, incluindo esses dez (não somar as contagens).
+GREEN do instrumento offline, não encerramento semântico nem runtime real.
+Nenhum modelo, configuração, treino, runtime ou executor alterado.
+Sem commit/liberação.
+
+### P01: transferência da classificação isolada (09/10)
+
+Protocolo pré-consulta: 16 fontes novas H01–H16 e quatro controles históricos
+T03/T04/T11/T14. Novos e históricos reportados separadamente. Quatro exemplos
+novos por classe; um controle histórico por classe. Inclui nome de aparência
+condicional/descritiva, hipótese/proibição realmente mencionada, título fora
+do foco, aspas aninhadas, ambiguidade e duas ocorrências idênticas H05/H06.
+Os prefixos/sufixos distratores do experimento anterior permanecem iguais.
+
+- HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, alterações anteriores
+  preservadas. Sonda/painel `scripts/analises/sonda_transferencia_papel_isolado_v1.py`,
+  SHA256 `2c9a9c039827ca5283ab3b266b502ccca872f360faba61b1e382ab3b05e22138`.
+  Candidata congelada em
+  `3bf0c5a7a545d5977e03126a548089f0c3f7b3e7874b4f066088a479ec24b7ce`.
+- Reusar as mesmas funções de coleta, projeção e validação. Primeiro
+  resposta conjunta catalogada, depois `papel_sem_trecho`. A classificação
+  isolada não recebe a seleção/decisão anterior; nenhum gabarito no prompt.
+  Não executar o braço com trecho, que não trouxe ganho no contraste anterior.
+- 20 casos × 2 chamadas × 2 rodadas = 80 consultas, casos em ordem inversa
+  na segunda rodada. A ordem conjunta→isolada dentro do bloco permanece
+  fixa por reutilização do instrumento: não é controle de efeitos temporais,
+  nem benchmark de latência. Mudam pacotes de tarefa, não um fator isolado.
+- Fontes/referências escritas antes de consultar o modelo; focos novos
+  distintos dos exemplos/painéis prévios conferidos. Fontes sintéticas por
+  mesma autoria e famílias relacionadas, sem revisão humana independente.
+- Critério pré-fixado de superioridade neste painel: mais papéis corretos
+  nos novos nas duas rodadas, sem perdas pareadas, preservando os quatro
+  controles no isolado. Empate nos novos não comprova superioridade; perda
+  não pode ser compensada silenciosamente pelo controle histórico.
+- Medir interpretação e transporte por grupo. Não apresentar acerto de
+  papel como suporte semântico, execução, autorização ou liberação. Aferição
+  de suficiência da seleção continua separada, sem promover o composto.
+- 11 testes locais verdes antes da coleta. Metadata, hashes e ordem antes
+  das chamadas; arquivo exclusivo
+  `resultados_testes/sonda_transferencia_papel_isolado_v1.jsonl`.
+  Qwen textual histórico, nenhuma mudança de modelo/configuração da Laylay.
+  Coleta pendente ao fixar este protocolo; resultado registrado abaixo.
+
+Resultado auditado: 80 chamadas, 42 linhas preservadas, duas rodadas com
+requisições e conteúdos de resposta idênticos por caso/braço. Todas as
+respostas HTTP 200, concluídas por `stop`, com shape válido. Metadata/painel,
+ordem, hashes, requisições e placar foram reconferidos a partir do bruto;
+nenhuma flag de semântica, autoridade ou produção foi promovida.
+Digest inicial/final `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+SHA256 do artefato `283a3bb756e8087134eb6b7accd071e8197a6f24fe098e05ed2792f717239aff`.
+
+| Grupo | Conjunto: papel correto | Isolado: papel correto | Pareamento nas duas rodadas |
+|---|---:|---:|---|
+| 16 novos | 15/16 | 13/16 | Sem ganhos; perdas H05 e H11 |
+| 4 históricos | 3/4 | 4/4 | Ganho T03, sem perdas |
+
+O critério pré-fixado falhou: **rejeitada a classificação isolada como
+substituta geral**, sem apagar o ganho histórico. H05/H06 têm a mesma fonte
+e texto citado, mas focos distintos (`c1`, 53–69; `c2`, 105–121). O conjunto
+distingue nome/operação; o isolado responde operação para ambos. Em H11,
+o conjunto seleciona `informa a localização` e classifica descrição; o
+isolado responde operação, havendo um pedido de mover bancada fora do foco.
+H01 falha nos dois: o conjunto seleciona `a expressão pareça uma hipótese`
+e propõe expressão; o isolado propõe operação apesar da relação de título.
+T03 mantém ganho isolado, embora o conjunto copie corretamente a relação
+de título e erre o papel. Portanto, não consolidar seleção errada e papel
+errado com seleção correta como se a causa já estivesse demonstrada.
+
+Falsificados neste artefato: perda da identidade pelo host, falha de
+transporte/formato e superioridade geral inferida do 8/8 conhecido. Ainda
+aberto: mecanismo da confusão contextual; mudar tarefa/schema/exemplos
+juntos não permite atribuir causalidade a um componente interno do modelo.
+Hipótese seguinte: ligação da ocorrência marcada à relação que a descreve.
+Antes de outro candidato, contrastar foco/ocorrência e contexto concorrente
+separadamente, preservando fonte integral, ambiguidade e controles. Não
+escolher braço por gabarito, acrescentar exceções por frase ou promover
+seleção literal a prova semântica. Estes casos agora são diagnóstico,
+não holdout inédito de um candidato futuro.
+
+Validação do instrumento: 11 testes focados e **1.546 regressivos relevantes
+passaram**. GREEN de testes offline, não GREEN semântico nem runtime real.
+Produção/modelo/configuração/treino não alterados; nenhum commit criado.
+P01 permanece aberta, sem liberação da rede.
+
+### P01: papel após seleção real, ablação da decisão (09/10)
+
+Protocolo pré-consulta. Hipótese ainda não provada: seleção e classificação
+na mesma resposta podem interferir; fornecer o trecho já materializado pode
+ajudar a decisão. Não assumir que dividir tarefas resolve o erro. Comparar
+classificação isolada sem trecho para distinguir divisão de tarefa de
+influência da evidência. Nenhum candidato de produção nesta investigação.
+
+- HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, alterações anteriores
+  preservadas. Sonda `scripts/analises/sonda_papel_apos_selecao_v1.py`, hash
+  `3bf0c5a7a545d5977e03126a548089f0c3f7b3e7874b4f066088a479ec24b7ce`.
+  Seletor congelado `39a3e21f02116e70aca87248663e6ce3deee7ad567d474cc7748941999c27565`.
+- Oito fontes derivadas conhecidas, T03/T04/T07/T08/T11/T12/T14/T15, duas
+  de cada classe, prefixo/sufixo do teste anterior conservados. T03/T04
+  contrastam título de aparência condicional e hipótese real. Não é holdout.
+- Primeiro executar o seletor catalogado real (predicado + papel); esse
+  papel é o controle conjunto. Em seguida duas chamadas independentes:
+  `papel_sem_trecho` e `papel_com_trecho`. Mesmo sistema de leitura direta,
+  mesmas oito fontes de exemplo, respostas dos exemplos somente com papel,
+  mesmo schema de papel. Só a última entrada recebe a evidência no segundo.
+- Evidência é o span literal da primeira saída, revalidado pelo contrato.
+  Não enviar papel anterior, gabarito, pista esperada, aferição ou feedback
+  de acerto. Fonte integral permanece. O sistema avisa nos dois braços que
+  uma eventual evidência não tem apoio semântico confirmado nem autoridade.
+- Seleção inválida/vazia bloqueia apenas o braço dependente, mantendo-o no
+  denominador; controle sem trecho pode rodar. Falha não é substituída pelo
+  gabarito. O composto usa a mesma seleção, congelada por bloco, nos três
+  braços; classificação correta não repara pista insuficiente.
+- Oito blocos × duas rodadas × até três chamadas = até 48 consultas.
+  Primeira obrigatoriamente precede as dependentes; alternar AB/BA das
+  segundas por caso e inverter ordem na segunda rodada. Controle conjunto
+  versus isolado muda pacote de tarefa/schema/exemplos, não um único fator.
+  Somente comparação entre as duas segundas isola a evidência adicional.
+- Critério para ganho específico da evidência: `com_trecho` superar
+  `sem_trecho` em papel e composto nas duas rodadas sem perdas pareadas
+  frente ao conjunto. Se ambos isolados melhorarem igualmente, atribuir o
+  resultado ao pacote isolado, não à evidência. Se falhar T03, não declarar
+  raiz encerrada. Medir transporte, bloqueios e instabilidade explicitamente.
+- Artefato exclusivo `resultados_testes/sonda_papel_apos_selecao_v1.jsonl`,
+  metadata antes de chamar modelo, primeiras/segundas brutas preservadas.
+  Qwen textual histórico, sem treino ou alteração do modelo ativo da Laylay.
+  Coleta pendente neste protocolo.
+
+#### Resultado auditado — decisão isolada (09/10)
+
+48 chamadas concluídas em 16 blocos; 18 linhas com metadata/resumo. Artefato
+SHA256 `4df5a7f5d6e0fe7f14cd7c5635d02000fd0032701cfc72f8069cabc50ed548ee`.
+Reaferição integral do resumo, requisições, fontes, ocorrências, ordem e flags;
+48 HTTP 200, `done=True`/`stop`, shapes válidos. Nenhuma segunda bloqueada
+nesta coleta (as 16 primeiras tiveram vínculo literal válido). Casos de
+bloqueio continuam protegidos pelos testes, não alegados como prova do modelo.
+Hashes do script e seletor preservados; digest inicial/final igual ao Qwen
+textual histórico. Nenhuma proposta variou entre as duas rodadas.
+
+| Braço (oito casos por rodada) | Papel certo, rodada 1 / 2 | Papel + pista sem distrator, 1 / 2 |
+|---|---:|---:|
+| Conjunto: seleção + papel | 7 / 7 | 4 / 4 |
+| Papel isolado sem trecho adicional | 8 / 8 | 5 / 5 |
+| Papel isolado com trecho real | 8 / 8 | 5 / 5 |
+
+O critério de **ganho específico da evidência adicional não foi atendido**:
+as duas versões isoladas são iguais no painel. A alternativa pré-declarada
+ocorreu: ambas recuperam T03 sem perdas pareadas, nas duas rodadas. O ganho
+é do pacote de tarefa isolada, não evidência de benefício de duplicar o trecho
+nem demonstração de um mecanismo interno de atenção/carga do modelo.
+
+- T03: primeira seleciona `é o título do ensaio, não uma tarefa` e propõe
+  expressão; ambas as segundas propõem nome. A fonte/foco se mantêm íntegros.
+  É falsificada, neste caso, a necessidade de acrescentar evidência explícita
+  para corrigir a decisão. Não prova que evidência seja dispensável em geral.
+- T04 continua hipótese de operação; T07/T08 preservam nome versus proibição
+  mencionada; T11/T12 preservam indeterminação; T14/T15 permanecem descrição.
+  Esses controles impedem explicar o ganho como promoção indiscriminada a nome.
+- T11 acerta papel mas a primeira só seleciona `A função de “`: não cobre a
+  pista de indeterminação. T04/T08 também continuam sem toda a referência
+  lexical. Por isso 8/8 de papel não virou 8/8 no composto. Fragmento literal
+  não é evidência semanticamente suficiente; a guarda não foi enfraquecida.
+- Nenhuma segunda recebeu papel anterior, avaliação de acerto ou gabarito;
+  somente o braço com trecho recebeu o span selecionado pela primeira.
+  Repetição usa nova primeira chamada, não escolha posterior da melhor saída.
+- Conjunto versus isolado modifica instrução, schema e respostas dos exemplos;
+  não atribuir causalidade exclusiva a número de campos ou ordem de geração.
+  A fonte já continha a evidência nos três braços. Oito casos conhecidos não
+  demonstram generalização, qualidade geral de ensino ou prontidão da rede.
+
+Decisão: preferir **classificação isolada sem evidência redundante** como
+próxima candidata offline, mantendo seleção e suporte como contratos separados.
+Não acrescentar segunda etapa dependente do trecho só para reproduzir um ganho
+que apareceu sem ele. Próximo passo: validar transferência dessa classificação
+em fontes novas e controles históricos; depois medir o custo e a validade no
+modelo/runtime realmente usado pela Laylay. O catálogo continua experimental,
+com limite de tamanho e lacunas de suficiência; não liberar produção.
+
+13 testes novos passaram antes da coleta. **1.535 testes relevantes passaram
+em 134,22 s**, incluindo esses 13; `git diff --check` limpo.
+Somente sonda/testes e documentação alterados nesta etapa;
+produção, guardas anteriores, exemplos originais e pesos preservados, sem commit.
+
+### P01: predicado catalogado e discriminação de contexto (09/10)
+
+Protocolo pré-consulta: testar a fronteira de cópia sem reutilizar a hierarquia
+rejeitada. Reusar tokenizer, blocos externos canônicos, ancoragem única,
+materialização e aferição. O host enumera todos os spans contíguos de tokens
+externos ao foco que ocorrem uma única vez na fonte. Não procura verbos nem
+pista, não classifica papel, não corta saída inválida. Limite offline de
+64 tokens na fonte; enumeração quadrática, não projeto de escala de produção.
+
+- HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`, main, três documentos já
+  modificados preservados. Script `scripts/analises/sonda_predicado_catalogado_v1.py`
+  SHA256 `39a3e21f02116e70aca87248663e6ce3deee7ad567d474cc7748941999c27565`.
+- Oito casos conhecidos T01/T02/T03/T08/T09/T12/T14/T15, dois por classe,
+  com prefixo `Há uma caixa vermelha na mesa. ` e sufixo
+  ` O catálogo possui nove páginas.`. Esses distratores entram na fonte,
+  sem marcação especial para o modelo. As referências da avaliação ficam
+  no host. Painel derivado congelado, não holdout novo.
+- `livre` é o proponente contrastivo original. `catalogado` muda somente
+  o schema de predicado para enum dos trechos mais string vazia. Prompt,
+  mensagens, oito respostas de demonstração, campo papel e parâmetros iguais.
+  Nenhum ranking do catálogo por gabarito; 188–270 alternativas por fonte.
+  Schema limita as saídas, mas não prova o motivo da escolha.
+- 8 casos × 2 braços × 2 rodadas = 32 consultas; AB/BA alternado, segunda
+  passagem inversa, sem retentativa seletiva. Metadata captura Git, fonte,
+  referências, ordem, hashes e digest antes da primeira chamada. Artefato
+  exclusivo `resultados_testes/sonda_predicado_catalogado_v1.jsonl`.
+- Requisição efetiva/catalogo autenticados antes de delegar aferição. Guarda
+  continua ativa: se backend ignorar enum, seleção fora do catálogo não é
+  aceita. Nenhuma correção de grafia ou poda de foco na resposta. Vazio é
+  abstenção, não ausência demonstrada ou permissão.
+- Além de papel/vínculo/pista/conjunto, aferir presença dos distratores na
+  evidência. Seleção discriminativa local exige pista coberta sem tocar os
+  dois distratores; conjunto discriminativo exige também papel correto.
+  São referências sintéticas locais, não verificação semântica geral.
+- Controle sem LLM seleciona os dois blocos externos: cobre pista 8/8, mas
+  discrimina 0/8. Critério para continuar candidato: superar esse controle
+  e a cópia livre em discriminação nas duas rodadas, sem perdas pareadas de
+  papel. Não contar literalidade garantida pelo enum como ganho semântico.
+- 16 testes do instrumento verdes antes da coleta, incluindo adulteração,
+  saída fora do enum, sobreposição, papel errado com pista certa e selecionar
+  tudo. Produção/treino/permissões intactos. Qwen textual histórico confirmado
+  pelo digest `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`;
+  Qwen3-VL instalado não participa desta medição. Coleta ainda pendente aqui.
+
+#### Resultado auditado — catálogo de predicados (09/10)
+
+32/32 HTTP 200, `done=True`/`stop`, shape válido; 34 linhas incluindo
+metadata/resumo. Artefato SHA256
+`b8c5d9db41fa5624c4abbf17f3d1625b357877f18f254b2f9f44217c4d3217ec`.
+Todos os brutos reaferidos; resultado salvo igual ao recalculado. Fontes,
+host, enum, requisições, ordem, hashes e flags conferidos, digest igual nos
+extremos. Entre braços, apenas o enum do schema difere; entre repetições,
+requisições e propostas são idênticas nos 16 pares caso/braço.
+
+Contagens por rodada (oito casos; resultados iguais nas duas):
+
+| Métrica | Cópia livre | Catálogo |
+|---|---:|---:|
+| Papel alinhado | 7 | 7 |
+| Vínculo literal externo | 5 | 8 |
+| Pista sem distrator | 4 | 5 |
+| Papel + pista sem distrator | 3 | 4 |
+| Seleções aceitas com distrator | 0 | 0 |
+
+Critério local para continuar investigando atendido: ganho discriminativo
+T12 nas duas rodadas, nenhuma perda pareada de papel ou conjunto. Controle
+sem LLM que seleciona todos os blocos cobre pista 8/8 mas discrimina 0/8.
+Isso não prova discriminação aberta: os distratores são duas sentenças
+fixas e fáceis, em oito fontes derivadas de casos conhecidos.
+
+**Fronteiras observadas:**
+
+- T02/T09/T12 ganham literalidade. O backend respeitou o enum em 16/16
+  respostas catalogadas. A restrição exclui foco e reescrita por construção;
+  esse ganho estrutural não deve ser contado como compreensão nova.
+- T12 passa a `não há contexto para classificar '` e cobre a pista externa
+  sem copiar o foco. É o único ganho no composto local. A aspa terminal faz
+  parte da fonte; não foi removida pelo host.
+- T02 escolhe `recomendou '` e T09 `saber se '`: são fragmentos literais
+  admissíveis, mas não cobrem a referência congelada. O caso T09 perde no
+  trecho selecionado a indicação de informação ausente. Não promover
+  fragmento válido a suporte suficiente. A observação também é compatível
+  com continuação limitada pela gramática, não prova raciocínio seletivo.
+- T08 continua com `proibiu a operação ao dizer`, literal e compatível,
+  mas sem o sujeito incluído na pista de referência. Sua falha de cobertura
+  lexical, isoladamente, não demonstra falha semântica.
+- T03 seleciona `é o título do ensaio, não uma tarefa` nos dois braços,
+  mas propõe expressão sem operação. Fonte, foco e pista são corretos;
+  primeiro RED é a proposta de papel, não o transporte ou a cópia. Consertar
+  literalidade não basta para interpretar a relação. Nenhuma troca automática
+  de papel pelo host, mesmo quando o marcador contém a palavra título.
+- T01/T14/T15 preservam conjunto. T03/T15 diferem da coleta sem distratores:
+  isso é sensibilidade à fonte modificada, não regressão atribuível ao enum.
+  Os braços desta coleta recebem exatamente a mesma fonte.
+
+Decisão: catálogo permanece candidato **estrutural offline**, com ganho
+semântico local modesto, não substituto do roteador nem liberação da rede.
+Não aumentar o catálogo/treino para esconder T03: próxima fronteira é a
+decisão de papel a partir da relação contextual já selecionada, usando
+contrastes de nome/operação/descrição e controles de ambiguidade. Preservar
+também T09 como insuficiência de evidência, sem fundir essas duas causas.
+Antes de qualquer promoção, ainda faltam transferência para fontes novas,
+evidência suficiente além da cobertura lexical, custo em textos maiores e
+validação no modelo/runtime efetivamente usado pela Laylay.
+
+Produção, guardas históricas, exemplos e pesos não alterados. Escopo desta
+continuação: sonda/testes novos e três documentos de acompanhamento, sem
+commit. Os 16 testes novos passaram antes da coleta; **1.522 testes relevantes
+passaram em 109,91 s**, incluindo esses 16 (contagens sobrepostas).
+`git diff --check` limpo. Não houve validação de produção nesta coleta.
+
 ### P01: transferência da hierarquia sem ajuste do proponente (08/10)
 
 Protocolo pré-consulta: 16 casos novos escritos antes de consultar o modelo,
@@ -4916,6 +6286,83 @@ nem prova de generalização aberta. Referências permanecem somente no host.
   automática de propostas, retentativa seletiva ou seleção do melhor resultado.
 - Escopo: uma sonda com painel, seus testes e documentação. Produção
   inalterada; não é teste do runtime Laylay. Coleta pendente neste protocolo.
+
+#### Resultado auditado da transferência (09/10)
+
+As 64 consultas terminaram; arquivo com 66 linhas, SHA256
+`6dc537f3a31af138ebf38f4911bcb778939125e6cda8ab0c6cf19f1a5e4ce56c`.
+Reaferição integral reproduziu todas as métricas salvas a partir dos brutos:
+64 HTTP 200, shape válido, `done=True`/`stop`, sem retentativas. Requisições,
+host, fontes, ordem, referências e seis flags falsas conferidos. Digest
+inicial/final igual: `0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0`.
+Script/painel e dependências congeladas continuam com os hashes do protocolo.
+
+Na retomada de 09/10, HEAD é `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`,
+branch `main`, worktree limpa antes desta documentação. O commit externo
+incorporou os arquivos preparados; não foi criado nesta investigação.
+Preservado o baseline da coleta `90a2fb8`, sem atualizar trava cegamente.
+
+Resultados idênticos nas duas repetições; não variou nenhuma das 32
+propostas pareadas entre rodadas:
+
+| Métrica (16 casos por braço/rodada) | Base | Hierarquia |
+|---|---:|---:|
+| Papel alinhado | 15 | 15 |
+| Vínculo literal estrutural | 13 | 11 |
+| Pista lexical congelada | 11 | 8 |
+| Papel + pista | 10 | 8 |
+| Falso indeterminado | 0 | 1 |
+
+**Critério pré-fixado não atendido.** A hierarquia não é aceita como
+melhoria geral, apesar do ganho anterior nos casos conhecidos. T15 ganha
+papel, T03 perde; no conjunto ganha T15 e perde T01/T03/T14, nas duas rodadas.
+Não escolher o melhor braço por ID de caso nem adaptar a resposta ao gabarito.
+
+- T03: fonte identifica expressamente um título, apesar da forma condicional.
+  Base acerta; hierarquia propõe indeterminado e `parece uma condição`, que
+  nem é trecho literal da fonte (`pareça`). Primeiro RED é já na proposta,
+  antes da ancoragem. Não é falha de transporte, identidade ou truncamento.
+- T15: fonte descreve localização e menciona outra ação depois. Base seleciona
+  a pista correta mas propõe nome; hierarquia propõe descrição corretamente.
+  Isso falsifica seleção literal como explicação única dos erros de papel.
+- T01: ambos acertam papel; hierarquia inclui o próprio foco no predicado.
+  T14: ambos acertam papel; hierarquia remove acentos de `composição`.
+  Guardas recusam corretamente essas propostas; não normalizar/cortar o
+  texto para transformar regressão em sucesso.
+- T09/T12 continuam sem evidência aceita: paráfrase ou sobreposição. T02
+  melhora vínculo estrutural com hierarquia, mas não inclui a pista inteira.
+  T04/T08 também selecionam trechos literais sem todo o marcador escolhido.
+  Falha da métrica lexical isolada não prova erro semântico nesses casos.
+- T05/T06 preservam as duas ocorrências de texto idêntico e seus papéis.
+  Não houve reutilização de focos dos exemplos/painéis anteriores verificados.
+  As fontes novas são sintéticas e próximas às famílias conhecidas; não
+  constituem avaliação humana independente nem cobertura aberta de linguagem.
+
+Decisão: conservar a base como controle e parar de ampliar essa hierarquia
+como candidata geral. Próximo trabalho é o contrato de seleção de evidência,
+sem fundi-lo com classificação: inventariar os seletores já existentes e
+contrastar a escolha de trechos materializados pelo host com a cópia livre.
+Reusar `sonda_contextos_enumerados_v1`/`sonda_vinculo_duas_etapas_v1` somente
+após conferir seus limites históricos; não simplesmente repetir uma solução
+anterior nem fornecer o marcador esperado ao seletor. Um intervalo literal
+não comprova apoio semântico e um papel correto não conserta evidência inválida.
+T03/T15 permanecem controles separados de interpretação para qualquer candidato.
+
+Limite histórico relido: o inventário de dois blocos externos de 06/10 teve
+20/20 seleções de todos os blocos, igual ao controle sem LLM. Reutilizar a
+materialização segura não significa adotar esse seletor como resolvido.
+Qualquer contraste seguinte precisa distinguir apoio relevante de contexto
+completo e comparar explicitamente contra selecionar tudo; do contrário
+repetirá um GREEN estrutural já conhecido, sem avanço semântico.
+
+Validação: **31 testes focados** passaram antes da coleta (13 desta sonda e
+18 da interface anterior). Na retomada, **1.506 testes relevantes passaram
+em 102,28 s**; incluem os focados, não somar. `git diff --check` limpo.
+Nesta retomada foram alterados somente plano, registro e mapa causal.
+
+Não houve alteração de produção, treino, memória, permissões ou composição
+da Laylay. P01 continua aberta. Resultado atual é rejeição de uma candidata
+offline por evidência, não correção do runtime nem liberação da rede.
 
 ### P01: hierarquia sintática e identidade de transporte (07/10)
 

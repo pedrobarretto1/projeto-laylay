@@ -102,6 +102,152 @@ class LeituraTurnoDict(TypedDict, total=False):
     entrada_cognitiva: EventoCognitivoDict
 
 
+@dataclass(frozen=True, slots=True)
+class ContratoExplicativoAto:
+    """Snapshot da relação discursiva, sem decisão sobre efeito ou capacidade.
+
+    Consome a projeção do interpretador, nunca linguagem novamente. Identifica
+    o objeto estrutural consultado; não interpreta o significado desse objeto
+    nem prova pendências de outros owners. Validação aqui é de vínculo/formato,
+    não de correção semântica de uma futura fala ou autenticidade criptográfica.
+    """
+    indice: int
+    texto: str
+    modalidade: str
+    natureza_acao: str
+    motivo: str
+    relacao: str
+    objeto_textual: str
+    intervalo_objeto: tuple[int, int] | None
+    pessoa_condicao: str
+    intervalo_pessoa_condicao: tuple[int, int] | None
+
+    @classmethod
+    def do_segmento(cls, segmento: Mapping[str, Any]) -> ContratoExplicativoAto | None:
+        dados = segmento.get("contrato_explicativo")
+        if (segmento.get("autoriza_execucao") is not False
+            or type(segmento.get("indice")) is not int
+            or not isinstance(dados, Mapping)
+            or set(dados) != {"fonte", "texto_ato", "relacao", "objeto_textual", "intervalo_objeto", "autoriza_execucao",
+                              "pessoa_condicao", "intervalo_pessoa_condicao"}
+            or dados.get("fonte") != "interpretador_canonico"
+            or dados.get("autoriza_execucao") is not False):
+            return None
+        texto = dados.get("texto_ato")
+        objeto = dados.get("objeto_textual")
+        relacao = dados.get("relacao")
+        modalidade = segmento.get("modalidade")
+        natureza = segmento.get("natureza_acao")
+        motivo = segmento.get("motivo")
+        if (not isinstance(texto, str) or not texto
+            or texto[:300] != segmento.get("texto_estrutural")
+            or not isinstance(objeto, str)
+            or not all(isinstance(v, str) for v in (modalidade, natureza, motivo))):
+            return None
+        intervalo = dados.get("intervalo_objeto")
+        if relacao == "consulta_significado":
+            if (natureza != "mencao_operacional" or modalidade != "pergunta"
+                or not isinstance(intervalo, (list, tuple)) or len(intervalo) != 2
+                or any(type(i) is not int for i in intervalo)):
+                return None
+            inicio, fim = intervalo
+            if not (0 <= inicio < fim < len(texto)) or not objeto or texto[inicio:fim] != objeto:
+                return None
+            intervalo = (inicio, fim)
+        elif relacao in {"condicao_nao_verificada", "resposta_conversacional"}:
+            if intervalo is not None or objeto:
+                return None
+            if (relacao == "condicao_nao_verificada") != (natureza == "condicao_nao_verificada"):
+                return None
+        else:
+            return None
+        pessoa = dados.get("pessoa_condicao")
+        intervalo_pessoa = dados.get("intervalo_pessoa_condicao")
+        if relacao != "condicao_nao_verificada":
+            if pessoa != "" or intervalo_pessoa is not None:
+                return None
+        elif pessoa == "indeterminada":
+            if intervalo_pessoa is not None:
+                return None
+        else:
+            literais = {"enunciador": {"eu"}, "destinatario": {"voce", "você"},
+                        "grupo": {"a gente", "nos", "nós"}}
+            if (not isinstance(pessoa, str) or pessoa not in literais
+                or not isinstance(intervalo_pessoa, (tuple, list)) or len(intervalo_pessoa) != 2
+                or any(type(i) is not int for i in intervalo_pessoa)):
+                return None
+            inicio, fim = intervalo_pessoa
+            if not (0 <= inicio < fim <= len(texto)) or " ".join(texto[inicio:fim].casefold().split()) not in literais[pessoa]:
+                return None
+            intervalo_pessoa = (inicio, fim)
+        return cls(segmento["indice"], texto, modalidade, natureza, motivo, relacao, objeto, intervalo,
+                   pessoa, intervalo_pessoa)
+
+    def como_dict(self) -> dict[str, Any]:
+        return {
+            "indice": self.indice, "texto_ato": self.texto,
+            "modalidade": self.modalidade, "natureza_acao": self.natureza_acao,
+            "motivo": self.motivo, "relacao": self.relacao,
+            "objeto_textual": self.objeto_textual,
+            "intervalo_objeto": list(self.intervalo_objeto) if self.intervalo_objeto is not None else None,
+            "pessoa_condicao": self.pessoa_condicao,
+            "intervalo_pessoa_condicao": (list(self.intervalo_pessoa_condicao)
+                                          if self.intervalo_pessoa_condicao is not None else None),
+            "fonte": "interpretador_canonico", "autoriza_execucao": False,
+            "nao_comprova": ["efeito", "pendencia", "capacidade", "acesso_ao_alvo"],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ComplementoConversacionalTurno:
+    """Cobertura restante, não autorização, receipt ou novo turno.
+
+    Projetada da leitura canônica; não reclassifica linguagem. O primeiro
+    consumidor é a prioridade que recorta ordens quando há um ato vetado.
+    """
+    turno_id: Any
+    texto_usuario: str
+    texto: str
+    indices: tuple[int, ...]
+    atos_explicativos: tuple[ContratoExplicativoAto, ...] = ()
+
+    @classmethod
+    def da_prioridade(cls, turno: Mapping[str, Any], texto_usuario: str) -> ComplementoConversacionalTurno | None:
+        revisao = turno.get("revisao_intra_turno") if isinstance(turno, Mapping) else None
+        if (not isinstance(turno, Mapping) or not turno.get("id")
+            or turno.get("texto") != texto_usuario
+            or turno.get("autoriza_execucao") is not True
+            or (revisao is not None and not isinstance(revisao, Mapping))
+            or (isinstance(revisao, Mapping) and revisao.get("detectada"))):
+            return None
+        segmentos = turno.get("segmentos")
+        if not isinstance(segmentos, list) or not segmentos:
+            return None
+        if any(not isinstance(s, Mapping) or type(s.get("indice")) is not int
+               or type(s.get("autoriza_execucao")) is not bool for s in segmentos):
+            return None
+        indices = tuple(s["indice"] for s in segmentos)
+        if len(set(indices)) != len(indices):
+            return None
+        if (not any(s["autoriza_execucao"] and not s.get("veto_execucao_operacional") for s in segmentos)
+            or not any(s.get("veto_execucao_operacional") for s in segmentos)
+            or not str(turno.get("texto_operacional") or "").strip()):
+            return None
+        restantes = tuple(s["indice"] for s in segmentos if not s["autoriza_execucao"])
+        texto = str(turno.get("texto_conversacional") or "").strip()
+        if not restantes or not texto:
+            return None
+        atos: list[ContratoExplicativoAto] = []
+        for segmento in segmentos:
+            if segmento["autoriza_execucao"]:
+                continue
+            ato = ContratoExplicativoAto.do_segmento(segmento)
+            if ato is None:
+                return None
+            atos.append(ato)
+        return cls(turno["id"], texto_usuario, texto, restantes, tuple(atos))
+
+
 class PlanoTurnoDict(TypedDict, total=False):
     id: int
     origem_entrada: str

@@ -1,0 +1,19 @@
+{
+  "hardware_simulado": true,
+  "prova_optica": false,
+  "motores_reais_acionados": false,
+  "saida_host": [
+    "HACK_HOST_OK: CAPS, sessao, campos, replay, AACK apos frame, I2C, TTL, wrap e demo; 869 pixels de texto",
+    "MOTOR_HOST_OK: limites, GPIO, wake, ocupacao, replay, parada, OLED, PWM, TTL e wrap",
+    "TROCA_CALMA_ALEGRE_PRIMEIRO_FRAME: 192 pixels",
+    "100_TROCAS_OK: maior primeiro passo 287 pixels",
+    "HACK_PIXELS_OK: 254 quadros distintos, primeiro passo 0 pixels, motores parados",
+    "FIRMWARE_HACK_HOST_OK: preview raster real e regressivos aprovados"
+  ],
+  "fontes_sha256": {
+    "firmware\\rosto_laylay\\rosto_laylay.ino": "d5c8c6076f258681cb9265a60e827f91b481dac89e4d08f03bea252e867bee95",
+    "firmware\\rosto_laylay\\fonte_terminal.h": "456db1ab15af4791914fa6006e9830c3c8782d0a56a06a80003d3c30c511a342",
+    "firmware\\rosto_laylay\\validacao_host\\validar.cpp": "e27766e3a0cc18bbd3ba0db7c8f3bf9383406ce622e17af92057a6eef669c47b"
+  },
+  "preview": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\artifacts\\rosto_oled\\hack\\hack.gif"
+}

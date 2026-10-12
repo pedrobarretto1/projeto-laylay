@@ -1,0 +1,18 @@
+{
+  "auto_sem_com_configurada": true,
+  "supervisor_real": true,
+  "diagnostico": {
+    "configurado": true,
+    "conectado": false,
+    "modo_conexao": "automatico",
+    "porta_ativa": "",
+    "evidencia_recente": false,
+    "aplicacao_confirmada": false,
+    "estado": "indisponivel",
+    "motivo": "SerialException:could not open port 'COM4': PermissionError(13, 'Acesso negado.', None, 5)",
+    "confirmado": [],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false
+  }
+}

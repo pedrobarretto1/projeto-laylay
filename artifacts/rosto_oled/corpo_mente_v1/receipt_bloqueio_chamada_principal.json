@@ -1,0 +1,1039 @@
+{
+  "falha": "AssertionError: modelo não publicou uma intenção corporal válida",
+  "retorno": {},
+  "plano": {
+    "id": 1791824534021405700,
+    "origem_entrada": "desconhecida",
+    "texto_usuario": "Laylay, você é incrível, gosto muito de você.",
+    "modalidade": "conversa",
+    "ato_principal": "conversa",
+    "atos": [
+      {
+        "ordem": 0,
+        "tipo": "conversa",
+        "texto": "laylay, você é incrível, gosto muito de você.",
+        "objetivo": "continuar o assunto da fala atual",
+        "requer_execucao": false
+      }
+    ],
+    "dominio": "conversa",
+    "contexto_necessario": [
+      "fala_atual",
+      "identidade_interlocutores"
+    ],
+    "requer_execucao": false,
+    "autoriza_execucao": false,
+    "natureza_acao": "nenhuma",
+    "turno_sem_autorizacao": false,
+    "misto": false,
+    "texto_operacional": "",
+    "texto_conversacional": "laylay, você é incrível, gosto muito de você.",
+    "resposta_esperada": "responder ao conteudo atual",
+    "funcao_comunicativa": "informacao",
+    "emocao_implicita": "neutra",
+    "postura_esperada": "natural",
+    "permite_pergunta": true,
+    "identidade": {
+      "falante": "usuario",
+      "interlocutor": "laylay",
+      "laylay_eu": true,
+      "usuario_eu": true,
+      "pedro_eu": true,
+      "referencia_laylay": true,
+      "referencia_usuario": false,
+      "referencia_pedro": false,
+      "vocativo_laylay": true,
+      "texto_sem_vocativo": "você é incrível, gosto muito de você.",
+      "objeto_laylay_py": false,
+      "relacao_com_laylay": "",
+      "pronome_ambiguo": false,
+      "ts": 1791824536.2003205
+    },
+    "retrato_id": 1791824534021405700,
+    "entidades": {},
+    "referencia_resolvida": {},
+    "operacao_explicita": "",
+    "especialistas": {
+      "social": {
+        "ativo": true,
+        "texto": "laylay, você é incrível, gosto muito de você.",
+        "funcao": "informacao",
+        "emocao": "neutra",
+        "postura": "natural",
+        "permite_pergunta": true,
+        "precisa_reconhecimento": false,
+        "pode_executar": false,
+        "politica_resposta": "responder_diretamente"
+      },
+      "operacional": {
+        "ativo": false,
+        "texto": "",
+        "autoriza_execucao": false,
+        "operacao": "",
+        "intents_permitidos": [],
+        "referencia": {},
+        "confianca": 0.6,
+        "confiancas": {
+          "acao": 0.6,
+          "alvo": 1.0,
+          "referencia": 1.0
+        },
+        "requer_esclarecimento": false,
+        "confirmacao_explicita": false,
+        "motivo_bloqueio": "",
+        "pode_falar_sem_resultado": false,
+        "saude_componentes": {
+          "memoria_pessoas": {
+            "status": "saudavel",
+            "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+            "ausentes": [],
+            "ts": 1791824529.3887143
+          },
+          "observador_area_transferencia": {
+            "status": "saudavel",
+            "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+            "ausentes": [],
+            "ts": 1791824529.3904138
+          },
+          "agenda": {
+            "status": "saudavel",
+            "detalhes": "agenda local conectada a pendência canônica, aprendizado, diagnóstico e cooperação",
+            "ausentes": [],
+            "ts": 1791824529.3912737
+          },
+          "orquestracao_cooperativa": {
+            "status": "saudavel",
+            "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+            "ausentes": [],
+            "ts": 1791824529.398529
+          },
+          "execucao_intencao": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791824529.4006984
+          },
+          "ciclo_comandos": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791824529.400707
+          }
+        }
+      },
+      "coordenacao": {
+        "modo": "social",
+        "ordem": [
+          "responder_parte_humana"
+        ],
+        "consultas": [],
+        "memoria_compartilhada": true,
+        "voz_unica": true,
+        "executor_unico": true,
+        "consulta_concluida": false,
+        "arquitetura": "consenso_distribuido",
+        "sem_vencedor_isolado": true
+      },
+      "pareceres_habilidades": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:informacao",
+            "postura:natural"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta"
+        },
+        {
+          "habilidade": "operacao",
+          "ativo": false,
+          "proposta": "interpretar a possível ação sem produzir efeito não autorizado",
+          "confianca": 0.6,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "operacao:-",
+            "autorizada:False"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_com_resultado_real"
+        },
+        {
+          "habilidade": "contexto_geral",
+          "ativo": false,
+          "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "referencia:-",
+            "candidatos:0"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "memoria_aprendizado",
+          "ativo": false,
+          "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "declaracoes_explicitas:0",
+            "origem:usuario"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "pesquisa_factual",
+          "ativo": false,
+          "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "tema:-"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+        }
+      ],
+      "deliberacao": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "responder ao conteudo atual",
+        "estado": "consenso_formado",
+        "participantes": [
+          "conversa",
+          "personalidade"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [],
+        "pareceres": [
+          {
+            "habilidade": "conversa",
+            "ativo": true,
+            "proposta": "acolher e responder ao significado humano da fala atual",
+            "confianca": 0.94,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.94,
+            "evidencias": [
+              "funcao_comunicativa:informacao",
+              "postura:natural"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [
+              "conversa"
+            ],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "funcao_comunicativa:informacao",
+          "postura:natural",
+          "uma_mente",
+          "uma_voz"
+        ],
+        "conclusao_conjunta": [
+          "acolher e responder ao significado humano da fala atual",
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "conversa",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "conversa",
+              "personalidade"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {}
+      }
+    },
+    "atualidade_factual": {
+      "depende_atualidade": false,
+      "classe": "nao_consulta",
+      "validade_sugerida_s": 0.0,
+      "confianca": 0.0,
+      "motivos": [
+        "fala_nao_consultiva"
+      ]
+    },
+    "modo_coordenacao": "social",
+    "confianca": 0.6,
+    "periodo": "tarde",
+    "fase": "fala_verificada",
+    "comandos": [],
+    "problemas": [],
+    "veto_execucao_operacional": false,
+    "ts": 1791824536.2133083,
+    "decisao_turno": {
+      "turno_id": 1791824534021405700,
+      "modalidade": "conversa",
+      "proprietario": "conversa",
+      "permite_acao": false,
+      "permite_resposta": true,
+      "requer_esclarecimento": false,
+      "intencao": "",
+      "origem_decisao": "arbitro_sem_vencedor",
+      "confianca": 0.6,
+      "status": "sem_acao"
+    },
+    "evidencia_capacidades": {
+      "fonte": "catalogo_vivo",
+      "dominios_confirmados": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "dominios_relevantes": [],
+      "dominios_indisponiveis_relevantes": [],
+      "possui_capacidades_locais": true,
+      "documentacao_capacidades": "",
+      "documentacao_texto": "Laylay, você é incrível, gosto muito de você.",
+      "documentacao_turno_id": 1791824534021405700,
+      "predicados_capacidade": [],
+      "autoriza_execucao": false
+    },
+    "fundamentacao_factual": {},
+    "deliberacao_habilidades": {
+      "arquitetura": "consenso_distribuido",
+      "objetivo": "responder ao conteudo atual",
+      "estado": "consenso_formado",
+      "participantes": [
+        "conversa",
+        "personalidade"
+      ],
+      "silenciosas": [],
+      "executoras_autorizadas": [],
+      "pareceres": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:informacao",
+            "postura:natural"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        }
+      ],
+      "rejeitados": [],
+      "evidencias_compartilhadas": [
+        "funcao_comunicativa:informacao",
+        "postura:natural",
+        "uma_mente",
+        "uma_voz"
+      ],
+      "conclusao_conjunta": [
+        "acolher e responder ao significado humano da fala atual",
+        "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+      ],
+      "rodadas": [
+        {
+          "fase": "hipoteses",
+          "participantes": [
+            "conversa",
+            "personalidade"
+          ]
+        },
+        {
+          "fase": "compatibilidade",
+          "aceitos": [
+            "conversa",
+            "personalidade"
+          ],
+          "rejeitados": 0
+        },
+        {
+          "fase": "consenso",
+          "contribuicoes": 2
+        }
+      ],
+      "regras": {
+        "sem_vencedor_isolado": true,
+        "voz_final_unica": true,
+        "falha_auxiliar_nao_substitui_resposta": true,
+        "execucao_somente_por_porteiro_canonico": true,
+        "memoria_e_aprendizado_silenciosos": true
+      },
+      "quadro_canonico": {}
+    },
+    "contrato_fala": {
+      "versao": 1,
+      "turno_id": 1791824534021405700,
+      "funcao": "informacao",
+      "atos": [
+        "conversa"
+      ],
+      "referente": "",
+      "estado_referencia_textual": "",
+      "conteudos_obrigatorios": [
+        "responder ao conteudo atual",
+        "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+      ],
+      "inferencias_proibidas": [
+        "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+        "não transformar personalidade em fato nem em confirmação operacional",
+        "pedido não prova tentativa nem resultado: não deduzir sucesso, falha ou causa; responder ao que foi dito",
+        "falas antigas da assistente não são comprovantes; resultados exigem relato atribuído ao usuário ou evidência do executor",
+        "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+      ],
+      "estrutura": [
+        "reconhecer literalmente a fala atual",
+        "responder ao conteúdo pedido",
+        "acrescentar personalidade somente se couber"
+      ],
+      "max_frases": 3,
+      "permite_pergunta": true,
+      "permite_humor": true,
+      "permite_metafora": false,
+      "fala_anterior_relevante": "",
+      "texto_usuario_corrigido": "",
+      "pedido_ensino_anterior": "",
+      "respostas_recentes_evitar": [],
+      "capacidades_confirmadas": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "documentacao_capacidades": "",
+      "predicados_capacidade": [],
+      "cooperacao_considerada": true,
+      "roteiro_concreto": {
+        "versao": 1,
+        "estrategia": "resposta_direta",
+        "ancora_literal": "Laylay, você é incrível, gosto muito de você.",
+        "nucleo_resposta": "responder primeiro ao conteúdo explícito da fala atual",
+        "sequencia": [
+          "dar a resposta direta",
+          "explicar apenas o necessário",
+          "acrescentar personalidade sem desviar do assunto"
+        ],
+        "exigencias_concretude": [
+          "usar a fala atual antes de puxar contexto antigo",
+          "nomear o referente quando ele estiver resolvido",
+          "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+          "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+        ],
+        "abstracoes_a_concretizar": [
+          "energia",
+          "vibe",
+          "sensação",
+          "sentir-se vivo",
+          "alma",
+          "universo",
+          "ritmo",
+          "essência"
+        ],
+        "base_permitida": [
+          "fala atual do usuário",
+          "catálogo vivo confirmou capacidades locais: corpo_motor, rosto_oled, musica, sistema, visao, agenda, arquivos, email"
+        ],
+        "primeira_frase_responde_nucleo": true,
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "autoriza_execucao": false,
+      "origem": "mente_unica"
+    },
+    "retrato_corporal": {
+      "origem": "owner_corpo_usb",
+      "ts": 1791824536.5047379,
+      "turno_id": "1791824534021405700",
+      "sessao": "49f0f7da",
+      "concessao_id": "865e61328e82c3b2",
+      "conectada": true,
+      "companhia_ativa": true,
+      "passeio_ativo": true,
+      "perfil": "rodas_suspensas",
+      "olhos": [
+        0,
+        1,
+        0
+      ],
+      "motor_em_andamento": false,
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {}
+    },
+    "erros": [],
+    "fala_planejada": "O tempo restante desta resposta não permite outra tentativa.",
+    "atualizado_ts": 1791824539.388437,
+    "ultima_verificacao": {
+      "aceita": false,
+      "fala": "O tempo restante desta resposta não permite outra tentativa.",
+      "acao": "reparar",
+      "problemas": [
+        "relato_atual_sem_ancora"
+      ],
+      "pontuacao": 0.75,
+      "foco": {},
+      "aderencia_contrato": {
+        "avaliado": true,
+        "aceita": false,
+        "requer_reparo": true,
+        "problemas": [
+          "relato_atual_sem_ancora"
+        ],
+        "estrategia": "resposta_direta",
+        "nucleo_atendido": false,
+        "contrato_reparo": {
+          "estrategia": "resposta_direta",
+          "atos_obrigatorios": [
+            "conversa"
+          ],
+          "referente": "",
+          "estado_referencia_textual": "",
+          "texto_usuario_corrigido": "",
+          "nucleo_primeira_frase": "responder primeiro ao conteúdo explícito da fala atual",
+          "sequencia": [
+            "dar a resposta direta",
+            "explicar apenas o necessário",
+            "acrescentar personalidade sem desviar do assunto"
+          ],
+          "max_frases": 3,
+          "permite_metafora": false,
+          "autoriza_execucao": false
+        },
+        "autoriza_execucao": false
+      },
+      "contrato_reparo": {
+        "estrategia": "resposta_direta",
+        "atos_obrigatorios": [
+          "conversa"
+        ],
+        "referente": "",
+        "estado_referencia_textual": "",
+        "texto_usuario_corrigido": "",
+        "nucleo_primeira_frase": "responder primeiro ao conteúdo explícito da fala atual",
+        "sequencia": [
+          "dar a resposta direta",
+          "explicar apenas o necessário",
+          "acrescentar personalidade sem desviar do assunto"
+        ],
+        "max_frases": 3,
+        "permite_metafora": false,
+        "autoriza_execucao": false
+      },
+      "fala_contingencia": "Eu acompanhei o começo, mas ainda falta uma peça. Continua que eu encaixo."
+    }
+  },
+  "modelo": {},
+  "respostas_originais": [
+    {
+      "texto": "Obrigada por dizer isso — é agradável saber que você gosta de mim! 😊  \nintencao_corporal={\"nome\":\"expressar\"}",
+      "sucesso": true
+    }
+  ],
+  "trilha": [
+    {
+      "direcao": "tx",
+      "tempo": 8723.2465295,
+      "pacote": "HELLO 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.3571276,
+      "pacote": "CAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.46537,
+      "pacote": "GCAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.5727588,
+      "pacote": "MCAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.6815098,
+      "pacote": "LCAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.790938,
+      "pacote": "SCAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8723.8986932,
+      "pacote": "ECAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.0067581,
+      "pacote": "RCAPS 1 49f0f7da"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.1153685,
+      "pacote": "FACE 1 49f0f7da 1 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8724.2249349,
+      "pacote": "ACK 1 49f0f7da 1 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.2249994,
+      "pacote": "ACTIVITY 1 49f0f7da 1 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.3338352,
+      "pacote": "SOUND 1 49f0f7da 1 0"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8724.4430374,
+      "pacote": "SOUNDACK 1 49f0f7da 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.7045252,
+      "pacote": "FACE 1 49f0f7da 2 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8724.8141244,
+      "pacote": "ACK 1 49f0f7da 2 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8724.8142092,
+      "pacote": "ACTIVITY 1 49f0f7da 2 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8725.1869729,
+      "pacote": "FACE 1 49f0f7da 3 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8725.2975895,
+      "pacote": "ACK 1 49f0f7da 3 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8725.2976553,
+      "pacote": "ACTIVITY 1 49f0f7da 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8725.6712399,
+      "pacote": "FACE 1 49f0f7da 4 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8725.7801334,
+      "pacote": "ACK 1 49f0f7da 4 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8725.7802058,
+      "pacote": "ACTIVITY 1 49f0f7da 4 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8726.1552807,
+      "pacote": "FACE 1 49f0f7da 5 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8726.264229,
+      "pacote": "ACK 1 49f0f7da 5 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8726.2643029,
+      "pacote": "ACTIVITY 1 49f0f7da 5 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8726.6372524,
+      "pacote": "FACE 1 49f0f7da 6 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8726.7475769,
+      "pacote": "ACK 1 49f0f7da 6 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8726.7476464,
+      "pacote": "ACTIVITY 1 49f0f7da 6 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8727.1209981,
+      "pacote": "FACE 1 49f0f7da 7 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8727.2311317,
+      "pacote": "ACK 1 49f0f7da 7 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8727.2312067,
+      "pacote": "ACTIVITY 1 49f0f7da 7 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8727.6052282,
+      "pacote": "FACE 1 49f0f7da 8 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8727.7141375,
+      "pacote": "ACK 1 49f0f7da 8 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8727.7142134,
+      "pacote": "ACTIVITY 1 49f0f7da 8 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8728.0854117,
+      "pacote": "FACE 1 49f0f7da 9 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8728.1938479,
+      "pacote": "ACK 1 49f0f7da 9 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8728.1939108,
+      "pacote": "ACTIVITY 1 49f0f7da 9 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8728.5676007,
+      "pacote": "FACE 1 49f0f7da 10 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8728.7090142,
+      "pacote": "ACK 1 49f0f7da 10 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8728.7090556,
+      "pacote": "ACTIVITY 1 49f0f7da 10 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8729.096336,
+      "pacote": "FACE 1 49f0f7da 11 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8729.2216344,
+      "pacote": "ACK 1 49f0f7da 11 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8729.2216777,
+      "pacote": "ACTIVITY 1 49f0f7da 11 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8729.9997948,
+      "pacote": "FACE 1 49f0f7da 12 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8730.1135464,
+      "pacote": "ACK 1 49f0f7da 12 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8730.1136161,
+      "pacote": "ACTIVITY 1 49f0f7da 12 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8730.4835906,
+      "pacote": "FACE 1 49f0f7da 13 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8730.5917479,
+      "pacote": "ACK 1 49f0f7da 13 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8730.5918313,
+      "pacote": "ACTIVITY 1 49f0f7da 13 1 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8730.9627621,
+      "pacote": "FACE 1 49f0f7da 14 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8731.0721387,
+      "pacote": "ACK 1 49f0f7da 14 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8731.0722295,
+      "pacote": "ACTIVITY 1 49f0f7da 14 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8731.4458182,
+      "pacote": "FACE 1 49f0f7da 15 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8731.5544926,
+      "pacote": "ACK 1 49f0f7da 15 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8731.5545734,
+      "pacote": "ACTIVITY 1 49f0f7da 15 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8731.9287667,
+      "pacote": "FACE 1 49f0f7da 16 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8732.0374934,
+      "pacote": "ACK 1 49f0f7da 16 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8732.0376123,
+      "pacote": "ACTIVITY 1 49f0f7da 16 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8732.4104096,
+      "pacote": "FACE 1 49f0f7da 17 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8732.5186837,
+      "pacote": "ACK 1 49f0f7da 17 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8732.5187677,
+      "pacote": "ACTIVITY 1 49f0f7da 17 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8732.892742,
+      "pacote": "FACE 1 49f0f7da 18 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8733.0005366,
+      "pacote": "ACK 1 49f0f7da 18 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8733.0006133,
+      "pacote": "ACTIVITY 1 49f0f7da 18 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8733.2600681,
+      "pacote": "STOP 1 49f0f7da 1"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8733.362056,
+      "pacote": "SACK 1 49f0f7da 1"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8733.3623241,
+      "pacote": "FACE 1 49f0f7da 19 0 1 0 3500"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8733.3624579,
+      "pacote": "STOP 1 49f0f7da 2"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8733.4698964,
+      "pacote": "SACK 1 49f0f7da 2"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8733.4699016,
+      "pacote": "ACK 1 49f0f7da 19 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 8733.469928,
+      "pacote": "GOODNIGHT 1 49f0f7da 1"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 8733.5787017,
+      "pacote": "NACK 1 49f0f7da 1"
+    }
+  ],
+  "observacao_humana": "pendente",
+  "interface_aberta": false,
+  "tipo": "runtime principal real com observadores de modelo e serial"
+}

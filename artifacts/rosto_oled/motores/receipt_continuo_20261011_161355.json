@@ -1,0 +1,43 @@
+{
+  "ts_utc": "2026-10-11T16:13:55.424771+00:00",
+  "endpoint": "192.168.137.109:8765",
+  "autorizacao": "Pedro: teste continuo para frente por 5 segundos; area delimitada ou rodas suspensas confirmadas",
+  "pwm_esquerdo": 100,
+  "pwm_direito": 100,
+  "duracao_ms": 5000,
+  "comandos_motor_enviados": 1,
+  "hardware_simulado": false,
+  "prova_rotacao": false,
+  "prova_parada_fisica": false,
+  "aplicacao_pwm_confirmada": true,
+  "erro": "ConnectionError:Sessao perdida; teste interrompido sem replay.",
+  "parada_final": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "heartbeat_encerrado": true,
+  "frequencia_pwm_hz_perfil": 1000,
+  "observacao_humana": "Pedro: nao giraram; tela sempre esteve dormindo",
+  "controle_visual_sem_motor": "Pedro confirmou olhos abertos e piscando durante heartbeat posterior de 30 segundos sem MOTOR",
+  "teste_5s_concluido": false,
+  "firmware_normal_restaurado": {
+    "limite_ms": 500,
+    "frequencia_pwm_hz": 1000,
+    "porta": "COM4",
+    "upload_exit_code": 0,
+    "hash_gravacao_verificado": true,
+    "sha256_bin": "8714A678B27399884484861AA58F3D7EC5E413A6185BFDD75D33E7661911667D"
+  },
+  "controle_sem_motor": "receipt_wifi_parado_pwm1k.json",
+  "endpoint_mac_confirmado": "AC-27-6E-72-BA-70"
+}

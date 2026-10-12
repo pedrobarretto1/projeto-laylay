@@ -9,6 +9,7 @@ palavras.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+import json
 import re
 import time
 import unicodedata
@@ -29,8 +30,10 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     texto_e_metalinguistico,
     texto_pede_opiniao,
 )
-from mente_laylay.cognicao.contratos_turno import texto_evento_cognitivo
-from mente_laylay.emocoes.contrato_causal import criar_evento_direcao_social_observada
+from mente_laylay.cognicao.contratos_turno import (
+    ComplementoConversacionalTurno, ContratoExplicativoAto, texto_evento_cognitivo,
+)
+from mente_laylay.emocoes.contrato_causal import criar_evento_direcao_social_observada, evento_pode_alterar_estado
 from mente_laylay.personalidade.proporcao_resposta import (
     LIMITES, classificar_proporcao, parece_pedido_reexplicacao,
 )
@@ -170,6 +173,90 @@ class ContratoSemanticoFala:
 _ROTULO_EVIDENCIA_TEXTUAL = re.compile(
     r"^(?:texto exato(?: vis[ií]vel)?|nome leg[ií]vel|artista leg[ií]vel)\s*:", re.I,
 )
+
+
+def construir_realizacoes_nucleo_explicativo(
+    complemento: ComplementoConversacionalTurno,
+) -> tuple[dict[str, Any], ...]:
+    """Realizações controladas, não verificador universal de texto livre.
+
+    O núcleo condicional é estrutural e read-only. Fonte literal conserva os
+    papéis sem reinterpretar os pronomes. Não interpreta significado consultado,
+    prova condição satisfeita, efeitos ou ausência de pendências de outro owner.
+    Sem cobertura para qualquer ato, não materializar aprovação do conjunto.
+    """
+    if (not isinstance(complemento, ComplementoConversacionalTurno)
+        or not complemento.atos_explicativos
+        or len(set(complemento.indices)) != len(complemento.indices)
+        or tuple(a.indice for a in complemento.atos_explicativos
+                 if isinstance(a, ContratoExplicativoAto)) != complemento.indices):
+        return ()
+    realizacoes = []
+    for ato in complemento.atos_explicativos:
+        if not isinstance(ato, ContratoExplicativoAto) or ato.relacao != "condicao_nao_verificada":
+            return ()
+        dados = ato.como_dict()
+        segmento = {"indice": ato.indice, "texto_estrutural": ato.texto[:300],
+                    "modalidade": ato.modalidade, "natureza_acao": ato.natureza_acao,
+                    "motivo": ato.motivo, "autoriza_execucao": False,
+                    "contrato_explicativo": {k: dados[k] for k in (
+                        "fonte", "texto_ato", "relacao", "objeto_textual", "intervalo_objeto",
+                        "autoriza_execucao", "pessoa_condicao", "intervalo_pessoa_condicao")}}
+        if ContratoExplicativoAto.do_segmento(segmento) != ato:
+            return ()
+        fonte = json.dumps(ato.texto, ensure_ascii=False)
+        opcoes = {
+            "condicao_1": (
+                f"O trecho {fonte} expressa uma condição não verificada neste pedido. "
+                "Esta explicação não deixou a ação agendada. Quando quiser executá-la, faça um novo pedido direto."
+            ),
+            "condicao_2": (
+                f"Em {fonte}, a ação depende de uma condição ainda não verificada. "
+                "Este complemento não criou uma pendência executável; para executar depois, é necessário um novo pedido direto."
+            ),
+            "condicao_3": (
+                f"Você escreveu {fonte}. A condição desse trecho não foi verificada neste pedido, "
+                "e esta explicação não criou agendamento. Só confirmar depois não executa essa ação; "
+                "faça um novo pedido direto quando quiser executá-la."
+            ),
+        }
+        realizacoes.append({"indice": ato.indice, "relacao": ato.relacao,
+                            "opcoes": [{"id": chave, "fala": valor} for chave, valor in opcoes.items()],
+                            "autoriza_execucao": False})
+    return tuple(realizacoes)
+
+
+def realizar_nucleo_explicativo(
+    complemento: ComplementoConversacionalTurno, proposta: Any,
+) -> tuple[str, str]:
+    """Materializa só a redação selecionada; nunca uma ação ou novo fato.
+
+    A seleção não se autovalida. Schema/índices/opções vêm do owner e nenhum
+    campo de texto livre, comando ou autoaprovação pode entrar na realização.
+    """
+    opcoes = construir_realizacoes_nucleo_explicativo(complemento)
+    if not opcoes:
+        return "", "nucleo_sem_verificador"
+    # Vetor explícito e objeto envolvente têm a mesma seleção. Não procurar
+    # dados em prosa, preencher escolhas ausentes ou ignorar campos extras.
+    if isinstance(proposta, list):
+        proposta = {"realizacoes": proposta}
+    if not isinstance(proposta, Mapping) or set(proposta) != {"realizacoes"}:
+        return "", "proposta_nuclear_invalida"
+    escolhas = proposta.get("realizacoes")
+    if not isinstance(escolhas, list) or len(escolhas) != len(opcoes):
+        return "", "proposta_nuclear_invalida"
+    falas = []
+    for escolha, ato in zip(escolhas, opcoes):
+        if (not isinstance(escolha, Mapping) or set(escolha) != {"indice", "opcao"}
+            or type(escolha.get("indice")) is not int or escolha["indice"] != ato["indice"]):
+            return "", "indice_nuclear_divergente"
+        permitidas = {opcao["id"]: opcao["fala"] for opcao in ato["opcoes"]}
+        opcao = escolha.get("opcao")
+        if not isinstance(opcao, str) or opcao not in permitidas:
+            return "", "realizacao_sem_cobertura"
+        falas.append(permitidas[opcao])
+    return " ".join(falas), ""
 
 
 def _evidencia_e_rotulo_isolado(fato: str) -> bool:
@@ -962,7 +1049,14 @@ def construir_contrato_semantico_fala(
         plano=planejamento,
         fundamentacao_factual=planejamento.get("fundamentacao_factual"),
     )
-    return replace(contrato, roteiro_concreto=roteiro).como_dict()
+    resultado = replace(contrato, roteiro_concreto=roteiro).como_dict()
+    avaliacao_social = dict(dict(funcao_comunicativa or {}).get("avaliacao_social") or {})
+    if avaliacao_social:
+        resultado["avaliacao_social"] = avaliacao_social
+    evento = dict(planejamento.get("evento_emocional_causal") or {})
+    if evento:
+        resultado["evento_emocional_causal"] = evento
+    return resultado
 
 
 def atualizar_contrato_fala_com_resultados(
@@ -1008,6 +1102,19 @@ def formatar_contrato_fala_para_prompt(
     dados = dict(contrato or {})
     if not dados:
         return ""
+    evento = dict(dados.get("evento_emocional_causal") or {})
+    linha_emocional = (
+        f"Expressão emocional vigente: {evento.get('emocao')}, nível {evento.get('nivel')}; "
+        f"causa: {_texto_curto(evento.get('causa'), 180)}. "
+        "Reaja ao conteúdo sem negar sua personalidade, inventar corpo ou cobrar afeto."
+        if evento_pode_alterar_estado(evento) else ""
+    )
+    if linha_emocional and evento.get("origem") == "pedido_expressao_usuario":
+        linha_emocional += (
+            " É uma pose pedida explicitamente: encene o tom em até duas frases curtas, "
+            "sem perguntas, hipóteses, explicação sobre corpo ou negar a expressão. "
+            "Não invente causa espontânea ou sentimento humano."
+        )
     if compacto:
         atos = ", ".join(str(item) for item in dados.get("atos") or []) or "conversa"
         referente = _texto_curto(dados.get("referente"), 160)
@@ -1022,6 +1129,8 @@ def formatar_contrato_fala_para_prompt(
             "--- CONTRATO SEMÂNTICO EFÊMERO DA FALA ---",
             f"Atos: {atos}.",
         ]
+        if linha_emocional:
+            linhas_compactas.append(linha_emocional)
         if referente:
             linhas_compactas.append(f"Referente concreto: {referente}.")
         if dados.get("estado_referencia_textual"):
@@ -1101,6 +1210,8 @@ def formatar_contrato_fala_para_prompt(
         f"Função: {dados.get('funcao') or 'informacao'}.",
         f"Atos: {', '.join(str(item) for item in dados.get('atos') or []) or 'conversa'}.",
     ]
+    if linha_emocional:
+        linhas.append(linha_emocional)
     referente = _texto_curto(dados.get("referente"), 180)
     if referente:
         linhas.append(f"Referente concreto: {referente}.")

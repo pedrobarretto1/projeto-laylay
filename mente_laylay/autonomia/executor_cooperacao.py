@@ -82,7 +82,8 @@ class ExecutorPlanoCooperativoRuntime:
 
         inicio = self._agora()
         limite_total = inicio + (int(plano.get("orcamento_total_ms") or 1) / 1000.0)
-        self.quadro.atualizar_plano(plano_id, "executando")
+        if not self.quadro.iniciar_execucao(plano_id):
+            return {"ok": False, "estado": "executando", "status": "execucao_ja_iniciada_sem_replay"}
         self.governanca.registrar_ciclo(self.quadro.obter_plano(plano_id) or plano, "iniciado")
         falhas: list[dict[str, Any]] = []
         interrompido = False

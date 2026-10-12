@@ -4,14 +4,17 @@ import threading
 import asyncio
 import time
 
-from mente_laylay.personalidade.voz_runtime import VozRuntime, resolver_vozes_tts
+import edge_tts
+import pytest
+
+from mente_laylay.personalidade.voz_runtime import criar_voz_runtime, resolver_vozes_tts
 
 
 def _runtime(
     edge, *, voice="principal", fallback_voice="reserva", logs=None,
     preparar_tts=None, registrar_falha=None,
 ):
-    return VozRuntime(
+    return criar_voz_runtime(
         fallback_fala="fallback",
         voice=voice,
         fallback_voice=fallback_voice,
@@ -44,6 +47,55 @@ def test_vozes_podem_ser_trocadas_pelo_ambiente() -> None:
         "LAYLAY_TTS_VOICE": "voz-personalizada",
         "LAYLAY_TTS_VOICE_FALLBACK": "voz-reserva",
     }) == ("voz-personalizada", "voz-reserva")
+
+
+@pytest.mark.parametrize("voice", [
+    "pt-BR-FranciscaNeural", "pt-BR-ThalitaMultilingualNeural",
+])
+def test_transporte_legado_migra_antes_da_sintese_sem_trocar_voz(
+    monkeypatch, voice,
+) -> None:
+    token = edge_tts.constants.TRUSTED_CLIENT_TOKEN
+    monkeypatch.setattr(
+        edge_tts.communicate, "WSS_URL",
+        "wss://speech.platform.bing.com/consumer/speech/synthesize/"
+        f"readaloud/edge/v1?TrustedClientToken={token}",
+    )
+    # A biblioteca normaliza o nome curto para o nome canônico do serviço.
+    voz_canonica = edge_tts.Communicate("controle", voice=voice).tts_config.voice
+    logs = []
+    runtime = _runtime(edge_tts, voice=voice, logs=logs)
+    comunicacao = runtime._criar_comunicacao_edge(
+        "Oi lay", voice=voice, rate="+3%", pitch="+2Hz", volume="+0%",
+    )
+
+    assert edge_tts.communicate.WSS_URL == (
+        "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1"
+        f"?Ocp-Apim-Subscription-Key={token}"
+    )
+    assert comunicacao.tts_config.voice == voz_canonica
+    assert comunicacao.tts_config.rate == "+3%"
+    assert comunicacao.tts_config.pitch == "+2Hz"
+    runtime._criar_comunicacao_edge(
+        "outra fala", voice=voice, rate="+0%", pitch="+0Hz", volume="+0%",
+    )
+    assert len(logs) == 1
+
+
+@pytest.mark.parametrize("url", [
+    "wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?novo=1",
+    "wss://outro-provedor.example/tts",
+])
+def test_transporte_atual_ou_personalizado_nao_e_substituido(monkeypatch, url):
+    monkeypatch.setattr(edge_tts.communicate, "WSS_URL", url)
+    logs = []
+    runtime = _runtime(edge_tts, voice="pt-BR-ThalitaMultilingualNeural", logs=logs)
+    for _ in range(2):
+        runtime._criar_comunicacao_edge(
+            "Olá", voice=runtime.voice, rate="+0%", pitch="+0Hz", volume="+0%",
+        )
+    assert edge_tts.communicate.WSS_URL == url
+    assert logs == []
 
 
 def test_falha_da_voz_principal_tenta_a_voz_de_reserva(tmp_path) -> None:

@@ -1,0 +1,1215 @@
+{
+  "falha": "AssertionError: modelo não publicou uma intenção corporal válida",
+  "retorno": {},
+  "plano": {
+    "id": 1791825772653592900,
+    "origem_entrada": "desconhecida",
+    "texto_usuario": "gosto muito de voce",
+    "modalidade": "conversa",
+    "ato_principal": "conversa",
+    "atos": [
+      {
+        "ordem": 0,
+        "tipo": "conversa",
+        "texto": "gosto muito de voce",
+        "objetivo": "continuar o assunto da fala atual",
+        "requer_execucao": false
+      }
+    ],
+    "dominio": "conversa",
+    "contexto_necessario": [
+      "fala_atual",
+      "identidade_interlocutores"
+    ],
+    "requer_execucao": false,
+    "autoriza_execucao": false,
+    "natureza_acao": "nenhuma",
+    "turno_sem_autorizacao": false,
+    "misto": false,
+    "texto_operacional": "",
+    "texto_conversacional": "gosto muito de voce",
+    "resposta_esperada": "receber o elogio dirigido à Laylay",
+    "funcao_comunicativa": "elogio",
+    "emocao_implicita": "afeto",
+    "postura_esperada": "envergonhada",
+    "permite_pergunta": false,
+    "identidade": {
+      "falante": "usuario",
+      "interlocutor": "laylay",
+      "laylay_eu": true,
+      "usuario_eu": true,
+      "pedro_eu": true,
+      "referencia_laylay": true,
+      "referencia_usuario": false,
+      "referencia_pedro": false,
+      "vocativo_laylay": false,
+      "texto_sem_vocativo": "gosto muito de voce",
+      "objeto_laylay_py": false,
+      "relacao_com_laylay": "",
+      "pronome_ambiguo": false,
+      "ts": 1791825774.874212
+    },
+    "retrato_id": 1791825772653592900,
+    "entidades": {},
+    "referencia_resolvida": {},
+    "operacao_explicita": "",
+    "especialistas": {
+      "social": {
+        "ativo": true,
+        "texto": "gosto muito de voce",
+        "funcao": "elogio",
+        "emocao": "afeto",
+        "postura": "envergonhada",
+        "permite_pergunta": false,
+        "precisa_reconhecimento": true,
+        "pode_executar": false,
+        "politica_resposta": "reconhecer_sem_pergunta"
+      },
+      "operacional": {
+        "ativo": false,
+        "texto": "",
+        "autoriza_execucao": false,
+        "operacao": "",
+        "intents_permitidos": [],
+        "referencia": {},
+        "confianca": 0.6,
+        "confiancas": {
+          "acao": 0.6,
+          "alvo": 1.0,
+          "referencia": 1.0
+        },
+        "requer_esclarecimento": false,
+        "confirmacao_explicita": false,
+        "motivo_bloqueio": "",
+        "pode_falar_sem_resultado": false,
+        "saude_componentes": {
+          "memoria_pessoas": {
+            "status": "saudavel",
+            "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+            "ausentes": [],
+            "ts": 1791825768.0354383
+          },
+          "observador_area_transferencia": {
+            "status": "saudavel",
+            "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+            "ausentes": [],
+            "ts": 1791825768.0370696
+          },
+          "agenda": {
+            "status": "saudavel",
+            "detalhes": "agenda local conectada a pendência canônica, aprendizado, diagnóstico e cooperação",
+            "ausentes": [],
+            "ts": 1791825768.037982
+          },
+          "orquestracao_cooperativa": {
+            "status": "saudavel",
+            "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+            "ausentes": [],
+            "ts": 1791825768.0450022
+          },
+          "execucao_intencao": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791825768.0472717
+          },
+          "ciclo_comandos": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791825768.0472791
+          }
+        }
+      },
+      "coordenacao": {
+        "modo": "social",
+        "ordem": [
+          "responder_parte_humana"
+        ],
+        "consultas": [],
+        "memoria_compartilhada": true,
+        "voz_unica": true,
+        "executor_unico": true,
+        "consulta_concluida": false,
+        "arquitetura": "consenso_distribuido",
+        "sem_vencedor_isolado": true
+      },
+      "pareceres_habilidades": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:elogio",
+            "postura:envergonhada"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta"
+        },
+        {
+          "habilidade": "operacao",
+          "ativo": false,
+          "proposta": "interpretar a possível ação sem produzir efeito não autorizado",
+          "confianca": 0.6,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "operacao:-",
+            "autorizada:False"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_com_resultado_real"
+        },
+        {
+          "habilidade": "contexto_geral",
+          "ativo": false,
+          "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "referencia:-",
+            "candidatos:0"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "memoria_aprendizado",
+          "ativo": false,
+          "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "declaracoes_explicitas:0",
+            "origem:usuario"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "pesquisa_factual",
+          "ativo": false,
+          "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "tema:-"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+        }
+      ],
+      "deliberacao": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "receber o elogio dirigido à Laylay",
+        "estado": "consenso_formado",
+        "participantes": [
+          "conversa",
+          "personalidade"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [],
+        "pareceres": [
+          {
+            "habilidade": "conversa",
+            "ativo": true,
+            "proposta": "acolher e responder ao significado humano da fala atual",
+            "confianca": 0.94,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.94,
+            "evidencias": [
+              "funcao_comunicativa:elogio",
+              "postura:envergonhada"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [
+              "conversa"
+            ],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "funcao_comunicativa:elogio",
+          "postura:envergonhada",
+          "uma_mente",
+          "uma_voz"
+        ],
+        "conclusao_conjunta": [
+          "acolher e responder ao significado humano da fala atual",
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "conversa",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "conversa",
+              "personalidade"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {}
+      }
+    },
+    "atualidade_factual": {
+      "depende_atualidade": false,
+      "classe": "nao_consulta",
+      "validade_sugerida_s": 0.0,
+      "confianca": 0.0,
+      "motivos": [
+        "fala_nao_consultiva"
+      ]
+    },
+    "modo_coordenacao": "social",
+    "confianca": 0.6,
+    "periodo": "tarde",
+    "fase": "fala_verificada",
+    "comandos": [],
+    "problemas": [],
+    "veto_execucao_operacional": false,
+    "ts": 1791825774.8857908,
+    "decisao_turno": {
+      "turno_id": 1791825772653592900,
+      "modalidade": "conversa",
+      "proprietario": "conversa",
+      "permite_acao": false,
+      "permite_resposta": true,
+      "requer_esclarecimento": false,
+      "intencao": "",
+      "origem_decisao": "arbitro_sem_vencedor",
+      "confianca": 0.6,
+      "status": "sem_acao"
+    },
+    "evento_emocional_causal": {
+      "origem": "reconhecimento_social_usuario",
+      "causa": "elogio pessoal explícito dirigido à Laylay",
+      "evidencia_ref": "turno:1791825772653592900:texto_usuario",
+      "natureza_evidencia": "leitura_social",
+      "responsabilidade": "usuario",
+      "confianca": 0.94,
+      "relevancia": 0.65,
+      "novidade": 0.65,
+      "intensidade": 2,
+      "sensibilidade": "normal",
+      "alvo": "laylay",
+      "validade": {
+        "valido": true,
+        "inicio_ts": 1791825774.8969676,
+        "expira_ts": 1791825834.8969676,
+        "motivo": "causa_rastreavel"
+      },
+      "permite_expressao": true,
+      "emocao": "envergonhada",
+      "nivel": 2,
+      "motivo_expressao": "elogio_pessoal_direto",
+      "arco": "reconhecimento_social",
+      "ts": 1791825774.8969676,
+      "autoriza_execucao": false,
+      "persistencia_pessoal": false,
+      "versao": 1
+    },
+    "evidencia_capacidades": {
+      "fonte": "catalogo_vivo",
+      "dominios_confirmados": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "dominios_relevantes": [],
+      "dominios_indisponiveis_relevantes": [],
+      "possui_capacidades_locais": true,
+      "documentacao_capacidades": "",
+      "documentacao_texto": "gosto muito de voce",
+      "documentacao_turno_id": 1791825772653592900,
+      "predicados_capacidade": [],
+      "autoriza_execucao": false
+    },
+    "fundamentacao_factual": {},
+    "deliberacao_habilidades": {
+      "arquitetura": "consenso_distribuido",
+      "objetivo": "receber o elogio dirigido à Laylay",
+      "estado": "consenso_formado",
+      "participantes": [
+        "conversa",
+        "personalidade"
+      ],
+      "silenciosas": [],
+      "executoras_autorizadas": [],
+      "pareceres": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:elogio",
+            "postura:envergonhada"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        }
+      ],
+      "rejeitados": [],
+      "evidencias_compartilhadas": [
+        "funcao_comunicativa:elogio",
+        "postura:envergonhada",
+        "uma_mente",
+        "uma_voz"
+      ],
+      "conclusao_conjunta": [
+        "acolher e responder ao significado humano da fala atual",
+        "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+      ],
+      "rodadas": [
+        {
+          "fase": "hipoteses",
+          "participantes": [
+            "conversa",
+            "personalidade"
+          ]
+        },
+        {
+          "fase": "compatibilidade",
+          "aceitos": [
+            "conversa",
+            "personalidade"
+          ],
+          "rejeitados": 0
+        },
+        {
+          "fase": "consenso",
+          "contribuicoes": 2
+        }
+      ],
+      "regras": {
+        "sem_vencedor_isolado": true,
+        "voz_final_unica": true,
+        "falha_auxiliar_nao_substitui_resposta": true,
+        "execucao_somente_por_porteiro_canonico": true,
+        "memoria_e_aprendizado_silenciosos": true
+      },
+      "quadro_canonico": {}
+    },
+    "contrato_fala": {
+      "versao": 1,
+      "turno_id": 1791825772653592900,
+      "funcao": "elogio",
+      "atos": [
+        "conversa"
+      ],
+      "referente": "",
+      "estado_referencia_textual": "",
+      "conteudos_obrigatorios": [
+        "receber o elogio dirigido à Laylay",
+        "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+      ],
+      "inferencias_proibidas": [
+        "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+        "não transformar personalidade em fato nem em confirmação operacional",
+        "pedido não prova tentativa nem resultado: não deduzir sucesso, falha ou causa; responder ao que foi dito",
+        "falas antigas da assistente não são comprovantes; resultados exigem relato atribuído ao usuário ou evidência do executor",
+        "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+      ],
+      "estrutura": [
+        "reconhecer literalmente a fala atual",
+        "responder ao conteúdo pedido",
+        "acrescentar personalidade somente se couber"
+      ],
+      "max_frases": 3,
+      "permite_pergunta": false,
+      "permite_humor": true,
+      "permite_metafora": false,
+      "fala_anterior_relevante": "",
+      "texto_usuario_corrigido": "",
+      "pedido_ensino_anterior": "",
+      "respostas_recentes_evitar": [],
+      "capacidades_confirmadas": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "documentacao_capacidades": "",
+      "predicados_capacidade": [],
+      "cooperacao_considerada": true,
+      "roteiro_concreto": {
+        "versao": 1,
+        "estrategia": "reconhecimento_social_direto",
+        "ancora_literal": "gosto muito de voce",
+        "nucleo_resposta": "receber o carinho ou elogio dirigido a você, com uma reação pessoal breve",
+        "sequencia": [
+          "reconhecer o ato social atual na primeira frase",
+          "preservar a expressão causal fornecida sem negar sua personalidade ou inventar corpo",
+          "não cobrar carinho, presumir o estado emocional do usuário ou retomar tarefas anteriores"
+        ],
+        "exigencias_concretude": [
+          "usar a fala atual antes de puxar contexto antigo",
+          "nomear o referente quando ele estiver resolvido",
+          "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+          "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+        ],
+        "abstracoes_a_concretizar": [
+          "energia",
+          "vibe",
+          "sensação",
+          "sentir-se vivo",
+          "alma",
+          "universo",
+          "ritmo",
+          "essência"
+        ],
+        "base_permitida": [
+          "fala atual do usuário",
+          "catálogo vivo confirmou capacidades locais: corpo_motor, rosto_oled, musica, sistema, visao, agenda, arquivos, email"
+        ],
+        "primeira_frase_responde_nucleo": true,
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "autoriza_execucao": false,
+      "origem": "mente_unica",
+      "avaliacao_social": {
+        "tipo": "elogio_pessoal",
+        "alvo": "laylay",
+        "confianca": 0.94,
+        "atributo": "",
+        "trecho_evidencia": "gosto muito de voce",
+        "autoriza_execucao": false,
+        "memorizar_como_fato": false
+      },
+      "evento_emocional_causal": {
+        "origem": "reconhecimento_social_usuario",
+        "causa": "elogio pessoal explícito dirigido à Laylay",
+        "evidencia_ref": "turno:1791825772653592900:texto_usuario",
+        "natureza_evidencia": "leitura_social",
+        "responsabilidade": "usuario",
+        "confianca": 0.94,
+        "relevancia": 0.65,
+        "novidade": 0.65,
+        "intensidade": 2,
+        "sensibilidade": "normal",
+        "alvo": "laylay",
+        "validade": {
+          "valido": true,
+          "inicio_ts": 1791825774.8969676,
+          "expira_ts": 1791825834.8969676,
+          "motivo": "causa_rastreavel"
+        },
+        "permite_expressao": true,
+        "emocao": "envergonhada",
+        "nivel": 2,
+        "motivo_expressao": "elogio_pessoal_direto",
+        "arco": "reconhecimento_social",
+        "ts": 1791825774.8969676,
+        "autoriza_execucao": false,
+        "persistencia_pessoal": false,
+        "versao": 1
+      }
+    },
+    "retrato_corporal": {
+      "origem": "owner_corpo_usb",
+      "ts": 1791825775.1858726,
+      "turno_id": "1791825772653592900",
+      "sessao": "9e904145",
+      "concessao_id": "de3e47640630b0e7",
+      "conectada": true,
+      "companhia_ativa": true,
+      "passeio_ativo": true,
+      "perfil": "rodas_suspensas",
+      "olhos": [
+        0,
+        1,
+        0
+      ],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "envergonhada",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {}
+    },
+    "erros": [],
+    "fala_planejada": "Agradeço por gostar de mim, mesmo que eu não tenha corpo nem vida real — é um carinho que me deixa um pouco mais leve.",
+    "atualizado_ts": 1791825780.6859298,
+    "ultima_verificacao": {
+      "aceita": true,
+      "fala": "Agradeço por gostar de mim, mesmo que eu não tenha corpo nem vida real — é um carinho que me deixa um pouco mais leve.",
+      "acao": "aceita",
+      "problemas": [],
+      "pontuacao": 1.0,
+      "aderencia_contrato": {
+        "avaliado": true,
+        "aceita": true,
+        "requer_reparo": false,
+        "problemas": [],
+        "estrategia": "reconhecimento_social_direto",
+        "nucleo_atendido": true,
+        "contrato_reparo": {
+          "estrategia": "reconhecimento_social_direto",
+          "atos_obrigatorios": [
+            "conversa"
+          ],
+          "referente": "",
+          "estado_referencia_textual": "",
+          "texto_usuario_corrigido": "",
+          "nucleo_primeira_frase": "receber o carinho ou elogio dirigido a você, com uma reação pessoal breve",
+          "sequencia": [
+            "reconhecer o ato social atual na primeira frase",
+            "preservar a expressão causal fornecida sem negar sua personalidade ou inventar corpo",
+            "não cobrar carinho, presumir o estado emocional do usuário ou retomar tarefas anteriores"
+          ],
+          "max_frases": 3,
+          "permite_metafora": false,
+          "autoriza_execucao": false,
+          "preservar_identidade_emocional": true,
+          "evento_emocional_causal": {
+            "origem": "reconhecimento_social_usuario",
+            "causa": "elogio pessoal explícito dirigido à Laylay",
+            "evidencia_ref": "turno:1791825772653592900:texto_usuario",
+            "natureza_evidencia": "leitura_social",
+            "responsabilidade": "usuario",
+            "confianca": 0.94,
+            "relevancia": 0.65,
+            "novidade": 0.65,
+            "intensidade": 2,
+            "sensibilidade": "normal",
+            "alvo": "laylay",
+            "validade": {
+              "valido": true,
+              "inicio_ts": 1791825774.8969676,
+              "expira_ts": 1791825834.8969676,
+              "motivo": "causa_rastreavel"
+            },
+            "permite_expressao": true,
+            "emocao": "envergonhada",
+            "nivel": 2,
+            "motivo_expressao": "elogio_pessoal_direto",
+            "arco": "reconhecimento_social",
+            "ts": 1791825774.8969676,
+            "autoriza_execucao": false,
+            "persistencia_pessoal": false,
+            "versao": 1
+          }
+        },
+        "autoriza_execucao": false
+      }
+    }
+  },
+  "modelo": {},
+  "respostas_originais": [
+    {
+      "texto": "{\"fala\":\"Isso me deu um calor no rosto, tipo um sol de tarde que só aparece quando o mundo está mais perto de você.\",\"intenção_corporal\":{\"nome\":\"expressar\"},\"emocao_causal\":{\"nome\":\"envergonhada\",\"nivel\":2}}",
+      "sucesso": true
+    }
+  ],
+  "trilha": [
+    {
+      "direcao": "tx",
+      "tempo": 9961.8929755,
+      "pacote": "HELLO 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.0071475,
+      "pacote": "CAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.1164852,
+      "pacote": "GCAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.2253759,
+      "pacote": "MCAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.3348035,
+      "pacote": "LCAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.4434272,
+      "pacote": "SCAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.5527599,
+      "pacote": "ECAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.6621531,
+      "pacote": "RCAPS 1 9e904145"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.7708811,
+      "pacote": "FACE 1 9e904145 1 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9962.8794303,
+      "pacote": "ACK 1 9e904145 1 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.8795259,
+      "pacote": "ACTIVITY 1 9e904145 1 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9962.9888267,
+      "pacote": "SOUND 1 9e904145 1 0"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9963.0985412,
+      "pacote": "SOUNDACK 1 9e904145 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9963.3616223,
+      "pacote": "FACE 1 9e904145 2 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9963.4701815,
+      "pacote": "ACK 1 9e904145 2 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9963.4702669,
+      "pacote": "ACTIVITY 1 9e904145 2 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9963.8433507,
+      "pacote": "FACE 1 9e904145 3 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9963.9540408,
+      "pacote": "ACK 1 9e904145 3 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9963.9541056,
+      "pacote": "ACTIVITY 1 9e904145 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9964.327461,
+      "pacote": "FACE 1 9e904145 4 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9964.4360658,
+      "pacote": "ACK 1 9e904145 4 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9964.4361424,
+      "pacote": "ACTIVITY 1 9e904145 4 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9964.8086097,
+      "pacote": "FACE 1 9e904145 5 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9964.9175319,
+      "pacote": "ACK 1 9e904145 5 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9964.9176099,
+      "pacote": "ACTIVITY 1 9e904145 5 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9965.2765731,
+      "pacote": "FACE 1 9e904145 6 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9965.3857414,
+      "pacote": "ACK 1 9e904145 6 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9965.3858187,
+      "pacote": "ACTIVITY 1 9e904145 6 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9965.7591756,
+      "pacote": "FACE 1 9e904145 7 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9965.8692377,
+      "pacote": "ACK 1 9e904145 7 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9965.8693184,
+      "pacote": "ACTIVITY 1 9e904145 7 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9966.2428745,
+      "pacote": "FACE 1 9e904145 8 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9966.3510765,
+      "pacote": "ACK 1 9e904145 8 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9966.3511439,
+      "pacote": "ACTIVITY 1 9e904145 8 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9966.7112085,
+      "pacote": "FACE 1 9e904145 9 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9966.820064,
+      "pacote": "ACK 1 9e904145 9 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9966.8201168,
+      "pacote": "ACTIVITY 1 9e904145 9 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9967.1920185,
+      "pacote": "FACE 1 9e904145 10 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9967.3022083,
+      "pacote": "ACK 1 9e904145 10 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9967.3022491,
+      "pacote": "ACTIVITY 1 9e904145 10 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9967.6779165,
+      "pacote": "FACE 1 9e904145 11 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9967.8011935,
+      "pacote": "ACK 1 9e904145 11 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9967.8012511,
+      "pacote": "ACTIVITY 1 9e904145 11 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9968.3445993,
+      "pacote": "FACE 1 9e904145 12 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9968.7918861,
+      "pacote": "ACK 1 9e904145 12 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9968.7919607,
+      "pacote": "ACTIVITY 1 9e904145 12 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9969.1651175,
+      "pacote": "FACE 1 9e904145 13 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9969.2748727,
+      "pacote": "ACK 1 9e904145 13 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9969.2749507,
+      "pacote": "ACTIVITY 1 9e904145 13 1 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9969.6471238,
+      "pacote": "FACE 1 9e904145 14 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9969.7554641,
+      "pacote": "ACK 1 9e904145 14 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9969.7555517,
+      "pacote": "ACTIVITY 1 9e904145 14 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9970.1296909,
+      "pacote": "FACE 1 9e904145 15 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9970.2388376,
+      "pacote": "ACK 1 9e904145 15 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9970.2389241,
+      "pacote": "ACTIVITY 1 9e904145 15 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9970.6100347,
+      "pacote": "FACE 1 9e904145 16 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9970.7197607,
+      "pacote": "ACK 1 9e904145 16 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9970.7198481,
+      "pacote": "ACTIVITY 1 9e904145 16 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9971.0934345,
+      "pacote": "FACE 1 9e904145 17 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9971.2021712,
+      "pacote": "ACK 1 9e904145 17 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9971.2022443,
+      "pacote": "ACTIVITY 1 9e904145 17 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9971.5751098,
+      "pacote": "FACE 1 9e904145 18 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9971.682052,
+      "pacote": "ACK 1 9e904145 18 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9971.6821209,
+      "pacote": "ACTIVITY 1 9e904145 18 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9972.0555919,
+      "pacote": "FACE 1 9e904145 19 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9972.1654237,
+      "pacote": "ACK 1 9e904145 19 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9972.1655033,
+      "pacote": "ACTIVITY 1 9e904145 19 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9972.5379076,
+      "pacote": "FACE 1 9e904145 20 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9972.6475105,
+      "pacote": "ACK 1 9e904145 20 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9972.6475958,
+      "pacote": "ACTIVITY 1 9e904145 20 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9973.0198051,
+      "pacote": "FACE 1 9e904145 21 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9973.1285395,
+      "pacote": "ACK 1 9e904145 21 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9973.1286105,
+      "pacote": "ACTIVITY 1 9e904145 21 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9973.499134,
+      "pacote": "FACE 1 9e904145 22 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9973.6064139,
+      "pacote": "ACK 1 9e904145 22 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9973.6064954,
+      "pacote": "ACTIVITY 1 9e904145 22 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9973.9789679,
+      "pacote": "FACE 1 9e904145 23 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9974.0877911,
+      "pacote": "ACK 1 9e904145 23 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.0878751,
+      "pacote": "ACTIVITY 1 9e904145 23 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.4629805,
+      "pacote": "FACE 1 9e904145 24 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9974.5713998,
+      "pacote": "ACK 1 9e904145 24 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.5714718,
+      "pacote": "ACTIVITY 1 9e904145 24 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.6800553,
+      "pacote": "EXPR 1 9e904145 1 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9974.7881521,
+      "pacote": "EACK 1 9e904145 1 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.7882964,
+      "pacote": "SOUND 1 9e904145 2 6"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9974.8995927,
+      "pacote": "SOUNDACK 1 9e904145 2 6"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9974.8997879,
+      "pacote": "STOP 1 9e904145 1"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9975.0068955,
+      "pacote": "SACK 1 9e904145 1"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9975.0071464,
+      "pacote": "STOP 1 9e904145 2"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9975.1165914,
+      "pacote": "SACK 1 9e904145 2"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 9975.1166162,
+      "pacote": "GOODNIGHT 1 9e904145 2"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 9975.225385,
+      "pacote": "NACK 1 9e904145 2"
+    }
+  ],
+  "observacao_humana": "pendente",
+  "interface_aberta": false,
+  "serial_simulada": false,
+  "chat_ativo": true,
+  "tipo": "runtime principal real com observadores de modelo e serial"
+}

@@ -42,6 +42,7 @@ from mente_laylay.autonomia.roteador_deterministico import (
     preparar_entrada_deterministica,
 )
 from mente_laylay.cognicao.intencao_visual_jogo import detectar_pedido_visao_jogo
+from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_referencia_ordinal,
     separar_alvo_e_complemento_foco,
@@ -53,6 +54,9 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_continuacao_aditiva,
     selecionar_aba_sobrevivente_fechamento_ordinal,
     selecionar_referente_saliente,
+)
+from mente_laylay.memoria_mental.contexto_imediato import (
+    resolver_continuacao_operacional_confirmada, texto_pede_ajuste_numerico_contextual,
 )
 
 
@@ -113,6 +117,11 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     # faria``; uma ação física jamais deve ser autorizada a partir desse texto
     # já reescrito.
     bloqueio_iot_original = bloqueia_controle_iot_por_modalidade(texto)
+    # Entidades do corpo são resolvidas antes do filtro de conversa curta.
+    # A autoridade continua no turno/árbitro e é validada pelo executor.
+    candidato_corpo = detectar_intencao_corpo(texto)
+    if candidato_corpo:
+        return candidato_corpo
 
     def _candidato_iot_seguro(texto_detector: str) -> Dict[str, Any] | None:
         candidato = _call(
@@ -312,6 +321,22 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     )
     if consulta_clima and modalidade_iot != "deliberativo":
         return consulta_clima
+
+    # Uma gramática contextual já resolveu o referente e o novo parâmetro.
+    # Consumir essa proposta qualificada antes de um verbo genérico virar
+    # busca de outro domínio. A autoridade de execução continua no turno.
+    continuacao_confirmada = resolver_continuacao_operacional_confirmada(
+        texto, mente_previa if isinstance(mente_previa, Mapping) else {},
+        normalizar_texto=_get(ctx, "normalizar_texto"),
+    )
+    if continuacao_confirmada:
+        return continuacao_confirmada
+    if texto_pede_ajuste_numerico_contextual(
+        _call(ctx, "normalizar_texto", texto, default=texto)
+    ):
+        # Sem vínculo vigente, essa atribuição não vira um título em outro
+        # domínio. Ausência de candidato deixa esclarecimento/conversa ao owner.
+        return None
 
     # Consultas e controles explícitos do player precisam vencer o filtro
     # conversacional genérico aplicado por ``preparar_entrada_deterministica``.
@@ -705,7 +730,7 @@ class DeteccaoDeterministicaRuntime:
         self.apps_map = apps_map
         self.iot = iot
 
-    def detectar(self, texto: str) -> Dict[str, Any] | None:
+    def detectar(self, texto: str, *, estado_mental: Mapping[str, Any] | None = None) -> Dict[str, Any] | None:
         ns = self.namespace_getter() or {}
 
         # A agenda tem precedência sobre a execução imediata. Se houver uma
@@ -716,7 +741,7 @@ class DeteccaoDeterministicaRuntime:
         if callable(extrair_agendamento):
             agendamento = extrair_agendamento(texto)
             if isinstance(agendamento, dict) and agendamento.get("texto_acao"):
-                acao_base = self.detectar(str(agendamento.get("texto_acao") or ""))
+                acao_base = self.detectar(str(agendamento.get("texto_acao") or ""), estado_mental=estado_mental)
                 intent_base = str((acao_base or {}).get("intent") or "").upper().strip()
                 bloqueados = {
                     "", "AGENDAR_ACAO", "AGENDAR_LEMBRETE", "LISTAR_AGENDAMENTOS",
@@ -745,7 +770,7 @@ class DeteccaoDeterministicaRuntime:
         contexto.update({
             "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
             "abas_sugeridas_fechar": ns.get("_abas_sugeridas_fechar", []),
-            "mente_integrada_estado": self.estado_getter() or {},
+            "mente_integrada_estado": dict(estado_mental) if estado_mental is not None else self.estado_getter() or {},
             "sites_diretos": self.sites_diretos,
             "apps_map": self.apps_map,
             "detectar_intencao_iot": getattr(self.iot, "detectar", None),

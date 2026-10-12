@@ -1,0 +1,135 @@
+{
+  "passos": [
+    {
+      "fase": "concessao_usb",
+      "diagnostico": {
+        "duracao_maxima_ms": 5000,
+        "suportado": true,
+        "disponivel": true,
+        "aplicacao_pwm_confirmada": false,
+        "parada_confirmada": false,
+        "em_andamento": false,
+        "motivo": "",
+        "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+        "prova_rotacao": false,
+        "prova_parada_fisica": false,
+        "autoriza_execucao": false,
+        "pulsos_limitados": true,
+        "autonomia_ativada": true,
+        "companhia": {
+          "ativa": true,
+          "motivo": "concessao_usb_vigente",
+          "transporte_exigido": "serial",
+          "ttl_maximo_s": null,
+          "gestos_maximos": null,
+          "gestos_emitidos": 0,
+          "intervalo_minimo_s": 2,
+          "pwm_gestos": 230,
+          "duracao_maxima_gesto_ms": 5000,
+          "duracao_planejada_maxima_coreografia_ms": 16000,
+          "movimentos_maximos_por_gesto": 4,
+          "perfil_expressivo": "ritmo_emocional_v2",
+          "perfil_corporal": "rodas_suspensas",
+          "intencao": {},
+          "passeio_ativado": true,
+          "comemoracoes_emitidas": 0,
+          "passeios_emitidos": 0,
+          "giro_360_calibrado": false,
+          "restantes_s": null,
+          "vigencia": "sessao_usb_atual_ate_revogacao",
+          "origem": "configuracao_explicita_de_bancada",
+          "ativacao_automatica_ao_iniciar": true,
+          "passeio_automatico_ao_iniciar": true,
+          "autoriza_execucao": false,
+          "persistente": false,
+          "possui_sensores": false
+        },
+        "possui_sensor_de_deslocamento": false
+      }
+    },
+    {
+      "fase": "exploracao_continua",
+      "retorno": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      },
+      "intencao": {
+        "id": "5448fe4c629e",
+        "nome": "explorar",
+        "motivo": "disponivel_para_passeio_concedido",
+        "prioridade": 30,
+        "desde_monotonic": 2606.3975763,
+        "ate_monotonic": 2618.3975763,
+        "chave": [
+          "explorar",
+          0,
+          1
+        ],
+        "candidata_a_movimento": true,
+        "estado": "concluida",
+        "origem": "owner_companhia_corporal",
+        "perfil": "rodas_suspensas",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false
+      }
+    },
+    {
+      "fase": "tarefa_pc_simulada_interrompeu",
+      "retorno": {
+        "ok": false,
+        "estado": "falhou",
+        "status": "falha_execucao",
+        "falhas": [
+          {
+            "etapa": "motor",
+            "status": "falha_execucao"
+          }
+        ]
+      },
+      "intencao": {
+        "id": "4b8b412cc24a",
+        "nome": "atenta",
+        "motivo": "atividade_pc_em_andamento",
+        "prioridade": 100,
+        "desde_monotonic": 2629.6234538,
+        "ate_monotonic": 2641.6234538,
+        "chave": [
+          "atenta",
+          0,
+          1
+        ],
+        "candidata_a_movimento": false,
+        "estado": "proposta",
+        "origem": "owner_companhia_corporal",
+        "perfil": "rodas_suspensas",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false
+      },
+      "atividade_simulada": true
+    },
+    {
+      "fase": "parada_final",
+      "retorno": {
+        "ok": true,
+        "motivo": "",
+        "aplicacao_pwm_confirmada": false,
+        "parada_confirmada": true,
+        "pwm_esquerdo": 0,
+        "pwm_direito": 0,
+        "duracao_ms": 0,
+        "evidencia": "sack",
+        "prova_rotacao": false,
+        "prova_parada_fisica": false,
+        "cancelado": false,
+        "status": "sucesso"
+      }
+    }
+  ],
+  "falha": "",
+  "erros": [],
+  "observacao_humana": "Pedro não acompanhou o ensaio controlado; na aplicação normal reiniciada confirmou: Sim, acompanha e os motores se movimentam",
+  "perfil": "rodas_suspensas",
+  "fonte_sha256": "133bc2350edf99965418be23532d08d3fc5b75389e1522346a769d186c070462"
+}

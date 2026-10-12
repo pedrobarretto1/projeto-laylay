@@ -75,7 +75,6 @@ from mente_laylay.emocoes.contrato_causal import (
     criar_evento_reconhecimento_social_usuario,
     evento_esta_ativo,
 )
-from mente_laylay.personalidade.leitura_social_conversa import elogio_pessoal_direto
 from mente_laylay.cognicao.preferencia_humor import (
     contexto_humor_turno,
     extrair_preferencia_humor,
@@ -86,6 +85,7 @@ from mente_laylay.memoria_mental.eventos_emocionais import (
     publicar_evento_emocional_causal,
 )
 from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
+from mente_laylay.emocoes.contrato_causal import criar_evento_expressao_solicitada
 
 
 _PROPOSTA_NAO_INFORMADA = object()
@@ -1360,16 +1360,20 @@ def _iniciar_planejamento_turno(
         leitura_emocional_usuario,
         turno_id=str(plano.get('id') or turno.get('id') or time.time_ns()),
     )
+    if funcao_comunicativa.get('funcao') == 'pedido_expressao' and not plano.get('requer_execucao'):
+        evento_emocional_causal = criar_evento_expressao_solicitada(
+            funcao_comunicativa['expressao_solicitada'], turno_id=str(plano.get('id') or turno.get('id') or ''),
+        )
     if (
         not evento_emocional_causal
-        and str(funcao_comunicativa.get('funcao') or '') == 'elogio'
+        and str(funcao_comunicativa.get('funcao') or '') in {'elogio', 'critica_pessoal', 'rejeicao_pessoal'}
         and not plano.get('requer_execucao')
-        and elogio_pessoal_direto(texto)
+        and dict(funcao_comunicativa.get('avaliacao_social') or {}).get('alvo') == 'laylay'
     ):
         evento_emocional_causal = criar_evento_reconhecimento_social_usuario(
             turno_id=str(plano.get('id') or turno.get('id') or ''),
             confianca=float(funcao_comunicativa.get('confianca') or 0.0),
-            tipo='elogio_pessoal',
+            tipo=str(funcao_comunicativa['avaliacao_social']['tipo']),
         )
     if evento_emocional_causal:
         turno['evento_emocional_causal'] = dict(evento_emocional_causal)
@@ -1433,7 +1437,7 @@ def _iniciar_planejamento_turno(
                 ns['print'](f"⚠️ [MEMÓRIA] não consegui persistir a correção: {erro}")
     ns['_estado_compartilhado_runtime'].atualizar_campos('mental', **atualizacoes_turno)
     if (
-        evento_emocional_causal.get('origem') == 'reconhecimento_social_usuario'
+        evento_emocional_causal.get('origem') in {'reconhecimento_social_usuario', 'pedido_expressao_usuario'}
         and dict(ns['_estado_compartilhado_runtime'].mental.get('eventos_emocionais_causais') or {}).get('atual')
         == evento_emocional_causal
     ):
@@ -1604,6 +1608,11 @@ def atualizar_planejamento_turno(
             except ValueError:
                 return mental
         novo = ns['_atualizar_plano_turno_mente'](atual, fase=fase, comandos=comandos_finais, erros=erros, fala=fala)
+        if vinculada and fase == 'resposta_planejada':
+            from mente_laylay.cognicao.modelo_corporal import vincular_intencao_corporal
+            intencao_corporal = vincular_intencao_corporal(atual, proposta_principal)
+            if intencao_corporal:
+                novo['intencao_corporal'] = intencao_corporal
         trilha = ns['_registrar_etapa_turno_mente'](mental.get('trilha_decisoes_turno') or [], novo, fase=fase)
         novo_estado = dict(mental)
         novo_estado.update(plano_turno_atual=novo, trilha_decisoes_turno=trilha)

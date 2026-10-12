@@ -1,0 +1,46 @@
+{
+  "porta": "COM4",
+  "core": "3.3.12",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "flags": [
+    "LAYLAY_WIFI=0",
+    "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+    "LAYLAY_SOM_PONTE=0",
+    "LAYLAY_LIMITE_MOTOR_TESTE_MS=5000"
+  ],
+  "upload": "hash verificado pelo esptool",
+  "flash_bytes": 393764,
+  "globals_bytes": 17436,
+  "pytest": "311 passed",
+  "host": [
+    "presenca_v2",
+    "validar",
+    "glitch_boca",
+    "som_olhos",
+    "motor_longo"
+  ],
+  "validacao_humana": {
+    "gestos": "Sim, ficou mais expressivo e combinado",
+    "sono_final": "Sim, agora ficou suave"
+  },
+  "aplicacao_normal": "fechada a pedido de Pedro; não reaberta para validação V2",
+  "prova_deslocamento": false,
+  "arquivos": {
+    "firmware/rosto_laylay/rosto_laylay.ino": {
+      "sha256": "c5559c6ba21188cabdc737b7bc2bf70c24c50c71135c9b3507c07d3f27ef40e9",
+      "bytes": 38673
+    },
+    "firmware/rosto_laylay/presenca_expressiva.h": {
+      "sha256": "85da3ac6f9659a572c2e19b6c001eead9458d4fffdddb76a9ba72b5030c40229",
+      "bytes": 2969
+    },
+    "firmware/rosto_laylay/som_expressivo.h": {
+      "sha256": "75d7941d604fa865537ee6175db5cf9dd2f310bd71853958c5281faf33cd6000",
+      "bytes": 3409
+    },
+    "artifacts\\rosto_oled\\presenca_v2\\build\\rosto_laylay.ino.bin": {
+      "sha256": "664766f60b629c952c8e578a16ffb93dc5b874ea3add214625a454bc1d5d752b",
+      "bytes": 393920
+    }
+  }
+}

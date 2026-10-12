@@ -1,0 +1,146 @@
+{
+  "sincronizou": true,
+  "tentativas": [
+    {
+      "tentativa": 0,
+      "ok": false,
+      "duracao": 0.8085405999991053,
+      "motivo": "TimeoutError:timed out"
+    },
+    {
+      "tentativa": 1,
+      "ok": false,
+      "duracao": 0.8097503999997571,
+      "motivo": "TimeoutError:timed out"
+    },
+    {
+      "tentativa": 2,
+      "ok": true,
+      "duracao": 0.18005669999911333,
+      "motivo": "frame_confirmado_pelo_esp"
+    }
+  ],
+  "diagnostico": {
+    "configurado": true,
+    "conectado": true,
+    "transporte": "serial",
+    "modo_conexao": "manual",
+    "endpoint": "",
+    "porta_ativa": "tcp://192.168.137.52:8765",
+    "evidencia_recente": true,
+    "aplicacao_confirmada": true,
+    "estado": "disponivel",
+    "motivo": "frame_confirmado_pelo_esp",
+    "confirmado": [
+      0,
+      1,
+      0
+    ],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "hack": {
+      "suportado": true,
+      "aplicacao_confirmada": true,
+      "ativo": false,
+      "motivo": "overlay_confirmado_pelo_esp",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": true,
+      "aplicacao_confirmada": false,
+      "motivo": "aguardando_falha",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "suportado": true,
+      "disponivel": true,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": false,
+      "motivo": "",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "protocolo": [
+    [
+      "TX",
+      "HELLO 1 058aca5f\n"
+    ],
+    [
+      "RX",
+      "READY 1 058aca5f SSD1306 128 64\n"
+    ],
+    [
+      "TX",
+      "CAPS 1 058aca5f\n"
+    ],
+    [
+      "RX",
+      "CAPS 1 058aca5f HACK1\n"
+    ],
+    [
+      "TX",
+      "GCAPS 1 058aca5f\n"
+    ],
+    [
+      "RX",
+      "GCAPS 1 058aca5f GLITCH1\n"
+    ],
+    [
+      "TX",
+      "MCAPS 1 058aca5f\n"
+    ],
+    [
+      "RX",
+      "MCAPS 1 058aca5f MOTOR1\n"
+    ],
+    [
+      "TX",
+      "FACE 1 058aca5f 1 0 1 0 3500\n"
+    ],
+    [
+      "RX",
+      "ACK 1 058aca5f 1 0 1 0\n"
+    ],
+    [
+      "TX",
+      "ACTIVITY 1 058aca5f 1 0 1200\n"
+    ],
+    [
+      "RX",
+      "AACK 1 058aca5f 1 0\n"
+    ],
+    [
+      "TX",
+      "STOP 1 058aca5f 1\n"
+    ],
+    [
+      "RX",
+      "SACK 1 058aca5f 1\n"
+    ]
+  ],
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  }
+}

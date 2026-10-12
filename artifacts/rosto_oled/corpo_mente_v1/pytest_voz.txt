@@ -1,0 +1,11 @@
+.......F..............                                                   [100%]
+================================== FAILURES ===================================
+__________ test_prompt_novo_contem_so_identidade_contexto_e_contrato __________
+
+>   ???
+E   assert 'doce sem ser mole, firme sem ser arrogante' in '[PERFIL_SOCIAL:amizade_contextual_v2]\nVocê é Laylay, amiga digital presente, doce, firme e esperta, com humor e opin...a_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}\n'
+
+C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\tests\test_voz_unica_llm.py:156: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_voz_unica_llm.py::test_prompt_novo_contem_so_identidade_contexto_e_contrato
+1 failed, 21 passed in 0.85s

@@ -25,6 +25,8 @@ class DisponibilidadeOperacionalRuntime:
         gmail_getter: Callable[[], Mapping[str, Any]] | None = None,
         iot_getter: Callable[[], Mapping[str, Any]] | None = None,
         avatar_getter: Callable[[], Mapping[str, Any]] | None = None,
+        rosto_oled_getter: Callable[[], Mapping[str, Any]] | None = None,
+        corpo_motor_getter: Callable[[], Mapping[str, Any]] | None = None,
     ) -> None:
         self._getters = {
             "navegador_leitura": navegador_leitura_getter,
@@ -38,6 +40,8 @@ class DisponibilidadeOperacionalRuntime:
             "gmail": gmail_getter,
             "iot": iot_getter,
             "avatar": avatar_getter,
+            "rosto_oled": rosto_oled_getter,
+            "corpo_motor": corpo_motor_getter,
         }
 
     def _ler(self, nome: str) -> dict[str, Any]:
@@ -214,7 +218,23 @@ class DisponibilidadeOperacionalRuntime:
                 "disponivel", motivo="avatar_visual_ativo", evidencia_recente=True,
             )
 
+        rosto_bruto = self._ler("rosto_oled")
+        rosto_confirmado = rosto_bruto.get("aplicacao_confirmada") is True
+        corpo_bruto = self._ler("corpo_motor")
+        corpo_disponivel = corpo_bruto.get("disponivel") is True
         dominios = {
+            "corpo_motor": {**self._registro(
+                "disponivel" if corpo_disponivel else "indisponivel",
+                motivo=str(corpo_bruto.get("motivo") or "requer_firmware_motor_habilitado_e_sessao_vigente"),
+                evidencia_recente=corpo_disponivel,
+            ), "companhia": dict(corpo_bruto.get("companhia") or {}),
+                "rampa_suportada": corpo_bruto.get("rampa_suportada") is True},
+            "rosto_oled": {**self._registro(
+                "disponivel" if rosto_confirmado else "indisponivel",
+                motivo=str(rosto_bruto.get("motivo") or "requer_porta_serial_e_ack_recente_do_firmware"),
+                evidencia_recente=rosto_confirmado,
+            ), "som": dict(rosto_bruto.get("som") or {}),
+                "expressao": dict(rosto_bruto.get("expressao") or {})},
             "navegador": navegador,
             "conversa": conversa,
             "visao": visao,
@@ -225,6 +245,11 @@ class DisponibilidadeOperacionalRuntime:
             "avatar": avatar,
         }
         capacidades = {
+            "CORPO_COMPANHIA": self._registro(
+                "disponivel" if corpo_disponivel and (corpo_bruto.get("companhia") or {}).get("transporte_exigido") == "serial"
+                and rosto_bruto.get("transporte") == "serial" else "indisponivel",
+                motivo="companhia_exige_sessao_usb_pronta", evidencia_recente=corpo_disponivel,
+            ),
             "RESUMIR_PAGINA": dict(navegador),
             "NOTIFICATIONS": dict(notificacoes),
         }

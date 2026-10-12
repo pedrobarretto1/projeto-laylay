@@ -86,6 +86,27 @@ class OrquestradorCooperativoRuntime:
             quadro=quadro, governanca=self.governanca, log=log,
         )
 
+    def executar_gesto_corporal(self, concessao: Mapping[str, Any],
+                                confirmar_rosto: Callable[[], Mapping[str, Any]],
+                                executar_motor: Callable[[], Mapping[str, Any]]) -> dict[str, Any]:
+        """Rosto vigente → gesto, ambos obrigatórios e governados pelo mesmo plano."""
+        suspenso = concessao.get("perfil") == "rodas_suspensas"
+        orcamento = 20000 if suspenso else 5000
+        plano = self.quadro.criar_plano(
+            objetivo="expressar um gesto corporal junto ao rosto causal vigente",
+            evento_ids=(), confianca=1.0, risco="medio",
+            autorizacao="autonomia_previamente_concedida", validade_s=orcamento / 1000,
+            orcamento_total_ms=orcamento, politica_falha_parcial="interromper",
+            etapas=(
+                {"id": "rosto", "habilidade": "rosto_oled", "intent": "ROSTO_VERIFICAR", "acao": "verificar", "orcamento_ms": 500},
+                {"id": "motor", "habilidade": "corpo_motor", "intent": "CORPO_GESTO", "acao": "gesto", "depende_de": ["rosto"], "orcamento_ms": orcamento - 500, "idempotente": False, "reexecutavel": False},
+            ),
+            metadados={**dict(concessao), "fluxo": "companhia_corporal", "escopo_autorizacao": "corpo_companhia"},
+        )
+        return self.executor_plano.executar(plano["id"], {
+            "rosto": lambda *_: confirmar_rosto(), "motor": lambda *_: executar_motor(),
+        })
+
     def registrar_deliberacao_turno(
         self,
         deliberacao: Mapping[str, Any],

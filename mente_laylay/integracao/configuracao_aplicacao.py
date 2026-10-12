@@ -27,6 +27,9 @@ CHAVES_GERENCIADAS = frozenset({
     "LAYLAY_LLM_MODEL_PORTATIL",
     "LAYLAY_LLM_MODEL_OPENROUTER",
     "LAYLAY_MASCOT_ENABLED",
+    "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR",
+    "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR",
+    "LAYLAY_CORPO_PERFIL",
 })
 CHAVES_MODELO_PROVEDOR = {
     "ollama": "LAYLAY_LLM_MODEL_OLLAMA",
@@ -237,7 +240,7 @@ class ConfiguracaoAplicacaoRuntime:
                 saida.append(linha)
                 continue
             chave = texto.split("=", 1)[0].strip()
-            if chave in CHAVES_GERENCIADAS:
+            if chave in CHAVES_GERENCIADAS and chave in atualizacoes:
                 if chave in atualizacoes and chave not in vistas:
                     saida.append(f"{chave}={atualizacoes[chave]}")
                     vistas.add(chave)
@@ -248,6 +251,9 @@ class ConfiguracaoAplicacaoRuntime:
             "LAYLAY_LLM_MODEL_OLLAMA", "LAYLAY_LLM_MODEL_PORTATIL",
             "LAYLAY_LLM_MODEL_OPENROUTER",
             "LAYLAY_MASCOT_ENABLED",
+            "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR",
+            "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR",
+            "LAYLAY_CORPO_PERFIL",
         )
         for chave in ordem:
             if chave in atualizacoes and chave not in vistas:
@@ -266,6 +272,48 @@ class ConfiguracaoAplicacaoRuntime:
             os.replace(temporario_path, self.arquivo_env)
         except OSError as erro:
             raise ErroConfiguracaoAplicacao("Não consegui salvar configuracao.env.") from erro
+
+    def companhia_bancada_ao_iniciar(self) -> bool:
+        """Preferência humana persistida; não é uma concessão de transporte."""
+        _, valores = self._ler_env()
+        chave = "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR"
+        return str(valores.get(chave, os.environ.get(chave, "0"))).strip().casefold() in {
+            "1", "true", "sim", "yes", "on", "ligado",
+        }
+
+    def perfil_corporal(self) -> str:
+        """Perfil humano da montagem; jamais inferido de emoção ou sensores."""
+        _, valores = self._ler_env()
+        valor = str(valores.get("LAYLAY_CORPO_PERFIL", os.environ.get("LAYLAY_CORPO_PERFIL", "bancada"))).strip()
+        return valor if valor in {"bancada", "rodas_suspensas"} else "bancada"
+
+    def definir_perfil_corporal(self, perfil: str) -> dict[str, Any]:
+        if perfil not in {"bancada", "rodas_suspensas"}:
+            raise ErroConfiguracaoAplicacao("Perfil corporal inválido.")
+        self._escrever_env({"LAYLAY_CORPO_PERFIL": perfil})
+        self._reinicio_pendente = True
+        return {"saved": self.perfil_corporal() == perfil, "perfil_corporal": self.perfil_corporal(), "restart_required": True}
+
+    def passeio_bancada_ao_iniciar(self) -> bool:
+        _, valores = self._ler_env()
+        chave = "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR"
+        return self.companhia_bancada_ao_iniciar() and str(
+            valores.get(chave, os.environ.get(chave, "0"))).strip().casefold() in {
+                "1", "true", "sim", "yes", "on", "ligado",
+            }
+
+    def definir_companhia_bancada_ao_iniciar(self, ativo: bool, *, passeio: bool = False) -> dict[str, Any]:
+        if type(ativo) is not bool or type(passeio) is not bool:
+            raise ErroConfiguracaoAplicacao("A preferência corporal deve ser booleana.")
+        self._escrever_env({
+            "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR": "1" if ativo else "0",
+            "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR": "1" if ativo and passeio else "0",
+        })
+        self._reinicio_pendente = True
+        confirmado = self.companhia_bancada_ao_iniciar() is ativo and self.passeio_bancada_ao_iniciar() is (ativo and passeio)
+        return {"saved": confirmado, "companhia_bancada_ao_iniciar": self.companhia_bancada_ao_iniciar(),
+                "passeio_bancada_ao_iniciar": self.passeio_bancada_ao_iniciar(),
+                "restart_required": True}
 
     def _salvar_segredo(self, segredo: str) -> None:
         modulo = self._win32crypt_mod or _win32crypt_padrao()

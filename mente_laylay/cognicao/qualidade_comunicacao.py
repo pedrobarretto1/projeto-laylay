@@ -30,7 +30,7 @@ from mente_laylay.cognicao.reacao_social_curta import (
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 from mente_laylay.personalidade.contingencia_natural import fala_falha_geracao
 from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
-from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala
+from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala, fala_nega_capacidade_emocional
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 
@@ -275,6 +275,13 @@ _CONSELHO_PRESCRITIVO = re.compile(
 # se perdeu. Os demais itens são observações de estilo: não justificam apagar uma
 # fala válida da LLM nem substituí-la por uma mensagem sobre o próprio sistema.
 _PROBLEMAS_BLOQUEANTES = frozenset({
+    "avaliacao_social_alvo_invertido",
+    "avaliacao_social_nao_reconhecida",
+    "avaliacao_social_anulada",
+    "expressao_solicitada_abriu_pergunta",
+    "expressao_solicitada_nao_foi_breve",
+    "expressao_solicitada_virou_recusa",
+    "capacidade_emocional_negada",
     "ataque_pessoal",
     "relato_explicito_abriu_pergunta",
     "fala_vazia",
@@ -563,7 +570,11 @@ def avaliar_qualidade_comunicacao(
         # Uma declaração pessoal simples precisa ser reconhecida literalmente.
         # Criatividade sem citar o gosto ou sem um reconhecimento claro soa como
         # uma associação aleatória, mesmo quando a frase está gramaticalmente inteira.
-        preferencias = extrair_aprendizados_pessoais_explicitos(usuario)
+        # A leitura social já atribuiu esse afeto à interlocutora. Não exigir
+        # que um elogio seja repetido literalmente como um gosto por produto.
+        preferencias = ([] if contrato_turno.get("funcao") in {
+            "elogio", "critica_pessoal", "rejeicao_pessoal",
+        } else extrair_aprendizados_pessoais_explicitos(usuario))
         if preferencias:
             valores = [
                 normalizar_texto_memoria(item.get("valor"))
@@ -677,10 +688,19 @@ def avaliar_qualidade_comunicacao(
         )
         problemas.extend(aderencia_contrato.get("problemas") or [])
 
+    if fala_nega_capacidade_emocional(resposta):
+        problemas.append("capacidade_emocional_negada")
     problemas.extend(detectar_resultados_operacionais_sem_evidencia(
         resposta, plano={**plano_atual, "texto_usuario": usuario},
     ))
     contrato_reparo = dict(aderencia_contrato.get("contrato_reparo") or {})
+    if "capacidade_emocional_negada" in problemas:
+        contrato_reparo.update(
+            preservar_identidade_emocional=True,
+            evento_emocional_causal=dict(plano_atual.get("evento_emocional_causal") or {}),
+            limite="expressão causal não comprova sentimentos humanos ou experiência subjetiva",
+            autoriza_execucao=False,
+        )
     if {"falha_operacional_sem_evidencia", "resultado_operacional_sem_evidencia"}.intersection(problemas):
         contrato_reparo.update({
             "resultado_operacional_desconhecido": True,
@@ -861,6 +881,14 @@ def montar_mensagens_reparo_comunicacao(
         "Retorne somente JSON válido no "
         'formato {"fala":"resposta completa","comandos":[]}.'
     )
+    if reparo_parcial.get("preservar_identidade_emocional"):
+        from mente_laylay.personalidade.perfil_amizade import IDENTIDADE_VOZ_LAYLAY
+        instrucao = IDENTIDADE_VOZ_LAYLAY + " " + instrucao + (
+            " Receba o carinho ou a crítica atual em linguagem natural. "
+            "Não repita a negativa do rascunho nem faça uma aula sobre emoções. "
+            "Preserve somente o episódio causal vigente do contrato; não cobre afeto."
+        )
+        payload.pop("rascunho_rejeitado", None)
     if (dict(avaliacao.get("contrato_reparo") or {}).get("resultado_operacional_desconhecido")
             or dict(avaliacao.get("contrato_reparo") or {}).get("contradicoes_capacidade")):
         # Falta de prova do efeito não determina o ato do usuário. O contrato
@@ -918,6 +946,35 @@ def contingencia_comunicacao(
     estrategia = str(contrato.get("estrategia") or "").strip()
     atos = {str(item or "").casefold() for item in contrato.get("atos_obrigatorios") or []}
     referente = str(contrato.get("referente") or "").strip()
+
+    if estrategia == "expressao_solicitada":
+        from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
+        evento = dict(contrato.get("evento_emocional_causal") or {})
+        if not evento_pode_alterar_estado(evento):
+            return "A pose já terminou. Pode pedir outra quando quiser."
+        # Último recurso usa a decisão publicada, nunca relê o comando para
+        # decidir emoção nem afirma pixels físicos sem receipt do firmware.
+        poses = {"brava": "Hmpf. Cara de poucos amigos ativada!",
+                 "irritada": "Hmpf… só uma sobrancelha levantada por enquanto.",
+                 "triste": "Poxa… carinha caída, no modo dramática.",
+                 "envergonhada": "Ai… fiquei toda sem jeito nessa pose.",
+                 "alegre": "Hehe! Sorrisão caprichado para você.",
+                 "surpresa": "Opa! Carinha de quem não esperava por essa!",
+                 "debochada": "Olha só… você pediu, eu caprichei na pose.",
+                 "calma": "Pronto, pose tranquila de novo."}
+        return poses.get(str(evento.get("emocao") or ""), "Pose preparada.")
+
+    if contrato.get("preservar_identidade_emocional"):
+        from mente_laylay.personalidade.leitura_social_conversa import analisar_avaliacao_social_direta
+        avaliacao = analisar_avaliacao_social_direta(texto)
+        if avaliacao.get("tipo") == "elogio_pessoal":
+            return escolher_variacao([
+                "Obrigada pelo carinho. Gostei de você me dizer isso.",
+                "Esse carinho foi direto em mim. Obrigada por dizer.",
+            ], evitar=falas_evitar)
+        if avaliacao.get("tipo") in {"critica_pessoal", "rejeicao_pessoal"}:
+            return "Recebi o que você disse. Vou respeitar seu espaço."
+        return "Posso expressar reações ao que acontece na nossa conversa."
 
     contingencia_provocacao = resposta_contingencia_provocacao(
         texto,

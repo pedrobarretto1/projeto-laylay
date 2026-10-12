@@ -232,7 +232,7 @@ class QuadroCooperacaoRuntime:
             politica_etapa = str(etapa.get("politica_falha") or "interromper").strip().casefold()
             if politica_etapa not in POLITICAS_FALHA_ETAPA:
                 raise ValueError("política de falha da etapa inválida")
-            if etapa.get("idempotente", True) is not True:
+            if etapa.get("idempotente", True) is not True and etapa.get("reexecutavel") is not False:
                 raise ValueError("etapas cooperativas precisam ser idempotentes")
             ids_vistos.add(etapa_id)
             etapas_normalizadas.append({
@@ -244,7 +244,8 @@ class QuadroCooperacaoRuntime:
                 "depende_de": dependencias,
                 "estado": estado_etapa,
                 "obrigatoria": bool(etapa.get("obrigatoria", True)),
-                "idempotente": True,
+                "idempotente": etapa.get("idempotente", True) is True,
+                "reexecutavel": etapa.get("idempotente", True) is True and etapa.get("reexecutavel", True) is True,
                 "orcamento_ms": max(1, min(120_000, int(etapa.get("orcamento_ms") or 2_000))),
                 "politica_falha": politica_etapa,
                 "evidencia_esperada": str(etapa.get("evidencia_esperada") or "")[:160],
@@ -325,6 +326,19 @@ class QuadroCooperacaoRuntime:
             retorno = copy.deepcopy(plano)
         self._publicar()
         return retorno
+
+    def iniciar_execucao(self, plano_id: str) -> bool:
+        """CAS do plano: callbacks com efeito têm um único executor por ocorrência."""
+        with self._lock:
+            self._limpar_expirados()
+            plano = self._planos.get(plano_id)
+            if not plano or plano.get("estado") in ESTADOS_FINAIS | {"executando"} or plano.get("iniciado_em"):
+                return False
+            plano["estado"] = "executando"
+            plano["iniciado_em"] = self._agora()
+            plano["atualizado_em"] = plano["iniciado_em"]
+        self._publicar()
+        return True
 
     def atualizar_etapa(
         self,
@@ -416,6 +430,11 @@ class QuadroCooperacaoRuntime:
             "tamanho_conteudo": int(metadados.get("tamanho_conteudo") or 0),
             "quantidade_janelas": int(metadados.get("quantidade_janelas") or 0),
         }
+        # Identidade do produtor acompanha qualquer cooperação, sem payload,
+        # credenciais ou promoção dos metadados a autorização.
+        for chave in ("turno_id", "intencao_id", "origem_intencao"):
+            if isinstance(metadados.get(chave), str):
+                metadados_publicos[chave] = metadados[chave][:80]
         resultado_plano = dict(plano.get("resultado") or {})
         resultado_publico = {
             chave: resultado_plano[chave]

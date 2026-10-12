@@ -38,6 +38,7 @@ def estado_continuidade_geral_inicial() -> Dict[str, Any]:
 
 
 _INTENTS_DOMINIO = {
+    "CORPO_MOVER": "corpo_motor", "CORPO_PARAR": "corpo_motor", "CORPO_COMPANHIA": "corpo_motor",
     "APP_OPEN": "app", "CLOSE_APP": "app", "FECHAR_PROGRAMA": "app",
     "LIST_WINDOWS": "app",
     "MAXIMIZE_WINDOW": "app",
@@ -91,6 +92,7 @@ _INTENTS_DOMINIO = {
 INTENTS_CONTINUIDADE_INTERNAS = frozenset({"MOVE_ITEM", "GAME_VISION_CONTINUE"})
 
 _TIPOS_DOMINIO = {
+    "corpo_motor": "corpo_motor", "corpo": "corpo_motor", "motor": "corpo_motor", "motores": "corpo_motor",
     "janela": "app", "app": "app", "site": "site", "navegador": "site",
     "musica": "musica", "música": "musica", "playlist": "musica", "midia": "musica",
     "playlist_laylay": "playlist_laylay", "curadoria_laylay": "playlist_laylay",
@@ -385,6 +387,7 @@ def _params_seguros(params: Dict[str, Any] | None) -> Dict[str, Any]:
         "acao", "alvo", "nome", "nome_app", "nome_playlist", "playlist", "query", "url",
         "dispositivo", "ambiente", "tipo", "tipo_arquivo", "pasta", "nome_arquivo",
         "item", "platform", "modo", "nivel_volume", "cor", "rgb", "temperatura", "brilho",
+        "target",  # destino operacional também pertence à ocorrência, não ao verbo novo
         "jogo", "pergunta", "nota_id", "tipo_nota", "filtro", "caminho", "indice",
         "forcar_indice", "somente_projeto", "referencia_caminho",
         "operacao", "origem", "destino", "novo_nome",

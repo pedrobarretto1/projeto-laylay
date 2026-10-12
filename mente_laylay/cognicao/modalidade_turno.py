@@ -46,6 +46,74 @@ _MOLDURA_PROCEDIMENTO = re.compile(
 )
 
 
+def _condicoes_nao_verificadas(texto: str) -> tuple[re.Match[str], ...]:
+    """Localiza dependência pessoal/restritiva, nunca dentro de um literal.
+
+    Reconhecer a condição não prova que ela ocorreu. Seu vínculo com a
+    consequência pertence ao owner dos atos, antes dos owners de domínio.
+    Não substitui políticas observáveis tipadas nem cria agendamentos.
+    """
+    pares = mapear_pares_aspas_globais(texto) or {}
+    condicoes: list[re.Match[str]] = []
+    for m in re.finditer(
+        r"(?<![\w-])(?:(?:s[oó]|apenas|somente)\s+)?"
+        r"(?:quando|caso|se)\s+(?P<pessoa>eu|voc[eê]|a\s+gente|n[oó]s)\b|"
+        r"(?<![\w-])(?:s[oó]|apenas|somente)\s+se\b",
+        texto,
+        flags=re.IGNORECASE,
+    ):
+        if re.match(r"se\b", m.group(0), flags=re.IGNORECASE):
+            # "se" também introduz conteúdo interrogativo subordinado.
+            # Sem posição de cláusula ou restritor, não presumir que seja
+            # condição do comando matriz ("pesquisa se eu posso...").
+            anterior = texto[:m.start()].rstrip()
+            if anterior and not (
+                anterior[-1] in ",;.!"
+                or re.search(r"\b(?:e|mas|ent[aã]o)$", anterior, re.IGNORECASE)
+            ):
+                continue
+        if not any(inicio < m.start() < fim for inicio, fim in pares.items()):
+            condicoes.append(m)
+    return tuple(condicoes)
+
+
+def _inicio_condicao_nao_verificada(texto: str) -> int | None:
+    condicoes = _condicoes_nao_verificadas(texto)
+    return condicoes[0].start() if condicoes else None
+
+
+def _inicia_ato_condicionado(texto: str) -> bool:
+    return _inicio_condicao_nao_verificada(texto) == 0
+
+
+def _intervalo_objeto_consulta_significado(texto: str) -> tuple[int, int] | None:
+    """O predicado consulta a expressão precedente, não pede seu efeito.
+
+    A interrogação pode estar ausente. O marcador precisa ser externo aos
+    argumentos citados e concluir o ato; palavras em nomes não são evidência.
+    A segmentação continua dona das ordens independentes de outros atos.
+    """
+    pares = mapear_pares_aspas_globais(texto) or {}
+    m = re.search(
+        r"\s+(?:significa|quer\s+dizer)\s+(?:exatamente\s+)?"
+        r"o\s+qu[eê]\s*[.!?]*\s*$",
+        texto,
+        flags=re.IGNORECASE,
+    )
+    if not m or any(i < m.start() < f for i, f in pares.items()):
+        return None
+    prefixo = texto[:m.start()]
+    objeto = prefixo.strip(" ,;")
+    if not objeto:
+        return None
+    inicio = len(prefixo) - len(prefixo.lstrip(" ,;"))
+    return inicio, inicio + len(objeto)
+
+
+def _consulta_significado_do_ato(texto: str) -> bool:
+    return _intervalo_objeto_consulta_significado(texto) is not None
+
+
 def analisar_protecao_operacional(
     texto: str,
     *,
@@ -70,6 +138,20 @@ def analisar_protecao_operacional(
             "modalidade": "conversa",
             "natureza_acao": "transformacao_conversacional",
             "motivo": "pedido de transformação da conversa, não de efeito externo",
+        }
+    if _consulta_significado_do_ato(texto):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta",
+            "natureza_acao": "mencao_operacional",
+            "motivo": "consulta ao significado da expressão, não ao seu efeito",
+        }
+    if _inicio_condicao_nao_verificada(texto) is not None:
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "deliberacao",
+            "natureza_acao": "condicao_nao_verificada",
+            "motivo": "a ação depende de condição não verificada neste pedido",
         }
     if re.search(
         r"^(?:nao|não)\s+\w+.*\b(?:(?:o\s+)?qu[eê]|qual|por que)\b",
@@ -638,6 +720,12 @@ def _classificar_modalidade_base(
         r"acrescenta|acrescente)\b",
         t,
     ))
+    # Verbos do corpo entram na mesma classificação de ato e nas mesmas
+    # proteções P0. A gramática de domínio só fornece o alvo implícito (a
+    # própria ponte), nunca uma segunda política de autorização.
+    from mente_laylay.cognicao.gramatica_corpo import analisar_pedido_corporal
+    pedido_corporal = analisar_pedido_corporal(t)
+    imperativo_direto = imperativo_direto or bool(pedido_corporal)
     comando_detectado = False
     if callable(texto_tem_comando_explicito):
         try:
@@ -666,7 +754,7 @@ def _classificar_modalidade_base(
         # esta exceção não transforma outros verbos sem alvo em autorização.
         acao_eliptica_contextual_autorizada = bool(
             alvo_ausente
-            and t == "maximiza"
+            and (t == "maximiza" or pedido_corporal)
         )
         resultado.update(
             modalidade="comando",
@@ -703,7 +791,8 @@ _VERBOS_COMANDO = re.compile(
     r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
     r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave|"
     r"adiciona|adicionar|adicione|acrescenta|acrescentar|acrescente|"
-    r"restaura|restaurar|restaure|recupera|recuperar|recupere)\b",
+    r"restaura|restaurar|restaure|recupera|recuperar|recupere|"
+    r"anda|ande|andar|avanca|avance|avancar|recua|recue|recuar|gira|gire|girar|vira|vire|virar|para|pare|parar)\b",
     re.IGNORECASE,
 )
 
@@ -1129,6 +1218,18 @@ def _classificar_ato_estrutural(
     B/B2/C: ownership na representação estrutural.
     Relevância nunca vira autoridade.
     """
+    # Nenhum owner de domínio pode converter a consequência em pedido direto
+    # ignorando a condição que o owner geral preservou no mesmo átomo.
+    if (
+        _inicio_condicao_nao_verificada(texto_estrutural) is not None
+        or _consulta_significado_do_ato(texto_estrutural)
+    ):
+        return _classificar_atomo_geral(
+            texto_estrutural,
+            normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=texto_tem_comando_explicito,
+            confirmacao_contextual_valida=confirmacao_contextual_valida,
+        )
     cand = analisar_gramatica_musical(texto_estrutural)
     classe = str(getattr(cand, "classe", "") or "")
 
@@ -1213,6 +1314,8 @@ def _evidencia_ato_operacional(
     t = _limpar_ato_semantico(texto)
     if not t:
         return False, "vazio"
+    if _consulta_significado_do_ato(t):
+        return False, "CONSULTA_SIGNIFICADO"
 
     cand = analisar_gramatica_musical(t)
     if (
@@ -1248,6 +1351,8 @@ def _evidencia_pergunta_independente(
 ) -> bool:
     """Reconhece uma pergunta como novo ato sem lhe conceder autoridade."""
     t = _limpar_ato_semantico(texto)
+    if _consulta_significado_do_ato(t):
+        return True
     if not t or "?" not in t:
         return False
     base = dict(
@@ -1261,6 +1366,25 @@ def _evidencia_pergunta_independente(
     )
     return str(base.get("modalidade") or "") == "pergunta"
 
+def _tem_consequencia_condicional(
+    texto: str, *, normalizar_texto: Callable[[str], str] | None,
+) -> bool:
+    """Exige consequência diretiva, não apenas verbo no antecedente."""
+    pares = mapear_pares_aspas_globais(texto) or {}
+    for m in re.finditer(",", texto):
+        if any(i < m.start() < f for i, f in pares.items()):
+            continue
+        trecho = _limpar_ato_semantico(texto[m.end():])
+        if (
+            _inicio_condicao_nao_verificada(trecho) is None
+            and _evidencia_ato_operacional(
+                trecho, normalizar_texto=normalizar_texto,
+            )[0]
+        ):
+            return True
+    return False
+
+
 def _separar_primeira_fronteira_forte(
     bloco: str,
     *,
@@ -1268,11 +1392,15 @@ def _separar_primeira_fronteira_forte(
 ):
     pares_aspas = mapear_pares_aspas_globais(bloco) or {}
     for m in re.finditer(
-        r"(?P<sep>[,;!]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
+        r"(?P<sep>[,;!?]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
         bloco,
         flags=re.IGNORECASE,
     ):
         if any(inicio < m.start() < fim for inicio, fim in pares_aspas.items()):
+            continue
+        if m.group("sep") == "," and _consulta_significado_do_ato(bloco):
+            # A vírgula que liga expressão e predicado não torna a expressão
+            # uma ordem autônoma: "pode A e B, significa o quê?".
             continue
         fim_sep = m.end("sep")
         # Um ponto colado ao próximo caractere pertence ao átomo lexical
@@ -1283,6 +1411,47 @@ def _separar_primeira_fronteira_forte(
         direita = _limpar_ato_semantico(bloco[m.end():])
         if not direita:
             continue
+        esquerda = _limpar_ato_semantico(
+            bloco[:m.end("sep") if m.group("sep") == "?" else m.start()]
+        )
+        condicao_esquerda = _inicio_condicao_nao_verificada(esquerda)
+        if condicao_esquerda is not None:
+            # Vírgula não libera a consequência. Uma fronteira forte só
+            # encerra a dependência depois de existir uma consequência à
+            # esquerda: "quando eu confirmar, pausa; abre agora".
+            consequencia = (
+                not _inicia_ato_condicionado(esquerda)
+                or _tem_consequencia_condicional(
+                    esquerda, normalizar_texto=normalizar_texto,
+                )
+            )
+            if m.group("sep") == "," or not consequencia:
+                continue
+
+        inicio_condicao_direita = _inicio_condicao_nao_verificada(direita)
+        if (condicao_esquerda is None and inicio_condicao_direita is not None
+            and inicio_condicao_direita > 0 and m.group("sep") != ","):
+            # A cláusula inteira continua vetada. Para reconhecer a fronteira
+            # forte, examinar só sua consequência anterior à condição, sem
+            # conceder autoridade a ela. Vírgula/coordenação e condição solta
+            # não comprovam independência; essas proteções permanecem.
+            consequencia_direita = _limpar_ato_semantico(direita[:inicio_condicao_direita])
+            if (_evidencia_ato_operacional(consequencia_direita, normalizar_texto=normalizar_texto)[0]
+                and _evidencia_ato_operacional(esquerda, normalizar_texto=normalizar_texto)[0]):
+                return m, esquerda, direita, "ATO_CONDICIONADO_POSPOSTO"
+
+        if _inicia_ato_condicionado(direita) and condicao_esquerda is None:
+            # Uma nova cláusula condicionada é independente de uma ordem
+            # anterior completa; não se deve anexar sua condição àquela ordem.
+            if not _tem_consequencia_condicional(
+                direita, normalizar_texto=normalizar_texto,
+            ):
+                continue
+            esquerda = re.sub(r"\s+(?:e|mas|entao)$", "", esquerda).strip()
+            if _evidencia_ato_operacional(
+                esquerda, normalizar_texto=normalizar_texto,
+            )[0]:
+                return m, esquerda, direita, "ATO_CONDICIONADO"
 
         inicia, origem = _evidencia_ato_operacional(
             direita,
@@ -1296,9 +1465,6 @@ def _separar_primeira_fronteira_forte(
         if not inicia:
             continue
 
-        esquerda = _limpar_ato_semantico(
-            bloco[:m.start()]
-        )
         if esquerda:
             return m, esquerda, direita, origem
 
@@ -1309,7 +1475,7 @@ def _segmento_estrutural(
     resultado: Dict[str, Any],
     indice: int,
 ) -> Dict[str, Any]:
-    return {
+    segmento = {
         "indice": indice,
         "texto": texto_estrutural[:300],
         "texto_estrutural": texto_estrutural[:300],
@@ -1339,6 +1505,46 @@ def _segmento_estrutural(
             resultado.get("veto_execucao_operacional")
         ),
     }
+    if not segmento["autoriza_execucao"]:
+        # Publica a relação que este owner já aplicou, sem pedir outra
+        # classificação ao consumidor. Offsets são do texto estrutural, não
+        # da utterance bruta; não cortar a fonte e invalidar suas coordenadas.
+        intervalo = _intervalo_objeto_consulta_significado(texto_estrutural)
+        natureza = segmento["natureza_acao"]
+        relacao = "resposta_conversacional"
+        if natureza == "mencao_operacional" and intervalo is not None:
+            relacao = "consulta_significado"
+        elif natureza == "condicao_nao_verificada":
+            relacao = "condicao_nao_verificada"
+        else:
+            intervalo = None
+        pessoa_condicao = ""
+        intervalo_pessoa = None
+        if relacao == "condicao_nao_verificada":
+            condicoes = _condicoes_nao_verificadas(texto_estrutural)
+            # Mais de uma condição não recebe uma pessoa única sem vínculo
+            # próprio para cada uma. Não perder o concorrente silenciosamente.
+            condicao = condicoes[0] if len(condicoes) == 1 else None
+            pessoa = condicao.group("pessoa") if condicao is not None else None
+            pessoa_condicao = "indeterminada"
+            if pessoa is not None:
+                # Pessoa discursiva, não prova de condição satisfeita ou
+                # autorização. Não decidir novamente no consumidor da fala.
+                literal = pessoa.casefold()
+                pessoa_condicao = ("enunciador" if literal == "eu" else
+                                   "destinatario" if literal in {"voce", "você"} else "grupo")
+                intervalo_pessoa = list(condicao.span("pessoa"))
+        segmento["contrato_explicativo"] = {
+            "fonte": "interpretador_canonico",
+            "texto_ato": texto_estrutural,
+            "relacao": relacao,
+            "objeto_textual": texto_estrutural[slice(*intervalo)] if intervalo is not None else "",
+            "intervalo_objeto": list(intervalo) if intervalo is not None else None,
+            "pessoa_condicao": pessoa_condicao,
+            "intervalo_pessoa_condicao": intervalo_pessoa,
+            "autoriza_execucao": False,
+        }
+    return segmento
 
 def _fontes_autoridade_turno(turno: Dict[str, Any]) -> list[str]:
     leitura = dict(turno or {})
@@ -1421,15 +1627,24 @@ def _segmentar_turno_misto(
 
     finais = []
     for bloco in segmentos:
+        if _consulta_significado_do_ato(bloco):
+            # Toda a coordenação é o objeto da consulta. Separá-la primeiro
+            # concederia autoridade a uma operação apenas mencionada.
+            finais.append(bloco)
+            continue
         atual = bloco
 
         while True:
             corte = None
+            pares_aspas = mapear_pares_aspas_globais(atual) or {}
             for m in re.finditer(
                 r"\s+(?P<conj>e|mas|entao)\s+",
                 atual,
                 flags=re.IGNORECASE,
             ):
+                if any(abertura < m.start() < fechamento
+                       for abertura, fechamento in pares_aspas.items()):
+                    continue
                 esquerda = _limpar_ato_semantico(
                     atual[:m.start()]
                 )
@@ -1437,6 +1652,24 @@ def _segmentar_turno_misto(
                     atual[m.end():]
                 )
                 if not esquerda or not direita:
+                    continue
+
+                condicao_atual = _inicio_condicao_nao_verificada(atual)
+                if condicao_atual is not None:
+                    if (
+                        _inicia_ato_condicionado(direita)
+                        and _tem_consequencia_condicional(
+                            direita, normalizar_texto=normalizar_texto,
+                        )
+                        and _inicio_condicao_nao_verificada(esquerda) is None
+                        and _evidencia_ato_operacional(
+                            esquerda, normalizar_texto=normalizar_texto,
+                        )[0]
+                    ):
+                        corte = (esquerda, direita)
+                        break
+                    # Sem fronteira de independência, uma coordenação não
+                    # desliga a condição de nenhuma consequência do conjunto.
                     continue
 
                 esq_ok, _ = _evidencia_ato_operacional(
@@ -1451,7 +1684,10 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
-                if ((esq_ok or tipo_transformacao_conversacional(esquerda)) and dir_ok) or direita_pergunta:
+                if (
+                    (esq_ok or tipo_transformacao_conversacional(esquerda)
+                     or _consulta_significado_do_ato(esquerda)) and dir_ok
+                ) or direita_pergunta:
                     corte = (esquerda, direita)
                     break
 
@@ -1746,7 +1982,8 @@ _P0_VERBOS_PEDIDO_DIRETO = (
     r"restaura|restaure|recupera|recupere|"
     r"altera|altere|muda|mude|ajusta|ajuste|"
     r"executa|execute|repete|repita|refaz|refaca|tenta|tente|"
-    r"leia|verifique|resuma|resume|acha|ache|localiza|localize"
+    r"leia|verifique|resuma|resume|acha|ache|localiza|localize|"
+    r"anda|ande|avanca|avance|recua|recue|gira|gire|vira|vire|para|pare|ativa|ative|desativa|desative"
     r")"
 )
 
@@ -1759,7 +1996,8 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"restaurar|recuperar|"
     r"alterar|mudar|ajustar|"
     r"executar|repetir|refazer|tentar|"
-    r"ler|ver|olhar|mostrar|passar|verificar|resumir|achar|localizar"
+    r"ler|ver|olhar|mostrar|passar|verificar|resumir|achar|localizar|"
+    r"andar|avancar|recuar|girar|virar|parar|ativar|desativar"
     r")"
 )
 
@@ -1789,6 +2027,8 @@ def _modalidade_moldura_pedido(texto: str) -> str:
     moldura = _MOLDURA_PEDIDO_OPERACIONAL.match(t)
     if not moldura:
         return ""
+    if _consulta_significado_do_ato(texto):
+        return "pergunta"
     if moldura.group("negacao"):
         return "recusa"
     if moldura.group("sujeito") and not re.search(r"\b(?:pra|para)\s+mim\b", t):
@@ -1867,6 +2107,7 @@ _NEGACAO_INTERNA_CONSERVADORA = re.compile(
 )
 
 _NATUREZAS_VETO_MONOTONICO = frozenset({
+    "condicao_nao_verificada",
     "cancelamento",
     "capacidade",
     "hipotetica",

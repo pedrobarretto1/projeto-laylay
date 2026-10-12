@@ -52,8 +52,10 @@ from mente_laylay.memoria_mental.contexto_imediato import (
     _normalizar_dominio_referencia,
     _resultado_compativel_com_dominio,
     referencia_contextual_imediata,
+    texto_pede_ajuste_numerico_contextual,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
+from mente_laylay.memoria_mental.atividade_operacional_runtime import AtividadeOperacionalRuntime
 from mente_laylay.memoria_mental.resultado_acao import (
     identificar_solicitacao_execucao,
     interpretar_tratamento_operacional,
@@ -114,6 +116,10 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
         or params.get("nome_playlist") or params.get("playlist") or ""
     ).strip().casefold()
     fala = str(texto or "").strip().casefold()
+    if intent == "CORPO_COMPANHIA":
+        return alvo == "corpo" and params.get("acao") in {"ativar", "desativar"}
+    if intent in {"CORPO_MOVER", "CORPO_PARAR"}:
+        return alvo == "corpo" and (intent == "CORPO_PARAR" or params.get("direcao") in {"frente", "tras", "esquerda", "direita"})
     if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_READ", "FILE_OPEN_RESULT"}:
         return not valor_e_referencia_contextual(alvo)
     if intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW", "OPEN_URL", "CLOSE_TAB"}:
@@ -666,6 +672,11 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if isinstance(arbitragem.get("decisao"), dict):
         return arbitragem["decisao"], str(arbitragem.get("origem") or "arbitro")
 
+    if texto_pede_ajuste_numerico_contextual(texto_norm):
+        # A atribuição foi reconhecida, mas nenhum owner vinculou o parâmetro.
+        # Uma proposta de IA não pode preencher essa lacuna com outro domínio.
+        return None, "contexto_parametro_nao_resolvido"
+
     # P0_REVISAO_INTRA_TURNO_B1_3_20260816
     # Se a revisão intra-turno já definiu a proposta operacional final,
     # o fallback de IA recebe essa mesma visão. A fala original continua sendo
@@ -835,6 +846,7 @@ class CicloComandosRuntime:
         registrar_metrica_cb: Callable[[str, float, bool], Any] | None = None,
         registrar_falha_cb: Callable[..., Any] | None = None,
         registrar_decisao_cb: Callable[..., Any] | None = None,
+        atividade_operacional: AtividadeOperacionalRuntime | None = None,
     ) -> None:
         self.namespace_getter = namespace_getter
         self.contexto_intencao_runtime = contexto_intencao_runtime
@@ -844,6 +856,7 @@ class CicloComandosRuntime:
         self.registrar_metrica_cb = registrar_metrica_cb
         self.registrar_falha_cb = registrar_falha_cb
         self.registrar_decisao_cb = registrar_decisao_cb
+        self.atividade_operacional = atividade_operacional
         self._lock_linguagem_natural = RLock()
         self._metricas_linguagem_natural: Dict[str, Any] = {
             "tentativas": 0,
@@ -1117,11 +1130,28 @@ class CicloComandosRuntime:
                 return bool(concluida.get("resultado"))
 
         try:
-            retorno = executar_intencao(
-                resultado,
-                texto_original,
-                contexto_execucao,
+            escopo_atividade = (
+                self.atividade_operacional.escopo()
+                if self.atividade_operacional is not None else nullcontext()
             )
+            with escopo_atividade:
+                registrar_receipt = contexto_execucao.get("_registrar_resultado_execucao")
+                if self.atividade_operacional is not None and callable(registrar_receipt):
+                    # Só esta publicação aceita da invocação corrente pode
+                    # produzir glitch. Bool tratado e contexto histórico não
+                    # oferecem evidência de falha do executor.
+                    def registrar_e_observar(receipt, *args, **kwargs):
+                        publicacao = registrar_receipt(receipt, *args, **kwargs)
+                        if publicacao is not False:
+                            self.atividade_operacional.observar_resultado(receipt)
+                        return publicacao
+                    contexto_execucao = dict(contexto_execucao)
+                    contexto_execucao["_registrar_resultado_execucao"] = registrar_e_observar
+                retorno = executar_intencao(
+                    resultado,
+                    texto_original,
+                    contexto_execucao,
+                )
             retorno_compatibilidade = bool(retorno)
             tratamento_atual = interpretar_tratamento_operacional(
                 resultado,
@@ -1653,6 +1683,8 @@ class CicloComandosRuntime:
             )
 
         def relatar_falha(trecho: str, indice: int, concluidas: int) -> None:
+            if self.atividade_operacional is not None:
+                self.atividade_operacional.invalidar_sucesso_do_escopo()
             self.log(
                 "⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | "
                 f"indice={indice} concluidas={concluidas} trecho={trecho[:120]}"
@@ -1694,7 +1726,8 @@ class CicloComandosRuntime:
             agrupar(texto_usuario=texto, enviar_mensagem=contexto_entrega.get("enviar_mensagem"))
             if callable(agrupar) else nullcontext()
         )
-        with lote as agrupamento:
+        escopo_atividade = self.atividade_operacional.escopo() if self.atividade_operacional is not None else nullcontext()
+        with escopo_atividade, lote as agrupamento:
             return processar_comandos_em_cadeia(
                 texto,
                 origem,

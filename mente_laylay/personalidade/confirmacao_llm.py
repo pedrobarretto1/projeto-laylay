@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
+from mente_laylay.cognicao.contratos_turno import ComplementoConversacionalTurno
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
 from mente_laylay.cognicao.normalizacao_linguagem import (
@@ -41,6 +42,9 @@ _PARAMETROS_AUTORIA = frozenset({
 
 # Consultas e listagens carregam dados que uma paráfrase poderia apagar.
 INTENTS_INFORMATIVOS = frozenset({
+    # Uma releitura de PWM não mede locomoção. Conservar literalmente o
+    # alcance factual evita uma paráfrase "andei" sem sensor de deslocamento.
+    "CORPO_MOVER", "CORPO_PARAR",
     "IOT_STATUS", "PLAYLIST_LIST", "LIST_PLAYLIST_CONTENT", "READ_EMAILS",
     "READ_URGENT_EMAILS", "LER_EMAILS", "LER_EMAILS_URGENTES",
     "WEATHER", "CLIMA", "LISTAR_AGENDAMENTOS", "LER_NOTIFICACOES",
@@ -954,27 +958,54 @@ def personalizar_confirmacao_composta_llm(
     enviar_mensagem: Callable[..., Any] | None,
     contexto: Mapping[str, Any] | None = None,
     informacoes: Mapping[str, str] | None = None,
+    texto_conversacional: str = "",
+    avisos_obrigatorios: Sequence[str] = (),
+    complemento_conversacional: ComplementoConversacionalTurno | None = None,
 ) -> ConfirmacaoPersonalizada:
     """Uma autoria para vários receipts; cada trecho mantém sua certeza própria.
 
-    A fala é escrita inteira pela autora. Os trechos literais da mesma fala
-    permitem conferir cada resultado localmente, inclusive no sucesso parcial,
-    sem aplicar a certeza de uma etapa às outras nem pedir novas ações.
+    No modo operacional, trechos literais vinculam a fala inteira aos receipts.
+    No modo misto, a autora escreve cada trecho uma única vez; o host vincula
+    sua ordem aos receipts e acrescenta avisos imutáveis na publicação única.
+    Condições cobertas usam escolhas de realização do owner, não prosa livre.
     """
     from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+    from mente_laylay.cognicao.contrato_fala import (
+        construir_realizacoes_nucleo_explicativo, realizar_nucleo_explicativo,
+    )
+    from mente_laylay.cognicao.validacao_contrato_fala import validar_aderencia_contrato_fala
     from mente_laylay.personalidade.planejador_resposta import (
         classificar_resultado, fala_factual_resultados_compostos,
     )
 
     itens = tuple(resultados)
-    fallback = ConfirmacaoPersonalizada(str(fala_segura or "").strip(), "calma", 1)
+    conversa = str(texto_conversacional or "").strip()
+    avisos = tuple(str(a).strip() for a in avisos_obrigatorios if str(a).strip())
+    segura = str(fala_segura or "").strip()
+    if conversa:
+        segura = " ".join([segura, "Não consegui responder à parte conversacional deste pedido."]).strip()
+    fallback = ConfirmacaoPersonalizada(segura, "calma", 1)
+    if complemento_conversacional is not None and (
+        not isinstance(complemento_conversacional, ComplementoConversacionalTurno)
+        or complemento_conversacional.texto != conversa
+        or not complemento_conversacional.atos_explicativos
+        or tuple(a.indice for a in complemento_conversacional.atos_explicativos)
+           != complemento_conversacional.indices
+    ):
+        return _com_motivo_fallback(fallback, "contrato_explicativo_divergente")
+    realizacoes = (construir_realizacoes_nucleo_explicativo(complemento_conversacional)
+                  if complemento_conversacional is not None else ())
+    if (complemento_conversacional is not None
+        and all(a.relacao == "condicao_nao_verificada" for a in complemento_conversacional.atos_explicativos)
+        and not realizacoes):
+        return _com_motivo_fallback(fallback, "nucleo_sem_verificador")
     retrato = dict(contexto or {})
     informacoes = dict(informacoes or {})
-    if humor_bloqueado_por_preferencia(retrato):
+    if humor_bloqueado_por_preferencia(retrato) and not conversa:
         return fallback
-    if not _ativada() or not callable(enviar_mensagem) or retrato.get("modo_jogo_ativo"):
+    if not callable(enviar_mensagem) or (not conversa and (not _ativada() or retrato.get("modo_jogo_ativo"))):
         return _com_motivo_fallback(fallback, "autoria_composta_indisponivel")
-    if not itens or any(not item.id_solicitacao or item.origem != "executor" for item in itens):
+    if (not itens and not conversa) or any(not item.id_solicitacao or item.origem != "executor" for item in itens):
         return _com_motivo_fallback(fallback, "receipt_composto_invalido")
     classes = [classificar_resultado(item) for item in itens]
     if any(classe not in {"sucesso", "sem_acao", "falha", "incerto"} for classe in classes):
@@ -1019,98 +1050,274 @@ def personalizar_confirmacao_composta_llm(
         '"trechos":["Abri a agenda","criei a pasta fotos"]}. '
         "Não devolva comandos."
     )
+    if conversa:
+        contrato.update(texto_conversacional=conversa, avisos_obrigatorios=list(avisos))
+        if complemento_conversacional is not None:
+            contrato["atos_explicativos"] = [
+                ato.como_dict() for ato in complemento_conversacional.atos_explicativos
+            ]
+        # Não acumular as instruções da paráfrase puramente operacional: elas
+        # proibiam perguntas e exigiam que todo conteúdo tivesse receipt.
+        sistema = (
+            f"{IDENTIDADE_VOZ_LAYLAY} "
+            "Responda ao pedido misto com JSON contendo somente trechos e conversa. "
+            "trechos: lista de strings, uma para cada resultado na mesma ordem. "
+            "Cada string relata somente seu fato_verificado, preservando alvo, ação, "
+            "números e certeza. Sucesso confirmado, estado já satisfeito sem nova execução, "
+            "falha e resultado incerto são diferentes; uma etapa não prova outra. "
+            "Preserve informacao_literal quando houver. Abertura não prova foco ou reprodução. "
+            "Se resultados estiver vazio, trechos deve ser []. "
+            "conversa: sua resposta ao texto_conversacional, não uma cópia do pedido. "
+            "Pode explicar o assunto ou pedir esclarecimento; não invente estado atual, "
+            "efeitos, agendamento ou ações futuras. Uma condição futura não criou pendência: "
+            "diga que a ação condicional não ficou agendada e será necessário um novo "
+            "pedido explícito quando chegar a hora; não peça só 'sim' ou confirmação. "
+            "Este complemento não executa ações; isso não significa que a Laylay seja "
+            "incapaz de executá-las em outro pedido autorizado. Ausência de receipt não "
+            "prova falta de acesso ou capacidade: não invente nenhuma dessas limitações. "
+            "Os avisos_obrigatorios serão publicados pelo host; não os copie em nenhum campo. "
+            "Seja natural e breve. Não devolva comandos, fala ou outros campos. "
+            "Nos atos_explicativos, enunciador é quem escreveu o pedido (o usuário), "
+            "destinatario é você, Laylay, e grupo não pode virar uma pessoa só. "
+            "Preserve essa referência; não invente sujeito quando indeterminado. "
+            'Formato: {"trechos":[],"conversa":"<resposta específica ao ato não operacional>"}.'
+        )
+        if humor_bloqueado_por_preferencia(retrato):
+            sistema += " Responda sem humor, conforme a preferência vigente."
+        if realizacoes:
+            contrato["realizacoes_permitidas"] = realizacoes
+            sistema = (
+                f"{IDENTIDADE_VOZ_LAYLAY} "
+                "Redija os resultados e escolha como explicar as condições deste pedido. "
+                "Retorne somente JSON com trechos e realizacoes. trechos é uma lista de "
+                "strings, uma por resultado, na mesma ordem. Preserve fato_verificado, "
+                "alvo, números, informacao_literal e certeza de CADA resultado. "
+                "Uma etapa não prova outra. Abertura não prova foco ou reprodução. "
+                "Se resultados estiver vazio, trechos deve ser []. "
+                "Para CADA item de realizacoes_permitidas, escolha uma opcao pelo id "
+                "e preserve seu indice. Essa escolha é obrigatória e só escolhe redação, "
+                "não execução. O host publica a fala escolhida e os avisos_obrigatorios; "
+                "não os copie. Não escreva conversa, fala, comandos ou outros campos. "
+                'Formato: {"trechos":[],"realizacoes":[{"indice":1,"opcao":"condicao_1"}]}.'
+            )
     try:
         resposta = enviar_mensagem(
             [{"role": "system", "content": sistema},
              {"role": "user", "content": json.dumps(contrato, ensure_ascii=False)}],
-            _com_tools=False, max_tokens=min(768, 128 + 96 * len(itens)),
-            modo_rapido=False, timeout=_timeout_autoria_operacional(),
+            _com_tools=False, max_tokens=min(768, 128 + 96 * len(itens) + (320 if conversa else 0)),
+            modo_rapido=False, timeout=15.0 if conversa else _timeout_autoria_operacional(),
             _prioridade_interativa=True, _permitir_durante_interacao=True,
-            _tipo_chamada="autoria_operacional", _classe_timeout="rapida",
+            _tipo_chamada="autoria_operacional", _classe_timeout="normal" if conversa else "rapida",
             _contexto_fechado=True,
         )
     except Exception as erro:
         return _com_motivo_fallback(fallback, f"erro_chamada_{type(erro).__name__.lower()}")
-    dados = _extrair_json(resposta)
-    fala = re.sub(r"\s+", " ", str(dados.get("fala") or "")).strip()
-    trechos = dados.get("trechos")
-    if (
-        not 3 <= len(fala) <= 1000 or "?" in fala or contem_ataque_pessoal(fala)
-        or dados.get("comandos") not in (None, [], ())
-        or not isinstance(trechos, list) or len(trechos) != len(itens)
-    ):
-        return _com_motivo_fallback(fallback, "estrutura_composta_invalida")
-    por_id = {item.id_solicitacao: (item, classe) for item, classe in zip(itens, classes)}
-    cobertos: set[str] = set()
-    intervalos: list[tuple[int, int]] = []
-    for posicao, campo in enumerate(trechos):
-        if isinstance(campo, str):
-            # O host associa a lista congelada de receipts à mesma lista de
-            # trechos. A certeza, o alvo e a ação ainda precisam ser validados.
-            campo = {"indice": posicao, "trecho": campo}
-        if not isinstance(campo, dict):
-            return _com_motivo_fallback(fallback, "trecho_composto_invalido")
-        identidade = str(campo.get("id_solicitacao") or "").strip()
-        indice = campo.get("indice")
-        if indice is not None:
-            if type(indice) is not int or not 0 <= indice < len(itens):
-                return _com_motivo_fallback(fallback, "indice_composto_invalido")
-            identidade_host = itens[indice].id_solicitacao
-            if identidade and identidade != identidade_host:
-                return _com_motivo_fallback(fallback, "identidade_composta_divergente")
-            identidade = identidade_host
-        trecho = re.sub(r"\s+", " ", str(campo.get("trecho") or "")).strip()
-        inicio = fala.find(trecho) if trecho else -1
-        fim = inicio + len(trecho)
-        if (
-            identidade not in por_id or identidade in cobertos or inicio < 0
-            or any(inicio < b and fim > a for a, b in intervalos)
-        ):
-            return _com_motivo_fallback(fallback, "vinculo_composto_invalido")
-        item, classe = por_id[identidade]
-        status = item.status.casefold()
-        if "abert" in status and "focad" not in status:
-            # A certeza pertence a este receipt, não às outras etapas.
-            base_trecho = _normalizar(trecho)
-            if (re.search(r"\b(?:foco|focad[oa]|frente)\b", base_trecho)
-                and item.params.get("foco_confirmado") is not True):
-                return _com_motivo_fallback(fallback, "foco_composto_nao_confirmado")
-            if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
-                return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
-        literal = informacoes.get(identidade, "")
-        motivo = (
-            "informacao_composta_omitida" if literal and literal not in trecho else
-            "" if literal else _motivo_contrato_invalido(
-                trecho, resultado=item, classe=classe,
-                status_declarado=item.status, alvo_declarado=item.alvo,
+    def validar_resposta(resposta_candidata: Any) -> ConfirmacaoPersonalizada:
+        if realizacoes:
+            # Nenhuma extração de JSON de prosa: conteúdo adicional não possui
+            # cobertura. O modelo escolhe; o owner reconstrói e confere a fala.
+            try:
+                dados = (dict(resposta_candidata) if isinstance(resposta_candidata, Mapping)
+                         else json.loads(str(resposta_candidata)))
+            except (TypeError, ValueError):
+                dados = {}
+            if not isinstance(dados, dict) or set(dados) != {"trechos", "realizacoes"}:
+                return _com_motivo_fallback(fallback, "estrutura_nuclear_invalida")
+            proposta = {"realizacoes": dados["realizacoes"]}
+            trecho_nuclear, motivo = realizar_nucleo_explicativo(complemento_conversacional, proposta)
+            if motivo:
+                return _com_motivo_fallback(fallback, motivo)
+            aderencia = validar_aderencia_contrato_fala(
+                conversa, trecho_nuclear, turno_id=complemento_conversacional.turno_id,
+                contrato_fala={"exigir_nucleo_verificado": True,
+                    "turno_id": complemento_conversacional.turno_id,
+                    "complemento_nuclear": complemento_conversacional, "proposta_nuclear": proposta},
             )
-        )
-        if motivo:
-            return _com_motivo_fallback(fallback, f"contrato_composto_nao_preservado:{motivo}")
-        guardiao_trecho = validar_alegacoes_da_fala(
-            trecho, plano={"requer_execucao": True, "comandos": [item.como_dict()]},
+            if not aderencia["aceita"]:
+                return _com_motivo_fallback(fallback, "vinculo_nuclear_rejeitado")
+            dados = {"trechos": dados["trechos"], "conversa": trecho_nuclear}
+        else:
+            dados = _extrair_json(resposta_candidata)
+        if conversa:
+            if (set(dados) != {"trechos", "conversa"}
+                or not isinstance(dados.get("conversa"), str)
+                or not isinstance(dados.get("trechos"), list)
+                or len(dados["trechos"]) != len(itens)
+                or any(not isinstance(t, str) or not t.strip() for t in dados["trechos"])):
+                return _com_motivo_fallback(fallback, "estrutura_mista_invalida")
+            # A relação posicional nasce da lista congelada do host. Os campos
+            # abaixo são apenas a representação interna do verificador comum;
+            # não são novas provas e não evitam a validação factual de cada trecho.
+            trechos_mistos = [re.sub(r"\s+", " ", t).strip() for t in dados["trechos"]]
+            trecho_conversa = (dados["conversa"] if realizacoes
+                              else re.sub(r"\s+", " ", dados["conversa"]).strip())
+            dados = {"fala": " ".join([*trechos_mistos, *avisos, trecho_conversa]),
+                     "trechos": trechos_mistos, "trecho_conversacional": trecho_conversa,
+                     "trechos_avisos": list(avisos)}
+        fala = (str(dados.get("fala") or "").strip() if realizacoes
+                else re.sub(r"\s+", " ", str(dados.get("fala") or "")).strip())
+        trechos = dados.get("trechos")
+        if (
+            not 3 <= len(fala) <= 1000 or ("?" in fala and not conversa) or contem_ataque_pessoal(fala)
+            or dados.get("comandos") not in (None, [], ())
+            or not isinstance(trechos, list) or len(trechos) != len(itens)
+        ):
+            return _com_motivo_fallback(fallback, "estrutura_composta_invalida")
+        por_id = {item.id_solicitacao: (item, classe) for item, classe in zip(itens, classes)}
+        cobertos: set[str] = set()
+        intervalos: list[tuple[int, int]] = []
+        for posicao, campo in enumerate(trechos):
+            if isinstance(campo, str):
+                # O host associa a lista congelada de receipts à mesma lista de
+                # trechos. A certeza, o alvo e a ação ainda precisam ser validados.
+                campo = {"indice": posicao, "trecho": campo}
+            if not isinstance(campo, dict):
+                return _com_motivo_fallback(fallback, "trecho_composto_invalido")
+            identidade = str(campo.get("id_solicitacao") or "").strip()
+            indice = campo.get("indice")
+            if indice is not None:
+                if type(indice) is not int or not 0 <= indice < len(itens):
+                    return _com_motivo_fallback(fallback, "indice_composto_invalido")
+                identidade_host = itens[indice].id_solicitacao
+                if identidade and identidade != identidade_host:
+                    return _com_motivo_fallback(fallback, "identidade_composta_divergente")
+                identidade = identidade_host
+            trecho = re.sub(r"\s+", " ", str(campo.get("trecho") or "")).strip()
+            inicio = fala.find(trecho) if trecho else -1
+            fim = inicio + len(trecho)
+            if (
+                identidade not in por_id or identidade in cobertos or inicio < 0
+                or any(inicio < b and fim > a for a, b in intervalos)
+            ):
+                return _com_motivo_fallback(fallback, "vinculo_composto_invalido")
+            item, classe = por_id[identidade]
+            status = item.status.casefold()
+            if "abert" in status and "focad" not in status:
+                # A certeza pertence a este receipt, não às outras etapas.
+                base_trecho = _normalizar(trecho)
+                if (re.search(r"\b(?:foco|focad[oa]|frente)\b", base_trecho)
+                    and item.params.get("foco_confirmado") is not True):
+                    return _com_motivo_fallback(fallback, "foco_composto_nao_confirmado")
+                if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
+                    return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
+            literal = informacoes.get(identidade, "")
+            motivo = (
+                "informacao_composta_omitida" if literal and literal not in trecho else
+                "" if literal else _motivo_contrato_invalido(
+                    trecho, resultado=item, classe=classe,
+                    status_declarado=item.status, alvo_declarado=item.alvo,
+                )
+            )
+            if motivo:
+                return _com_motivo_fallback(fallback, f"contrato_composto_nao_preservado:{motivo}")
+            guardiao_trecho = validar_alegacoes_da_fala(
+                trecho, plano={"requer_execucao": True, "comandos": [item.como_dict()]},
+                origem="canal_voz",
+            )
+            if guardiao_trecho.get("problemas"):
+                return _com_motivo_fallback(fallback, "alegacao_do_trecho_sem_receipt")
+            cobertos.add(identidade)
+            intervalos.append((inicio, fim))
+        if conversa:
+            trecho_conversa = (str(dados.get("trecho_conversacional") or "") if realizacoes
+                              else re.sub(r"\s+", " ", str(dados.get("trecho_conversacional") or "")).strip())
+            # Prosa livre mantém suas guardas. Na realização controlada, a
+            # fonte citada é literal, não uma promessa assumida pela Laylay;
+            # seu vínculo já foi conferido pelo verificador canônico acima.
+            guardiao_conversa = {"problemas": []} if realizacoes else validar_alegacoes_da_fala(
+                trecho_conversa, plano={"comandos": [], "texto_usuario": conversa,
+                                        "atos_explicativos": (complemento_conversacional.atos_explicativos
+                                                               if complemento_conversacional is not None else ()),
+                                        "exigir_receipt_para_estado": True,
+                                        "escopo_explicativo_sem_continuacao": bool(
+                                            complemento_conversacional is not None
+                                            and any(ato.relacao == "condicao_nao_verificada"
+                                                    for ato in complemento_conversacional.atos_explicativos)
+                                    ),
+                                    "exigir_explicacao_condicional": bool(
+                                        complemento_conversacional is not None
+                                        and any(ato.relacao == "condicao_nao_verificada"
+                                                for ato in complemento_conversacional.atos_explicativos)
+                                    )},
+                origem="canal_voz",
+            )
+            from mente_laylay.cognicao.guardiao_realidade_pessoal import detectar_experiencia_pessoal_inventada
+            if (not trecho_conversa or guardiao_conversa.get("problemas")
+                or (not realizacoes and detectar_experiencia_pessoal_inventada(trecho_conversa))):
+                motivo = ":" + ",".join(guardiao_conversa["problemas"]) if guardiao_conversa.get("problemas") else ""
+                return _com_motivo_fallback(fallback, "conversa_composta_invalida" + motivo)
+            trechos_avisos = dados.get("trechos_avisos", [])
+            if not isinstance(trechos_avisos, list) or trechos_avisos != list(avisos):
+                return _com_motivo_fallback(fallback, "avisos_compostos_divergentes")
+            for trecho in [trecho_conversa, *trechos_avisos]:
+                inicio = fala.find(trecho)
+                fim = inicio + len(trecho)
+                if inicio < 0 or any(inicio < b and fim > a for a, b in intervalos):
+                    return _com_motivo_fallback(fallback, "escopos_compostos_sobrepostos")
+                intervalos.append((inicio, fim))
+        sem_cobertura = fala
+        for inicio, fim in sorted(intervalos, reverse=True):
+            sem_cobertura = sem_cobertura[:inicio] + " " + sem_cobertura[fim:]
+        if re.sub(r"\b(?:e|mas|enquanto|tambem|também)\b|[\W_]", "", sem_cobertura, flags=re.IGNORECASE):
+            return _com_motivo_fallback(fallback, "alegacao_composta_sem_receipt")
+        numeros = lambda texto: set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", texto))
+        evidencia = " ".join((fallback.fala, json.dumps(contrato, ensure_ascii=False)))
+        fala_operacional = " ".join(str(c.get("trecho") or "") if isinstance(c, dict) else str(c) for c in trechos)
+        fala_conferida = fala_operacional if conversa else fala
+        evidencia_numerica = json.dumps(contrato["resultados"], ensure_ascii=False) if conversa else evidencia
+        if not numeros(fala_conferida).issubset(numeros(evidencia_numerica)):
+            return _com_motivo_fallback(fallback, "detalhe_numerico_nao_evidenciado")
+        guardiao = validar_alegacoes_da_fala(
+            fala_conferida, plano={"requer_execucao": True, "comandos": [item.como_dict() for item in itens]},
             origem="canal_voz",
         )
-        if guardiao_trecho.get("problemas"):
-            return _com_motivo_fallback(fallback, "alegacao_do_trecho_sem_receipt")
-        cobertos.add(identidade)
-        intervalos.append((inicio, fim))
-    sem_cobertura = fala
-    for inicio, fim in sorted(intervalos, reverse=True):
-        sem_cobertura = sem_cobertura[:inicio] + " " + sem_cobertura[fim:]
-    if re.sub(r"\b(?:e|mas|enquanto|tambem|também)\b|[\W_]", "", sem_cobertura, flags=re.IGNORECASE):
-        return _com_motivo_fallback(fallback, "alegacao_composta_sem_receipt")
-    numeros = lambda texto: set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", texto))
-    evidencia = " ".join((fallback.fala, json.dumps(contrato, ensure_ascii=False)))
-    if not numeros(fala).issubset(numeros(evidencia)):
-        return _com_motivo_fallback(fallback, "detalhe_numerico_nao_evidenciado")
-    guardiao = validar_alegacoes_da_fala(
-        fala, plano={"requer_execucao": True, "comandos": [item.como_dict() for item in itens]},
-        origem="canal_voz",
-    )
-    if guardiao.get("problemas"):
-        return _com_motivo_fallback(fallback, "guardiao_composto_rejeitou")
-    return ConfirmacaoPersonalizada(fala, fallback.emocao, fallback.nivel, usada_llm=True)
+        if guardiao.get("problemas"):
+            return _com_motivo_fallback(fallback, "guardiao_composto_rejeitou")
+        return ConfirmacaoPersonalizada(fala, fallback.emocao, fallback.nivel, usada_llm=True)
+
+    validada = validar_resposta(resposta)
+    if (validada.usada_llm or not conversa or complemento_conversacional is None
+        or eh_estado_tecnico_llm(resposta)
+        or not validada.motivo_fallback.startswith("conversa_composta_invalida")):
+        return validada
+    trechos_operacionais = tuple(_extrair_json(resposta)["trechos"])
+    # Mesmo contrato, uma segunda redação, mesmas guardas. O diagnóstico é
+    # sobre a proposta rejeitada; não vira fato/receipt nem inclui essa fala.
+    diagnostico = {
+        "origem": "validador_de_redacao",
+        "motivo": validada.motivo_fallback,
+        "nao_e_resultado_operacional": True,
+        "instrucao": (
+            "Corrija a redação, preservando resultados e atos_explicativos originais. "
+            "Não crie pendência ou peça só confirmação: para executar depois, é "
+            "necessário novo pedido direto. Enunciador é o usuário; destinatario "
+            "é Laylay. Cite a fonte se precisar manter seus pronomes literais. "
+            "Se o ato é condicao_nao_verificada, explique essa condição e que ela "
+            "não deixou a ação agendada. Não responda sobre um pedido educado "
+            "quando o ato é uma condição futura. "
+            "Retorne somente o mesmo JSON com trechos e conversa."
+            " Os trechos operacionais já foram validados: preserve-os literalmente; "
+            "corrija somente conversa."
+        ),
+    }
+    try:
+        resposta_reparo = enviar_mensagem(
+            [{"role": "system", "content": sistema},
+             {"role": "user", "content": json.dumps(contrato, ensure_ascii=False)},
+             {"role": "user", "content": json.dumps(diagnostico, ensure_ascii=False)}],
+            _com_tools=False, max_tokens=min(768, 448 + 96 * len(itens)),
+            modo_rapido=False, timeout=15.0,
+            _prioridade_interativa=True, _permitir_durante_interacao=True,
+            _tipo_chamada="reparo_factual", _classe_timeout="normal",
+            _contexto_fechado=True,
+        )
+    except Exception as erro:
+        return _com_motivo_fallback(fallback, f"erro_reparo_{type(erro).__name__.lower()}")
+    dados_reparo = _extrair_json(resposta_reparo)
+    if (not isinstance(dados_reparo.get("trechos"), list)
+        or tuple(dados_reparo["trechos"]) != trechos_operacionais):
+        return _com_motivo_fallback(fallback, "trecho_operacional_alterado_no_reparo")
+    return validar_resposta(resposta_reparo)
 
 
 def personalizar_informacao_llm(

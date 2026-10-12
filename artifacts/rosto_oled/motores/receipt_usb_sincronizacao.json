@@ -1,0 +1,17 @@
+{
+  "porta": "COM4",
+  "transporte": "serial",
+  "modo_conexao": "manual",
+  "face_confirmado": true,
+  "motor_suportado": true,
+  "parada_confirmada": true,
+  "motor_enviado": false,
+  "wifi_config_alterada": false,
+  "sessao_laylay_aberta": true,
+  "launcher_pid": 29412,
+  "launcher_porta": "COM4",
+  "tcp_corpo_8765_nos_processos_laylay": false,
+  "observacao_humana": "Pedro: Sim, abriu e o OLED acompanha",
+  "prova_visual_rosto_na_laylay": true,
+  "configuracao_temporaria": "LAYLAY_ROSTO_PORTA=COM4 herdada somente por esta sessao"
+}

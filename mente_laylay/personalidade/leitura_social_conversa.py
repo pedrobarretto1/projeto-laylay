@@ -16,9 +16,44 @@ def _normalizar_reconhecimento(texto: str) -> str:
     return "".join(ch for ch in bruto if not unicodedata.combining(ch))
 
 
+def analisar_avaliacao_social_direta(texto_usuario: str) -> Dict[str, Any]:
+    """Uma afirmação autoral completa, com avaliação e destinatária explícitos.
+
+    Não decide execução nem interpreta a emoção do usuário. Citações, perguntas,
+    hipóteses, tarefas compostas e adjetivos isolados não atestam avaliação pessoal.
+    """
+    texto = re.sub(r"\s+", " ", _normalizar_reconhecimento(texto_usuario)).strip()
+    if re.search(r'[?"“”‘’«»\x27]|\b(?:se|talvez|hipotese)\b', texto):
+        return {}
+    texto = re.sub(r"^(?:mas\s+)?(?:(?:lay|laylay)[,:…]?\s+)?", "", texto)
+    texto = re.sub(r"[, ]+(?:lay|laylay)[.!…]*$", "", texto).rstrip(" .!…")
+    destinataria = r"(?:voce|vc|tu|(?:a\s+)?laylay)"
+    intensidade = r"(?:(?:muito|bem|bastante|tao|mo)\s+)?"
+    apreciacao = r"(?:incrivel|maravilhos[ao]|lind[ao]|adoravel|legal|fof[ao]|uma fofa)"
+    elogio = (
+        rf"{destinataria}\s+(?:e|eh|es)\s+{intensidade}{apreciacao}"
+        rf"|(?:eu\s+)?gosto\s+{intensidade}(?:de\s+(?:voce|vc|tu)|da\s+laylay)"
+        rf"|(?:eu\s+)?(?:te\s+(?:amo|adoro)|amo\s+(?:voce|vc|tu|a\s+laylay))"
+        rf"|(?:eu\s+)?te\s+acho\s+{intensidade}{apreciacao}"
+    )
+    critica = rf"{destinataria}\s+(?:e|eh|es)\s+{intensidade}(?:chat[ao]?|gross[ao]|desagradavel)"
+    rejeicao = rf"(?:eu\s+)?(?:nao\s+gosto\s+de|nao\s+quero\s+conversar\s+com)\s+{destinataria}"
+    for tipo, padrao in (("elogio_pessoal", elogio), ("critica_pessoal", critica),
+                         ("rejeicao_pessoal", rejeicao)):
+        if re.fullmatch(padrao, texto):
+            atributo = re.search(rf"(?:{apreciacao}|chat[ao]?|gross[ao]|desagradavel)$", texto)
+            return {"tipo": tipo, "alvo": "laylay", "confianca": 0.94,
+                    "atributo": atributo.group(0) if atributo else "",
+                    "trecho_evidencia": str(texto_usuario).strip(),
+                    "autoriza_execucao": False, "memorizar_como_fato": False}
+    return {}
+
+
 def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
     """Distingue gratidão pela ajuda de elogio dirigido à personalidade."""
     t = _normalizar_reconhecimento(texto_usuario)
+    if analisar_avaliacao_social_direta(texto_usuario).get("tipo") == "elogio_pessoal":
+        return "elogio_pessoal"
     elogios_pessoais = (
         "voce e incrivel", "voce e maravilhosa", "voce e maravilhoso",
         "voce e linda", "voce e lindo", "voce e adoravel", "voce e uma fofa",
@@ -37,24 +72,15 @@ def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
 
 def elogio_pessoal_direto(texto_usuario: str) -> bool:
     """Só uma afirmação dirigida à Laylay pode causar episódio próprio."""
-    texto = _normalizar_reconhecimento(texto_usuario).strip()
-    if (
-        not texto or "?" in texto
-        or re.search(r'["“”‘’«»]|\b(?:se|talvez|hipotese)\b', texto)
-        or tipo_reconhecimento_afetivo(texto_usuario) != "elogio_pessoal"
-    ):
-        return False
-    return bool(re.match(
-        r"^(?:(?:lay|laylay)[,:]?\s+)?"
-        r"(?:voce|vc|(?:a\s+)?laylay|te\s+acho|gosto\s+de\s+voce|"
-        r"amo\s+voce|te\s+amo)\b",
-        texto,
-    ))
+    return analisar_avaliacao_social_direta(texto_usuario).get("tipo") == "elogio_pessoal"
 
 
 
 
 def parece_elogio_ou_agradecimento_curto(ctx: Dict[str, Any], texto_usuario: str) -> bool:
+    avaliacao = analisar_avaliacao_social_direta(texto_usuario)
+    if avaliacao:
+        return avaliacao["tipo"] == "elogio_pessoal"
     bruto = _normalizar_reconhecimento(texto_usuario)
     correcao_para_agradecimento = bool(re.search(
         r"\b(?:quer\s+dizer|quis\s+dizer|corrigindo)\b.{0,35}\b"

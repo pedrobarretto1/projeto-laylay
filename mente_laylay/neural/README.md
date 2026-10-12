@@ -1,5 +1,29 @@
 # Especialista neural de comandos
 
+## Prioridade vigente — desenvolvimento pausado em 11/10/2026
+
+Por decisão de Pedro, a pesquisa, o treinamento e a promoção da rede ficam
+pausados até depois da apresentação da Laylay no SENAI, prevista para o início
+de novembro de 2026. O foco passa a ser melhorar e estabilizar o sistema de
+interpretação atual. Esta decisão não descarta modelos, datasets, testes,
+artefatos, contratos ou hipóteses; tampouco declara as raízes abertas corrigidas.
+
+Checkpoint: `main`, HEAD `2566b621d2c8ee88ff7086c6c36019da85c8a4cd`,
+worktree suja preservada, inclusive alterações paralelas. A configuração local
+consultada mantém `LAYLAY_NEURAL_MODE=shadow`; nenhuma configuração de execução
+foi alterada nesta pausa. Não confundir pausa do desenvolvimento com desligamento
+do observador em sombra ou com mudança do modo de um processo já aberto.
+
+Para retomar: consultar este README, o registro central e o protocolo P01 em
+`melhorias e planos/PLANO_ENSINO_FUNDAMENTADO_LAYLAY.md`; verificar novamente
+HEAD, worktree e composição. A última coleta da investigação semântica está em
+`resultados_testes/sonda_pergunta_direta_v1.jsonl`, com script e testes em
+`scripts/analises/sonda_pergunta_direta_v1.py` e
+`scripts/tests/test_sonda_pergunta_direta_v1.py`. O artefato possui resumo final,
+mas sua auditoria final e incorporação ao relato de resultados permanecem
+pendentes; não promover por existência da coleta. Essa investigação do Qwen não
+é, por si só, avaliação ou treinamento do classificador neural de comandos.
+
 ## Estado atual: v29 — ato semântico selecionado; domínio é a próxima fronteira — 2026-09-21
 
 Base congelada antes da investigação: `main`, HEAD

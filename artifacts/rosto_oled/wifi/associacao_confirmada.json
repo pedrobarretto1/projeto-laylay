@@ -1,0 +1,8 @@
+{
+  "host": "10.68.192.221",
+  "porta": 8765,
+  "somente_associacao": true,
+  "rosto_confirmado": false,
+  "parada_confirmada": false,
+  "alcance_pc": "tcp_nao_alcancavel_do_pc_na_rede_atual"
+}

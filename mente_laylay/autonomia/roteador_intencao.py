@@ -21,6 +21,9 @@ from mente_laylay.autonomia.executor_audio import (
     DependenciasExecutorAudio,
     executar_intencao_audio as _executar_intencao_audio,
 )
+from mente_laylay.autonomia.executor_corpo import (
+    DependenciasExecutorCorpo, executar_intencao_corpo,
+)
 from mente_laylay.autonomia.executor_agenda import (
     DependenciasExecutorAgenda,
     executar_intencao_agenda as _executar_intencao_agenda,
@@ -104,7 +107,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         ctx["_registrar_mente_curta"] = None
         falar = None
         registrar_mente_curta = None
-    if pedido_foco_explicito(texto_original):
+    if intent not in {"CORPO_MOVER", "CORPO_PARAR", "CORPO_COMPANHIA"} and pedido_foco_explicito(texto_original):
         params["permitir_foco"] = True
     destino_val = destino(params, texto_original) if callable(destino) else "pc_a"
     validacao_ambiente = ValidadorAmbiente(ctx, destino_val, texto_original)
@@ -287,6 +290,14 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
                         retorno_legado=True,
                     )
                     return True
+
+    despacho_corpo = executar_intencao_corpo(
+        intent, params, texto_original, ctx,
+        DependenciasExecutorCorpo(marcar_resultado=adaptador_resultado.marcar_resultado,
+                                 falar_por_status=adaptador_resultado.falar_por_status),
+    )
+    if despacho_corpo.tratado:
+        return _finalizar_despacho_moderno(despacho_corpo)
 
     despacho_janelas = _executar_intencao_janelas(
         intent,

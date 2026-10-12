@@ -55,6 +55,14 @@ _CONTRATO_EXPRESSAO_AVATAR = (
     "de cada fala. Sem movimento, a intensidade mantém uma pista visual discreta."
 )
 
+_CONTRATO_EXPRESSAO_SOLICITADA = (
+    "Você pode pedir uma pose: 'fique brava', 'fica um pouco triste', 'fique envergonhada', "
+    "'faça uma carinha feliz' ou 'volte ao normal'. A expressão é temporária, até 60 segundos "
+    "e sujeita ao decaimento por interações. É encenação solicitada, sem alterar humor acumulado "
+    "ou afirmar sentimentos humanos. Fala, avatar ativo e OLED conectado usam o mesmo episódio; "
+    "a presença ou mudança física no OLED exige ACK recente"
+)
+
 
 _CONTRATO_PREFERENCIA_HUMOR = (
     "Respeito sua preferência explícita de humor imediatamente, como 'pega leve hoje' "
@@ -73,6 +81,55 @@ _CONTRATO_PREFERENCIA_HUMOR = (
 
 
 _DESCRICAO_DOMINIO = {
+    "corpo_motor": (
+        "acionar os motores de teste pelo ESP32-C3 e a DRV8833, com pedidos como 'ande para frente', "
+        "'ande para trás', 'vire para a esquerda', 'vire para a direita' e 'pare os motores'. "
+        "Cada movimento é um pulso curto de bancada, por padrão 250 milissegundos, seguido de parada. "
+        "A sessão exige firmware MOTOR1 habilitado. MACK e SACK correlacionados confirmam apenas "
+        "PWM aplicado e ponte desenergizada; não possuo sensor de giro, deslocamento ou obstáculos. "
+        "Repetir exige outro pedido atual. Posso reagir com pequenos gestos ao mudar de emoção ou começar a falar "
+        "se você pedir 'ative modo companhia na bancada', 'na área delimitada' ou 'com rodas suspensas'. "
+        "Esse modo exige a sessão USB atual. Uma preferência explícita salva pode ativá-lo ao iniciar; "
+        "sem essa preferência começa desligado. Não expira por tempo ou contagem de gestos. "
+        "Uso PWM100, sequências emocionais de até quatro movimentos, até 500ms por movimento, "
+        "até 1500ms totais de motor por gesto e pelo menos dois segundos entre inícios. "
+        "Nesse modo também comemoro ações confirmadas com balanços, dancinhas e giros por tempo. "
+        "Com 'ative modo passeio na mesa com barreiras', 'ative passeio na área delimitada' "
+        "ou a preferência explícita salva para iniciar passeio na área com barreiras, "
+        "intercalo avanços, recuos e giros espontâneos a cada 8 a 14 segundos, em silêncio e sem ação em andamento. "
+        "'Desative passeio', 'desative modo companhia', parada, movimento manual, falha ou reconexão revogam a concessão. "
+        "O perfil explícito rodas_suspensas acrescenta intenções de atenção, interação, expressão, "
+        "comemoração, exploração e descanso, usando atividade do PC e emoção causal. "
+        "Com LONGO1 negociado, esse perfil usa comandos contínuos de até 5 segundos e coreografias "
+        "completas de vários segundos; tarefa nova, contexto substituído ou parada interrompem a sequência. "
+        "Minha IA recebe o estado vivo do corpo no contexto e pode propor uma intenção corporal na mesma resposta: "
+        "interagir, expressar, comemorar, reagir à falha, explorar, prestar atenção ou descansar. "
+        "A proposta fica vinculada ao turno e à concessão USB existente; não concede permissão. "
+        "O resultado retorna à mente, distinguindo PWM e parada confirmados de deslocamento ainda não observado. "
+        "A prioridade canônica da entrada do usuário suspende a exploração antes da resposta da IA. "
+        "Com OLHOS2, coordeno antecipação, olhar durante o gesto e acomodação; vario lado e ritmo "
+        "sem repetir imediatamente a mesma versão da emoção. Com RAMPA1 negociado, o gesto usa "
+        "subida e descida graduais de PWM, mantendo prazo absoluto e parada imediata quando solicitada. "
+        "Sem sensores, não mapeio o ambiente nem evito bordas; giro de 360 graus ainda não está calibrado"
+    ),
+    "rosto_oled": (
+        "expressar a emoção causal e intensidade da mente num rosto animado no OLED SSD1306 "
+        "do ESP32-C3 via USB detectada automaticamente ou servidor TCP autenticado no Wi-Fi local configurado; "
+        "confirmar o firmware pelo handshake antes de enviar expressões e exigir um candidato único. "
+        "A porta manual continua opcional; piscar, olhar e respirar mesmo em repouso. "
+        "Sem sessão válida ou após 3,5 segundos sem pacotes, dorme com olhos fechados e Zs animados. "
+        "O rosto tem apenas olhos expressivos, sem boca nem sincronização com a voz. Quando o firmware "
+        "negocia HACK1, um mini terminal animado "
+        "aparece enquanto trato uma ação observada, com linhas fictícias e retorno suave ao rosto. "
+        "Quando GLITCH1 é negociado, falhas de execução observadas por receipt ou exceção produzem "
+        "um glitch curto. Recusa, hipótese e emoção não são falha de execução. "
+        "Com SOM1 negociado, posso emitir bips curtos pelo GPIO6 ao acordar, em sucesso confirmado, "
+        "falha observada e mudança marcante de emoção causal, com intervalo e sem repetir receipts. "
+        "A confirmação sonora é aceitação da sequência pelo firmware, não prova de audição. "
+        "A animação e seu AACK não confirmam sucesso da ação nem concedem autorização. O ACK confirma "
+        "aplicação pelo firmware, não comprova opticamente os pixels. Não controla motores "
+        "nem cria emoções, comandos ou autorização; sem ACK recente fica indisponível"
+    ),
     "musica": (
         "buscar e controlar música; criar, listar, tocar e editar playlists do usuário; "
         "montar curadorias próprias com o histórico confirmado e copiar uma faixa "
@@ -152,12 +209,14 @@ _DESCRICAO_DOMINIO = {
         "pedido explicitamente como opcional, uma causa recente e comprovada "
         "pode me levar a perguntar uma vez antes de alternar; urgência e "
         "acessibilidade seguem o executor normalmente. "
-        + _CONTRATO_FEEDBACK_PRESENCA + ". " + _CONTRATO_PREFERENCIA_HUMOR
+        + _CONTRATO_FEEDBACK_PRESENCA + ". " + _CONTRATO_PREFERENCIA_HUMOR + " " + _CONTRATO_EXPRESSAO_SOLICITADA
     ),
     "conversa": "conversar, explicar, raciocinar, consultar clima e sugerir ações",
 }
 
 _TERMOS_DOMINIO = {
+    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha"),
+    "rosto_oled": ("oled", "esp32", "rostinho", "rosto fisico", "corpo fisico", "animacao de hack", "mini terminal", "bip", "bips", "olhos expressivos"),
     "musica": ("musica", "som", "faixa", "playlist", "tocar", "pausar", "youtube", "spotify"),
     "sistema": (
         "programa", "aplicativo", "app", "apps", "janela", "janelas", "volume", "computador", "pc",
@@ -228,6 +287,7 @@ _PEDIDO_CAPACIDADES = (
 )
 
 _ROTULO_CAPACIDADE_NATURAL = {
+    "corpo_motor": "acionar os motores em pulsos curtos, reagir e comemorar no modo companhia e passear no modo passeio autorizado",
     "arquivos": "criar, procurar e organizar arquivos",
     "sistema": "abrir programas e organizar janelas",
     "navegador": "trabalhar com sites, abas e páginas",
@@ -298,6 +358,8 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
     if not t:
         return False
     if any(frase in t for frase in _PEDIDO_CAPACIDADES):
+        return True
+    if re.match(r"^como\s+(?:(?:eu\s+)?posso\s+)?(?:pedir|solicitar)\b", t):
         return True
     if _texto_sobre_feedback_presenca(t) and re.search(
         r"\b(?:voce|laylay|lay)\s+aprende\b", t,
@@ -684,16 +746,19 @@ class MapaHabilidadesRuntime:
             registro = dict(mapa.get("dominios", {}).get(dominio) or {})
             itens = [c for c in mapa.get("capacidades", {}).values() if c.get("dominio") == dominio]
             estado = registro.get("estado")
-            if (dominio == "conversa" or not itens or estado not in {"disponivel", "indisponivel"}
-                    or any(c.get("estado") != estado for c in itens)):
+            if (dominio == "conversa" or not itens or estado not in {"disponivel", "indisponivel"}):
                 return ""
             exemplos = list(dict.fromkeys(
-                exemplo for c in itens for exemplo in c.get("invocacao_natural", ())
+                exemplo for c in itens if c.get("estado") == "disponivel" for exemplo in c.get("invocacao_natural", ())
             )) if estado == "disponivel" else []
             documentos.append({
                 "dominio": dominio, "descricao": registro.get("descricao", ""),
                 "estado": estado, "exemplos": exemplos,
                 "motivo": registro.get("motivo") or ("componente_indisponivel" if estado == "indisponivel" else ""),
+                **({"estados_por_capacidade": [
+                    {"intent": c["intent"], "estado": c["estado"], "motivo": c.get("motivo", "")}
+                    for c in itens
+                ]} if any(c.get("estado") != estado for c in itens) else {}),
                 # O catálogo é dono do alcance e do responsável. Não achatar
                 # uma regra condicional em requisito global na projeção à LLM.
                 **({"limites_contextuais": [dict(r) for r in itens[0]["limites_contextuais"]]}
@@ -877,6 +942,40 @@ class MapaHabilidadesRuntime:
                 contexto=dados_contexto,
             )
         dominios = self.dominios_relevantes(t, turno=leitura_turno)
+        pergunta_geral = any(frase in t for frase in _PEDIDO_CAPACIDADES)
+        if "corpo_motor" in dominios and not pergunta_geral:
+            if mapa["dominios"]["corpo_motor"]["estado"] != "disponivel":
+                return "Meu controle dos motores está indisponível agora: preciso de uma sessão recente e firmware com MOTOR1 habilitado."
+            modo = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("companhia") or {}
+            estado_modo = " O modo companhia está ativo nesta sessão." if modo.get("ativa") is True else " O modo companhia está desativado agora."
+            if modo.get("perfil_corporal") == "rodas_suspensas":
+                estado_modo += " O perfil atual é rodas suspensas; a intenção corporal usa minha atividade no PC e emoção causal."
+            estado_modo += " O passeio espontâneo está ativo." if modo.get("passeio_ativado") is True else " O passeio espontâneo está desativado agora."
+            if modo.get("ativacao_automatica_ao_iniciar") is True:
+                estado_modo += " A preferência salva ativa companhia na bancada ao iniciar pela USB."
+                estado_modo += ((" O passeio também inicia automaticamente na plataforma de rodas suspensas."
+                                if modo.get("perfil_corporal") == "rodas_suspensas" else " O passeio também inicia automaticamente na área com barreiras.") if modo.get("passeio_automatico_ao_iniciar") is True
+                                else " O passeio exige ativação própria.")
+            if modo.get("perfil_corporal") == "rodas_suspensas":
+                olhos = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {}).get("expressao") or {}
+                if olhos.get("suportado") is True:
+                    estado_modo += " O firmware atual oferece OLHOS2 para coordenar olhar, bip e gesto."
+                return ("Posso combinar movimentos contínuos, expressões e reações no perfil de rodas suspensas. "
+                        "Cada movimento pode durar até 5 segundos quando o firmware negocia LONGO1; "
+                        "uma tarefa no PC pode interromper o passeio. Não tenho sensores de deslocamento."
+                        + estado_modo)
+            return "Posso " + _DESCRICAO_DOMINIO["corpo_motor"] + "." + estado_modo
+        if "rosto_oled" in dominios and not pergunta_geral:
+            if mapa["dominios"]["rosto_oled"]["estado"] != "disponivel":
+                return "Meu rosto no OLED está indisponível agora: preciso detectar um ESP32 compatível e receber uma confirmação recente do firmware."
+            descricao = "Posso " + _DESCRICAO_DOMINIO["rosto_oled"] + "."
+            som = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {}).get("som") or {}
+            descricao += (" O firmware atual oferece SOM1 para os bips." if som.get("suportado") is True
+                          else " Os bips estão indisponíveis no firmware conectado agora.")
+            expressao = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {}).get("expressao") or {}
+            descricao += (" OLHOS2 está disponível: demonstro atenção antes da resposta e acordo/adormeço gradualmente."
+                          if expressao.get("suportado") is True else " OLHOS2 está indisponível no firmware atual.")
+            return descricao
         if _texto_sobre_feedback_presenca(t):
             estado_personalidade = str(
                 (mapa.get("dominios") or {}).get("personalidade", {}).get("estado") or ""
@@ -1201,7 +1300,7 @@ class MapaHabilidadesRuntime:
                 "para alternar a repetição como algo opcional, uma causa recente e "
                 "comprovada pode me levar a perguntar uma vez antes de executar. "
                 "Urgência, segurança e acessibilidade seguem o executor normalmente. "
-                + _CONTRATO_PREFERENCIA_HUMOR
+                + _CONTRATO_PREFERENCIA_HUMOR + " " + _CONTRATO_EXPRESSAO_SOLICITADA
             )
         if "conversa" in dominios:
             return (

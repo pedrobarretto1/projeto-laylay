@@ -1,0 +1,524 @@
+{
+  "ts_utc": "2026-10-11T03:45:18.833255+00:00",
+  "fontes_sha256": {
+    "firmware\\rosto_laylay\\rosto_laylay.ino": "d5c8c6076f258681cb9265a60e827f91b481dac89e4d08f03bea252e867bee95",
+    "firmware\\rosto_laylay\\fonte_terminal.h": "456db1ab15af4791914fa6006e9830c3c8782d0a56a06a80003d3c30c511a342"
+  },
+  "composicao_instalada": true,
+  "hardware_simulado": false,
+  "escopo_controlado": true,
+  "acao_de_habilidade_executada": false,
+  "prova_optica": false,
+  "comandos_motor_enviados": false,
+  "enviados": [
+    "HELLO 1 ec3c9d88",
+    "CAPS 1 ec3c9d88",
+    "FACE 1 ec3c9d88 1 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 1 0 1200",
+    "FACE 1 ec3c9d88 2 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 2 0 1200",
+    "FACE 1 ec3c9d88 3 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 3 1 1200",
+    "FACE 1 ec3c9d88 4 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 4 1 1200",
+    "FACE 1 ec3c9d88 5 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 5 1 1200",
+    "FACE 1 ec3c9d88 6 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 6 1 1200",
+    "FACE 1 ec3c9d88 7 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 7 1 1200",
+    "FACE 1 ec3c9d88 8 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 8 1 1200",
+    "FACE 1 ec3c9d88 9 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 9 1 1200",
+    "FACE 1 ec3c9d88 10 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 10 1 1200",
+    "FACE 1 ec3c9d88 11 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 11 1 1200",
+    "FACE 1 ec3c9d88 12 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 12 0 1200",
+    "FACE 1 ec3c9d88 13 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 13 0 1200",
+    "FACE 1 ec3c9d88 14 0 1 0 3500",
+    "ACTIVITY 1 ec3c9d88 14 0 1200"
+  ],
+  "recebidos": [
+    "READY 1 ec3c9d88 SSD1306 128 64",
+    "CAPS 1 ec3c9d88 HACK1",
+    "ACK 1 ec3c9d88 1 0 1 0",
+    "AACK 1 ec3c9d88 1 0",
+    "ACK 1 ec3c9d88 2 0 1 0",
+    "AACK 1 ec3c9d88 2 0",
+    "ACK 1 ec3c9d88 3 0 1 0",
+    "AACK 1 ec3c9d88 3 1",
+    "ACK 1 ec3c9d88 4 0 1 0",
+    "AACK 1 ec3c9d88 4 1",
+    "ACK 1 ec3c9d88 5 0 1 0",
+    "AACK 1 ec3c9d88 5 1",
+    "ACK 1 ec3c9d88 6 0 1 0",
+    "AACK 1 ec3c9d88 6 1",
+    "ACK 1 ec3c9d88 7 0 1 0",
+    "AACK 1 ec3c9d88 7 1",
+    "ACK 1 ec3c9d88 8 0 1 0",
+    "AACK 1 ec3c9d88 8 1",
+    "ACK 1 ec3c9d88 9 0 1 0",
+    "AACK 1 ec3c9d88 9 1",
+    "ACK 1 ec3c9d88 10 0 1 0",
+    "AACK 1 ec3c9d88 10 1",
+    "ACK 1 ec3c9d88 11 0 1 0",
+    "AACK 1 ec3c9d88 11 1",
+    "ACK 1 ec3c9d88 12 0 1 0",
+    "AACK 1 ec3c9d88 12 0",
+    "ACK 1 ec3c9d88 13 0 1 0",
+    "AACK 1 ec3c9d88 13 0",
+    "ACK 1 ec3c9d88 14 0 1 0",
+    "AACK 1 ec3c9d88 14 0"
+  ],
+  "amostras": [
+    {
+      "fase": "repouso",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "repouso",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "tratamento_controlado",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": true,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "retorno_ao_rosto",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "retorno_ao_rosto",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    },
+    {
+      "fase": "retorno_ao_rosto",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "modo_conexao": "automatico",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        }
+      }
+    }
+  ],
+  "porta": "COM4",
+  "confirmado": true,
+  "demo_hack_local": true,
+  "demo_receipt": "DEMO_HACK 1 ATIVA",
+  "avaliacao_humana": {
+    "resposta": "Sim, ficou legal e fluido",
+    "origem": "resposta direta de Pedro neste chat",
+    "escopo": "DEMO_HACK local no OLED: terminal e transicao visual",
+    "prova_optica": true,
+    "prova_acao_natural": false
+  }
+}

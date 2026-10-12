@@ -1,0 +1,20 @@
+{
+  "fonte_sha256": "a9ff51fc5f6242db4549a9ba865dc2fefa4b06520ea742e3b5ba4e9a5d6a0294",
+  "bin_sha256": "396bbc73dc63aa65932d232ee7d417bf7c025bbbc5a7e37b9a0eacf32456f58f",
+  "porta": "COM4",
+  "pino_som": 6,
+  "frequencia_hz": 1200,
+  "duracao_programada_ms": 2000,
+  "bip_unico_por_boot": true,
+  "wifi_compilado": false,
+  "motor1_confirmado": true,
+  "parada_confirmada": true,
+  "movimento_enviado": false,
+  "observacao_auditiva_humana": false,
+  "linhas_serial": [
+    "BEEP_TEST 1 STOP",
+    "READY 1 65bbac01 SSD1306 128 64",
+    "MCAPS 1 65bbac01 MOTOR1",
+    "SACK 1 65bbac01 1"
+  ]
+}

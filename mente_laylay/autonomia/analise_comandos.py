@@ -8,6 +8,7 @@ from typing import Callable, List, Optional
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
 )
+from mente_laylay.arquivos.nome_natural import mapear_pares_aspas_globais
 from mente_laylay.memoria_mental.resultado_acao import (
     interpretar_tratamento_operacional,
 )
@@ -27,6 +28,7 @@ _INICIO_ETAPA_OPERACIONAL = re.compile(
     r"encontr(?:a|e)|procur(?:a|e)|pesquis(?:a|e)|busc(?:a|que)|"
     r"copi(?:a|e)|escrev(?:e|a)|grav(?:a|e)|mov(?:e|a)|renomei(?:a|e)|mud(?:a|e)|"
     r"lig(?:a|ue)|deslig(?:a|ue)|paus(?:a|e)|continu(?:a|e)|"
+    r"and(?:a|e)|recu(?:a|e)|gir(?:a|e)|vir(?:a|e)|par(?:a|e)|"
     r"retom(?:a|e)|organiz(?:a|e)|agend(?:a|e)|cancel(?:a|e)|"
     r"(?:me\s+)?lembr(?:a|e)|resum(?:e|a)|explic(?:a|que)|"
     r"list(?:a|e)|(?:me\s+)?(?:mostr(?:a|e)|diz|diga|fal(?:a|e))"
@@ -68,6 +70,10 @@ def segmentar_comandos_em_cadeia(
     bruto = str(texto or "").strip()
     if not bruto:
         return []
+    if mapear_pares_aspas_globais(bruto) is None:
+        # Não despachar um prefixo de uma fala com literal malformado.
+        # A autoridade do turno inteiro continua sendo conferida pelo owner.
+        return [bruto]
 
     t = normalizar_texto(bruto) if callable(normalizar_texto) else bruto.lower()
     t = re.sub(r"[,\.!\?:;]+", " ", t)
@@ -91,6 +97,9 @@ def segmentar_comandos_em_cadeia(
         flags=re.IGNORECASE,
     )
     bruto_operacional = re.sub(r"\s+", " ", bruto_operacional).strip()
+    pares_aspas = mapear_pares_aspas_globais(bruto_operacional)
+    if pares_aspas is None:
+        return [bruto]
     normalizar = normalizar_texto if callable(normalizar_texto) else str.lower
 
     def normalizar_etapa(parte: str) -> str:
@@ -104,6 +113,9 @@ def segmentar_comandos_em_cadeia(
     # "liga X, deixa azul e depois me diz..." sem cortar enumerações como
     # "liga a luz e o ventilador" ou "coloca vermelho, azul e verde".
     for encontrado in _SEPARADOR_ETAPA_OPERACIONAL.finditer(bruto_operacional):
+        if any(abertura < encontrado.start() < fechamento
+               for abertura, fechamento in pares_aspas.items()):
+            continue
         esquerda = bruto_operacional[inicio:encontrado.start()].strip(" .,!?;:")
         direita = bruto_operacional[encontrado.end():].strip(" .,!?;:")
         if not esquerda or not direita:
@@ -130,7 +142,7 @@ def segmentar_comandos_em_cadeia(
         # limite, o texto volta inteiro ao fluxo normal para não haver sucesso
         # parcial silencioso.
         if len(partes) + 2 > LIMITE_ETAPAS_CADEIA:
-            return [t]
+            return [bruto_operacional] if pares_aspas else [t]
 
         partes.append(esquerda)
         inicio = encontrado.end()
@@ -147,7 +159,9 @@ def segmentar_comandos_em_cadeia(
             if 2 <= len(partes) <= LIMITE_ETAPAS_CADEIA:
                 return partes
 
-    return [t]
+    # A cópia lexical apaga pontuação de filenames e conteúdo citado. Quando
+    # não há cadeia, manter o argumento na fala estrutural, não nessa cópia.
+    return [bruto_operacional] if pares_aspas else [t]
 
 
 def executar_comando_em_texto(

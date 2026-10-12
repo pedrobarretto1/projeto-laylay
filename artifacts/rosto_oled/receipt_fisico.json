@@ -1,0 +1,104 @@
+{
+  "porta": "COM4",
+  "composicao_real": true,
+  "resultados": [
+    {
+      "ok": true,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false
+      }
+    },
+    {
+      "ok": true,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false
+      }
+    },
+    {
+      "ok": true,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false
+      }
+    }
+  ],
+  "prova_optica": false,
+  "firmware_sha256": "95e74770a3f9665544d3668f53c52dfdf6fde6e23a9b5a281017d385f0150b71",
+  "expressoes_hardware": [
+    {
+      "emocao": "calma",
+      "ack": "ACK 1 0123abcd 1 0 2 0"
+    },
+    {
+      "emocao": "alegre",
+      "ack": "ACK 1 0123abcd 2 1 2 1"
+    },
+    {
+      "emocao": "triste",
+      "ack": "ACK 1 0123abcd 3 2 2 0"
+    },
+    {
+      "emocao": "brava",
+      "ack": "ACK 1 0123abcd 4 3 2 1"
+    },
+    {
+      "emocao": "irritada",
+      "ack": "ACK 1 0123abcd 5 4 2 0"
+    },
+    {
+      "emocao": "surpresa",
+      "ack": "ACK 1 0123abcd 6 5 2 1"
+    },
+    {
+      "emocao": "envergonhada",
+      "ack": "ACK 1 0123abcd 7 6 2 0"
+    },
+    {
+      "emocao": "debochada",
+      "ack": "ACK 1 0123abcd 8 7 2 1"
+    },
+    {
+      "emocao": "acalmando-se",
+      "ack": "ACK 1 0123abcd 9 8 2 0"
+    }
+  ],
+  "demonstracao": "DEMO 1 ATIVA"
+}

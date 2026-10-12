@@ -1398,6 +1398,7 @@ class JanelaLaylay(QMainWindow):
                 "Automação",
             ),
             ("musica", "music", "Música"),
+            ("streaming", "streaming", "Streaming"),
             ("memoria", "memory", "Memória"),
             ("sistema", "system", "Sistema"),
             ("desenvolvedor", "developer", "Dev Console"),
@@ -1970,6 +1971,7 @@ class JanelaLaylay(QMainWindow):
             ("memoria", "Memória"),
             ("sistema", "Sistema"),
             ("desenvolvedor", "Dev Console"),
+            ("streaming", "Streaming"),
         ):
             pagina_adiada = PaginaAdiada(titulo)
             self._paginas_adiadas[nome] = pagina_adiada
@@ -1999,6 +2001,9 @@ class JanelaLaylay(QMainWindow):
         return self._garantir_pagina_carregada("desenvolvedor")
 
     def _criar_pagina_adiada(self, nome: str) -> QWidget:
+        if nome == "streaming":
+            from cliente.terminal_2.streaming import PaginaStreaming
+            return PaginaStreaming()
         if nome == "automacao":
             pagina = PaginaAutomacao()
             pagina.acao_solicitada.connect(self.enviar_acao_painel)
@@ -3708,7 +3713,9 @@ class JanelaLaylay(QMainWindow):
             return
         pagina = self._paginas_carregadas.get(nome)
         if pagina is not None:
-            pagina.aplicar_dashboard(dashboard)
+            aplicar_dashboard = getattr(pagina, "aplicar_dashboard", None)
+            if callable(aplicar_dashboard):
+                aplicar_dashboard(dashboard)
         elif nome == self._pagina_visual_ativa:
             self._agendar_pagina_ativa(nome)
 
@@ -3865,10 +3872,13 @@ class JanelaLaylay(QMainWindow):
                 self.central_inteligente.invalidar_dashboard()
                 self.painel_lateral.invalidar_dashboard()
                 for nome, pagina in self._paginas_carregadas.items():
+                    invalidar = getattr(pagina, "invalidar", None)
+                    if not callable(invalidar):
+                        continue
                     if nome == "musica":
-                        pagina.invalidar("Reconectando ao player")
+                        invalidar("Reconectando ao player")
                     else:
-                        pagina.invalidar()
+                        invalidar()
         if conectado and not self._dashboard_recebido:
             self.chip_memoria.definir("Aguardando", estado="pending")
         identidade = (
@@ -4413,6 +4423,7 @@ class JanelaLaylay(QMainWindow):
             "automacao": 4,
             "musica": 5,
             "memoria": 6,
+            "streaming": 9,
         }
         indice_anterior = self.paginas.currentIndex()
         nome_anterior = self._pagina_visual_ativa
@@ -4433,6 +4444,7 @@ class JanelaLaylay(QMainWindow):
             "automacao": "Automação",
             "musica": "Música",
             "memoria": "Memória",
+            "streaming": "Streaming",
         }
         self.titulo_header.setText(titulos.get(nome, "Laylay"))
         for chave, botao in self._nav.items():
@@ -4618,6 +4630,9 @@ class JanelaLaylay(QMainWindow):
             )
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        streaming = self._paginas_carregadas.get("streaming")
+        if streaming is not None:
+            streaming.fechar()
         self._timer_auto_scroll.stop()
         self._encerrar_rolagem_suave()
         self._parar_pulso_presenca()

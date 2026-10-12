@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Mapping, TYPE_CHECKING
+from typing import Any, Callable, Dict, Iterable, Mapping, TYPE_CHECKING
 
 from mente_laylay.cognicao.contratos_turno import (
     ContratoDecisaoTurno, ContratoOcorrenciaTurno, ContratoPropostaPrincipal, ExtracaoRespostaIA,
@@ -13,6 +13,10 @@ from mente_laylay.cognicao.modalidade_turno import (
     turno_tem_veto_execucao,
 )
 from mente_laylay.especialistas.capacidades import intents_registradas
+from mente_laylay.cognicao.escopo_autorizacao import (
+    AutorizacaoAto, construir_autorizacoes_por_ato, exige_escopo_por_ato,
+    vincular_proposta_ao_ato,
+)
 
 if TYPE_CHECKING:
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
@@ -304,6 +308,7 @@ def filtrar_comandos_pelo_turno(
     plano: Dict[str, Any] | None,
     retrato: Dict[str, Any] | None = None,
     proposta_principal: Any = _PROPOSTA_NAO_INFORMADA,
+    autorizacoes_por_ato: tuple[AutorizacaoAto, ...] = (),
 ) -> Dict[str, Any]:
     """Impede que comandos inventados pela resposta da IA escapem do árbitro."""
     candidatos = [dict(item) for item in (comandos or ()) if isinstance(item, dict)]
@@ -331,6 +336,8 @@ def filtrar_comandos_pelo_turno(
     permitidos = {str(item).strip().upper() for item in snapshot.get("intents_permitidos") or ()}
     aceitos: list[Dict[str, Any]] = []
     rejeitados: list[Dict[str, Any]] = []
+    exige_vinculo = exige_escopo_por_ato(leitura)
+    atos_usados: set[int] = set()
     for comando in candidatos:
         intent = str(comando.get("intent") or comando.get("acao") or "").strip().upper()
         if incoerencia:
@@ -339,9 +346,15 @@ def filtrar_comandos_pelo_turno(
             motivo = _MOTIVO_SEM_AUTORIZACAO
         elif not intent:
             motivo = "comando sem intenção"
-        elif permitidos and intent not in permitidos:
+        elif not exige_vinculo and permitidos and intent not in permitidos:
             motivo = _MOTIVO_INTENCAO_INCOMPATIVEL
         else:
+            if exige_vinculo:
+                indice_ato = vincular_proposta_ao_ato(comando, leitura, autorizacoes_por_ato, atos_usados)
+                if indice_ato is None:
+                    rejeitados.append({"intent": intent, "motivo": "proposta sem vínculo ao ato autorizado"})
+                    continue
+                atos_usados.add(indice_ato)
             aceitos.append(comando)
             continue
         rejeitados.append({"intent": intent, "motivo": motivo})
@@ -352,6 +365,8 @@ def filtrar_comandos_pelo_turno(
         "proprietario": str(contrato.get("proprietario") or "conversa"),
         "veto_execucao_operacional": veto_execucao,
     }
+    if exige_vinculo:
+        resultado["atos_autorizados_vinculados"] = sorted(atos_usados)
     if com_procedencia:
         # Correlação não concede autorização e não transforma rejeição em culpa.
         resultado["proposta_vinculada"] = not bool(incoerencia)
@@ -444,8 +459,10 @@ def avaliar_violacoes_proposta_original(
 class ValidadorComandosTurnoRuntime:
     """Lê um frame isolado do estado real e reutiliza o filtro canônico."""
 
-    def __init__(self, *, estado_runtime: EstadoCompartilhadoRuntime) -> None:
+    def __init__(self, *, estado_runtime: EstadoCompartilhadoRuntime,
+                 resolver_ato: Callable[[str, dict], dict | None] | None = None) -> None:
         self._estado_runtime = estado_runtime
+        self._resolver_ato = resolver_ato
 
     def __call__(self, comandos: Iterable[Dict[str, Any]] | None) -> Dict[str, Any]:
         return self._validar(comandos)
@@ -465,10 +482,25 @@ class ValidadorComandosTurnoRuntime:
         turno = mental.get("turno_atual") or {}
         plano = mental.get("plano_turno_atual") or {}
         retrato = mental.get("retrato_turno_atual") or {}
+        autorizacoes = ()
+        if exige_escopo_por_ato(turno):
+            # Conferir ocorrência/permissão antes de consultar qualquer resolver.
+            admissao = filtrar_comandos_pelo_turno([], turno=turno, plano=plano,
+                retrato=retrato, proposta_principal=proposta_principal)
+            if admissao["autoriza_execucao"]:
+                autorizacoes = construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
         resultado = filtrar_comandos_pelo_turno(
             comandos, turno=turno, plano=plano,
             retrato=retrato, proposta_principal=proposta_principal,
+            autorizacoes_por_ato=autorizacoes,
         )
+        if exige_escopo_por_ato(turno):
+            # Registro do contrato local; não é memória factual, receipt ou
+            # autorização reutilizável fora deste frame/ato.
+            resultado["escopo_operacional_por_ato"] = [
+                {"turno_id": a.turno_id, "indice": a.indice, "texto": a.texto,
+                 "pedido": a.pedido.como_dict()} for a in autorizacoes
+            ]
         if extracao_original is not _PROPOSTA_NAO_INFORMADA:
             resultado["violacoes_proposta_original"] = avaliar_violacoes_proposta_original(
                 proposta_principal, extracao_original, turno=turno, plano=plano, retrato=retrato,
@@ -488,5 +520,6 @@ class ValidadorComandosTurnoRuntime:
 
 def criar_validador_comandos_turno_runtime(
     *, estado_runtime: EstadoCompartilhadoRuntime,
+    resolver_ato: Callable[[str, dict], dict | None] | None = None,
 ) -> ValidadorComandosTurnoRuntime:
-    return ValidadorComandosTurnoRuntime(estado_runtime=estado_runtime)
+    return ValidadorComandosTurnoRuntime(estado_runtime=estado_runtime, resolver_ato=resolver_ato)

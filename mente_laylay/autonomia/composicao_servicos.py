@@ -307,6 +307,10 @@ def criar_composicao_servicos_padrao(
             "Laylay-Monitor-Janelas": metodo("_monitor_janelas_runtime", "executar"),
         },
         threads_com_espera={
+            **({"Laylay-Companhia-Corporal": ns["_corpo_motor_runtime"].companhia.executar}
+               if ns.get("_corpo_motor_runtime") is not None else {}),
+            **({"Laylay-Rosto-OLED": metodo("_rosto_oled_runtime", "executar")}
+               if ns.get("_rosto_oled_runtime") is not None else {}),
             "Laylay-Ritmo-Circadiano": metodo("_ritmo_circadiano_runtime", "executar"),
             "Laylay-Consciência-Temporal": metodo("_motor_temporal_runtime", "executar"),
             "Laylay-Aprendizado": metodo("_motor_aprendizado_runtime", "executar"),

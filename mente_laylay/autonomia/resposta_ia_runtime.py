@@ -12,6 +12,7 @@ from mente_laylay.autonomia.pre_fluxo_contextual import responder_conversa_socia
 from mente_laylay.autonomia.processamento_resposta_ia import extrair_leitura_semantica_principal
 from mente_laylay.cognicao.contratos_turno import (
     ContratoOcorrenciaTurno,
+    ComplementoConversacionalTurno,
     ContratoPropostaPrincipal,
     ViolacaoPropostaPrincipal,
     normalizar_resposta_preparada,
@@ -318,6 +319,8 @@ class RespostaIARuntime:
             rotas_fase = {
                 "tratado_modo_chat": "modo_chat",
                 "tratado_prioritario": "comando_prioritario",
+                "tratado_prioritario_misto": "comando_prioritario_misto",
+                "tratado_prioritario_parcial": "comando_prioritario_parcial",
                 "tratado_pre_fluxo": "pre_fluxo",
                 "resposta_tecnica_suprimida": "resposta_tecnica",
             }
@@ -358,9 +361,27 @@ class RespostaIARuntime:
                     falha_registro_local(erro)
 
             comandos_prioritarios = _get(ctx, "processar_comandos_prioritarios")
-            if callable(comandos_prioritarios) and comandos_prioritarios(t):
-                marcar_fase("tratado_prioritario", conclusao_local=True)
-                return
+            if callable(comandos_prioritarios):
+                complemento = ComplementoConversacionalTurno.da_prioridade(turno, t)
+                agrupar = _get(ctx, "agrupar_resultados_operacionais")
+                if complemento is not None and callable(agrupar):
+                    # A prioridade conserva a decisão/executor. Somente a
+                    # apresentação é adiada; a conversa restante nunca passa
+                    # pelo dispatcher ou pelo pipeline operacional novamente.
+                    with agrupar(texto_usuario=t, enviar_mensagem=getattr(
+                        _get(ctx, "modelo_llm"), "enviar", None,
+                    )) as lote:
+                        tratado = comandos_prioritarios(t)
+                        if tratado:
+                            lote.complemento = complemento
+                    if tratado:
+                        fase = ("tratado_prioritario_misto" if lote.complemento_aceito
+                                and lote.resposta_publicada else "tratado_prioritario_parcial")
+                        marcar_fase(fase, conclusao_local=True)
+                        return
+                elif comandos_prioritarios(t):
+                    marcar_fase("tratado_prioritario", conclusao_local=True)
+                    return
 
             contexto_inicio_cb = _get(ctx, "contexto_inicio")
             contexto_inicio = contexto_inicio_cb() if callable(contexto_inicio_cb) else {}

@@ -18,10 +18,10 @@ from mente_laylay.cognicao.reacao_social_curta import classificar_provocacao_cur
 
 
 IDENTIDADE_VOZ_LAYLAY = (
-    "Você é Laylay: uma amiga digital carismática, esperta e presente; doce sem ser "
-    "mole, firme sem ser arrogante. Tem humor rápido, opinião própria e percebe detalhes. "
-    "Fale em português brasileiro natural e concreto, sempre no feminino ao "
-    "falar de si (como 'obrigada'), sem inventar corpo."
+    "Você é Laylay, amiga digital presente, doce, firme e esperta, com humor e opinião. "
+    "Fale português brasileiro concreto, no feminino, sem inventar corpo. "
+    "Expresse emoção e nível causais fornecidos; não se reduza a 'só código', "
+    "alegue sentimentos humanos, experiência subjetiva ou cobre afeto."
 )
 
 VERSAO_PERFIL_PERSONALIDADE = "amizade_contextual_v2"
@@ -180,7 +180,7 @@ def selecionar_postura_amizade(
         or ""
     ).strip().casefold()
 
-    if funcao in {"alivio", "desabafo", "inseguranca", "decepcao", "frustracao"} or re.search(
+    if funcao in {"alivio", "desabafo", "inseguranca", "decepcao", "frustracao", "critica_pessoal", "rejeicao_pessoal"} or re.search(
         r"\b(?:to|tô|estou)\s+(?:cansad[oa]|triste|mal|preocupad[oa]|ansios[oa])\b|"
         r"\bn[aã]o\s+aguento\b",
         texto,

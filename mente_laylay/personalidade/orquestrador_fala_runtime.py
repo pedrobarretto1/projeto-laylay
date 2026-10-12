@@ -12,6 +12,7 @@ from threading import RLock
 from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
+from mente_laylay.cognicao.contratos_turno import ComplementoConversacionalTurno
 from mente_laylay.cognicao.preferencia_humor import contexto_humor_turno
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.personalidade.contingencia_natural import fala_contingencia_natural
@@ -54,6 +55,8 @@ class _LoteResultadosOperacionais:
     falha_cadeia: tuple[str, int, int] | None = None
     resposta_publicada: bool = False
     fala_publicada: str = ""
+    complemento: ComplementoConversacionalTurno | None = None
+    complemento_aceito: bool = False
 
     def registrar_falha(self, trecho: str, indice: int, concluidas: int) -> None:
         self.falha_cadeia = (str(trecho or ""), int(indice), int(concluidas))
@@ -138,7 +141,17 @@ class OrquestradorFalaRuntime:
 
     def _entregar_resultados_compostos(self, lote: _LoteResultadosOperacionais) -> bool:
         ns = self._ns()
-        if not lote.resultados and not lote.avisos and lote.falha_cadeia is None:
+        if not lote.resultados and not lote.avisos and lote.falha_cadeia is None and lote.complemento is None:
+            return False
+        def complemento_vigente() -> bool:
+            if lote.complemento is None:
+                return True
+            turno = dict(ns["_estado_compartilhado_runtime"].mental.get("turno_atual") or {})
+            return (lote.complemento.turno_id == turno.get("id")
+                    and ComplementoConversacionalTurno.da_prioridade(turno, lote.texto_usuario) == lote.complemento)
+
+        if not complemento_vigente():
+            ns["print"]("🛡️ [FALA:COMPOSTA] complemento retido: cobertura não está vigente")
             return False
         if not lote.turno_id or lote.turno_id != self._turno_fala_atual():
             ns["print"]("🛡️ [FALA:COMPOSTA] resultado retido: turno mudou antes da entrega")
@@ -152,23 +165,32 @@ class OrquestradorFalaRuntime:
                     if indice > 0 else "Uma das etapas não foi confirmada."
                 )
         fala_segura = fala_factual_resultados_compostos(lote.resultados, informacoes=lote.informacoes)
-        if lote.resultados:
+        complemento = lote.complemento
+        if complemento is not None and not lote.resultados and not avisos:
+            avisos.append("Ainda não tenho confirmação do resultado da parte operacional.")
+        if complemento is not None:
+            fala_segura = " ".join([p for p in (fala_segura, *avisos) if p])
+        if lote.resultados or complemento is not None:
             confirmacao = personalizar_confirmacao_composta_llm(
                 lote.resultados, fala_segura,
                 enviar_mensagem=lote.enviar_mensagem, contexto=lote.contexto,
                 informacoes=lote.informacoes,
+                **({"texto_conversacional": complemento.texto,
+                    "avisos_obrigatorios": avisos,
+                    "complemento_conversacional": complemento} if complemento is not None else {}),
             )
             fala = confirmacao.fala
             emocao, nivel = confirmacao.emocao, confirmacao.nivel
+            lote.complemento_aceito = complemento is not None and confirmacao.usada_llm
             if confirmacao.motivo_fallback:
                 ns["print"]("⚠️ [FALA:COMPOSTA] fallback factual | " + confirmacao.motivo_fallback)
         else:
             fala = ""
             emocao, nivel = "calma", 1
-        fala = " ".join([parte for parte in (fala, *avisos) if parte]).strip()
+        fala = " ".join([parte for parte in (fala, *(avisos if complemento is None else [])) if parte]).strip()
         # Uma chamada demorada pode terminar depois de a conversa mudar.
         # Os receipts continuam publicados; sua fala não pertence ao turno novo.
-        if lote.turno_id != self._turno_fala_atual():
+        if lote.turno_id != self._turno_fala_atual() or not complemento_vigente():
             ns["print"]("🛡️ [FALA:COMPOSTA] resultado retido: turno mudou durante autoria")
             return False
         if not fala:

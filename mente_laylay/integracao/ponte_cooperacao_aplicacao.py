@@ -50,6 +50,10 @@ class PonteCooperacaoAplicacaoRuntime:
 
     def registrar_aprendizado(self, plano: dict[str, Any], decisao: str) -> bool:
         decisao_normalizada = str(decisao or "").strip().casefold()
+        if (decisao_normalizada == "aceito"
+            and plano.get("autorizacao") == "autonomia_previamente_concedida"):
+            # Receipt automático não é aceitação humana da relação/preferência.
+            return False
         sinal = {
             "aceito": 0.7, "recusado": -0.6, "falhou": -0.35,
             "cancelado": -0.25, "expirado": -0.2,

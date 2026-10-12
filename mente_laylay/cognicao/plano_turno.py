@@ -525,6 +525,7 @@ def verificar_fala_turno(
                 problemas.append("recomendacao_sem_opcao_concreta")
                 ajustada = reparo_recomendacao
 
+    fala_antes_alegacoes = ajustada
     validacao_alegacoes = validar_alegacoes_da_fala(
         ajustada,
         plano=contrato,
@@ -550,7 +551,7 @@ def verificar_fala_turno(
 
     qualidade = avaliar_qualidade_comunicacao(
         texto_usuario,
-        ajustada,
+        fala_antes_alegacoes if "capacidade_emocional_negada" in problemas_alegacoes else ajustada,
         plano=contrato,
         ultima_resposta=ultima_resposta,
     )
@@ -567,6 +568,7 @@ def verificar_fala_turno(
             "pontuacao": float(qualidade.get("pontuacao") or 0.0),
             "foco": dict(qualidade.get("foco") or {}),
             "aderencia_contrato": aderencia_contrato,
+            "contrato_reparo": dict(qualidade.get("contrato_reparo") or {}),
             "fala_contingencia": contingencia_comunicacao(
                 texto_usuario,
                 foco=qualidade.get("foco"),

@@ -1,0 +1,30 @@
+{
+  "ts_utc": "2026-10-11T16:09:31.054072+00:00",
+  "porta": "COM4",
+  "firmware_gravado": true,
+  "flash_hash_verificado": true,
+  "frequencia_pwm_hz": 1000,
+  "resolucao_bits": 8,
+  "limite_motor_ms": 500,
+  "face_confirmado": true,
+  "motor_suportado": true,
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "comandos_motor_enviados": 0,
+  "prova_rotacao": false,
+  "observacao_anterior": "GPIO1/2 fraco, GPIO3/4 sem giro; codigo antigo funcionou segundo Pedro; fios foram alterados entre os testes",
+  "sha256_fonte": "d5bd58d7c78cc6b6e59f292aa1924a3899b2e61da225de20c628b0fb35e6fe14",
+  "sha256_bin": "8714a678b27399884484861aa58f3d7ec5e413a6185bfdd75d33e7661911667d"
+}

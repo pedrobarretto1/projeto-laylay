@@ -1,0 +1,26 @@
+{
+  "perfil": "rodas_suspensas",
+  "porta": "COM4",
+  "core": "3.3.12",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "flags": [
+    "LAYLAY_WIFI=0",
+    "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+    "LAYLAY_SOM_PONTE=0",
+    "LAYLAY_LIMITE_MOTOR_TESTE_MS=5000"
+  ],
+  "upload": "hash verificado pelo esptool",
+  "pytest": "273 passed",
+  "aplicacao_normal": "reaberta; interface/OLED e movimentos confirmados por Pedro",
+  "efeito_espacial": "sem sensores; giro e distância não medidos",
+  "arquivos": {
+    "firmware/rosto_laylay/rosto_laylay.ino": {
+      "sha256": "133bc2350edf99965418be23532d08d3fc5b75389e1522346a769d186c070462",
+      "bytes": 36200
+    },
+    "artifacts\\rosto_oled\\corpo_decisao_v1\\build\\rosto_laylay.ino.bin": {
+      "sha256": "cf6db0e44857dea6892d740f00ea19640a4e006918191b617e79591c79259076",
+      "bytes": 391456
+    }
+  }
+}

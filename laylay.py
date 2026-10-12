@@ -177,6 +177,11 @@ from mente_laylay.percepcao.janelas_sistema import (
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import (
     criar_estado_compartilhado_runtime as _criar_estado_compartilhado_runtime_mente,
 )
+from mente_laylay.memoria_mental.atividade_operacional_runtime import (
+    criar_atividade_operacional_runtime,
+)
+from mente_laylay.integracao.composicao_rosto_oled import criar_composicao_rosto_oled_runtime
+from mente_laylay.especialistas.corpo_motor_runtime import criar_corpo_motor_runtime
 from mente_laylay.memoria_mental.saude_mente import (
     criar_saude_mente_runtime as _criar_saude_mente_runtime,
 )
@@ -1201,6 +1206,27 @@ _inicializacao_runtime = _criar_orquestrador_inicializacao_mente(
     servicos=_servicos_background_runtime,
     log=print,
     sleep=time.sleep,
+)
+_atividade_operacional_runtime = criar_atividade_operacional_runtime(
+    estado=_estado_compartilhado_runtime,
+    relatar_falha=_observabilidade_mente_runtime.relatar_falha,
+)
+_rosto_oled_runtime = criar_composicao_rosto_oled_runtime(
+    interacao_getter=lambda: _prioridade_interacao_usuario_runtime.ativa(),
+    companhia_getter=lambda: _corpo_motor_runtime.companhia.diagnostico(),
+    estado=_estado_compartilhado_runtime,
+    observabilidade=_observabilidade_mente_runtime,
+    preferir_usb=_configuracao_aplicacao_runtime.companhia_bancada_ao_iniciar(),
+)
+_corpo_motor_runtime = criar_corpo_motor_runtime(
+    transporte=_rosto_oled_runtime,
+    companhia_bancada_ao_iniciar=_configuracao_aplicacao_runtime.companhia_bancada_ao_iniciar(),
+    passeio_bancada_ao_iniciar=_configuracao_aplicacao_runtime.passeio_bancada_ao_iniciar(),
+    perfil_corporal=_configuracao_aplicacao_runtime.perfil_corporal(),
+    prioridade_interacao_getter=lambda: _prioridade_interacao_usuario_runtime.ativa(),
+    estado=_estado_compartilhado_runtime,
+    registrar_falha_cb=_observabilidade_mente_runtime.relatar_falha,
+    observar_resultado_cb=lambda receipt: _atividade_operacional_runtime.observar_resultado(receipt, retorno_executor=True),
 )
 
 # Fila para troca autonoma de musicas no YouTube
@@ -2729,7 +2755,10 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
     log=print,
 )
 _otimizacoes_desempenho_refs["resumo"] = _resumo_conteudo_runtime
-resumir_pagina_ou_video = _resumo_conteudo_runtime.resumir
+resumir_pagina_ou_video = partial(
+    _atividade_operacional_runtime.executar_assincrono,
+    _resumo_conteudo_runtime.resumir,
+)
 
 _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
     abas_sugeridas=_abas_sugeridas_fechar,
@@ -3141,6 +3170,7 @@ _composicao_ciclo_comandos_runtime = _criar_composicao_ciclo_comandos_runtime(
     registrar_metrica=_observabilidade_mente_runtime.registrar_metrica,
     registrar_falha=_observabilidade_mente_runtime.registrar_falha,
     registrar_decisao=_observabilidade_mente_runtime.registrar_decisao,
+    atividade_operacional=_atividade_operacional_runtime,
 )
 executar_intencao = _composicao_ciclo_comandos_runtime.executar_intencao
 _executar_comando_em_texto = _composicao_ciclo_comandos_runtime.executar_texto
@@ -3209,6 +3239,10 @@ _orquestrador_cooperativo_runtime = _criar_orquestrador_cooperativo_runtime(
     log=print,
 )
 _cooperacao_refs["orquestrador"] = _orquestrador_cooperativo_runtime
+_corpo_motor_runtime.companhia.coordenador = _orquestrador_cooperativo_runtime
+_orquestrador_cooperativo_runtime.governanca.registrar_autorizador_escopo(
+    "corpo_companhia", _corpo_motor_runtime.companhia.autorizar_escopo,
+)
 _ponte_curadoria_cooperativa["publicar"] = (
     _orquestrador_cooperativo_runtime.registrar_curadoria_musical
 )
@@ -3234,8 +3268,14 @@ _executor_acoes_autonomas_runtime = _criar_executor_acoes_autonomas_runtime(
         _registro_navegador_operacoes_runtime.controlar_youtube(acao)
     ),
 )
-_executar_acao_autonoma_segura = _executor_acoes_autonomas_runtime.executar
-_desfazer_acao_autonoma_segura = _executor_acoes_autonomas_runtime.desfazer
+_executar_acao_autonoma_segura = partial(
+    _atividade_operacional_runtime.executar,
+    _executor_acoes_autonomas_runtime.executar,
+)
+_desfazer_acao_autonoma_segura = partial(
+    _atividade_operacional_runtime.executar,
+    _executor_acoes_autonomas_runtime.desfazer,
+)
 
 
 _motor_iniciativa_runtime.definir_executor(
@@ -3483,7 +3523,10 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
         acao_id,
         payload,
         executar_intencao=executar_intencao,
-        selecionar_saida_audio=_saidas_audio_runtime.selecionar,
+        selecionar_saida_audio=partial(
+            _atividade_operacional_runtime.executar,
+            _saidas_audio_runtime.selecionar,
+        ),
     ),
     playlist_operacoes=_registro_musica_operacoes_runtime,
     modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),
@@ -3691,6 +3734,7 @@ _composicao_contextos_ia_runtime = _criar_composicao_contextos_ia_runtime(
     messages_getter=_estado_conversa_runtime.mensagens,
     conversa_getter=_conversa_estado_get,
     mente_getter=lambda: _estado_compartilhado_runtime.mental,
+    modelo_corporal_getter=_corpo_motor_runtime.modelo_para_mente,
     aba_getter=lambda: (
         _chrome_estado.aba_titulo_atual, _chrome_estado.aba_url_atual,
     ),
@@ -3795,6 +3839,8 @@ _disponibilidade_operacional_runtime = _criar_disponibilidade_operacional_runtim
     gmail_getter=lambda: {"configurado": _gmail_runtime.configurado()},
     iot_getter=_registro_iot_runtime.diagnostico,
     avatar_getter=_avatar_runtime.diagnostico,
+    rosto_oled_getter=_rosto_oled_runtime.diagnostico,
+    corpo_motor_getter=_corpo_motor_runtime.diagnostico,
 )
 _mapa_habilidades_runtime.conectar_disponibilidade_operacional(
     _disponibilidade_operacional_runtime.snapshot,
@@ -3916,6 +3962,7 @@ _registro_servicos_aplicacao_runtime.publicar(
 
 _validador_comandos_turno_runtime = _criar_validador_comandos_turno_runtime(
     estado_runtime=_estado_compartilhado_runtime,
+    resolver_ato=lambda texto, frame: _deteccao_deterministica_runtime.detectar(texto, estado_mental=frame),
 )
 _composicao_turno_runtime = _criar_composicao_turno_runtime(
     servicos=_registro_servicos_aplicacao_runtime.snapshot(),
@@ -3953,6 +4000,7 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
         ),
         "modo_chat_runtime": _modo_chat_runtime,
         "processar_comandos_prioritarios": _processar_comandos_prioritarios,
+        "agrupar_resultados_operacionais": _orquestrador_fala_runtime.agrupar_resultados_operacionais,
         "textos_publicados_turno": _orquestrador_fala_runtime.textos_publicados_turno,
         "modo_chat": _conversa_estado_get("modo_chat", False),
         "conversa_ativa": _conversa_estado_get("conversa_ativa", False),
@@ -3976,6 +4024,9 @@ _resposta_ia_runtime = _criar_resposta_ia_runtime_mente(
             registrar_falha_cb=_observabilidade_mente_runtime.registrar_falha,
             contexto_contingencia=dict(_estado_compartilhado_runtime.mental),
             contexto_comunicacao={
+                "modelo_corporal": _corpo_motor_runtime.modelo_para_mente(
+                    (_estado_compartilhado_runtime.mental.get("turno_atual") or {}).get("id")
+                ),
                 "plano_turno": dict(
                     _estado_compartilhado_runtime.mental.get("plano_turno_atual") or {}
                 ),

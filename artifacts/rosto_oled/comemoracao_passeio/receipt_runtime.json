@@ -1,0 +1,1072 @@
+{
+  "eventos": [
+    {
+      "em": 9367.8456727,
+      "serial": "HELLO 1 c048e7c7"
+    },
+    {
+      "em": 9367.9561545,
+      "serial": "CAPS 1 c048e7c7"
+    },
+    {
+      "em": 9368.0648786,
+      "serial": "GCAPS 1 c048e7c7"
+    },
+    {
+      "em": 9368.1736242,
+      "serial": "MCAPS 1 c048e7c7"
+    },
+    {
+      "em": 9368.2820482,
+      "serial": "FACE 1 c048e7c7 1 0 1 0 3500"
+    },
+    {
+      "em": 9368.389662,
+      "serial": "ACTIVITY 1 c048e7c7 1 0 1200"
+    },
+    {
+      "em": 9368.4976755,
+      "serial": "FACE 1 c048e7c7 2 0 1 0 3500"
+    },
+    {
+      "em": 9368.6234817,
+      "serial": "ACTIVITY 1 c048e7c7 2 1 1200"
+    },
+    {
+      "em": 9368.9976678,
+      "serial": "FACE 1 c048e7c7 3 0 1 0 3500"
+    },
+    {
+      "em": 9369.1057985,
+      "serial": "ACTIVITY 1 c048e7c7 3 1 1200"
+    },
+    {
+      "em": 9369.4670542,
+      "serial": "FACE 1 c048e7c7 4 0 1 0 3500"
+    },
+    {
+      "em": 9369.5765447,
+      "serial": "ACTIVITY 1 c048e7c7 4 1 1200"
+    },
+    {
+      "em": 9369.9503561,
+      "serial": "FACE 1 c048e7c7 5 0 1 0 3500"
+    },
+    {
+      "em": 9370.0585361,
+      "serial": "ACTIVITY 1 c048e7c7 5 1 1200"
+    },
+    {
+      "em": 9370.4329754,
+      "serial": "FACE 1 c048e7c7 6 0 1 0 3500"
+    },
+    {
+      "em": 9370.5427381,
+      "serial": "ACTIVITY 1 c048e7c7 6 1 1200"
+    },
+    {
+      "em": 9370.9168497,
+      "serial": "FACE 1 c048e7c7 7 0 1 0 3500"
+    },
+    {
+      "em": 9371.0265518,
+      "serial": "ACTIVITY 1 c048e7c7 7 1 1200"
+    },
+    {
+      "em": 9371.3996598,
+      "serial": "FACE 1 c048e7c7 8 0 1 0 3500"
+    },
+    {
+      "em": 9371.5091248,
+      "serial": "ACTIVITY 1 c048e7c7 8 1 1200"
+    },
+    {
+      "em": 9371.8704851,
+      "serial": "FACE 1 c048e7c7 9 0 1 1 3500"
+    },
+    {
+      "em": 9371.9779478,
+      "serial": "ACTIVITY 1 c048e7c7 9 0 1200"
+    },
+    {
+      "em": 9372.0874263,
+      "etapa": "rosto",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "ack_do_mesmo_retrato_causal"
+      }
+    },
+    {
+      "em": 9372.1488992,
+      "serial": "FACE 1 c048e7c7 10 0 1 1 3500"
+    },
+    {
+      "em": 9372.2580457,
+      "serial": "ACTIVITY 1 c048e7c7 10 0 1200"
+    },
+    {
+      "em": 9372.367012,
+      "serial": "MOTOR 1 c048e7c7 1 100 -100 150"
+    },
+    {
+      "em": 9372.4761606,
+      "serial": "FACE 1 c048e7c7 11 0 1 1 3500"
+    },
+    {
+      "em": 9372.5863907,
+      "serial": "ACTIVITY 1 c048e7c7 11 0 1200"
+    },
+    {
+      "em": 9372.6949389,
+      "serial": "STOP 1 c048e7c7 1"
+    },
+    {
+      "em": 9372.8036455,
+      "etapa": "motor",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "gesto": "fala_enfase",
+        "receipts_movimentos": [
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": 100,
+            "pwm_direito": -100,
+            "duracao_ms": 150,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          }
+        ],
+        "prova_rotacao": false
+      }
+    },
+    {
+      "em": 9372.8044747,
+      "gesto": "fala_enfase",
+      "resultado": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      }
+    },
+    {
+      "em": 9372.9597542,
+      "serial": "FACE 1 c048e7c7 12 0 1 1 3500"
+    },
+    {
+      "em": 9373.0679363,
+      "serial": "ACTIVITY 1 c048e7c7 12 0 1200"
+    },
+    {
+      "em": 9373.4411164,
+      "serial": "FACE 1 c048e7c7 13 0 1 1 3500"
+    },
+    {
+      "em": 9373.5534901,
+      "serial": "ACTIVITY 1 c048e7c7 13 0 1200"
+    },
+    {
+      "em": 9373.9206867,
+      "serial": "FACE 1 c048e7c7 14 0 1 1 3500"
+    },
+    {
+      "em": 9374.0295172,
+      "serial": "ACTIVITY 1 c048e7c7 14 0 1200"
+    },
+    {
+      "em": 9374.3893742,
+      "serial": "FACE 1 c048e7c7 15 0 1 1 3500"
+    },
+    {
+      "em": 9374.4983862,
+      "serial": "ACTIVITY 1 c048e7c7 15 0 1200"
+    },
+    {
+      "em": 9374.8703429,
+      "serial": "FACE 1 c048e7c7 16 0 1 1 3500"
+    },
+    {
+      "em": 9374.9790995,
+      "serial": "ACTIVITY 1 c048e7c7 16 0 1200"
+    },
+    {
+      "em": 9375.3533667,
+      "serial": "FACE 1 c048e7c7 17 0 1 1 3500"
+    },
+    {
+      "em": 9375.4619786,
+      "serial": "ACTIVITY 1 c048e7c7 17 0 1200"
+    },
+    {
+      "em": 9375.8356176,
+      "serial": "FACE 1 c048e7c7 18 0 1 1 3500"
+    },
+    {
+      "em": 9375.9454761,
+      "serial": "ACTIVITY 1 c048e7c7 18 0 1200"
+    },
+    {
+      "em": 9376.3180218,
+      "serial": "FACE 1 c048e7c7 19 0 1 1 3500"
+    },
+    {
+      "em": 9376.4260455,
+      "serial": "ACTIVITY 1 c048e7c7 19 0 1200"
+    },
+    {
+      "em": 9376.7870718,
+      "serial": "FACE 1 c048e7c7 20 0 1 1 3500"
+    },
+    {
+      "em": 9376.8951463,
+      "serial": "ACTIVITY 1 c048e7c7 20 0 1200"
+    },
+    {
+      "em": 9377.2681235,
+      "serial": "FACE 1 c048e7c7 21 0 1 1 3500"
+    },
+    {
+      "em": 9377.3768509,
+      "serial": "ACTIVITY 1 c048e7c7 21 0 1200"
+    },
+    {
+      "em": 9377.7490906,
+      "serial": "FACE 1 c048e7c7 22 0 1 1 3500"
+    },
+    {
+      "em": 9377.8577334,
+      "serial": "ACTIVITY 1 c048e7c7 22 0 1200"
+    },
+    {
+      "em": 9378.2332377,
+      "serial": "FACE 1 c048e7c7 23 0 1 1 3500"
+    },
+    {
+      "em": 9378.3413673,
+      "serial": "ACTIVITY 1 c048e7c7 23 0 1200"
+    },
+    {
+      "em": 9378.7152923,
+      "serial": "FACE 1 c048e7c7 24 0 1 1 3500"
+    },
+    {
+      "em": 9378.8236181,
+      "serial": "ACTIVITY 1 c048e7c7 24 0 1200"
+    },
+    {
+      "em": 9379.1963876,
+      "serial": "FACE 1 c048e7c7 25 0 1 1 3500"
+    },
+    {
+      "em": 9379.3059346,
+      "serial": "ACTIVITY 1 c048e7c7 25 0 1200"
+    },
+    {
+      "em": 9379.6771575,
+      "serial": "FACE 1 c048e7c7 26 0 1 1 3500"
+    },
+    {
+      "em": 9379.7851134,
+      "serial": "ACTIVITY 1 c048e7c7 26 0 1200"
+    },
+    {
+      "em": 9380.1436194,
+      "serial": "FACE 1 c048e7c7 27 0 1 1 3500"
+    },
+    {
+      "em": 9380.2536404,
+      "serial": "ACTIVITY 1 c048e7c7 27 0 1200"
+    },
+    {
+      "em": 9380.6283211,
+      "serial": "FACE 1 c048e7c7 28 0 1 1 3500"
+    },
+    {
+      "em": 9380.7371196,
+      "serial": "ACTIVITY 1 c048e7c7 28 0 1200"
+    },
+    {
+      "em": 9381.1103055,
+      "serial": "FACE 1 c048e7c7 29 0 1 0 3500"
+    },
+    {
+      "em": 9381.219053,
+      "serial": "ACTIVITY 1 c048e7c7 29 0 1200"
+    },
+    {
+      "em": 9381.3297331,
+      "etapa": "rosto",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "ack_do_mesmo_retrato_causal"
+      }
+    },
+    {
+      "em": 9381.4237824,
+      "serial": "FACE 1 c048e7c7 30 0 1 0 3500"
+    },
+    {
+      "em": 9381.5321134,
+      "serial": "ACTIVITY 1 c048e7c7 30 0 1200"
+    },
+    {
+      "em": 9381.6423319,
+      "serial": "MOTOR 1 c048e7c7 2 100 100 300"
+    },
+    {
+      "em": 9381.7490611,
+      "serial": "FACE 1 c048e7c7 31 0 1 0 3500"
+    },
+    {
+      "em": 9381.8589261,
+      "serial": "ACTIVITY 1 c048e7c7 31 0 1200"
+    },
+    {
+      "em": 9382.077084,
+      "serial": "STOP 1 c048e7c7 2"
+    },
+    {
+      "em": 9382.2334574,
+      "serial": "FACE 1 c048e7c7 32 0 1 0 3500"
+    },
+    {
+      "em": 9382.3422998,
+      "serial": "ACTIVITY 1 c048e7c7 32 0 1200"
+    },
+    {
+      "em": 9382.4514028,
+      "serial": "FACE 1 c048e7c7 33 0 1 0 3500"
+    },
+    {
+      "em": 9382.5615836,
+      "serial": "ACTIVITY 1 c048e7c7 33 0 1200"
+    },
+    {
+      "em": 9382.671206,
+      "serial": "MOTOR 1 c048e7c7 3 -100 100 180"
+    },
+    {
+      "em": 9382.779615,
+      "serial": "FACE 1 c048e7c7 34 0 1 0 3500"
+    },
+    {
+      "em": 9382.8889766,
+      "serial": "ACTIVITY 1 c048e7c7 34 0 1200"
+    },
+    {
+      "em": 9382.9997771,
+      "serial": "STOP 1 c048e7c7 3"
+    },
+    {
+      "em": 9383.1089132,
+      "etapa": "motor",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "gesto": "passeio_avanco",
+        "receipts_movimentos": [
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": 100,
+            "pwm_direito": 100,
+            "duracao_ms": 300,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          },
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": -100,
+            "pwm_direito": 100,
+            "duracao_ms": 180,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          }
+        ],
+        "prova_rotacao": false
+      }
+    },
+    {
+      "em": 9383.1095302,
+      "gesto": "passeio_avanco",
+      "resultado": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      }
+    },
+    {
+      "em": 9383.2645535,
+      "serial": "FACE 1 c048e7c7 35 0 1 0 3500"
+    },
+    {
+      "em": 9383.371994,
+      "serial": "ACTIVITY 1 c048e7c7 35 0 1200"
+    },
+    {
+      "em": 9383.7428479,
+      "serial": "FACE 1 c048e7c7 36 0 1 0 3500"
+    },
+    {
+      "em": 9383.8527347,
+      "serial": "ACTIVITY 1 c048e7c7 36 1 1200"
+    },
+    {
+      "em": 9384.2263736,
+      "serial": "FACE 1 c048e7c7 37 0 1 0 3500"
+    },
+    {
+      "em": 9384.3364881,
+      "serial": "ACTIVITY 1 c048e7c7 37 1 1200"
+    },
+    {
+      "em": 9384.709466,
+      "serial": "FACE 1 c048e7c7 38 0 1 0 3500"
+    },
+    {
+      "em": 9384.8200939,
+      "serial": "ACTIVITY 1 c048e7c7 38 1 1200"
+    },
+    {
+      "em": 9385.1923423,
+      "serial": "FACE 1 c048e7c7 39 0 1 0 3500"
+    },
+    {
+      "em": 9385.2997217,
+      "serial": "ACTIVITY 1 c048e7c7 39 1 1200"
+    },
+    {
+      "em": 9385.6719037,
+      "serial": "FACE 1 c048e7c7 40 0 1 0 3500"
+    },
+    {
+      "em": 9385.7797381,
+      "serial": "ACTIVITY 1 c048e7c7 40 1 1200"
+    },
+    {
+      "em": 9386.1528262,
+      "serial": "FACE 1 c048e7c7 41 0 1 0 3500"
+    },
+    {
+      "em": 9386.261306,
+      "serial": "ACTIVITY 1 c048e7c7 41 1 1200"
+    },
+    {
+      "em": 9386.4795911,
+      "etapa": "rosto",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "ack_do_mesmo_retrato_causal"
+      }
+    },
+    {
+      "em": 9386.6047078,
+      "serial": "FACE 1 c048e7c7 42 0 1 1 3500"
+    },
+    {
+      "em": 9386.7137395,
+      "serial": "ACTIVITY 1 c048e7c7 42 0 1200"
+    },
+    {
+      "em": 9386.8236193,
+      "serial": "MOTOR 1 c048e7c7 4 -100 100 240"
+    },
+    {
+      "em": 9386.9327484,
+      "serial": "FACE 1 c048e7c7 43 0 1 1 3500"
+    },
+    {
+      "em": 9387.0413586,
+      "serial": "ACTIVITY 1 c048e7c7 43 0 1200"
+    },
+    {
+      "em": 9387.1977099,
+      "serial": "STOP 1 c048e7c7 4"
+    },
+    {
+      "em": 9387.3995513,
+      "serial": "FACE 1 c048e7c7 44 0 1 1 3500"
+    },
+    {
+      "em": 9387.509403,
+      "serial": "ACTIVITY 1 c048e7c7 44 0 1200"
+    },
+    {
+      "em": 9387.6189244,
+      "serial": "MOTOR 1 c048e7c7 5 100 -100 480"
+    },
+    {
+      "em": 9387.726681,
+      "serial": "FACE 1 c048e7c7 45 0 1 1 3500"
+    },
+    {
+      "em": 9387.8358838,
+      "serial": "ACTIVITY 1 c048e7c7 45 0 1200"
+    },
+    {
+      "em": 9388.1947334,
+      "serial": "FACE 1 c048e7c7 46 0 1 1 3500"
+    },
+    {
+      "em": 9388.3037284,
+      "serial": "ACTIVITY 1 c048e7c7 46 0 1200"
+    },
+    {
+      "em": 9388.4122256,
+      "serial": "STOP 1 c048e7c7 5"
+    },
+    {
+      "em": 9388.613477,
+      "serial": "FACE 1 c048e7c7 47 0 1 1 3500"
+    },
+    {
+      "em": 9388.7212282,
+      "serial": "ACTIVITY 1 c048e7c7 47 0 1200"
+    },
+    {
+      "em": 9388.8302779,
+      "serial": "MOTOR 1 c048e7c7 6 -100 100 240"
+    },
+    {
+      "em": 9388.9378277,
+      "serial": "FACE 1 c048e7c7 48 0 1 1 3500"
+    },
+    {
+      "em": 9389.0448264,
+      "serial": "ACTIVITY 1 c048e7c7 48 0 1200"
+    },
+    {
+      "em": 9389.1988775,
+      "serial": "STOP 1 c048e7c7 6"
+    },
+    {
+      "em": 9389.3088413,
+      "etapa": "motor",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "gesto": "comemoracao_balanco",
+        "receipts_movimentos": [
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": -100,
+            "pwm_direito": 100,
+            "duracao_ms": 240,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          },
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": 100,
+            "pwm_direito": -100,
+            "duracao_ms": 480,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          },
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": -100,
+            "pwm_direito": 100,
+            "duracao_ms": 240,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          }
+        ],
+        "prova_rotacao": false
+      }
+    },
+    {
+      "em": 9389.3093785,
+      "gesto": "comemoracao_balanco",
+      "resultado": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      }
+    },
+    {
+      "em": 9389.403813,
+      "serial": "FACE 1 c048e7c7 49 0 1 1 3500"
+    },
+    {
+      "em": 9389.5129117,
+      "serial": "ACTIVITY 1 c048e7c7 49 0 1200"
+    },
+    {
+      "em": 9389.6221535,
+      "etapa": "rosto",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "ack_do_mesmo_retrato_causal"
+      }
+    },
+    {
+      "em": 9389.6980637,
+      "serial": "FACE 1 c048e7c7 50 0 1 1 3500"
+    },
+    {
+      "em": 9389.8074204,
+      "serial": "ACTIVITY 1 c048e7c7 50 0 1200"
+    },
+    {
+      "em": 9389.9170685,
+      "serial": "MOTOR 1 c048e7c7 7 -100 100 150"
+    },
+    {
+      "em": 9390.0245027,
+      "serial": "FACE 1 c048e7c7 51 0 1 1 3500"
+    },
+    {
+      "em": 9390.1348396,
+      "serial": "ACTIVITY 1 c048e7c7 51 0 1200"
+    },
+    {
+      "em": 9390.2438929,
+      "serial": "STOP 1 c048e7c7 7"
+    },
+    {
+      "em": 9390.3518318,
+      "etapa": "motor",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "gesto": "fala_enfase",
+        "receipts_movimentos": [
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": -100,
+            "pwm_direito": 100,
+            "duracao_ms": 150,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          }
+        ],
+        "prova_rotacao": false
+      }
+    },
+    {
+      "em": 9390.3533952,
+      "gesto": "fala_enfase",
+      "resultado": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      }
+    },
+    {
+      "em": 9390.5078786,
+      "serial": "FACE 1 c048e7c7 52 0 1 1 3500"
+    },
+    {
+      "em": 9390.6182531,
+      "serial": "ACTIVITY 1 c048e7c7 52 0 1200"
+    },
+    {
+      "em": 9390.9917349,
+      "serial": "FACE 1 c048e7c7 53 0 1 1 3500"
+    },
+    {
+      "em": 9391.1000621,
+      "serial": "ACTIVITY 1 c048e7c7 53 0 1200"
+    },
+    {
+      "em": 9391.4759362,
+      "serial": "FACE 1 c048e7c7 54 0 1 1 3500"
+    },
+    {
+      "em": 9391.5853565,
+      "serial": "ACTIVITY 1 c048e7c7 54 0 1200"
+    },
+    {
+      "em": 9391.9570241,
+      "serial": "FACE 1 c048e7c7 55 0 1 1 3500"
+    },
+    {
+      "em": 9392.0643201,
+      "serial": "ACTIVITY 1 c048e7c7 55 0 1200"
+    },
+    {
+      "em": 9392.4344508,
+      "serial": "FACE 1 c048e7c7 56 0 1 1 3500"
+    },
+    {
+      "em": 9392.5419565,
+      "serial": "ACTIVITY 1 c048e7c7 56 0 1200"
+    },
+    {
+      "em": 9392.9146562,
+      "serial": "FACE 1 c048e7c7 57 0 1 1 3500"
+    },
+    {
+      "em": 9393.0238172,
+      "serial": "ACTIVITY 1 c048e7c7 57 0 1200"
+    },
+    {
+      "em": 9393.3832694,
+      "serial": "FACE 1 c048e7c7 58 0 1 1 3500"
+    },
+    {
+      "em": 9393.4908645,
+      "serial": "ACTIVITY 1 c048e7c7 58 0 1200"
+    },
+    {
+      "em": 9393.8661744,
+      "serial": "FACE 1 c048e7c7 59 0 1 1 3500"
+    },
+    {
+      "em": 9393.9749436,
+      "serial": "ACTIVITY 1 c048e7c7 59 0 1200"
+    },
+    {
+      "em": 9394.346324,
+      "serial": "FACE 1 c048e7c7 60 0 1 1 3500"
+    },
+    {
+      "em": 9394.4554587,
+      "serial": "ACTIVITY 1 c048e7c7 60 0 1200"
+    },
+    {
+      "em": 9394.8278284,
+      "serial": "FACE 1 c048e7c7 61 0 1 1 3500"
+    },
+    {
+      "em": 9394.9368878,
+      "serial": "ACTIVITY 1 c048e7c7 61 0 1200"
+    },
+    {
+      "em": 9395.3096727,
+      "serial": "FACE 1 c048e7c7 62 0 1 1 3500"
+    },
+    {
+      "em": 9395.4194724,
+      "serial": "ACTIVITY 1 c048e7c7 62 0 1200"
+    },
+    {
+      "em": 9395.7788188,
+      "serial": "FACE 1 c048e7c7 63 0 1 1 3500"
+    },
+    {
+      "em": 9395.8878007,
+      "serial": "ACTIVITY 1 c048e7c7 63 0 1200"
+    },
+    {
+      "em": 9396.2622684,
+      "serial": "FACE 1 c048e7c7 64 0 1 1 3500"
+    },
+    {
+      "em": 9396.3705706,
+      "serial": "ACTIVITY 1 c048e7c7 64 0 1200"
+    },
+    {
+      "em": 9396.7435189,
+      "serial": "FACE 1 c048e7c7 65 0 1 1 3500"
+    },
+    {
+      "em": 9396.8518511,
+      "serial": "ACTIVITY 1 c048e7c7 65 0 1200"
+    },
+    {
+      "em": 9397.2244152,
+      "serial": "FACE 1 c048e7c7 66 0 1 1 3500"
+    },
+    {
+      "em": 9397.3337519,
+      "serial": "ACTIVITY 1 c048e7c7 66 0 1200"
+    },
+    {
+      "em": 9397.6945981,
+      "serial": "FACE 1 c048e7c7 67 0 1 1 3500"
+    },
+    {
+      "em": 9397.8035419,
+      "serial": "ACTIVITY 1 c048e7c7 67 0 1200"
+    },
+    {
+      "em": 9398.1764699,
+      "serial": "FACE 1 c048e7c7 68 0 1 1 3500"
+    },
+    {
+      "em": 9398.2854865,
+      "serial": "ACTIVITY 1 c048e7c7 68 0 1200"
+    },
+    {
+      "em": 9398.6557318,
+      "serial": "FACE 1 c048e7c7 69 0 1 1 3500"
+    },
+    {
+      "em": 9398.7663679,
+      "serial": "ACTIVITY 1 c048e7c7 69 0 1200"
+    },
+    {
+      "em": 9399.126488,
+      "serial": "FACE 1 c048e7c7 70 0 1 0 3500"
+    },
+    {
+      "em": 9399.235476,
+      "serial": "ACTIVITY 1 c048e7c7 70 0 1200"
+    },
+    {
+      "em": 9399.6095545,
+      "serial": "FACE 1 c048e7c7 71 0 1 0 3500"
+    },
+    {
+      "em": 9399.7169391,
+      "serial": "ACTIVITY 1 c048e7c7 71 0 1200"
+    },
+    {
+      "em": 9400.0762343,
+      "serial": "FACE 1 c048e7c7 72 0 1 0 3500"
+    },
+    {
+      "em": 9400.1842995,
+      "serial": "ACTIVITY 1 c048e7c7 72 0 1200"
+    },
+    {
+      "em": 9400.5573886,
+      "serial": "FACE 1 c048e7c7 73 0 1 0 3500"
+    },
+    {
+      "em": 9400.6678208,
+      "serial": "ACTIVITY 1 c048e7c7 73 0 1200"
+    },
+    {
+      "em": 9401.0411682,
+      "serial": "FACE 1 c048e7c7 74 0 1 0 3500"
+    },
+    {
+      "em": 9401.1502036,
+      "serial": "ACTIVITY 1 c048e7c7 74 0 1200"
+    },
+    {
+      "em": 9401.5215815,
+      "serial": "FACE 1 c048e7c7 75 0 1 0 3500"
+    },
+    {
+      "em": 9401.6304594,
+      "serial": "ACTIVITY 1 c048e7c7 75 0 1200"
+    },
+    {
+      "em": 9401.7427558,
+      "etapa": "rosto",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "ack_do_mesmo_retrato_causal"
+      }
+    },
+    {
+      "em": 9401.8347873,
+      "serial": "FACE 1 c048e7c7 76 0 1 0 3500"
+    },
+    {
+      "em": 9401.9428456,
+      "serial": "ACTIVITY 1 c048e7c7 76 0 1200"
+    },
+    {
+      "em": 9402.051164,
+      "serial": "MOTOR 1 c048e7c7 8 -100 -100 220"
+    },
+    {
+      "em": 9402.1590037,
+      "serial": "FACE 1 c048e7c7 77 0 1 0 3500"
+    },
+    {
+      "em": 9402.2673096,
+      "serial": "ACTIVITY 1 c048e7c7 77 0 1200"
+    },
+    {
+      "em": 9402.4075975,
+      "serial": "STOP 1 c048e7c7 8"
+    },
+    {
+      "em": 9402.6409131,
+      "serial": "FACE 1 c048e7c7 78 0 1 0 3500"
+    },
+    {
+      "em": 9402.7511771,
+      "serial": "ACTIVITY 1 c048e7c7 78 0 1200"
+    },
+    {
+      "em": 9402.8607805,
+      "serial": "MOTOR 1 c048e7c7 9 100 -100 180"
+    },
+    {
+      "em": 9402.9694657,
+      "serial": "FACE 1 c048e7c7 79 0 1 0 3500"
+    },
+    {
+      "em": 9403.077689,
+      "serial": "ACTIVITY 1 c048e7c7 79 0 1200"
+    },
+    {
+      "em": 9403.187072,
+      "serial": "STOP 1 c048e7c7 9"
+    },
+    {
+      "em": 9403.2960967,
+      "etapa": "motor",
+      "retorno": {
+        "ok": true,
+        "confirmado": true,
+        "gesto": "passeio_recuo",
+        "receipts_movimentos": [
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": -100,
+            "pwm_direito": -100,
+            "duracao_ms": 220,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          },
+          {
+            "ok": true,
+            "motivo": "",
+            "aplicacao_pwm_confirmada": true,
+            "parada_confirmada": true,
+            "pwm_esquerdo": 100,
+            "pwm_direito": -100,
+            "duracao_ms": 180,
+            "evidencia": "mack_pwm_e_sack",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "cancelado": false,
+            "status": "sucesso"
+          }
+        ],
+        "prova_rotacao": false
+      }
+    },
+    {
+      "em": 9403.2971125,
+      "gesto": "passeio_recuo",
+      "resultado": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      }
+    },
+    {
+      "em": 9403.45047,
+      "serial": "FACE 1 c048e7c7 80 0 1 0 3500"
+    },
+    {
+      "em": 9403.5592978,
+      "serial": "ACTIVITY 1 c048e7c7 80 0 1200"
+    },
+    {
+      "em": 9403.6698242,
+      "serial": "STOP 1 c048e7c7 10"
+    }
+  ],
+  "diagnostico_final": {
+    "suportado": true,
+    "disponivel": true,
+    "aplicacao_pwm_confirmada": true,
+    "parada_confirmada": true,
+    "em_andamento": false,
+    "motivo": "",
+    "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "autoriza_execucao": false,
+    "pulsos_limitados": true,
+    "duracao_maxima_ms": 500,
+    "autonomia_ativada": true,
+    "companhia": {
+      "ativa": true,
+      "motivo": "concessao_usb_vigente",
+      "transporte_exigido": "serial",
+      "ttl_maximo_s": null,
+      "gestos_maximos": null,
+      "gestos_emitidos": 5,
+      "intervalo_minimo_s": 2,
+      "pwm_gestos": 100,
+      "duracao_maxima_gesto_ms": 1500,
+      "duracao_planejada_maxima_coreografia_ms": 2400,
+      "movimentos_maximos_por_gesto": 4,
+      "perfil_expressivo": "ritmo_emocional_v2",
+      "passeio_ativado": true,
+      "comemoracoes_emitidas": 1,
+      "passeios_emitidos": 2,
+      "giro_360_calibrado": false,
+      "restantes_s": null,
+      "vigencia": "sessao_usb_atual_ate_revogacao",
+      "origem": "concessao_explicita_de_sessao",
+      "autoriza_execucao": false,
+      "persistente": false,
+      "possui_sensores": false
+    },
+    "possui_sensor_de_deslocamento": false
+  },
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "observacao_fisica_humana": false
+}

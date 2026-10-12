@@ -35,6 +35,7 @@ _INTENTS_POR_DOMINIO = {
     },
     "email": {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"},
     "iot": {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"},
+    "corpo_motor": {"CORPO_MOVER", "CORPO_PARAR", "CORPO_COMPANHIA"},
     "area_transferencia": {
         "CLIPBOARD_READ", "CLIPBOARD_TRANSFORM", "CLIPBOARD_SEARCH",
         "CLIPBOARD_INVESTIGATE", "CLIPBOARD_WRITE", "CLIPBOARD_UNDO",
@@ -173,6 +174,9 @@ _CONFIRMACAO_POR_INTENT = {
     "IOT_CONTROL": ("estado_observado", "o dispositivo é relido após o comando"),
     "IOT_STATUS": ("estado_observado", "o estado vem da leitura do dispositivo"),
     "IOT_LIST": ("retorno_dados", "a lista vem do runtime IoT"),
+    "CORPO_MOVER": ("estado_firmware", "MACK e SACK correlacionados confirmam PWM aplicado e ponte desenergizada, sem sensor de giro ou deslocamento"),
+    "CORPO_COMPANHIA": ("estado_owner", "o owner confirma uma concessão temporária USB ou sua revogação; não confirma deslocamento"),
+    "CORPO_PARAR": ("estado_firmware", "SACK correlacionado confirma nSLEEP baixo e PWM zerado no firmware, sem sensor de parada física"),
     "CLIPBOARD_READ": ("retorno_dados", "o texto é lido diretamente da área de transferência"),
     "CLIPBOARD_TRANSFORM": ("retorno_dados", "o resultado temporário é devolvido sem substituir o original"),
     "CLIPBOARD_SEARCH": ("variavel", "a pesquisa é encaminhada ao navegador sem persistir o conteúdo"),
@@ -215,6 +219,12 @@ _CONFIRMACAO_POR_INTENT = {
 # substitui detector nem executor: descreve como cada domínio pode ser pedido,
 # quem é responsável pela execução e quais condições limitam o resultado.
 _CONTRATO_POR_DOMINIO = {
+    "corpo_motor": {
+        "invocacao_natural": ("ande para frente", "ande para trás", "vire para a esquerda", "pare os motores", "ative modo companhia na bancada", "ative modo passeio na mesa com barreiras", "desative modo companhia"),
+        "proprietario": "mente_laylay.autonomia.executor_corpo",
+        "dependencias": ("ESP32-C3 e DRV8833 conectados", "sessão FACE vigente", "firmware MOTOR1 habilitado"),
+        "limites": "pulsos de bancada de 50 a 500 ms, até PWM255; gestos e comemorações de ações confirmadas após pedido explícito ou preferência explícita salva de companhia na bancada ao iniciar USB; passeio espontâneo exige pedido próprio 'ative modo passeio na mesa com barreiras' ou preferência explícita adicional salva de passeio ao iniciar na área com barreiras; concessão da sessão USB atual, sem expirar por tempo ou contagem; passeios a cada 8 a 14s em silêncio e sem ação em andamento; PWM100, até quatro movimentos e 1500ms totais de motor por gesto, intervalo mínimo2s; sem preferência explícita inicia desligado; reconectar, falhar, parar ou mover manualmente revogam a concessão e impedem reativação automática na mesma execução; sem sensor de deslocamento, obstáculo, corrente ou giro, sem calibração de 360 graus; emoções e aprendizado não concedem autoridade",
+    },
     "musica": {
         "invocacao_natural": ("toca uma música", "abre minha playlist", "pausa a música"),
         "proprietario": "mente_laylay.autonomia.executor_musical",
@@ -360,6 +370,9 @@ def _limites_documentais(contrato: dict[str, Any]) -> str:
 # Não são exemplos de fala, resolvedores de alvo ou autorização de comandos.
 # Ausência de predicado significa cobertura desconhecida, nunca incapacidade.
 _PREDICADOS_CAPACIDADE = {
+    "CORPO_MOVER": (
+        {"acao": "acionar", "presente": ("aciono", "aciona"), "objetos": ("motores", "ponte h")},
+    ),
     "MEDIA_CONTROL": (
         {"acao": "controlar", "presente": ("controlo", "controla"),
          "objetos": ("musica", "audio", "midia")},
@@ -393,7 +406,11 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
         "confirma_resultado": _CONFIRMACAO_POR_INTENT[intent][0] != "indisponivel",
         "confirmacao_variavel": _CONFIRMACAO_POR_INTENT[intent][0] == "variavel",
         "estado_sem_confirmacao": "nao_confirmado",
-        "invocacao_natural": _CONTRATO_POR_DOMINIO[dominio]["invocacao_natural"],
+        "invocacao_natural": {
+            "CORPO_COMPANHIA": ("ative modo companhia na bancada", "ative modo passeio na mesa com barreiras", "desative passeio", "desative modo companhia"),
+            "CORPO_MOVER": ("ande para frente", "ande para trás", "vire para a esquerda"),
+            "CORPO_PARAR": ("pare os motores",),
+        }.get(intent, _CONTRATO_POR_DOMINIO[dominio]["invocacao_natural"]),
         "autorizacao": (
             "confirmacao_explicita"
             if intent in _CONFIRMACAO_OBRIGATORIA

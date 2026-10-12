@@ -273,6 +273,11 @@ class EstadoCompartilhadoRuntime:
                 "memoria_conversa": self._copiar_dominio(self.memoria_conversa),
             }
 
+    def retrato_dominio(self, dominio: str) -> Dict[str, Any]:
+        """Copia um domínio sob o lock central para consumidores de saída."""
+        with self._lock:
+            return self._copiar_dominio(self._estado(dominio))
+
     def vincular_dict(
         self,
         dominio: str,

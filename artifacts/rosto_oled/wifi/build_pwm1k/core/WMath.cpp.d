@@ -1,0 +1,31 @@
+C:\Users\pbarr\Downloads\pasta\ organizada\programacao\PY\projeto\ lay\laylay\artifacts\rosto_oled\wifi\build_pwm1k\core\WMath.cpp.o: \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.3.12\cores\esp32\WMath.cpp \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_system/include/esp_system.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_err.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/newlib/platform_include/stdio.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_compiler.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_attr.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_bit_defs.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_idf_version.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.3.12\cores\esp32\esp32-hal-log.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_timer/include/esp_timer.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_hw_support/include/esp_etm.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_rom/esp32c3/include/esp32c3/rom/ets_sys.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_rom/include/esp_rom_sys.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/soc/esp32c3/include/soc/reset_reasons.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/soc/esp32c3/include/soc/soc_caps.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_config.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_level.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_assert.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_color.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_buffer.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_timestamp.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_write.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_format.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_args.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_macros.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_common/include/esp_assert.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_log_attr.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/log/include/esp_private/log_attr.h \
+ C:\Users\pbarr\AppData\Local\Arduino15\packages\esp32\tools\esp32c3-libs\3.3.12/include/esp_hw_support/include/esp_random.h

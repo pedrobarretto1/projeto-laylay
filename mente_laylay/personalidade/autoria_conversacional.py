@@ -20,6 +20,7 @@ from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_ll
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
 from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
+from mente_laylay.cognicao.guardiao_alegacoes import fala_nega_capacidade_emocional
 
 
 @dataclass(frozen=True)
@@ -154,6 +155,8 @@ def criar_fala_autoral(
         return FalaAutoral(fallback, False, "ataque_pessoal")
     if detectar_experiencia_pessoal_inventada(fala):
         return FalaAutoral(fallback, False, "realidade_pessoal_inventada")
+    if fala_nega_capacidade_emocional(fala):
+        return FalaAutoral(fallback, False, "capacidade_emocional_negada")
     if re.search(
         r"\b(?:verificador|rascunho|resposta saiu|resposta não fechou|"
         r"resposta nao fechou|erro interno|falha técnica|falha tecnica)\b",

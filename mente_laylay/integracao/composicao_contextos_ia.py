@@ -128,6 +128,7 @@ class ComposicaoContextosIARuntime:
         registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
         otimizacao_prompt_ativa: bool = True,
         registrar_falha: Callable[..., Any] | None = None,
+        modelo_corporal_getter: Callable[[Any], Mapping[str, Any]] | None = None,
         prompt_factory: Callable[..., Any] = criar_contexto_prompt_runtime,
         exec_factory: Callable[..., Any] = criar_contexto_exec_runtime,
         dispatcher_factory: Callable[..., Any] = criar_contexto_dispatcher_runtime,
@@ -148,6 +149,7 @@ class ComposicaoContextosIARuntime:
         self.modelo_llm = registrar_modelo_llm(modelo_llm)
         self.gmail_cache_getter = gmail_cache_getter
         self.falhas_getter = falhas_getter
+        self.modelo_corporal_getter = modelo_corporal_getter
 
         self.prompt: PortaPreparacaoConversa = registrar_preparacao_conversa(prompt_factory(
             memoria_sqlite=memoria_sqlite,
@@ -242,6 +244,8 @@ class ComposicaoContextosIARuntime:
                 mente.get("fundamentacao_factual_turno") or {}
             ),
             "nome_usuario": str(mente.get("nome_usuario") or "").strip(),
+            "modelo_corporal": dict(self.modelo_corporal_getter((mente.get("turno_atual") or {}).get("id")) or {})
+                if self.modelo_corporal_getter is not None else {},
         }
 
     def _estado_dispatcher(self) -> dict[str, Any]:

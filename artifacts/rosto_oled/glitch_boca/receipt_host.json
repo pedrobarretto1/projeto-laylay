@@ -1,0 +1,27 @@
+{
+  "hardware_simulado": true,
+  "prova_optica": false,
+  "motores_reais_acionados": false,
+  "perfil_0": [
+    "GLITCH_HOST_OK: MCAPS/GCAPS, parser, replay, GACK pos-frame, TTL, I2C/display, wrap e demo; 17 pixels",
+    "STOP_HOST_OK: SACK correlacionado pos-corte, parser, replay, sessao, legado e corte fail-safe",
+    "BOCA_HOST_OK: pausa/variacao, abertura 0.03..3.64, largura 0.76..0.89, maior passo 1.42, parada 23 pixels",
+    "PREVIEW_RASTER_OK: 9 bocas, 62 quadros glitch distintos, motores parados",
+    "FIRMWARE_GLITCH_BOCA_HOST_OK"
+  ],
+  "perfil_1": [
+    "GLITCH_HOST_OK: MCAPS/GCAPS, parser, replay, GACK pos-frame, TTL, I2C/display, wrap e demo; 17 pixels",
+    "STOP_HOST_OK: SACK correlacionado pos-corte, parser, replay, sessao, legado e corte fail-safe",
+    "BOCA_HOST_OK: pausa/variacao, abertura 0.03..3.66, largura 0.76..0.89, maior passo 1.41, parada 34 pixels",
+    "FIRMWARE_GLITCH_BOCA_HOST_OK"
+  ],
+  "fontes_sha256": {
+    "firmware\\rosto_laylay\\rosto_laylay.ino": "7fccfad8e05c8f3ce397961d56e11f8507c351ca9fb202658f7176f83b4d2425",
+    "firmware\\rosto_laylay\\validacao_host\\Adafruit_SSD1306.h": "07daa0c8e65b1114a9813c07731b8f17dc1d034b263ad43ecc44ded35ea810b7",
+    "firmware\\rosto_laylay\\validacao_host\\validar_glitch_boca.cpp": "6d37ea8d6110423f98c004633afd2deeb60c026fd29ed684c5b49f831d8a53ed"
+  },
+  "previas": [
+    "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\artifacts\\rosto_oled\\glitch_boca\\boca.gif",
+    "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\artifacts\\rosto_oled\\glitch_boca\\glitch.gif"
+  ]
+}

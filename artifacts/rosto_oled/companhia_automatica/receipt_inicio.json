@@ -1,0 +1,60 @@
+{
+  "interface_aberta": false,
+  "observacao_fisica_humana": false,
+  "ativacao": {
+    "ok": true,
+    "modo_ativado": true,
+    "passeio_ativado": false,
+    "evidencia": "concessao_temporaria_no_owner_corporal"
+  },
+  "companhia": {
+    "ativa": true,
+    "motivo": "concessao_usb_vigente",
+    "transporte_exigido": "serial",
+    "ttl_maximo_s": null,
+    "gestos_maximos": null,
+    "gestos_emitidos": 0,
+    "intervalo_minimo_s": 2,
+    "pwm_gestos": 100,
+    "duracao_maxima_gesto_ms": 1500,
+    "duracao_planejada_maxima_coreografia_ms": 2400,
+    "movimentos_maximos_por_gesto": 4,
+    "perfil_expressivo": "ritmo_emocional_v2",
+    "passeio_ativado": false,
+    "comemoracoes_emitidas": 0,
+    "passeios_emitidos": 0,
+    "giro_360_calibrado": false,
+    "restantes_s": null,
+    "vigencia": "sessao_usb_atual_ate_revogacao",
+    "origem": "configuracao_explicita_de_bancada",
+    "ativacao_automatica_ao_iniciar": true,
+    "autoriza_execucao": false,
+    "persistente": false,
+    "possui_sensores": false
+  },
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "sem_rearme_apos_parada": true,
+  "ok": true,
+  "comandos": [
+    "HELLO",
+    "CAPS",
+    "GCAPS",
+    "MCAPS",
+    "FACE",
+    "ACTIVITY",
+    "STOP"
+  ]
+}

@@ -1,0 +1,650 @@
+{
+  "passos": [
+    {
+      "evento": "acordar",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "alegre",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          1,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "triste",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          2,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "brava",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          3,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "envergonhada",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          6,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "surpresa",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          5,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "debochada",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          7,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "irritada",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          4,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "acalmando-se",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          8,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "calma",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "c15e0253",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "som": {
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "melodia_demonstrada": 1,
+      "sequencia_aceita": true,
+      "acao_externa_executada": false
+    },
+    {
+      "melodia_demonstrada": 2,
+      "sequencia_aceita": true,
+      "acao_externa_executada": false
+    }
+  ],
+  "fonte_sha256": "a95c822571854abc6057f83ffe3379c81f9b83049ac135dc37eebd4b7185d1df",
+  "som_sha256": "75d7941d604fa865537ee6175db5cf9dd2f310bd71853958c5281faf33cd6000",
+  "movimento_enviado": false,
+  "falha": "",
+  "audicao_humana": "Pedro confirmou: Sim, ficaram fofos",
+  "visual_humano": "Pedro confirmou: Sim, so olhos e ficou fluido"
+}

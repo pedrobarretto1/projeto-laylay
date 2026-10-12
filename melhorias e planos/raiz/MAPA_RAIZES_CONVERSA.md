@@ -6,6 +6,458 @@ de produção. Mantém os IDs históricos do registro central.
 
 ## Base e escopo
 
+### Contexto operacional — operando atual precede reuso do referente — 12/10/2026
+
+Investigação geral solicitada por Pedro, não encerramento universal do contexto.
+Owner geral tratava repetição/pronome em qualquer posição como permissão para
+substituir o argumento: calculadora→“abre bloco de notas de novo” retornava
+calculadora; YouTube→“abre calculadora de novo” retornava YouTube; rock→jazz
+retornava rock. Prioridade operacional anterior tornou visível essa gramática
+permissiva no caminho instalado. Contrato: contexto completa operando omitido
+ou referencial, não sobrescreve nome dito agora; repetição modifica operação,
+pronome secundário de foco não é o alvo principal.
+
+20 REDs/7 controles antes em owner puro, quatro tipos de referência. Painel
+instalado 21 casos: antes 7 RED, depois 2 RED; 404 regressivos/22 subtests GREEN.
+Patch só na gramática de `contexto_imediato.py`, reusando leitura referencial e
+complemento de foco; demais owners/executores/rede preservados. Prova instalada
+sem main/efeitos/áudio, receipts fixtures. Histórico e artefatos no registro.
+
+Dois REDs não agrupados como a mesma fronteira: agora nome explícito da
+playlist contém “de novo”, após vínculo correto; regra antecipada de volume
+aceita “máximo” em pedido musical. Não remover do painel nem encerrar por
+verde parcial. Próximos contratos: argumento versus modificador e admissão
+contextual compatível com ato/domínio atual. Ambiguidade, intermediários e
+composição de comandos ainda precisam de painel próprio. Sem novos IDs
+históricos ou alteração da contagem para simular encerramento.
+
+### Continuidade operacional — ocorrência qualificada antes da disputa de domínio — 12/10/2026
+
+Mesma evidência numérica abaixo, agora com candidato e prova instalada.
+Gramática geral já sabia resolver 40; detector musical consumia o verbo antes.
+Composição revelou foco conversacional sem identidade substituindo o slot de
+domínio e domínio `sistema` usado como subtipo em vez de `volume`. Operação
+oficial identificada permanece disponível, mas não deve voltar a disputar
+com o foco narrativo atualizado pelo refino do próprio pedido.
+
+Owner compartilhado qualifica receipt/identidade/params/TTL e modalidade atual,
+projeta subtipo e reutiliza a gramática geral. Detector e portas numéricas
+consomem esse vínculo antes do fallback por verbo. Sem referente, o coordenador
+não entrega a lacuna à IA para inventar outro domínio. Destino preservado no
+contrato seguro. Benefício geral: referente operacional não é foco narrativo,
+parâmetro novo não é entidade livre, contexto não concede autoridade. Provas
+em volume e referência de aplicativo; não alegar cobertura universal nem
+adicionar resolvers privados em todas as habilidades.
+
+357 testes/22 subtests GREEN em 19 módulos. Sonda instalada final v9: 9/9,
+fontes estáveis, zero consultas à porta de IA, sem main/efeitos/áudio.
+Contraprova removendo a prioridade só no subprocesso retorna o desvio musical
+em quatro decisões; modelo não é necessário. Primeiros REDs instalados e
+contraprova preservados em `continuacao_operacional_20261012/`.
+Produção alterada em contexto_imediato/continuidade_geral/orquestrador_deterministico/
+coordenador_intencao. Falta validar receipt físico final no desktop após restart;
+não encerrar raiz globalmente por esta sonda. TTS 403 e F1 continuam separados.
+
+### Evidência nova de continuidade operacional — ajuste numérico sem domínio — 12/10/2026
+
+Relato “coloca o volume em 90” (receipt confirmado) → “coloca em 40” → fala
+sobre música com 40 no título. Teste em `test_regressoes_contexto_operacional.py`
+publica receipt por memória real e chama detector real: “coloca em 40”/25 viram
+MUSIC_SEARCH/query="em 40"/"em 25"; “deixa em 40” perde candidato. Controle
+“coloca o volume em 40” passa; música anterior presente/ausente não muda falhas.
+Oito casos novos: 6 RED / 2 GREEN; módulo completo 6 RED / 14 GREEN.
+
+Primeira divergência local: resolver elipse de parâmetro com domínio vigente,
+antes da seleção de busca musical. Estado e receipt chegam corretamente;
+reprodução não usa LLM/TTS. Hipótese de raiz compartilhada com continuidade
+paramétrica, ainda não agrupada como causa demonstrada em outros domínios.
+Não fundir com F1/prosa nuclear nem falha de voz HTTP 403 do mesmo relato.
+Sem produção alterada, sem teste de efeito externo/composição instalada; REDs
+preservados para investigação. Detalhes e contrato geral no registro central.
+
+### F1 — autora cotidiana consome realização condicional; consulta livre ainda RED semântico — 12/10/2026
+
+Primeira fronteira antes do patch: autora ignorava o protocolo de realização
+e aceitava prosa livre com núcleo correto seguido de promessa. 17 RED / 5
+controles antes; produção alterada somente em `confirmacao_llm.py`. Agora,
+complemento tipado com TODOS os atos condicionais cobertos exige escolhas;
+owner/verificador existentes regeneram opções, vinculam e materializam a fala.
+Receipts permanecem independentes, avisos do host imutáveis, pendência alheia
+preservada e vigência revalidada pelo orquestrador; publicação única. Texto
+livre/campos extras não contornam o canal. Nenhuma nova interpretação/autorização.
+
+561 GREEN / 5 REDs anteriores em 17 módulos relevantes. Duas coletas instaladas
+com pedido cotidiano efetivamente enviado a `qwen3:4b-instruct`, sem ponte
+diagnóstica: 3/3 condicionais vinculados em cada coleta. Artefatos
+`interpretacao_legada_20261012/autoria_nuclear_cotidiana_qwen_v1.json` e `v2.json`;
+V2 fontes estáveis incluindo owner/verificador. Portas externas recusadas,
+sem receipts materiais de sucesso/falha, main ou áudio: prova limitada de
+realização/entrega textual, não efeito. Linguagem controlada, não livre universal.
+
+F1 continua aberta: consulta de significado do bloco de notas confunde objeto
+da expressão com descrição da consulta; consulta de arquivo inventa falta de
+acesso. V2 estruturalmente verde não cobre essas proposições. Próxima investigação
+na autora livre e seu vínculo com o objeto/capacidade, sem regex por sintoma.
+Mantidos REDs de três promessas na guarda livre, foco sem receipt e catálogo
+paralelo do robô. Descoberta separada: condição de estudo/pergunta pode absorver
+ato independente na classificação, antes da autora; agrupamento com segmentação
+é hipótese, não causa já provada. Detalhes e controles no registro central.
+
+### F1 — realização nuclear controlada vinculada: positivo comprovado no recorte — 11/10/2026
+
+Owner do contrato agora oferece três realizações condicionais parametrizadas
+pelo ato canônico, sem interpretar comandos. Mesmo owner materializa seleção
+e schema; validador regenera as opções e confere texto/índice/turno/fonte,
+distinguindo aderência, contradição do vínculo e cobertura ausente. Não validar
+prosa livre por palavras ou por autoaprovação JSON. Fonte citada preserva pessoa
+sem parafrasear seus pronomes; consulta de significado permanece sem cobertura.
+Produção alterada só em contrato/validador, não autora/voz/executor/rede.
+
+15 RED/6 controles antes; renderer+schema+vínculo+controles de fonte/pessoa
+e negativa; 346 regressivos relevantes GREEN. Sonda real inicial pede cópia e
+seleção, recebe vazio (0/3); versão só seleção recebe listas válidas, mas rejeita
+envelope (0/3). Transporte auditado, provas preservadas. Após RED específico,
+normalização canônica de lista explícita/objeto, sem inferir campos ou tolerar
+extras. Final: 3/3 realizações vinculadas, uma porta operacional/uma seleção/uma
+publicação por caso, sem reentrada/efeitos/main/áudio. Negativos instalados com
+promessa acrescida após núcleo correto são recusados com resposta observável.
+
+Isso é realização controlada, não geração livre nem verdade geral comprovada.
+Callers cotidianos ainda não usam esse protocolo; três promessas legadas e foco
+sem receipt seguem REDs confirmados (57 GREEN/4 RED). Não ocultados com o verde
+novo. Próxima fronteira: integração só condicional no lote, preservando receipts
+independentes, avisos e vigência, com maior prova de linguagem/repetição antes
+de ativar. Significado de objeto/texto livre não herdam a cobertura condicional.
+Artefatos/limites no registro. F1 aberta, rede pausada, nenhum commit.
+
+### F1 — núcleo no prompt não basta; cobertura desconhecida não é aprovação — 11/10/2026
+
+Protótipo diagnóstico reusa contrato/roteiro/snapshots por ato, sem parser/gold.
+Ablação nova de 24 turnos, 29 HTTP200 Qwen4B, duas repetições controle/intervenção,
+fontes estáveis, sem efeitos/main/áudio/holdout. Núcleo melhora algumas menções
+de novo pedido, mas continua havendo exigência de confirmação e confusão entre
+objeto e pergunta. Validador comum aprova as 29 redações mesmo sem verificar
+esse núcleo. Positivo correto + promessa contraditória também passa, inclusive
+com estratégia multiacto existente. Artefatos/brutos/resultados no registro.
+
+Produção alterada somente no validador: exigência explícita de núcleo verificado
+sem owner recebe cobertura ausente, não avaliado/não aprovado, sem pedir reparo
+da redação por limitação do verificador. 13 RED/13 controles antes; 27 novos
+GREEN, total 316 regressivos relevantes GREEN. Não é equivalência semântica:
+até uma resposta correta não pode ser aprovada sem esse owner. Callers legados
+inalterados, núcleo não integrado à autora cotidiana, REDs reais anteriores
+preservados. Replay deriva dos mesmos 29 brutos e não os substitui.
+
+Próxima fronteira: implementar vínculo de proposições ao objeto/pessoa/conclusão
+canônicos, com estados explícitos de cobertura/contradição/aderência, antes
+da integração e reparo. Não converter palavras presentes ou parecer do modelo
+em prova. F1 aberta; rede pausada/configuração preservada; nenhum commit.
+
+### F1 — geração final falsifica suficiência da guarda, antes do reparo — 11/10/2026
+
+Sessão encerrada por Pedro; coleta final realizada com mutex, fontes estáveis,
+seis HTTP200 Qwen4B, uma porta operacional/uma redação/uma publicação por caso,
+sem reentrada, main completo, efeitos ou voz. Nenhum reparo: a guarda aceitou
+três promessas condicionais com outras formas morfológicas (`eu paro`,
+`retomará`, `será necessário que você confirme`). Primeira divergência:
+validação do conteúdo da explicação, não executor nem reparador. Contrato de
+pessoa presente não basta. Artefato `reparo_explicativo_qwen_real_v3.json` e
+três novos REDs locais preservados no registro; nenhuma produção alterada.
+Semântica geral não é comprovada pelo GREEN estrutural do CLI. Reapareceram
+negativa de capacidade sem fundamento e confusão expressão/pergunta.
+
+Não continuar ampliando lista de frases: próxima investigação deve estudar
+núcleo canônico por ato e reuso do contrato/validador de fala para vincular
+objeto, pessoa e conclusão read-only à redação, sem confundir inferência com
+prova nem criar outro parser de comandos. É hipótese ainda não implementada.
+Três REDs novos/41 controles, mais 90 GREEN/1 RED de foco nos outros módulos
+focados. Foco/catálogo robótico seguem roots separados; F1 aberta/rede pausada.
+
+### F1 — pessoa da condição e reparo read-only do complemento — 11/10/2026
+
+Texto da fonte estava no pedido Qwen, mas a projeção não vinculava a pessoa
+discursiva e o guardião aceitava `minha confirmação` para `eu` do usuário.
+Mesmo reconhecimento do owner agora publica pessoa/coordenadas; snapshot
+valida vínculo, guarda de saída conserva perspectiva, negação e fonte citada.
+Condições concorrentes não se reduzem à primeira pessoa. RED inicial 18/27.
+Autoria mista ganhou uma tentativa de reparo sem tools, mesmo contrato, trechos
+operacionais congelados e revalidação pós-autoria; não chama executor novamente.
+Resposta válida segue uma redação; duas propostas continuam uma publicação.
+
+Qwen falsificou suficiência: reparo fora do assunto e outras construções de
+futuro/confirmação passaram nas duas coletas reais intermediárias. REDs e brutos
+preservados; guarda de cobertura mínima e gramática ampliadas após reprodução,
+não como prova semântica universal. Composição final: 15 controles GREEN, três
+trocas de pessoa reparadas sem reentrada/efeitos. Coleta real final bloqueada
+pela Laylay aberta; não promover anteriores como prova final. Regressão final:
+673 GREEN / 2 RED separados (foco sem reparo e catálogo robótico). Limites/artefatos
+e checkpoint no registro. F1 permanece aberta; rede/configuração preservadas.
+
+Achado separado: `foquei` passa com receipt só de abertura, inclusive sem
+reparo. Congelamento impede que reparo introduza essa alegação, mas não resolve
+a lacuna da primeira autoria; teste sem reparo conservado RED. Outro RED
+separado continua a categoria de confirmação robótica na asserção do catálogo.
+Próximo: validar candidato final com Qwen sem interromper sessão do usuário,
+depois localizar a primeira divergência restante de explicação/acesso/efeito.
+
+### F1 — explicação read-only não cria confirmação pendente — 11/10/2026
+
+Primeira divergência posterior ao corte/vínculo: autora não consumia o snapshot
+por ato e guardião não reconhecia compromisso de espera/ação condicionado a
+confirmação. Snapshot agora chega à autora pelo lote vigente; guardião valida
+esse escopo, sem emprestar receipts de outro ato nem alterar pendências alheias.
+Só guardião/autora/orquestrador de fala alterados; rede/configuração preservadas.
+15 REDs locais e três promessas publicadas na composição antes do candidato.
+Qwen real falsificou cobertura inicial: confirmação dita necessária/suficiente
+também promete uma continuação inexistente. Dois REDs adicionais antes de
+ampliar a mesma guarda. 38 locais GREEN; 15 controles instalados GREEN, três
+promessas recusadas e falha observável. Regresso relevante: 635 GREEN / 1 RED
+separado no catálogo robótico (categorias novas não aceitas pelo teste antigo).
+Não atribuir esse RED à autoria nem modificar a frente paralela por conveniência.
+
+Duas coletas Qwen reais de seis chamadas HTTP200 cada, fontes estáveis, sem
+efeitos/main/voz. A final bloqueia confirmação fictícia, mas um complemento
+recusado vira resposta parcial e outro aceito troca o agente para `minha
+confirmação`. Não chamar cinco aceites estruturais de cinco acertos. Artefatos,
+hipóteses/controles, categorias robóticas e limites no registro central.
+Proteção conservadora de saída não é parser semântico universal. F1 permanece
+aberta: próxima fronteira é explicação com agente/objeto corretos e reparo
+autoral verificável, sem negar capacidade por ausência de receipt ou encobrir
+falha com mais fallback. Rede pausada; nenhum commit criado.
+
+### F1 — corte de condição posposta comprovado, autoria não encerrada — 11/10/2026
+
+Primeira divergência localizada: a decisão de fronteira usava a cláusula inteira
+vetada como evidência de novo ato. O veto era correto para autorização, não para
+negar existência de fronteira. Candidato em `modalidade_turno.py` reconhece a
+consequência antes da condição após separador forte, mantendo inteira e vetada
+a segunda cláusula. Não muda vírgulas/coordenações ambíguas, executor ou rede.
+74 RED / 93 controles antes do candidato; 167 focados GREEN; 492 regressivos
+GREEN em 11 módulos. Quatro REDs instalados passam com os mesmos 15 controles
+anteriores, sem reentrada ou efeitos. Artefatos baseline/candidato e limites no
+registro. Propostas adversariais continuam sem herdar autoridade da outra ordem.
+
+O RED anterior de corte da entrada foi corrigido no contrato/composição isolada,
+não escondido. F1 geral permanece aberta: o contrato explicativo ainda precisa
+ser consumido para validar significado/condição/capacidade na autoria. Injeção
+local confirma que as guardas atuais ainda aceitam aguardar confirmação como
+se houvesse pendência; não mede frequência Qwen. Sem main/áudio/efeito real,
+configuração/modelo inalterados, rede pausada. Separar vigência do snapshot,
+correção da explicação e materialização de pendência/efeito por seus owners.
+
+### F1 — vínculo explicativo por ato e RED anterior preservado — 11/10/2026
+
+Owner canônico agora publica consulta/objeto estrutural e condição não verificada;
+complemento congela os atos e a revalidação existente detecta mudança de natureza
+mesmo com texto/id iguais. Só `modalidade_turno.py`/`contratos_turno.py` alterados
+em produção nesta etapa. 56 focados GREEN; regressão 406 GREEN / 1 RED anterior:
+condição posposta no segundo comando absorve também o primeiro, mesmo após
+`;`/ponto. Caso, contraprovas e artefato dos 15 controles instalados no registro.
+Esse RED permanece no teste, sem ser ocultado, e manda na próxima investigação.
+Projeção é vínculo/formato, **não validação semântica da autoria**. Não aplicada
+outra instrução/prompt como suposta solução das ablações. Qwen/rede/configuração
+inalterados; sem main/efeitos/áudio. F1 não encerrada. Separar o defeito de corte
+do consumo/validação explicativa posterior, mantendo os IDs históricos.
+
+### F1 — pressão do interpretador legado, sem retomada neural — 11/10/2026
+
+**Autoria mista: contexto extra e retirada do aviso não são solução suficiente.**
+Nenhuma produção alterada nesta investigação. Em duas ablações independentes,
+48 chamadas reais Qwen4B, seis casos × controle/intervenção × duas repetições,
+ordem alternada/invertida, fontes estáveis, sem reentrada/efeitos/main/áudio:
+repor atos canônicos/catálogo não impede confirmação fictícia nem incapacidade
+inventada; omitir aviso do pedido ao modelo (mantendo-o na entrega pelo host)
+também não resolve e surgem outras negativas falsas. São 24/24 e 23/24 aceites
+estruturais, **não acertos semânticos**. Um estado de janela sem evidência é
+recusado; demais problemas permanecem nos brutos. Artefatos de projeção/avisos
+`*_qwen_ablacao_v1.json` e limites no registro. 58 testes da instrumentação e
+contratos existentes GREEN, não validação de conversa. Neural pausada.
+
+Hipótese refinada: o contrato da autora deve explicitar a explicação de cada
+ato e permitir verificação dela, não pedir outra decisão operacional.
+Objeto literal consultado ≠ pergunta inteira; condição ≠ confirmação pendente;
+capacidade disponível ≠ acesso ao alvo; ausência de receipt ≠ incapacidade.
+Próximo RED: contrato explicativo canônico por ato, validado antes da publicação,
+com controles de pendência real/indisponibilidade real/falha parcial. Não ampliar
+prompt/listas de frases para encobrir essas diferenças. F1 ainda aberta.
+
+**Candidato de cobertura mista aplicado; RED semântico não encerrado.**
+Projeção canônica vigente → prioridade original → lote existente → autoria
+sem tools com receipts e conversa em escopos distintos → uma publicação,
+sem reenviar operação. Revalidar turno/conteúdo antes e depois da geração.
+Aplicação em seis arquivos detalhada no registro; executores, catálogo,
+configuração/modelo e treino preservados. Sem main/efeitos/áudio reais.
+
+Qwen falsificou o primeiro formato de cópias redundantes: 0/6 aceitos.
+Formato misto mínimo, vínculos conferidos pelo host e avisos imutáveis:
+5/6 na segunda coleta, primeiro timeout. Owner do orçamento limita classe rápida
+a 8s; chamador misto usa classe normal/teto 15s, sem mexer em limite global.
+Terceira coleta: **6/6 estruturais HTTP 200**, uma autoria/texto, sem reentrada;
+**não é GREEN semântico**. Brutos ainda inventam confirmação pendente e falta
+de acesso, duplicam aviso ou confundem pergunta sobre expressão com efeito.
+Guardas compartilhadas de estado/promessa fortalecidas não cobrem toda linguagem.
+Próxima fronteira: fornecer à autora projeção factual da modalidade/condição e
+capacidade, sem confundir contexto com autoridade ou ausência de receipt com
+incapacidade. Artefato `prioridade_mista_qwen_real_v3.json`; fontes estáveis,
+mutex respeitado. **512 GREEN / 1 RED paralelo de enumeração do catálogo do corpo**,
+com contraprova HEAD em memória; teste/catálogo não alterados. F1 aberta.
+
+**Prioridade instalada: tratamento parcial ≠ conclusão integral.**
+O atalho vem antes da LLM. Seis mistos são recortados corretamente e chegam à
+porta com operação/alvo autorizados, mas `tratado=True` encerra antes da conversa.
+Não atribuir esses encerramentos ao Qwen: nem é chamado. Quinze entradas,
+seis REDs e controles de consulta/condição/cadeia com aviso/ablação operacional.
+Contraprova rejeita continuar o pipeline inteiro: proposta injetada repetindo
+a captura é reenviada à porta (duas invocações, não dois efeitos). Lote existente
+protege receipts/turno/publicação, mas sua autoria é somente operacional;
+não remover a guarda que rejeita conteúdo sem receipt. Próximo contrato:
+cobertura por ato vigente, conversa restante sem execução e autoria única com
+escopos separados. Condição não vira pendência/promessa/efeito implicitamente.
+Sem patch de produção: **6 RED / 16 controles e contraprovas GREEN; 197
+regressivos GREEN**. Artefatos `prioridade_mista_v4_controles.json` e
+`prioridade_mista_contraprova_retorno_v2.json`; limites no registro. Sem main,
+voz ou efeitos reais. F1 permanece aberta; não criar um ID por domínio.
+
+**Contrato de proposta: ganho estrutural parcial, sem patch de produção.**
+36 chamadas reais ao mesmo Qwen, replay HTTP congelado, seis entradas e duas
+repetições por variante. Propostas completas: controle 2/12, nomes 2/12,
+nomes+formato/parâmetros/regras 7/12 (cinco acertos em dez entradas operacionais;
+dois controles de consulta). Comandos normalizáveis: 0/12, 0/13, 9/9.
+Parâmetros corretos de representação não provam escopo: uma geração ainda
+inclui ação condicionada e outra omite a ação atual. Sucesso/posição na tela
+inventados continuam mesmo quando o comando é correto. O ganho não isola
+parâmetros das regras acrescentadas; não é holdout/main/validação de autoridade.
+Artefato `ablacao_contrato_proposta_v1.json`, bruto/hash/limites no registro.
+Próxima hipótese: preservar decisões do interpretador canônico já demonstradas,
+em vez de pedir à LLM nova decisão operacional; proposta tipada por ato vigente,
+executor e receipts próprios antes da autoria única. Não implementada nem
+liberada. Neural e produção/configuração preservadas.
+
+**Integridade da base com prefixo: candidato aplicado no compactador.**
+14 REDs antes, 38 controles; reconhecer o fim da base canônica completa dentro
+do principal, não somente `startswith`, preserva prefixo+base e corta sufixos
+opcionais. Única produção alterada: `integracao/llm_http.py`. Papéis, schema,
+pixels, turno atual, orçamento opcional e retry protegidos. Seleção de 19
+módulos: 385 GREEN/1 RED de expectativa literal antiga de personalidade, também
+RED com compactador HEAD em memória. Coleta Qwen4B: 9/9 HTTP 200, base inteira
+no envio, JSON bruto válido 4/9→9/9 neste painel, sem efeito/voz/main.
+Sete pedidos continuam sem proposta executável; JSON correto não resolve ação
+canônica/parâmetros nem sucesso inventado. Zero chamadas indevidas de executor.
+Próxima fronteira é catálogo→contrato da proposta→geração, não retirar vínculos
+ou adicionar aliases históricos. Artefato `geracao_mista_pos_contrato_v1.json`;
+escopo/contraprovas/regressão/limites no registro. F1/neural não encerradas.
+
+**Geração real: próxima fronteira é integridade do contrato enviado.**
+Nove chamadas principais Qwen4B locais HTTP 200, via RespostaIA instalado sem
+atalho prioritário; efeitos e finalização/voz isolados. Sete casos sem os comandos
+esperados; seis mistos não têm proposta positiva, portanto não medem falso
+bloqueio do vínculo. Um controle puramente operacional aceita envelope de ações
+não canônicas no filtro, mas dispatcher não chama executor. Sem efeito indevido.
+Pedido traz base canônica, mas o prefixo legítimo do turno misto invalida a
+proteção `startswith` em `compactar_payload_llm_local`; corte por caracteres
+remove o contrato JSON antes do HTTP. Controle retirando só prefixo em memória
+preserva a base. Isso prova perda estrutural, não que ela explique toda emissão
+errada. Próximo RED: contrato principal atômico apesar de instruções antepostas;
+owner compactador existente. Sem patch de produção nesta coleta; detalhes e
+artefato `geracao_mista_real_v2.json` no registro. Não encerrar F1/main/voz.
+
+**Candidato de vínculo proposta→ato autorizado, GREEN local/composição:**
+o validador existente resolve só atos autorizados com o detector canônico e
+frame isolado, vincula ID/índice/texto/operação/alvo/destino/parâmetros, e impede
+duplicação extra. Não autorizado inclui pergunta social sem veto sticky; não
+depende exclusivamente das condições/P0. Aliases JSON flat passam pela projeção
+existente, opt-in de redundância sem apagar conflitos. Em mistos, restrição
+agregada do retrato não substitui a autorização específica do ato. Nenhum parser
+local novo nem permissão fornecida pela LLM. Escopos não são receipts/efeitos.
+Quatro REDs focados antes; contraprova com filtro HEAD em memória retorna seis
+REDs instalados, mantendo os outros componentes e fixture corrigida de arquivo.
+Dez cenários e três pipelines instalados GREEN, com efeitos/modelo/voz isolados;
+47 focados/composição GREEN, 887 testes/32 subtestes na regressão de 33 módulos
+antes do último controle focado. Fontes/artefatos/escopo no registro central.
+Não cobre toda ordem puramente operacional nem encerra F1/main/voz. Próxima
+fronteira é geração real em mistos e indeterminações legítimas, sem afrouxar
+autoridade. Neural, modelos, treino e alterações paralelas preservados.
+
+**Auditoria de propostas JSON mistas — RED reproduzido, sem patch de produção:**
+modalidade e recorte corretos → validador canônico usa permissão agregada e
+lista opcional por intent → proposta de ato vetado admitida → dispatcher a
+entrega à porta isolada do executor. Seis REDs/quatro controles na composição
+instalada, com procedência e ocorrência tipadas vinculadas. Não prova efeito
+externo nem frequência do modelo. Lista ideal de intents ainda deixa três
+REDs de operação/alvo concorrentes da mesma intenção. Primeira fronteira de
+admissão: ausência de vínculo proposta→ato autorizado; owner `decisao_turno`.
+Próximo contrato: escopo por ato vigente, com operação/alvo/destino/parâmetros
+resolvidos pelos serviços canônicos; indeterminação não concede permissão.
+Não introduzir parser privado no pós-processamento nem vetar todo conjunto.
+265 testes auxiliares GREEN não corrigem os REDs da sonda. Detalhes, artefato
+`propostas_mistas_v3.json`, contraprovas e limites no registro central.
+
+**Candidato de consulta ao significado validado localmente e na composição:**
+prefixo diretivo não governa uma expressão que é o objeto de `significa/quer
+dizer o quê`. Primeiro RED isolado na classificação do ato inteiro; RED adicional
+quando a coordenação fragmenta a expressão; depois RED no consumidor que
+reintroduz a fala inteira com autoridade agregada. Modalidade é owner; prioridade
+consome o recorte canônico quando há veto por ato, sem nova gramática local.
+55 REDs/cinco controles iniciais; 71 focados GREEN, 16 de composição instalada
+(dez anteriores + seis novos); 540 testes/22 subtestes relevantes GREEN.
+Painel idêntico: somente quatro consultas corrigem, **28→24 divergências**,
+concessões indevidas 4→0 **neste painel**, pedidos bloqueados permanecem 20.
+Sem retomada neural, alteração de executor ou prova de main/voz. Veto por
+operação nas propostas JSON de turnos mistos ainda exige auditoria; não
+promover o resultado da prioridade como prova de todas as rotas. Registro
+central contém escopo, contraprovas e limites. F1 não encerrada globalmente.
+
+**Candidato de vínculo condicional validado localmente e na composição:**
+condição antecedente não pode ser separada da consequência como uma nova ordem;
+qualificador posposto precisa de proteção por ato. Mecanismos distintos sob
+o contrato comum condição não observada ≠ autorização atual. Modalidade é o
+owner; prioridade consome seu recorte autorizado, não reconstrói o conjunto
+inteiro com autoridade agregada. Duas produções alteradas nesta entrega,
+nenhum executor ou componente neural. 57 REDs/dez controles iniciais; três
+REDs adicionais na passagem ao consumidor; 88 focados GREEN e dez de composição
+instalada (incluindo cinco de aspas). 378 testes/22 subtestes relevantes GREEN.
+Controle adicional preserva a pesquisa de uma condição: `se` subordinado
+não é automaticamente restrição à ordem matriz, sem exceção por domínio.
+Painel idêntico: somente 12 casos condicionais corrigem, **40→28 divergências**,
+concessões indevidas 14→4; nenhum pedido bloqueado adicional. Preservada a
+política tipada de abertura observável. Não cria ação futura/agendamento,
+não prova main, entrega audível ou efeito físico; F1 permanece aberta.
+Detalhes e descoberta adjacente de guarda hipotética lendo conteúdo citado
+no registro central, entrada de vínculo condicional de 11/10.
+
+**Candidato de limites citados validado:** mapa de aspas existente reutilizado
+nos dois owners de segmentação, sem nova gramática por domínio. 54 REDs/dois
+controles antes → 56 locais GREEN; cinco GREEN no turno da composição instalada.
+Contraprova com os dois segmentadores do HEAD somente em memória: quatro REDs
+nas fronteiras de fragmentação/aspas malformadas e um controle GREEN. Demais
+dependências continuam na worktree; não é replay da árvore histórica completa.
+278 testes/22 subtestes relevantes GREEN, nenhuma produção além dos dois owners
+alterada nesta entrega. Painel congelado: somente três casos de literal corrigem,
+43→40 divergências, 15→12 conjuntos RED; demais mecanismos permanecem abertos.
+Artefatos, escopo e limites no registro central. Sem prova de main, voz ou efeitos
+externos, nem preservação byte a byte por todos os normalizadores anteriores.
+
+Painel de 100 frases/300 leituras, incluindo 28 conjuntos em apps, mídia,
+IoT e arquivos. 43 divergências na leitura principal (15 conjuntos), iguais
+com normalizador e sem detector explícito. Não são 43 causas independentes.
+Expectativas diagnósticas autorais; sem executor/modelo/efeito externo.
+Artefato, hashes e controles no registro central, entrada F1 de 11/10.
+
+Primeiras fronteiras distintas: (a) conjunção dentro de literal quebrada por
+segmentadores de atos e cadeia; (b) condição antecedente separada da consequência
+e qualificador posposto não reconhecido, mecanismos distintos; (c) moldura polida
+perdida no segundo pedido; (d) proteção conservadora de negação aplicada ao pedido
+independente; (e) pergunta sobre significado reconhecida pelo prefixo de pedido.
+Os pedidos indiretos/subordinados ainda precisam de diagnóstico próprio de ato;
+não agrupá-los automaticamente com (c) ou (e).
+
+Prioridade: limites lexicais de aspas já disponíveis no serviço compartilhado
+`arquivos.nome_natural`, consumidos por `modalidade_turno` e `analise_comandos`.
+Provar a correção por conteúdo citado, nomes de playlist/arquivo e ordens reais
+fora da citação; não remover segurança de negação nem abrir exceção por domínio.
+135 testes/22 subtestes GREEN do instrumento e vizinhos não corrigem o painel.
+Composição instalada/efeitos externos ainda pendentes; nenhuma produção alterada.
+
 ### AUT-01 — admissão não é publicação, 06/10
 
 Continuação da janela entre publicação e início do executor/fala, separada da
@@ -588,6 +1040,152 @@ e manteve duto revogado bloqueado. Não agrupar essa lacuna lexical com o erro
 de seleção da fonte pelo modelo. Sem runtime, treino ou liberação da rede.
 
 ### Adendo de 28/09 — P01, fonte observada não equivale a critério vigente
+
+**10/10 — falha de referente precede resolução de anáfora:** 48 chamadas, 12 fontes,
+duas rodadas iguais. Menção 8/12, outras quatro apenas caixa; referente 2/12
+(indeterminação), nenhum nome determinado correto. Casos diretos já devolvem
+entidade nomeada em vez da expressão nomeadora. As tarefas geram respostas
+diferentes em 12/12, falsificando repetição cega, não comprovando compreensão.
+Separar erro literal, seleção do papel e preservação de incerteza. Hipótese
+concorrente: definição abstrata induz objeto/atributo errado. Comparar pergunta
+direta antes de acrescentar decomposição; sem causa interna única declarada,
+treino ou mudança de produção.
+
+**10/10 — catálogo não é explicação suficiente:** mantendo fonte/pergunta/schema
+e mapa no host, retirar apenas a enumeração enviada ao modelo muda sete saídas,
+mas alinhamento sobe só 6/13→7/13 e literalidade cai 13/13→11/13; duas rodadas
+idênticas. Influência do input demonstrada no painel, causa interna não isolada.
+Não remover mapa/guardas de produção. Revisar a distinção entre localizar uma
+menção e resolver seu referente com pares de tarefas sobre a mesma fonte;
+copiar palavras corretas, selecionar papel e preservar incerteza são provas
+diferentes. Não criar outra raiz nem promover esta variante.
+
+**10/10 — papel explícito ≠ preservação da referência:** 52 chamadas, resultado
+repetido: 2/13→6/13, cinco ganhos/uma perda. Fonte e transporte íntegros; pares
+externo/interno N e C melhoram, mas menções anafóricas viram referentes e U0/O0
+perdem indeterminação. Não contar isso como nova raiz ou culpar apenas cópia:
+candidata tem 13/13 literais. A hipótese de pergunta subespecificada é apoiada
+localmente, insuficiente para explicar os REDs restantes. Investigar influência
+do catálogo de citações sobre seleção de menção, mantendo mapa/guardas no host;
+hipótese ainda não testada. Sem gate, treino, integração ou produção alterada.
+
+**10/10 — seleção isolada ainda não estabelece argumento:** 42 chamadas reais
+ao Qwen, fora da Laylay. Cópia 1/7 nas duas rodadas; tokens 0/7, seis abstenções
+e um intervalo invertido por rodada. Simplificação/representação não bastaram.
+Não confundir devolução da âncora, resolução antecipada do referente e falha de
+cópia: são observações distintas, sem causa interna única demonstrada. Próxima
+hipótese no próprio contrato: âncoras nominais e predicados foram chamados de
+“relação” sem papel procurado explícito. Especificar a pergunta, sem incluir
+resposta no input; só depois testar encadeamento. Não transformar ID/offset ou
+abstenção em prova semântica. Esta frente não mudou produção.
+
+**10/10 — declarar argumento/escopo não os qualifica:** A/B local de 28 chamadas;
+somente U0 passa todas as guardas mecânicas, ainda copiando fonte inteira como
+argumento. U1/U2 resolvem alvo e mantêm alternativas incompatíveis; N0 associa
+trecho literal à relação errada, N1 varia entre repetições idênticas. Cópias O0/O1
+também falham, sem truncamento por teto de tokens. Esses sintomas não provam uma
+única causa interna. Rejeitar candidata; distinguir seleção/localização de
+argumento, apoio contextual e certeza. Nenhum campo é autoridade sobre os demais.
+
+**10/10 — sensibilidade ao escopo não acompanha sensibilidade ao ID:** contrastes
+novos, 76 chamadas. Primeira/segunda funciona nos dois backends; abrir/fechar
+alternativa ausente e trocar relação externa/interna não preservam o vínculo.
+Isso falsifica falta de informação como explicação geral, sem provar causa
+interna única. Mesmo exclusão por consenso pode estar errada em alvo explícito.
+Investigar argumento/escopo como proposta antes de reduzir a rótulo; campos
+estruturados não comprovam semântica. Não treinar ou integrar juiz com esse RED.
+
+**09/10 — concordância entre intérpretes não prova ligação:** comparador externo,
+mesmas mensagens/schemas, 82 chamadas auditadas. Ganho de 16 para 23/27 pares,
+mas ambos apoiam indevidamente L8/q1, M2/q0 e M7/q0. Não tratar voto como evidência
+independente de verdade. Dados suficientes para outro backend resolver cinco
+vetores anteriormente errados; nenhuma causa interna única isolada. Permanecem
+REDs de escopo: relação dentro de uma citação não descreve necessariamente seu
+recipiente; referência aberta não se fecha por haver uma candidata visível.
+Próxima hipótese por contrastes mínimos novos; P01 aberta, sem produção/treino.
+
+**09/10 — decompor não qualifica o apoio:** 82 consultas por par/controle,
+duas rodadas iguais; 16/27 pares e 6/14 vetores exatos. Sete pares ambíguos
+indevidamente resolvidos, sem nenhuma saída insuficiente. Fonte integral,
+identidade, formato e controles íntegros; RED na proposta semântica, antes de
+qualquer agregação. Nova representação não resolveu a causa; rejeitar candidata.
+Não criar exceções ou promover concordância repetida a prova. P01 continua aberta;
+contraste independente de interpretação é hipótese diagnóstica seguinte, não
+troca de modelo nem integração autorizada por esta evidência.
+
+**09/10 — possibilidade não é vínculo estabelecido:** A/B de lista+situação
+contra ID único, 112 chamadas. Antigo 23/28, candidata 16/28 em ambas rodadas.
+Lista recupera ambiguidades, mas inclui ambas ocorrências em casos claros
+e não é substituta aceitável. M7 prova localmente que uma candidata visível
+pode coexistir com indeterminação; isso não resolve inclusão indevida em
+outros casos. Não corrigir por cardinalidade, voto ou exceção por frase.
+Investigar apoio contextual por par relação/ocorrência, mantendo rótulo de
+apoio como proposta, não prova. P01 aberta, sem integração de produção.
+
+**09/10 — selecionar ocorrência não prova unicidade:** proponente sem foco
+desejado, com fonte integral e relação literal, acerta 12/12 históricos e
+6/8 sintéticos, repetidos. Detecta que a relação de OR pertence a outra
+ocorrência, mas resolve indevidamente L5/L8 ambíguos mesmo com abstenção
+disponível. Primeira fronteira RED é decisão semântica, não IDs/offsets ou
+executor. Proposta explícita de vínculo continua hipótese, sem gate de
+produção. Próximo contraste: candidatos compatíveis versus referência
+estabelecida; não presumir que lista unitária produzida pelo modelo prova algo.
+
+**09/10 — ancoragem literal não qualifica o vínculo com a ocorrência:**
+72 consultas: trecho explícito recupera NS/C0, mas faz OR usar a relação
+do nome posterior para classificar a ordem anterior; perda repetida. Papel
+sem/com trecho 9→10/12 e 8→10/12, sem superioridade sem regressões. DA varia
+com requisição igual; efeito da ordem/cache não isolado. Não confundir
+essa variabilidade com reparo semântico. Priorizar proposta de ligação
+relação→ocorrência, mantendo validação host distinta de compreensão; não
+promover ID declarado, proximidade ou cópia a prova. P01 aberta e offline.
+
+**09/10 — separar ocorrência de decisão:** 72 chamadas de intervenção,
+repetidas. Isolado confunde descrição com ação posterior e nome com ordem
+posterior idêntica; controles neutros e inversão recuperam esses casos.
+Porém conjunto passa a ligar a outra ocorrência em OR, e C0 erra papel
+mesmo copiando `tem o título` sem oração concorrente. Primeiras fronteiras
+distintas: escolha da relação e classificação a partir dela. Hipótese de
+raiz interna única não provada; não atribuir a falha ao host ou executor.
+Testar seleção real explícita, sem completar por gold ou tornar trecho
+literal autoridade semântica. Mesma investigação P01, produção intacta.
+
+**09/10 — ganho conhecido não transfere:** 80 chamadas, duas rodadas.
+Papel conjunto→isolado nos novos: 15→13/16, perdas H05/H11; históricos:
+3→4/4, ganho T03. Rejeitada substituição geral. Host mantém ocorrência e
+offsets corretos, mas isolado classifica como operação as duas ocorrências
+de uma expressão usada como nome e como instrução; também erra descrição
+com ação fora do foco. Isso sustenta investigar ligação foco/contexto,
+não prova um mecanismo interno único. H01 ainda seleciona relação inadequada
+no conjunto; T03 copia relação pertinente e erra papel. Manter distinção
+entre seleção e decisão; nenhuma promoção de literalidade a semântica.
+1.546 testes offline verdes não encerram P01. Produção intacta.
+
+**09/10 — decisão isolada, não dependência de evidência extra:** 48 chamadas
+recuperam T03 de expressão para nome nas duas rodadas. Papel conjunto 7/8,
+isolado sem/com trecho 8/8, composto 4→5/8. Acrescentar a seleção explícita
+não trouxe ganho frente a classificar isoladamente com fonte integral.
+Preferir candidata simples; não declarar sobrecarga interna como raiz provada,
+pois instrução/schema/exemplos variam. T11 ainda mostra seleção insuficiente
+com papel correto. Transferência aberta, sem promoção de produção.
+
+**09/10 — restringir cópia não resolve papel:** catálogo de todos os spans
+externos únicos, sem gabarito, melhora vínculo 5→8/8 e conjunto discriminativo
+3→4/8 nas duas rodadas; 32 consultas. T12 recuperado, mas T02/T09 continuam
+com fragmentos insuficientes para o critério local. T03 copia a relação
+explícita de título e erra papel em ambos os braços: RED anterior à validação.
+Não atribuir essa falha à geometria nem ao executor. Reusar materialização
+literal, sem promoção de apoio semântico; investigar decisão relacional
+separada de seleção insuficiente. Mesma P01, nenhuma integração de produção.
+
+**09/10 — transferência falsifica benefício geral da hierarquia:** 16 casos
+novos × dois braços × duas rodadas. Papel empata em 15/16, mas troca T03 por
+T15; conjunto cai 10→8 em ambas. A melhoria localizada anterior não se
+generalizou neste painel. Não converter regra de apresentação em heurística
+por frase. REDs distintos preservados: T03/T15 interpretação; T01/T14 cópia
+literal/sobreposição. Seleção correta em T15 não garante papel. Próxima
+fronteira é evidência selecionada e autenticada, sem promoção semântica ou
+operacional pelo host; mesma P01 aberta, produção intacta.
 
 **07/10 — hierarquia/ID aferido:** fonte/offsets fixos; explicitar o caminho
 de aspas recupera E04A/U04 nas duas rodadas, uniformizar apenas o ID não.
@@ -2459,6 +3057,16 @@ sem alterar plano, estado expressivo ou autoridade. Falha de SQLite não apaga
 observação nem vira aprendizado confirmado. Modo de ocorrência única conserva
 idempotência sem promover um replay antigo a causa atual.
 
+Extensão 10/10: pedidos autorais de pose (`fique brava`, `fique envergonhada`,
+`volte ao normal`) reutilizam essa publicação com origem de encenação, TTL de
+60 s e ausência de autoridade operacional/memória durável. Não alteram humor
+acumulado. Autoria breve não pode transformar a pose em interrogatório ou
+hipótese/negação da expressão. O OLED consome a mesma decisão; sua sessão
+expira para sono animado e exige novo handshake antes da amostra atual.
+Sono confirmado fisicamente por Pedro, nove poses com ACK na composição e
+422 regressivos verdes. Receipts/brutos/reparos em `artifacts/rosto_oled/`;
+conversa na interface com voz/avatar/OLED permanece prova humana pendente.
+
 **RPV18-07** é a fronteira distinta de entrega: um candidato para a mesma chave
 não pode modificar texto/emoção depois de o worker iniciar reprodução. Antes
 desse ponto, substituição ainda consolida uma única fila. A guarda usa o lock
@@ -2697,3 +3305,143 @@ retirado somente no bloco próprio; produção conserva a versão aprovada.
 Qualidade geral da interpretação visual continua aberta. Antecipação do
 roteiro não certifica cadência normal; exit 1/COM no teardown não invalida o
 receipt e tampouco é GREEN de encerramento do processo.
+
+### Corpo móvel — melhoria física em preparação, 11/10/2026
+
+Pedido: dois N20 de 3 V / 30 RPM com DRV8833 na Super Mini. Este contrato
+é separado da RPV18-06; emoções e poses não autorizam movimento. Pinout:
+esquerda GPIO0/1, direita GPIO3/10, SLEEP GPIO7, OLED SDA8/SCL9 preservado.
+USB atual é 5 V e Pedro ainda não tem conversor/fonte de 3 V para os motores;
+guia de montagem em `firmware/rosto_laylay/MONTAGEM_MOTORES.md`.
+
+Firmware de bancada compilado/testado em host: sessões/seq próprios, pulsos finitos,
+parada prioritária e expiração motora independente de FACE. RED host antes
+do candidato comprovou ausência de acionamento no `.ino` somente de rosto.
+Nenhum upload ou efeito físico realizado nesta etapa. Fonte, ponte e cada
+motor devem ser validados antes da integração ao interpretador/autorização
+canônicos. O owner serial existente será compartilhado; iniciativa exige
+modo explícito e limites próprios. Catálogo conserva ausência de locomoção
+disponível. GPIO aplicado não prova giro ou deslocamento; corte temporal
+de software não encerra validação física de parada/perda de comunicação.
+GREEN intermediário: C3/core 3.3.12 (380.078 bytes programa, 15.748 RAM),
+host GPIO/PWM/tempo/protocolo e 109 regressivos expressivos. REDs de I2C
+consumindo vigência/prazo e de parser dividindo sessão longa foram reproduzidos
+antes do patch; rechecagem temporal e tokens completos corrigem os contratos.
+SHA256 e evidências em `MONTAGEM_MOTORES.md`; melhoria física não encerrada.
+
+### OLED — observação transitória de ações, 11/10/2026
+
+Melhoria visual com contrato próprio, sem fundir RPV18-06 e corpo móvel.
+`AtividadeOperacionalRuntime` é o único owner dos escopos de tratamento;
+o ciclo e os bypasses/autonomia instalados publicam o mesmo retrato mental.
+Intenção/plano/emoção não são evidência de atividade. Conclusão e erro preservam
+receipt e autoridade originais; falha visual não mascara erro operacional.
+
+RED instalado em despacho observado sem publicação, RED transporte CAPS e
+RED host CAPS precederam candidatos mínimos. 241 regressivos relevantes GREEN.
+Extensão serial HACK1/ACTIVITY negocia suporte, exige sessão/seq/TTL próprios e
+AACK pós-renderização; receipt do overlay não prova efeito da habilidade.
+Terminal decorativo e transição suave não possuem permissão de movimento;
+perfil padrão desativa PWM de tração, com RED→GREEN próprio e positivos de
+bancada preservados em perfil explícito. Prévia host, confirmação de firmware
+físico e inspeção óptica permanecem níveis distintos de evidência.
+
+Hack validado na COM4: 14 pares FACE/AACK do caminho instalado com escopo
+controlado, nenhuma ordem de motor; Pedro aprovou DEMO_HACK como legal e
+fluido. Não foi ação natural completa. Firmware visual 376.548/15.748 bytes,
+hash da flash verificado e receipts em `artifacts/rosto_oled/hack/`.
+Steering separado do corpo: motores atuais são de teste, não os N20; pinout
+e protoboard sem rodas confirmados. Pedro autorizou perfil de bancada em 1;
+não equivale a instalar modalidade/intents ou autonomia de locomoção.
+
+Atualização da mesma bancada: mapa antigo 0/1/3/10 teve MACK e nenhum giro
+percebido, preservado como RED físico. A pedido de Pedro, novo mapa 1/2/3/4
+(SLEEP7), RED→GREEN host do array e ambos perfis preservados. Fonte atual
+`0c8916f8c2d53826be82a06dab9371f9890d0ed54bc6ec4378f22a0eaee21990`,
+perfil motor=1, COM4 com flash verificada. PWM180 girou fraco; PWM255/250 ms,
+quatro sentidos/canais, recebeu MACK/STOPPED e confirmação humana de ambos
+mais fortes e parando. GREEN físico pontual, sem causa elétrica única para
+o primeiro RED ou prova de locomoção. Próxima fronteira natural: modalidade
+ainda interpreta movimento como conversa e CORPO_MOVER não é capacidade.
+Não expandir esse resultado de bancada a controle por conversa/autonomia.
+
+### Continuação do corpo e OLED — contratos separados, 11/10/2026
+
+Primeira fronteira natural ausente (modalidade/catálogo) foi reproduzida e
+integrada: pedidos corporais → autoridade do turno → executor → um owner
+serial → MACK/SACK próprios → receipt/contexto/aprendizado/catálogo/autoria.
+Repetição passa pela política compartilhada; consulta, recusa e outro domínio
+não autorizam tração. Composto conserva receipts independentes e falha parcial.
+STOP não espera MACK, cancelamento não vira sucesso, reconexão não mistura
+sessões nem reenvia motor. Rosto/hack/glitch são consumidores sem autoridade.
+
+Contrato visual de falha é outro: receipt negativo aceito do executor ou
+exceção observada → ocorrência transitória no owner de atividade → extensão
+GCAPS/GLITCH/GACK pós-render/probe/clock. Tratado=False, estado_final isolado,
+plano e fala não provam falha. Cancelamento/recusa/pendência e ausência de
+receipt ficam neutros; repetição/reconexão não restauram o evento visual.
+Ausência detectada no handler invalida a sessão de todos os consumidores.
+
+Boca refinada por geometria e tempo, preservando emoção/estado falando. Hosts
+dos dois perfis e raster passaram. 425 regressivos + 22 subtests e 53 corporais
+GREEN; composição instalada/USB real confirmou quatro pulsos e parada, mais
+GACK de exceção controlada de teste. Pedro confirmou boca melhor, motores
+girando/parando e glitch legal. Fonte7fccfad8...b4d2425, COM4 motor1,
+387.950/15.836bytes, flash verificada; provas em glitch_boca/. Sem prova de
+deslocamento ou conversa completa com entrega por voz. Demos encerrados.
+
+Iniciativa espontânea continua outra fronteira: não herdar autoridade de
+IoT/áudio nem afirmar que pulso contrário desfaz posição. Ausência de contrato
+corporal de vigência/revogação/oportunidade mantém autonomia desativada.
+Não fundir com RPV18-06, nem apagar RED elétrico histórico sem medida.
+
+Atualização autorizada de companhia, 11/10/2026: o owner passou a admitir
+preferência humana persistida de bancada na abertura da aplicação. A preferência
+não restaura uma sessão antiga: concede somente após USB/FACE/MOTOR1 prontos.
+Revogação impede reativação automática na mesma execução; passeio exige
+autorização própria. A escrita parcial do serviço compartilhado foi corrigida
+para preservar as outras preferências (RED modelo/mascote → GREEN).
+364 regressivos e composição padrão na COM4 confirmaram início e SACK,
+sem MOTOR e sem interface aberta. Não é nova prova física de gesto nem
+encerramento da falha de gesto observada anteriormente na aplicação completa.
+
+### Transporte local do mesmo corpo — 11/10/2026
+
+Fronteira nova: USB exclusivo → servidor TCP autenticado na LAN. Um owner
+de sessão permanece responsável pelo rosto e pulsos; autorização/ciclo/executor
+e receipts não mudam. Endpoint faz parte da sessão e ACKs não cruzam conexões.
+Desconexão/backpressure/expiração cortam e invalidam; reconexão não repete ação.
+Pareamento precede o protocolo e não concede autorização motora. Falha na rede
+não troca automaticamente para outro controlador. Contrato reutilizado por
+rosto, hack, glitch e comandos corporais, sem inteligência duplicada.
+462 testes +22 subtests/hosts/flash verdes; associação física ainda pendente
+na configuração local. DHCP usa IP cacheado e exige reconfiguração se mudar.
+Preservados os limites de evidência e o modo espontâneo desativado.
+
+Continuação física: repetidor não associou; hotspot de celular associou, porém
+PC não tinha alcance TCP. Roteador principal fora de alcance. Hotspot móvel
+Windows falhou; Hosted Network legado confirmado no mesmo Broadcom mantendo
+conexão original. AP autenticado sem IP foi localizado antes do socket: não
+havia DHCP/UDP67. Reinicialização somente de SharedAccess, após ausência de ICS
+completo e encerramento da rede do teste, permitiu IP e TCP local. Não declarar
+essa causa como causa da falha AUTH_EXPIRE no repetidor.
+
+Provisionamento ganhou readiness limitado antes do primeiro receipt, sem
+replay de MOTOR e mantendo ACK+SACK antes da ativação. Owner/cognição/executor
+compartilhados preservados. Composição instalada com heartbeat real confirmou
+receipts de rosto/hack/glitch/motores; Pedro confirmou visualmente glitch e
+giro/parada dos dois motores via Wi-Fi. Deslocamento/voz/iniciativa não provados.
+
+### RV-TTS-403-01 — endpoint legado de síntese neural — 12/10/2026
+
+HTTP 403 no handshake antes do áudio, reproduzido com Francisca e Thalita
+fora da Laylay; vozes válidas no catálogo. Mudança somente de endpoint
+confirmou as duas sínteses. Owner: criação de comunicação em voz_runtime.py.
+Compatibilidade limitada ao endereço legado conhecido; mantém vozes,
+parâmetros, fallback, receipts e destinos futuros/personalizados. Contrato
+compartilhado atende todas as habilidades que publicam fala, sem parsers novos.
+RED 2 failed/9 passed → GREEN final 92 testes. Reprodução real do runtime
+confirmada por software nas duas vozes, sem fallback local. Main já aberto
+precisa reiniciar; apreciação acústica e sessão reiniciada permanecem abertas.
+Não fundir com timeout Ollama nem cache COM inválido do pyttsx3. Evidências,
+baseline e limites no registro RV-TTS-403-01. Nenhum commit criado.

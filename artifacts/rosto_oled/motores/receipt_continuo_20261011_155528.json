@@ -1,0 +1,41 @@
+{
+  "ts_utc": "2026-10-11T15:55:28.446041+00:00",
+  "endpoint": "192.168.137.109:8765",
+  "autorizacao": "Pedro: teste continuo para frente por 5 segundos; area delimitada ou rodas suspensas confirmadas",
+  "pwm_esquerdo": 100,
+  "pwm_direito": 100,
+  "duracao_ms": 5000,
+  "comandos_motor_enviados": 1,
+  "hardware_simulado": false,
+  "prova_rotacao": false,
+  "prova_parada_fisica": false,
+  "aplicacao_pwm_confirmada": true,
+  "janela_comando_s": 5.061,
+  "concluido": true,
+  "parada_final": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "heartbeat_encerrado": true,
+  "observacao_humana": "Pedro: apenas um foi e muito fraco",
+  "motor_que_girou": "GPIO1/2",
+  "motor_sem_rotacao_observada": "GPIO3/4",
+  "resultado_fisico_esperado_confirmado": false,
+  "firmware_normal_restaurado": {
+    "limite_ms": 500,
+    "porta": "COM4",
+    "upload_exit_code": 0,
+    "hash_gravacao_verificado": true,
+    "sha256_bin": "4F25E6AA6506FB4530B08C9161B7D4B776D39F823936205FEAA312EDF99B9006"
+  }
+}

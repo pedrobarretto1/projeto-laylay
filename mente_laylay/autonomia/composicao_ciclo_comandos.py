@@ -59,6 +59,7 @@ class ComposicaoCicloComandosRuntime:
         registrar_decisao: Callable[..., Any] | None = None,
         contexto_factory: Callable[..., Any] = criar_contexto_intencao_runtime,
         ciclo_factory: Callable[..., Any] = criar_ciclo_comandos_runtime,
+        atividade_operacional: Any = None,
     ) -> None:
         self.log = log
         self.monitor_saude = monitor_saude
@@ -67,6 +68,7 @@ class ComposicaoCicloComandosRuntime:
         self.registrar_decisao = registrar_decisao
         self.contexto_factory = contexto_factory
         self.ciclo_factory = ciclo_factory
+        self.atividade_operacional = atividade_operacional
         self._servicos: dict[str, Any] = {}
         self._contexto: Any | None = None
         self._ciclo: Any | None = None
@@ -221,6 +223,7 @@ class ComposicaoCicloComandosRuntime:
             registrar_metrica_cb=self.registrar_metrica,
             registrar_falha_cb=self.registrar_falha,
             registrar_decisao_cb=self.registrar_decisao,
+            atividade_operacional=self.atividade_operacional,
         )
         contexto.validar_conexoes()
         ciclo.validar_conexoes()

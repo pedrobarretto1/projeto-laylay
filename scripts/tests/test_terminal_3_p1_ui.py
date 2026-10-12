@@ -53,7 +53,7 @@ def test_p1_shell_monta_dashboard_sem_inventar_estado(monkeypatch) -> None:
     assert janela.painel_lateral.isVisible()
     assert set(janela._nav) == {
         "inicio", "conversa", "automacao", "musica", "memoria", "sistema",
-        "desenvolvedor", "configuracoes",
+        "desenvolvedor", "configuracoes", "streaming",
     }
     assert janela.chip_memoria.texto.text() == "Memória: Aguardando"
     assert all(valor.text() == "—" for valor in janela.painel_lateral.metricas.values())

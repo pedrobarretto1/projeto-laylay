@@ -44,6 +44,13 @@ def catalogo_ativo(*_args, **_kwargs):
 
 @pytest.fixture
 def runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # O import da composição carrega o arquivo real no ambiente do processo.
+    # Este contrato de persistência usa apenas a configuração isolada do teste.
+    for chave in ("LAYLAY_LLM_BACKEND", "LAYLAY_LLM_BASE_URL", "LAYLAY_LLM_MODEL",
+                  "LAYLAY_LLM_MODEL_OLLAMA", "LAYLAY_LLM_MODEL_PORTATIL",
+                  "LAYLAY_LLM_MODEL_OPENROUTER", "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR",
+                  "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR"):
+        monkeypatch.delenv(chave, raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("LAYLAY_LLM_API_KEY", raising=False)
     monkeypatch.delenv("LAYLAY_MASCOT_ENABLED", raising=False)
@@ -231,3 +238,53 @@ def test_openrouter_recusa_modelo_sem_endpoint_antes_de_salvar(tmp_path, monkeyp
         })
     assert not runtime.arquivo_env.exists()
     assert not runtime.arquivo_segredo.exists()
+
+
+def test_preferencia_corporal_persistida_preserva_configuracao_do_modelo(runtime):
+    conteudo = "# preservar\nLAYLAY_LLM_BACKEND=ollama\nLAYLAY_LLM_MODEL=meu-modelo\nMINHA_CHAVE=nao-exibir\n"
+    runtime.arquivo_env.write_text(conteudo, encoding="utf-8")
+    assert runtime.definir_companhia_bancada_ao_iniciar(True)["saved"]
+    assert runtime.arquivo_env.read_text(encoding="utf-8") == (
+        conteudo + "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR=1\nLAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR=0\n")
+    reiniciado = ConfiguracaoAplicacaoRuntime(raiz=runtime.arquivo_env.parent)
+    assert reiniciado.companhia_bancada_ao_iniciar()
+    assert runtime.definir_companhia_bancada_ao_iniciar(False)["saved"]
+    assert not reiniciado.companhia_bancada_ao_iniciar()
+
+
+def test_escrita_parcial_preserva_chaves_gerenciadas_fora_da_atualizacao(runtime):
+    runtime.arquivo_env.write_text("LAYLAY_LLM_MODEL=preservar\nLAYLAY_MASCOT_ENABLED=0\n", encoding="utf-8")
+    runtime._escrever_env({"LAYLAY_MASCOT_ENABLED": "1"})
+    assert runtime.arquivo_env.read_text(encoding="utf-8") == (
+        "LAYLAY_LLM_MODEL=preservar\nLAYLAY_MASCOT_ENABLED=1\n")
+
+
+def test_salvar_modelo_preserva_preferencia_corporal(runtime):
+    runtime.arquivo_env.write_text("LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR=1\n", encoding="utf-8")
+    runtime.atualizar({"provider": "ollama", "model": "Qwen3:4b-instruct"})
+    assert runtime.companhia_bancada_ao_iniciar()
+
+
+def test_passeio_explicito_persistido_exige_companhia_e_preserva_modelo(runtime):
+    runtime.arquivo_env.write_text("LAYLAY_LLM_MODEL=preservar\n", encoding="utf-8")
+    assert not runtime.passeio_bancada_ao_iniciar()
+    assert runtime.definir_companhia_bancada_ao_iniciar(True, passeio=True)["saved"]
+    reiniciado = ConfiguracaoAplicacaoRuntime(raiz=runtime.arquivo_env.parent)
+    assert reiniciado.companhia_bancada_ao_iniciar() and reiniciado.passeio_bancada_ao_iniciar()
+    assert "LAYLAY_LLM_MODEL=preservar\n" in runtime.arquivo_env.read_text(encoding="utf-8")
+    runtime.definir_companhia_bancada_ao_iniciar(False)
+    assert not reiniciado.passeio_bancada_ao_iniciar()
+
+
+@pytest.mark.parametrize("valor", ["sim", 1, None])
+def test_passeio_sem_booleano_nao_salva_preferencia(runtime, valor):
+    with pytest.raises(ErroConfiguracaoAplicacao):
+        runtime.definir_companhia_bancada_ao_iniciar(True, passeio=valor)
+    assert not runtime.arquivo_env.exists()
+
+
+@pytest.mark.parametrize("valor", ["sim", 1, None])
+def test_preferencia_corporal_requer_booleano_sem_escrita(runtime, valor):
+    with pytest.raises(ErroConfiguracaoAplicacao):
+        runtime.definir_companhia_bancada_ao_iniciar(valor)
+    assert not runtime.arquivo_env.exists()

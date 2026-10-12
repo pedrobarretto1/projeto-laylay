@@ -148,6 +148,27 @@ def criar_evento_emocional_causal(
     ).como_dict()
 
 
+def criar_evento_expressao_solicitada(
+    pedido: Mapping[str, Any], *, turno_id: str, ts: float | None = None,
+) -> dict[str, Any]:
+    """Pedido tipado de encenação, temporário e sem autoridade operacional."""
+    dados = dict(pedido or {})
+    if (dados.get("natureza") != "expressao_solicitada" or dados.get("alvo") != "laylay"
+        or dados.get("autoriza_execucao") is not False or not str(turno_id).strip()
+        or not str(dados.get("trecho_evidencia") or "").strip()
+        or dados.get("emocao") not in {"calma", "alegre", "triste", "brava", "irritada", "surpresa", "envergonhada", "debochada"}
+        or dados.get("nivel") not in {1, 2, 3}):
+        return {}
+    return criar_evento_emocional_causal(
+        origem="pedido_expressao_usuario", causa="expressão solicitada pelo usuário: " + dados["trecho_evidencia"],
+        evidencia_ref="turno:" + str(turno_id), natureza_evidencia="fato_observado",
+        responsabilidade="usuario", confianca=1.0, relevancia=1.0, novidade=1.0,
+        intensidade=dados["nivel"], alvo="laylay", validade_s=60.0,
+        permite_expressao=True, emocao=dados["emocao"], nivel=dados["nivel"],
+        motivo_expressao="encenacao_pedida_explicitamente", arco="expressao_solicitada", ts=ts,
+    )
+
+
 def evento_tem_causa_rastreavel(evento: Mapping[str, Any] | None) -> bool:
     dados = dict(evento or {})
     validade = dict(dados.get("validade") or {})
@@ -340,30 +361,37 @@ def evento_corresponde_direcao_social_observada(
 def criar_evento_reconhecimento_social_usuario(
     *, turno_id: str | int, confianca: float, tipo: str,
 ) -> dict[str, Any]:
-    """Registra elogio direto sem transformar gratidão comum em episódio."""
+    """Materializa avaliação social já decidida, sem transformar gratidão em causa."""
     referencia = str(turno_id or "").strip()
-    if str(tipo or "").strip().casefold() != "elogio_pessoal" or not referencia:
+    avaliacoes = {
+        "elogio_pessoal": ("envergonhada", 2, "elogio pessoal explícito dirigido à Laylay"),
+        "critica_pessoal": ("triste", 1, "avaliação pessoal negativa dirigida à Laylay"),
+        "rejeicao_pessoal": ("triste", 2, "distanciamento explicitamente dirigido à Laylay"),
+    }
+    tipo_limpo = str(tipo or "").strip().casefold()
+    if tipo_limpo not in avaliacoes or not referencia:
         return {}
     confianca_limpa = _proporcao(confianca)
     if confianca_limpa < 0.90:
         return {}
+    emocao, nivel, causa = avaliacoes[tipo_limpo]
     return criar_evento_emocional_causal(
         origem="reconhecimento_social_usuario",
-        causa="elogio pessoal explícito dirigido à Laylay",
+        causa=causa,
         evidencia_ref=f"turno:{referencia}:texto_usuario",
         natureza_evidencia="leitura_social",
         responsabilidade="usuario",
         confianca=confianca_limpa,
         relevancia=0.65,
         novidade=0.65,
-        intensidade=2,
+        intensidade=nivel,
         sensibilidade="normal",
         alvo="laylay",
         validade_s=60.0,
         permite_expressao=True,
-        emocao="envergonhada",
-        nivel=2,
-        motivo_expressao="elogio_pessoal_direto",
+        emocao=emocao,
+        nivel=nivel,
+        motivo_expressao=f"{tipo_limpo}_direto",
         arco="reconhecimento_social",
     )
 

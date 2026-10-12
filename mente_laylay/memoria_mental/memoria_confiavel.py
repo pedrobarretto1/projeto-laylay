@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from typing import Any, Dict, Iterable, List
+from mente_laylay.personalidade.leitura_social_conversa import analisar_avaliacao_social_direta
 
 
 TIPOS_DURAVEIS = {
@@ -152,6 +153,12 @@ def extrair_aprendizados_pessoais_explicitos(texto_usuario: str) -> List[Dict[st
     memória durável.
     """
     bruto = re.sub(r"\s+", " ", str(texto_usuario or "")).strip()
+    # Avaliar a interlocutora neste turno não declara um gosto estável por
+    # produto/tema. O mesmo owner social resolve destinatária e papel do afeto;
+    # não promover "você" a referente externo nem persistir esse episódio como
+    # preferência do usuário por si mesmo.
+    if analisar_avaliacao_social_direta(bruto):
+        return []
     # Uma pergunta sobre a própria memória ("eu gosto de sertanejo?") não é
     # uma nova afirmação. Promovê-la a fato inverteria exatamente o dado que a
     # pessoa está tentando conferir.

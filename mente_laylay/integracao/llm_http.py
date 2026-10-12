@@ -237,14 +237,17 @@ def compactar_payload_llm_local(data: dict) -> dict:
         if principal is not None:
             # O protocolo canônico termina depois da identidade. Cortar por
             # caracteres deixava personalidade, mas removia JSON/semântica.
-            # Preserve a base reconhecida inteira; só o sufixo é opcional.
-            tamanho_base = max((
-                len(base) for base in (BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO)
-                if principal["content"].startswith(base)
+            # O preparador pode antepor instruções do ato atual. O bloco
+            # canônico continua atômico: proteja prefixo + base, sem promover
+            # mensagens user/páginas a system nem preservar todo o sufixo.
+            fim_base = max((
+                inicio + len(base)
+                for base in (BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO)
+                if (inicio := principal["content"].find(base)) >= 0
             ), default=0)
             mensagens.append({
                 "role": "system",
-                "content": principal["content"][:max(limite_principal, tamanho_base)],
+                "content": principal["content"][:max(limite_principal, fim_base)],
             })
         for auxiliar in auxiliares:
             mensagens.append({

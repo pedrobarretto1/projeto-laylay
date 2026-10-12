@@ -1,0 +1,2593 @@
+{
+  "falha": "",
+  "retorno": {
+    "ok": true,
+    "estado": "confirmado",
+    "status": "plano_confirmado",
+    "falhas": []
+  },
+  "plano": {
+    "id": 1791826405872210300,
+    "origem_entrada": "desconhecida",
+    "texto_usuario": "gosto muito de voce",
+    "modalidade": "conversa",
+    "ato_principal": "conversa",
+    "atos": [
+      {
+        "ordem": 0,
+        "tipo": "conversa",
+        "texto": "gosto muito de voce",
+        "objetivo": "continuar o assunto da fala atual",
+        "requer_execucao": false
+      }
+    ],
+    "dominio": "conversa",
+    "contexto_necessario": [
+      "fala_atual",
+      "identidade_interlocutores"
+    ],
+    "requer_execucao": false,
+    "autoriza_execucao": false,
+    "natureza_acao": "nenhuma",
+    "turno_sem_autorizacao": false,
+    "misto": false,
+    "texto_operacional": "",
+    "texto_conversacional": "gosto muito de voce",
+    "resposta_esperada": "receber o elogio dirigido à Laylay",
+    "funcao_comunicativa": "elogio",
+    "emocao_implicita": "afeto",
+    "postura_esperada": "envergonhada",
+    "permite_pergunta": false,
+    "identidade": {
+      "falante": "usuario",
+      "interlocutor": "laylay",
+      "laylay_eu": true,
+      "usuario_eu": true,
+      "pedro_eu": true,
+      "referencia_laylay": true,
+      "referencia_usuario": false,
+      "referencia_pedro": false,
+      "vocativo_laylay": false,
+      "texto_sem_vocativo": "gosto muito de voce",
+      "objeto_laylay_py": false,
+      "relacao_com_laylay": "",
+      "pronome_ambiguo": false,
+      "ts": 1791826408.1936243
+    },
+    "retrato_id": 1791826405872210300,
+    "entidades": {},
+    "referencia_resolvida": {},
+    "operacao_explicita": "",
+    "especialistas": {
+      "social": {
+        "ativo": true,
+        "texto": "gosto muito de voce",
+        "funcao": "elogio",
+        "emocao": "afeto",
+        "postura": "envergonhada",
+        "permite_pergunta": false,
+        "precisa_reconhecimento": true,
+        "pode_executar": false,
+        "politica_resposta": "reconhecer_sem_pergunta"
+      },
+      "operacional": {
+        "ativo": false,
+        "texto": "",
+        "autoriza_execucao": false,
+        "operacao": "",
+        "intents_permitidos": [],
+        "referencia": {},
+        "confianca": 0.6,
+        "confiancas": {
+          "acao": 0.6,
+          "alvo": 1.0,
+          "referencia": 1.0
+        },
+        "requer_esclarecimento": false,
+        "confirmacao_explicita": false,
+        "motivo_bloqueio": "",
+        "pode_falar_sem_resultado": false,
+        "saude_componentes": {
+          "memoria_pessoas": {
+            "status": "saudavel",
+            "detalhes": "memória local estruturada conectada a contexto, aprendizado, continuidade, segurança, diagnóstico e mapa de habilidades",
+            "ausentes": [],
+            "ts": 1791826402.497303
+          },
+          "observador_area_transferencia": {
+            "status": "saudavel",
+            "detalhes": "percepção local sanitizada conectada ao modo companhia; modo=sugestao",
+            "ausentes": [],
+            "ts": 1791826402.4990108
+          },
+          "agenda": {
+            "status": "saudavel",
+            "detalhes": "agenda local conectada a pendência canônica, aprendizado, diagnóstico e cooperação",
+            "ausentes": [],
+            "ts": 1791826402.5000193
+          },
+          "orquestracao_cooperativa": {
+            "status": "saudavel",
+            "detalhes": "modo=ativo; fluxos governados=clipboard_para_arquivo,clipboard_pesquisa_llm,caixa_para_agenda,organizacao_desktop_inteligente,analise_item_jogo,curadoria_musical",
+            "ausentes": [],
+            "ts": 1791826402.506581
+          },
+          "execucao_intencao": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791826402.5090413
+          },
+          "ciclo_comandos": {
+            "status": "saudavel",
+            "detalhes": "contrato completo",
+            "ausentes": [],
+            "ts": 1791826402.50905
+          }
+        }
+      },
+      "coordenacao": {
+        "modo": "social",
+        "ordem": [
+          "responder_parte_humana"
+        ],
+        "consultas": [],
+        "memoria_compartilhada": true,
+        "voz_unica": true,
+        "executor_unico": true,
+        "consulta_concluida": false,
+        "arquitetura": "consenso_distribuido",
+        "sem_vencedor_isolado": true
+      },
+      "pareceres_habilidades": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:elogio",
+            "postura:envergonhada"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta"
+        },
+        {
+          "habilidade": "operacao",
+          "ativo": false,
+          "proposta": "interpretar a possível ação sem produzir efeito não autorizado",
+          "confianca": 0.6,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "operacao:-",
+            "autorizada:False"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_com_resultado_real"
+        },
+        {
+          "habilidade": "contexto_geral",
+          "ativo": false,
+          "proposta": "resolver referências e manter o assunto correto para as demais habilidades",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "referencia:-",
+            "candidatos:0"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "memoria_aprendizado",
+          "ativo": false,
+          "proposta": "registrar silenciosamente somente o que o usuário declarou de forma explícita",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "declaracoes_explicitas:0",
+            "origem:usuario"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "pesquisa_factual",
+          "ativo": false,
+          "proposta": "enriquecer a conversa com fatos verificáveis quando houver evidência suficiente",
+          "confianca": 0.0,
+          "relevancia": 0.0,
+          "saude": 1.0,
+          "ativacao": 0.0,
+          "evidencias": [
+            "tema:-"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": true,
+          "autoriza_execucao": false,
+          "politica_falha": "continuar_sem_substituir_resposta"
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto"
+        }
+      ],
+      "deliberacao": {
+        "arquitetura": "consenso_distribuido",
+        "objetivo": "receber o elogio dirigido à Laylay",
+        "estado": "consenso_formado",
+        "participantes": [
+          "conversa",
+          "personalidade"
+        ],
+        "silenciosas": [],
+        "executoras_autorizadas": [],
+        "pareceres": [
+          {
+            "habilidade": "conversa",
+            "ativo": true,
+            "proposta": "acolher e responder ao significado humano da fala atual",
+            "confianca": 0.94,
+            "relevancia": 1.0,
+            "saude": 1.0,
+            "ativacao": 0.94,
+            "evidencias": [
+              "funcao_comunicativa:elogio",
+              "postura:envergonhada"
+            ],
+            "dependencias": [],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "interromper_resposta",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          },
+          {
+            "habilidade": "personalidade",
+            "ativo": true,
+            "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+            "confianca": 0.96,
+            "relevancia": 0.96,
+            "saude": 1.0,
+            "ativacao": 0.922,
+            "evidencias": [
+              "uma_mente",
+              "uma_voz"
+            ],
+            "dependencias": [
+              "conversa"
+            ],
+            "conflitos": [],
+            "silenciosa": false,
+            "autoriza_execucao": false,
+            "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+            "contribuicao_parcial": false,
+            "dependencias_ausentes": []
+          }
+        ],
+        "rejeitados": [],
+        "evidencias_compartilhadas": [
+          "funcao_comunicativa:elogio",
+          "postura:envergonhada",
+          "uma_mente",
+          "uma_voz"
+        ],
+        "conclusao_conjunta": [
+          "acolher e responder ao significado humano da fala atual",
+          "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+        ],
+        "rodadas": [
+          {
+            "fase": "hipoteses",
+            "participantes": [
+              "conversa",
+              "personalidade"
+            ]
+          },
+          {
+            "fase": "compatibilidade",
+            "aceitos": [
+              "conversa",
+              "personalidade"
+            ],
+            "rejeitados": 0
+          },
+          {
+            "fase": "consenso",
+            "contribuicoes": 2
+          }
+        ],
+        "regras": {
+          "sem_vencedor_isolado": true,
+          "voz_final_unica": true,
+          "falha_auxiliar_nao_substitui_resposta": true,
+          "execucao_somente_por_porteiro_canonico": true,
+          "memoria_e_aprendizado_silenciosos": true
+        },
+        "quadro_canonico": {}
+      }
+    },
+    "atualidade_factual": {
+      "depende_atualidade": false,
+      "classe": "nao_consulta",
+      "validade_sugerida_s": 0.0,
+      "confianca": 0.0,
+      "motivos": [
+        "fala_nao_consultiva"
+      ]
+    },
+    "modo_coordenacao": "social",
+    "confianca": 0.6,
+    "periodo": "tarde",
+    "fase": "fala_verificada",
+    "comandos": [],
+    "problemas": [],
+    "veto_execucao_operacional": false,
+    "ts": 1791826408.2055533,
+    "decisao_turno": {
+      "turno_id": 1791826405872210300,
+      "modalidade": "conversa",
+      "proprietario": "conversa",
+      "permite_acao": false,
+      "permite_resposta": true,
+      "requer_esclarecimento": false,
+      "intencao": "",
+      "origem_decisao": "arbitro_sem_vencedor",
+      "confianca": 0.6,
+      "status": "sem_acao"
+    },
+    "evento_emocional_causal": {
+      "origem": "reconhecimento_social_usuario",
+      "causa": "elogio pessoal explícito dirigido à Laylay",
+      "evidencia_ref": "turno:1791826405872210300:texto_usuario",
+      "natureza_evidencia": "leitura_social",
+      "responsabilidade": "usuario",
+      "confianca": 0.94,
+      "relevancia": 0.65,
+      "novidade": 0.65,
+      "intensidade": 2,
+      "sensibilidade": "normal",
+      "alvo": "laylay",
+      "validade": {
+        "valido": true,
+        "inicio_ts": 1791826408.2164001,
+        "expira_ts": 1791826468.2164001,
+        "motivo": "causa_rastreavel"
+      },
+      "permite_expressao": true,
+      "emocao": "envergonhada",
+      "nivel": 2,
+      "motivo_expressao": "elogio_pessoal_direto",
+      "arco": "reconhecimento_social",
+      "ts": 1791826408.2164001,
+      "autoriza_execucao": false,
+      "persistencia_pessoal": false,
+      "versao": 1
+    },
+    "evidencia_capacidades": {
+      "fonte": "catalogo_vivo",
+      "dominios_confirmados": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "dominios_relevantes": [],
+      "dominios_indisponiveis_relevantes": [],
+      "possui_capacidades_locais": true,
+      "documentacao_capacidades": "",
+      "documentacao_texto": "gosto muito de voce",
+      "documentacao_turno_id": 1791826405872210300,
+      "predicados_capacidade": [],
+      "autoriza_execucao": false
+    },
+    "fundamentacao_factual": {},
+    "deliberacao_habilidades": {
+      "arquitetura": "consenso_distribuido",
+      "objetivo": "receber o elogio dirigido à Laylay",
+      "estado": "consenso_formado",
+      "participantes": [
+        "conversa",
+        "personalidade"
+      ],
+      "silenciosas": [],
+      "executoras_autorizadas": [],
+      "pareceres": [
+        {
+          "habilidade": "conversa",
+          "ativo": true,
+          "proposta": "acolher e responder ao significado humano da fala atual",
+          "confianca": 0.94,
+          "relevancia": 1.0,
+          "saude": 1.0,
+          "ativacao": 0.94,
+          "evidencias": [
+            "funcao_comunicativa:elogio",
+            "postura:envergonhada"
+          ],
+          "dependencias": [],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "interromper_resposta",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        },
+        {
+          "habilidade": "personalidade",
+          "ativo": true,
+          "proposta": "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay",
+          "confianca": 0.96,
+          "relevancia": 0.96,
+          "saude": 1.0,
+          "ativacao": 0.922,
+          "evidencias": [
+            "uma_mente",
+            "uma_voz"
+          ],
+          "dependencias": [
+            "conversa"
+          ],
+          "conflitos": [],
+          "silenciosa": false,
+          "autoriza_execucao": false,
+          "politica_falha": "usar_fala_segura_sem_apagar_o_contexto",
+          "contribuicao_parcial": false,
+          "dependencias_ausentes": []
+        }
+      ],
+      "rejeitados": [],
+      "evidencias_compartilhadas": [
+        "funcao_comunicativa:elogio",
+        "postura:envergonhada",
+        "uma_mente",
+        "uma_voz"
+      ],
+      "conclusao_conjunta": [
+        "acolher e responder ao significado humano da fala atual",
+        "fundir as contribuições aceitas em uma resposta natural com a voz da Laylay"
+      ],
+      "rodadas": [
+        {
+          "fase": "hipoteses",
+          "participantes": [
+            "conversa",
+            "personalidade"
+          ]
+        },
+        {
+          "fase": "compatibilidade",
+          "aceitos": [
+            "conversa",
+            "personalidade"
+          ],
+          "rejeitados": 0
+        },
+        {
+          "fase": "consenso",
+          "contribuicoes": 2
+        }
+      ],
+      "regras": {
+        "sem_vencedor_isolado": true,
+        "voz_final_unica": true,
+        "falha_auxiliar_nao_substitui_resposta": true,
+        "execucao_somente_por_porteiro_canonico": true,
+        "memoria_e_aprendizado_silenciosos": true
+      },
+      "quadro_canonico": {}
+    },
+    "contrato_fala": {
+      "versao": 1,
+      "turno_id": 1791826405872210300,
+      "funcao": "elogio",
+      "atos": [
+        "conversa"
+      ],
+      "referente": "",
+      "estado_referencia_textual": "",
+      "conteudos_obrigatorios": [
+        "receber o elogio dirigido à Laylay",
+        "preservar as capacidades locais confirmadas sem transformar essa informação em execução"
+      ],
+      "inferencias_proibidas": [
+        "não inventar emoção, intenção, gesto, cena ou situação do usuário",
+        "não transformar personalidade em fato nem em confirmação operacional",
+        "pedido não prova tentativa nem resultado: não deduzir sucesso, falha ou causa; responder ao que foi dito",
+        "falas antigas da assistente não são comprovantes; resultados exigem relato atribuído ao usuário ou evidência do executor",
+        "não dizer que é só um chatbot, que está fora do computador ou que só consegue conversar quando o catálogo vivo confirmou capacidades locais"
+      ],
+      "estrutura": [
+        "reconhecer literalmente a fala atual",
+        "responder ao conteúdo pedido",
+        "acrescentar personalidade somente se couber"
+      ],
+      "max_frases": 3,
+      "permite_pergunta": false,
+      "permite_humor": true,
+      "permite_metafora": false,
+      "fala_anterior_relevante": "",
+      "texto_usuario_corrigido": "",
+      "pedido_ensino_anterior": "",
+      "respostas_recentes_evitar": [],
+      "capacidades_confirmadas": [
+        "corpo_motor",
+        "rosto_oled",
+        "musica",
+        "sistema",
+        "visao",
+        "agenda",
+        "arquivos",
+        "email",
+        "iot",
+        "area_transferencia",
+        "caixa_entrada",
+        "pessoas",
+        "memoria",
+        "cooperacao"
+      ],
+      "documentacao_capacidades": "",
+      "predicados_capacidade": [],
+      "cooperacao_considerada": true,
+      "roteiro_concreto": {
+        "versao": 1,
+        "estrategia": "reconhecimento_social_direto",
+        "ancora_literal": "gosto muito de voce",
+        "nucleo_resposta": "receber o carinho ou elogio dirigido a você, com uma reação pessoal breve",
+        "sequencia": [
+          "reconhecer o ato social atual na primeira frase",
+          "preservar a expressão causal fornecida sem negar sua personalidade ou inventar corpo",
+          "não cobrar carinho, presumir o estado emocional do usuário ou retomar tarefas anteriores"
+        ],
+        "exigencias_concretude": [
+          "usar a fala atual antes de puxar contexto antigo",
+          "nomear o referente quando ele estiver resolvido",
+          "ligar toda abstração, na mesma frase, a uma característica descritiva ou observável",
+          "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida"
+        ],
+        "abstracoes_a_concretizar": [
+          "energia",
+          "vibe",
+          "sensação",
+          "sentir-se vivo",
+          "alma",
+          "universo",
+          "ritmo",
+          "essência"
+        ],
+        "base_permitida": [
+          "fala atual do usuário",
+          "catálogo vivo confirmou capacidades locais: corpo_motor, rosto_oled, musica, sistema, visao, agenda, arquivos, email"
+        ],
+        "primeira_frase_responde_nucleo": true,
+        "autoriza_execucao": false,
+        "origem": "mente_unica"
+      },
+      "autoriza_execucao": false,
+      "origem": "mente_unica",
+      "avaliacao_social": {
+        "tipo": "elogio_pessoal",
+        "alvo": "laylay",
+        "confianca": 0.94,
+        "atributo": "",
+        "trecho_evidencia": "gosto muito de voce",
+        "autoriza_execucao": false,
+        "memorizar_como_fato": false
+      },
+      "evento_emocional_causal": {
+        "origem": "reconhecimento_social_usuario",
+        "causa": "elogio pessoal explícito dirigido à Laylay",
+        "evidencia_ref": "turno:1791826405872210300:texto_usuario",
+        "natureza_evidencia": "leitura_social",
+        "responsabilidade": "usuario",
+        "confianca": 0.94,
+        "relevancia": 0.65,
+        "novidade": 0.65,
+        "intensidade": 2,
+        "sensibilidade": "normal",
+        "alvo": "laylay",
+        "validade": {
+          "valido": true,
+          "inicio_ts": 1791826408.2164001,
+          "expira_ts": 1791826468.2164001,
+          "motivo": "causa_rastreavel"
+        },
+        "permite_expressao": true,
+        "emocao": "envergonhada",
+        "nivel": 2,
+        "motivo_expressao": "elogio_pessoal_direto",
+        "arco": "reconhecimento_social",
+        "ts": 1791826408.2164001,
+        "autoriza_execucao": false,
+        "persistencia_pessoal": false,
+        "versao": 1
+      }
+    },
+    "retrato_corporal": {
+      "origem": "owner_corpo_usb",
+      "ts": 1791826418.7699683,
+      "turno_id": "1791826405872210300",
+      "sessao": "795dfefc",
+      "concessao_id": "61dddf9aca8b0d54",
+      "conectada": true,
+      "companhia_ativa": true,
+      "passeio_ativo": true,
+      "perfil": "rodas_suspensas",
+      "olhos": [
+        6,
+        2,
+        0
+      ],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "envergonhada",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {}
+    },
+    "erros": [],
+    "fala_planejada": "Gosto muito também de você — obrigada por dizer isso com tanta sinceridade. É um gesto que me deixa um pouco mais leve, mesmo que eu não tenha palavras para retribuir com o mesmo peso.",
+    "atualizado_ts": 1791826423.331823,
+    "intencao_corporal": {
+      "id": "2785810e809d6656",
+      "turno_id": "1791826405872210300",
+      "plano_id": "1791826405872210300",
+      "nome": "expressar",
+      "estado": "concluida",
+      "origem": "llm_principal",
+      "sessao": "795dfefc",
+      "concessao_id": "61dddf9aca8b0d54",
+      "desde_monotonic": 10617.1534152,
+      "ate_monotonic": 10647.1534152,
+      "autoriza_execucao": false,
+      "resultado": {
+        "origem": "executor_corpo",
+        "turno_id": "1791826405872210300",
+        "intencao_id": "2785810e809d6656",
+        "nome": "expressar",
+        "resultado": "pwm_e_parada_confirmados",
+        "confirmado": true,
+        "ts": 1791826428.7020876,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false
+      }
+    },
+    "ultima_verificacao": {
+      "aceita": true,
+      "fala": "Gosto muito também de você — obrigada por dizer isso com tanta sinceridade. É um gesto que me deixa um pouco mais leve, mesmo que eu não tenha palavras para retribuir com o mesmo peso.",
+      "acao": "aceita",
+      "problemas": [],
+      "pontuacao": 1.0,
+      "aderencia_contrato": {
+        "avaliado": true,
+        "aceita": true,
+        "requer_reparo": false,
+        "problemas": [],
+        "estrategia": "reconhecimento_social_direto",
+        "nucleo_atendido": true,
+        "contrato_reparo": {
+          "estrategia": "reconhecimento_social_direto",
+          "atos_obrigatorios": [
+            "conversa"
+          ],
+          "referente": "",
+          "estado_referencia_textual": "",
+          "texto_usuario_corrigido": "",
+          "nucleo_primeira_frase": "receber o carinho ou elogio dirigido a você, com uma reação pessoal breve",
+          "sequencia": [
+            "reconhecer o ato social atual na primeira frase",
+            "preservar a expressão causal fornecida sem negar sua personalidade ou inventar corpo",
+            "não cobrar carinho, presumir o estado emocional do usuário ou retomar tarefas anteriores"
+          ],
+          "max_frases": 3,
+          "permite_metafora": false,
+          "autoriza_execucao": false,
+          "preservar_identidade_emocional": true,
+          "evento_emocional_causal": {
+            "origem": "reconhecimento_social_usuario",
+            "causa": "elogio pessoal explícito dirigido à Laylay",
+            "evidencia_ref": "turno:1791826405872210300:texto_usuario",
+            "natureza_evidencia": "leitura_social",
+            "responsabilidade": "usuario",
+            "confianca": 0.94,
+            "relevancia": 0.65,
+            "novidade": 0.65,
+            "intensidade": 2,
+            "sensibilidade": "normal",
+            "alvo": "laylay",
+            "validade": {
+              "valido": true,
+              "inicio_ts": 1791826408.2164001,
+              "expira_ts": 1791826468.2164001,
+              "motivo": "causa_rastreavel"
+            },
+            "permite_expressao": true,
+            "emocao": "envergonhada",
+            "nivel": 2,
+            "motivo_expressao": "elogio_pessoal_direto",
+            "arco": "reconhecimento_social",
+            "ts": 1791826408.2164001,
+            "autoriza_execucao": false,
+            "persistencia_pessoal": false,
+            "versao": 1
+          }
+        },
+        "autoriza_execucao": false
+      }
+    }
+  },
+  "modelo": {
+    "origem": "owner_corpo_usb",
+    "ts": 1791826428.7026212,
+    "turno_id": "1791826405872210300",
+    "sessao": "795dfefc",
+    "concessao_id": "61dddf9aca8b0d54",
+    "conectada": true,
+    "companhia_ativa": true,
+    "passeio_ativo": true,
+    "perfil": "rodas_suspensas",
+    "olhos": [
+      6,
+      2,
+      0
+    ],
+    "motor_em_andamento": false,
+    "emocao_causal": {
+      "nome": "envergonhada",
+      "nivel": 2
+    },
+    "atencao_pc": false,
+    "autoriza_execucao": false,
+    "ultima_experiencia": {
+      "origem": "executor_corpo",
+      "turno_id": "1791826405872210300",
+      "intencao_id": "2785810e809d6656",
+      "nome": "expressar",
+      "resultado": "pwm_e_parada_confirmados",
+      "confirmado": true,
+      "ts": 1791826428.7020876,
+      "prova_deslocamento": false,
+      "autoriza_execucao": false,
+      "pertence_ao_turno_atual": true
+    }
+  },
+  "respostas_originais": [
+    {
+      "texto": "{\"fala\":\"Isso me deu um calor no rosto, é um prazer saber que você sente isso por mim.\",\"emocao\":\"envergonhada\",\"nivel_emocao\":2,\"comandos\":[],\"intencao_corporal\":{\"nome\":\"expressar\"}}",
+      "sucesso": true
+    }
+  ],
+  "trilha": [
+    {
+      "direcao": "tx",
+      "tempo": 10596.4887702,
+      "pacote": "HELLO 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888129,
+      "pacote": "CAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888347,
+      "pacote": "GCAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888474,
+      "pacote": "MCAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888577,
+      "pacote": "LCAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888667,
+      "pacote": "SCAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888759,
+      "pacote": "ECAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4888827,
+      "pacote": "RCAPS 1 795dfefc"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4889437,
+      "pacote": "FACE 1 795dfefc 1 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10596.488954,
+      "pacote": "ACK 1 795dfefc 1 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4889858,
+      "pacote": "ACTIVITY 1 795dfefc 1 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.4890941,
+      "pacote": "SOUND 1 795dfefc 1 0"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10596.4891032,
+      "pacote": "SOUNDACK 1 795dfefc 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.7479165,
+      "pacote": "FACE 1 795dfefc 2 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10596.7479451,
+      "pacote": "ACK 1 795dfefc 2 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10596.7479725,
+      "pacote": "ACTIVITY 1 795dfefc 2 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.0120328,
+      "pacote": "FACE 1 795dfefc 3 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10597.012066,
+      "pacote": "ACK 1 795dfefc 3 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.0121105,
+      "pacote": "ACTIVITY 1 795dfefc 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.2747345,
+      "pacote": "FACE 1 795dfefc 4 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10597.2747551,
+      "pacote": "ACK 1 795dfefc 4 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.2747771,
+      "pacote": "ACTIVITY 1 795dfefc 4 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.539606,
+      "pacote": "FACE 1 795dfefc 5 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10597.5396473,
+      "pacote": "ACK 1 795dfefc 5 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.5396722,
+      "pacote": "ACTIVITY 1 795dfefc 5 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.8037886,
+      "pacote": "FACE 1 795dfefc 6 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10597.8038126,
+      "pacote": "ACK 1 795dfefc 6 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10597.8038327,
+      "pacote": "ACTIVITY 1 795dfefc 6 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.0665781,
+      "pacote": "FACE 1 795dfefc 7 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10598.0665994,
+      "pacote": "ACK 1 795dfefc 7 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.0666196,
+      "pacote": "ACTIVITY 1 795dfefc 7 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.3283978,
+      "pacote": "FACE 1 795dfefc 8 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10598.3284296,
+      "pacote": "ACK 1 795dfefc 8 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.3284624,
+      "pacote": "ACTIVITY 1 795dfefc 8 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.5930512,
+      "pacote": "FACE 1 795dfefc 9 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10598.593076,
+      "pacote": "ACK 1 795dfefc 9 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.5931016,
+      "pacote": "ACTIVITY 1 795dfefc 9 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.8558283,
+      "pacote": "FACE 1 795dfefc 10 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10598.8558533,
+      "pacote": "ACK 1 795dfefc 10 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10598.8558746,
+      "pacote": "ACTIVITY 1 795dfefc 10 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.1201919,
+      "pacote": "FACE 1 795dfefc 11 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10599.1202242,
+      "pacote": "ACK 1 795dfefc 11 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.1202474,
+      "pacote": "ACTIVITY 1 795dfefc 11 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.3836645,
+      "pacote": "FACE 1 795dfefc 12 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10599.383688,
+      "pacote": "ACK 1 795dfefc 12 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.3837074,
+      "pacote": "ACTIVITY 1 795dfefc 12 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.6457926,
+      "pacote": "FACE 1 795dfefc 13 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10599.6458256,
+      "pacote": "ACK 1 795dfefc 13 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.6458592,
+      "pacote": "ACTIVITY 1 795dfefc 13 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.9115768,
+      "pacote": "FACE 1 795dfefc 14 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10599.9115956,
+      "pacote": "ACK 1 795dfefc 14 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10599.9116163,
+      "pacote": "ACTIVITY 1 795dfefc 14 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.1733331,
+      "pacote": "FACE 1 795dfefc 15 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10600.1733518,
+      "pacote": "ACK 1 795dfefc 15 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.173371,
+      "pacote": "ACTIVITY 1 795dfefc 15 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.4495661,
+      "pacote": "FACE 1 795dfefc 16 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10600.4495902,
+      "pacote": "ACK 1 795dfefc 16 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.4496142,
+      "pacote": "ACTIVITY 1 795dfefc 16 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.7148384,
+      "pacote": "FACE 1 795dfefc 17 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10600.7148591,
+      "pacote": "ACK 1 795dfefc 17 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.7148842,
+      "pacote": "ACTIVITY 1 795dfefc 17 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.9816487,
+      "pacote": "FACE 1 795dfefc 18 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10600.9816685,
+      "pacote": "ACK 1 795dfefc 18 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10600.9816898,
+      "pacote": "ACTIVITY 1 795dfefc 18 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10601.6279121,
+      "pacote": "FACE 1 795dfefc 19 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10601.627939,
+      "pacote": "ACK 1 795dfefc 19 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10601.6279649,
+      "pacote": "ACTIVITY 1 795dfefc 19 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10601.9909317,
+      "pacote": "FACE 1 795dfefc 20 0 1 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10601.9909542,
+      "pacote": "ACK 1 795dfefc 20 0 1 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10601.9909749,
+      "pacote": "ACTIVITY 1 795dfefc 20 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.2416329,
+      "pacote": "FACE 1 795dfefc 21 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10602.2416612,
+      "pacote": "ACK 1 795dfefc 21 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.2416878,
+      "pacote": "ACTIVITY 1 795dfefc 21 1 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.5050216,
+      "pacote": "FACE 1 795dfefc 22 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10602.5050657,
+      "pacote": "ACK 1 795dfefc 22 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.5051176,
+      "pacote": "ACTIVITY 1 795dfefc 22 1 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.7656947,
+      "pacote": "FACE 1 795dfefc 23 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10602.7657274,
+      "pacote": "ACK 1 795dfefc 23 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10602.7657607,
+      "pacote": "ACTIVITY 1 795dfefc 23 1 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.0299785,
+      "pacote": "FACE 1 795dfefc 24 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10603.030012,
+      "pacote": "ACK 1 795dfefc 24 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.0300438,
+      "pacote": "ACTIVITY 1 795dfefc 24 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.2932936,
+      "pacote": "FACE 1 795dfefc 25 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10603.293322,
+      "pacote": "ACK 1 795dfefc 25 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.29335,
+      "pacote": "ACTIVITY 1 795dfefc 25 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.5437158,
+      "pacote": "FACE 1 795dfefc 26 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10603.5437433,
+      "pacote": "ACK 1 795dfefc 26 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.5437723,
+      "pacote": "ACTIVITY 1 795dfefc 26 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.8046016,
+      "pacote": "FACE 1 795dfefc 27 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10603.8046484,
+      "pacote": "ACK 1 795dfefc 27 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10603.8046918,
+      "pacote": "ACTIVITY 1 795dfefc 27 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.0671818,
+      "pacote": "FACE 1 795dfefc 28 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10604.0672182,
+      "pacote": "ACK 1 795dfefc 28 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.0672529,
+      "pacote": "ACTIVITY 1 795dfefc 28 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.3294923,
+      "pacote": "FACE 1 795dfefc 29 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10604.3295174,
+      "pacote": "ACK 1 795dfefc 29 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.3295382,
+      "pacote": "ACTIVITY 1 795dfefc 29 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.5927591,
+      "pacote": "FACE 1 795dfefc 30 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10604.5928095,
+      "pacote": "ACK 1 795dfefc 30 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.5928407,
+      "pacote": "ACTIVITY 1 795dfefc 30 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.8564257,
+      "pacote": "FACE 1 795dfefc 31 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10604.8564544,
+      "pacote": "ACK 1 795dfefc 31 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10604.8564762,
+      "pacote": "ACTIVITY 1 795dfefc 31 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.1185123,
+      "pacote": "FACE 1 795dfefc 32 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10605.1185436,
+      "pacote": "ACK 1 795dfefc 32 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.1185743,
+      "pacote": "ACTIVITY 1 795dfefc 32 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.3801304,
+      "pacote": "FACE 1 795dfefc 33 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10605.3801498,
+      "pacote": "ACK 1 795dfefc 33 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.3801698,
+      "pacote": "ACTIVITY 1 795dfefc 33 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.6322501,
+      "pacote": "FACE 1 795dfefc 34 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10605.6322763,
+      "pacote": "ACK 1 795dfefc 34 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.6323047,
+      "pacote": "ACTIVITY 1 795dfefc 34 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.8950326,
+      "pacote": "FACE 1 795dfefc 35 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10605.8950577,
+      "pacote": "ACK 1 795dfefc 35 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10605.8950792,
+      "pacote": "ACTIVITY 1 795dfefc 35 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.1454927,
+      "pacote": "FACE 1 795dfefc 36 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10606.1455233,
+      "pacote": "ACK 1 795dfefc 36 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.1455529,
+      "pacote": "ACTIVITY 1 795dfefc 36 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.4094257,
+      "pacote": "FACE 1 795dfefc 37 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10606.409453,
+      "pacote": "ACK 1 795dfefc 37 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.4094951,
+      "pacote": "ACTIVITY 1 795dfefc 37 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.6744836,
+      "pacote": "FACE 1 795dfefc 38 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10606.6745068,
+      "pacote": "ACK 1 795dfefc 38 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.6745308,
+      "pacote": "ACTIVITY 1 795dfefc 38 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.93715,
+      "pacote": "FACE 1 795dfefc 39 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10606.9371732,
+      "pacote": "ACK 1 795dfefc 39 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10606.9371923,
+      "pacote": "ACTIVITY 1 795dfefc 39 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.1989161,
+      "pacote": "FACE 1 795dfefc 40 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10607.1989379,
+      "pacote": "ACK 1 795dfefc 40 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.1990016,
+      "pacote": "ACTIVITY 1 795dfefc 40 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.4641599,
+      "pacote": "FACE 1 795dfefc 41 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10607.4641846,
+      "pacote": "ACK 1 795dfefc 41 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.4642048,
+      "pacote": "ACTIVITY 1 795dfefc 41 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.7286524,
+      "pacote": "FACE 1 795dfefc 42 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10607.7287038,
+      "pacote": "ACK 1 795dfefc 42 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.7287428,
+      "pacote": "ACTIVITY 1 795dfefc 42 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.9927034,
+      "pacote": "FACE 1 795dfefc 43 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10607.992739,
+      "pacote": "ACK 1 795dfefc 43 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10607.992773,
+      "pacote": "ACTIVITY 1 795dfefc 43 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.2555787,
+      "pacote": "FACE 1 795dfefc 44 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10608.2556155,
+      "pacote": "ACK 1 795dfefc 44 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.2556492,
+      "pacote": "ACTIVITY 1 795dfefc 44 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.5185362,
+      "pacote": "FACE 1 795dfefc 45 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10608.5185772,
+      "pacote": "ACK 1 795dfefc 45 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.5186103,
+      "pacote": "ACTIVITY 1 795dfefc 45 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.7824894,
+      "pacote": "FACE 1 795dfefc 46 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10608.7825144,
+      "pacote": "ACK 1 795dfefc 46 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10608.7825348,
+      "pacote": "ACTIVITY 1 795dfefc 46 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.0472602,
+      "pacote": "FACE 1 795dfefc 47 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10609.0472851,
+      "pacote": "ACK 1 795dfefc 47 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.047305,
+      "pacote": "ACTIVITY 1 795dfefc 47 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.3121634,
+      "pacote": "FACE 1 795dfefc 48 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10609.3121848,
+      "pacote": "ACK 1 795dfefc 48 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.312205,
+      "pacote": "ACTIVITY 1 795dfefc 48 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.5774995,
+      "pacote": "FACE 1 795dfefc 49 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10609.5775277,
+      "pacote": "ACK 1 795dfefc 49 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.5775663,
+      "pacote": "ACTIVITY 1 795dfefc 49 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.8419774,
+      "pacote": "FACE 1 795dfefc 50 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10609.8420085,
+      "pacote": "ACK 1 795dfefc 50 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10609.8420385,
+      "pacote": "ACTIVITY 1 795dfefc 50 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.1069093,
+      "pacote": "FACE 1 795dfefc 51 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10610.1069441,
+      "pacote": "ACK 1 795dfefc 51 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.1069764,
+      "pacote": "ACTIVITY 1 795dfefc 51 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.3715882,
+      "pacote": "FACE 1 795dfefc 52 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10610.3716206,
+      "pacote": "ACK 1 795dfefc 52 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.3716451,
+      "pacote": "ACTIVITY 1 795dfefc 52 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.6341723,
+      "pacote": "FACE 1 795dfefc 53 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10610.6342071,
+      "pacote": "ACK 1 795dfefc 53 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.6342375,
+      "pacote": "ACTIVITY 1 795dfefc 53 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.8976557,
+      "pacote": "FACE 1 795dfefc 54 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10610.8976855,
+      "pacote": "ACK 1 795dfefc 54 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10610.8977088,
+      "pacote": "ACTIVITY 1 795dfefc 54 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.1481805,
+      "pacote": "FACE 1 795dfefc 55 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10611.1482114,
+      "pacote": "ACK 1 795dfefc 55 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.1482397,
+      "pacote": "ACTIVITY 1 795dfefc 55 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.4101426,
+      "pacote": "FACE 1 795dfefc 56 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10611.4101787,
+      "pacote": "ACK 1 795dfefc 56 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.410221,
+      "pacote": "ACTIVITY 1 795dfefc 56 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.6749894,
+      "pacote": "FACE 1 795dfefc 57 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10611.6750218,
+      "pacote": "ACK 1 795dfefc 57 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.6750453,
+      "pacote": "ACTIVITY 1 795dfefc 57 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.9391266,
+      "pacote": "FACE 1 795dfefc 58 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10611.939161,
+      "pacote": "ACK 1 795dfefc 58 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10611.9392013,
+      "pacote": "ACTIVITY 1 795dfefc 58 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.1944455,
+      "pacote": "FACE 1 795dfefc 59 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10612.1944734,
+      "pacote": "ACK 1 795dfefc 59 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.1944961,
+      "pacote": "ACTIVITY 1 795dfefc 59 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.4453517,
+      "pacote": "FACE 1 795dfefc 60 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10612.4453752,
+      "pacote": "ACK 1 795dfefc 60 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.4453949,
+      "pacote": "ACTIVITY 1 795dfefc 60 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.7080238,
+      "pacote": "FACE 1 795dfefc 61 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10612.7080547,
+      "pacote": "ACK 1 795dfefc 61 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.7080777,
+      "pacote": "ACTIVITY 1 795dfefc 61 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.9705626,
+      "pacote": "FACE 1 795dfefc 62 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10612.9705857,
+      "pacote": "ACK 1 795dfefc 62 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10612.9706039,
+      "pacote": "ACTIVITY 1 795dfefc 62 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.2341633,
+      "pacote": "FACE 1 795dfefc 63 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10613.2341839,
+      "pacote": "ACK 1 795dfefc 63 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.2342063,
+      "pacote": "ACTIVITY 1 795dfefc 63 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.494823,
+      "pacote": "FACE 1 795dfefc 64 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10613.4948567,
+      "pacote": "ACK 1 795dfefc 64 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.4948962,
+      "pacote": "ACTIVITY 1 795dfefc 64 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.7572789,
+      "pacote": "FACE 1 795dfefc 65 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10613.7572975,
+      "pacote": "ACK 1 795dfefc 65 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10613.7573167,
+      "pacote": "ACTIVITY 1 795dfefc 65 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.0207769,
+      "pacote": "FACE 1 795dfefc 66 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10614.0208114,
+      "pacote": "ACK 1 795dfefc 66 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.0208334,
+      "pacote": "ACTIVITY 1 795dfefc 66 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.2846746,
+      "pacote": "FACE 1 795dfefc 67 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10614.2846947,
+      "pacote": "ACK 1 795dfefc 67 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.2847183,
+      "pacote": "ACTIVITY 1 795dfefc 67 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.5489176,
+      "pacote": "FACE 1 795dfefc 68 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10614.5489432,
+      "pacote": "ACK 1 795dfefc 68 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.5489828,
+      "pacote": "ACTIVITY 1 795dfefc 68 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.8108023,
+      "pacote": "FACE 1 795dfefc 69 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10614.8108218,
+      "pacote": "ACK 1 795dfefc 69 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10614.8108419,
+      "pacote": "ACTIVITY 1 795dfefc 69 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.0616912,
+      "pacote": "FACE 1 795dfefc 70 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10615.061712,
+      "pacote": "ACK 1 795dfefc 70 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.0617312,
+      "pacote": "ACTIVITY 1 795dfefc 70 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.3264116,
+      "pacote": "FACE 1 795dfefc 71 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10615.3264861,
+      "pacote": "ACK 1 795dfefc 71 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.3265635,
+      "pacote": "ACTIVITY 1 795dfefc 71 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.5902687,
+      "pacote": "FACE 1 795dfefc 72 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10615.5902906,
+      "pacote": "ACK 1 795dfefc 72 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.59031,
+      "pacote": "ACTIVITY 1 795dfefc 72 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.8528365,
+      "pacote": "FACE 1 795dfefc 73 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10615.852858,
+      "pacote": "ACK 1 795dfefc 73 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10615.8528762,
+      "pacote": "ACTIVITY 1 795dfefc 73 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.1175398,
+      "pacote": "FACE 1 795dfefc 74 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10616.117563,
+      "pacote": "ACK 1 795dfefc 74 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.1175835,
+      "pacote": "ACTIVITY 1 795dfefc 74 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.380298,
+      "pacote": "FACE 1 795dfefc 75 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10616.3803305,
+      "pacote": "ACK 1 795dfefc 75 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.3803598,
+      "pacote": "ACTIVITY 1 795dfefc 75 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.6445533,
+      "pacote": "FACE 1 795dfefc 76 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10616.6445795,
+      "pacote": "ACK 1 795dfefc 76 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.6446045,
+      "pacote": "ACTIVITY 1 795dfefc 76 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.9072076,
+      "pacote": "FACE 1 795dfefc 77 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10616.9072272,
+      "pacote": "ACK 1 795dfefc 77 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10616.9073144,
+      "pacote": "ACTIVITY 1 795dfefc 77 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.1785508,
+      "pacote": "FACE 1 795dfefc 78 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.178576,
+      "pacote": "ACK 1 795dfefc 78 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.1786021,
+      "pacote": "ACTIVITY 1 795dfefc 78 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.4362858,
+      "pacote": "FACE 1 795dfefc 79 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.4363251,
+      "pacote": "ACK 1 795dfefc 79 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.4363617,
+      "pacote": "ACTIVITY 1 795dfefc 79 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.4365053,
+      "pacote": "EXPR 1 795dfefc 1 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.436515,
+      "pacote": "EACK 1 795dfefc 1 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.7013295,
+      "pacote": "FACE 1 795dfefc 80 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.7013608,
+      "pacote": "ACK 1 795dfefc 80 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.7013893,
+      "pacote": "ACTIVITY 1 795dfefc 80 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.7015348,
+      "pacote": "EXPR 1 795dfefc 2 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.7015465,
+      "pacote": "EACK 1 795dfefc 2 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.9559764,
+      "pacote": "FACE 1 795dfefc 81 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.9560005,
+      "pacote": "ACK 1 795dfefc 81 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.9560263,
+      "pacote": "ACTIVITY 1 795dfefc 81 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10617.9561183,
+      "pacote": "EXPR 1 795dfefc 3 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10617.956125,
+      "pacote": "EACK 1 795dfefc 3 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.2127915,
+      "pacote": "FACE 1 795dfefc 82 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.2128107,
+      "pacote": "ACK 1 795dfefc 82 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.2128313,
+      "pacote": "ACTIVITY 1 795dfefc 82 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.2129143,
+      "pacote": "EXPR 1 795dfefc 4 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.2129205,
+      "pacote": "EACK 1 795dfefc 4 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.4780306,
+      "pacote": "FACE 1 795dfefc 83 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.4780566,
+      "pacote": "ACK 1 795dfefc 83 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.4780789,
+      "pacote": "ACTIVITY 1 795dfefc 83 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.4781733,
+      "pacote": "EXPR 1 795dfefc 5 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.4781794,
+      "pacote": "EACK 1 795dfefc 5 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.7435169,
+      "pacote": "FACE 1 795dfefc 84 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.7435653,
+      "pacote": "ACK 1 795dfefc 84 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.7436189,
+      "pacote": "ACTIVITY 1 795dfefc 84 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10618.743755,
+      "pacote": "EXPR 1 795dfefc 6 9 3 0 1200"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10618.7437644,
+      "pacote": "EACK 1 795dfefc 6 9 3 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.0013946,
+      "pacote": "EXPR 1 795dfefc 7 6 0 -1 520"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.0014125,
+      "pacote": "EACK 1 795dfefc 7 6 0 -1 520"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.0071708,
+      "pacote": "FACE 1 795dfefc 85 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.0072009,
+      "pacote": "ACK 1 795dfefc 85 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.0072315,
+      "pacote": "ACTIVITY 1 795dfefc 85 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2314357,
+      "pacote": "EXPR 1 795dfefc 8 6 1 -1 1150"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.2314534,
+      "pacote": "EACK 1 795dfefc 8 6 1 -1 1150"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2314786,
+      "pacote": "SOUND 1 795dfefc 2 6"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.2314847,
+      "pacote": "SOUNDACK 1 795dfefc 2 6"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.231535,
+      "pacote": "FACE 1 795dfefc 86 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.2315421,
+      "pacote": "ACK 1 795dfefc 86 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2315531,
+      "pacote": "ACTIVITY 1 795dfefc 86 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2331541,
+      "pacote": "MOTOR 2 795dfefc 1 -115 115 900"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.2346304,
+      "pacote": "MACK 2 795dfefc 1 -115 115 900"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2576558,
+      "pacote": "FACE 1 795dfefc 87 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.257683,
+      "pacote": "ACK 1 795dfefc 87 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.2577091,
+      "pacote": "ACTIVITY 1 795dfefc 87 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.5075215,
+      "pacote": "FACE 1 795dfefc 88 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.5075591,
+      "pacote": "ACK 1 795dfefc 88 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.5075921,
+      "pacote": "ACTIVITY 1 795dfefc 88 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.7685268,
+      "pacote": "FACE 1 795dfefc 89 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10619.7685655,
+      "pacote": "ACK 1 795dfefc 89 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10619.7686053,
+      "pacote": "ACTIVITY 1 795dfefc 89 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.0316381,
+      "pacote": "FACE 1 795dfefc 90 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.0316747,
+      "pacote": "ACK 1 795dfefc 90 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.0317056,
+      "pacote": "ACTIVITY 1 795dfefc 90 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.1581403,
+      "pacote": "STOP 1 795dfefc 1"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.1582103,
+      "pacote": "SACK 1 795dfefc 1"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.2832746,
+      "pacote": "FACE 1 795dfefc 91 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.2833134,
+      "pacote": "ACK 1 795dfefc 91 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.2833533,
+      "pacote": "ACTIVITY 1 795dfefc 91 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.4751908,
+      "pacote": "EXPR 1 795dfefc 9 6 1 1 950"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.4752102,
+      "pacote": "EACK 1 795dfefc 9 6 1 1 950"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.4752828,
+      "pacote": "FACE 1 795dfefc 92 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.4752913,
+      "pacote": "ACK 1 795dfefc 92 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.4753054,
+      "pacote": "ACTIVITY 1 795dfefc 92 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.476999,
+      "pacote": "MOTOR 2 795dfefc 2 115 -115 700"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.4785201,
+      "pacote": "MACK 2 795dfefc 2 115 -115 700"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.546969,
+      "pacote": "FACE 1 795dfefc 93 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.5469936,
+      "pacote": "ACK 1 795dfefc 93 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.547014,
+      "pacote": "ACTIVITY 1 795dfefc 93 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.812747,
+      "pacote": "FACE 1 795dfefc 94 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10620.8127721,
+      "pacote": "ACK 1 795dfefc 94 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10620.8127966,
+      "pacote": "ACTIVITY 1 795dfefc 94 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.0754068,
+      "pacote": "FACE 1 795dfefc 95 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.0754465,
+      "pacote": "ACK 1 795dfefc 95 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.0754971,
+      "pacote": "ACTIVITY 1 795dfefc 95 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.199683,
+      "pacote": "STOP 1 795dfefc 2"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.1997203,
+      "pacote": "SACK 1 795dfefc 2"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.3394409,
+      "pacote": "FACE 1 795dfefc 96 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.3394594,
+      "pacote": "ACK 1 795dfefc 96 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.3394781,
+      "pacote": "ACTIVITY 1 795dfefc 96 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.5137707,
+      "pacote": "EXPR 1 795dfefc 10 6 1 0 1250"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.5137873,
+      "pacote": "EACK 1 795dfefc 10 6 1 0 1250"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.5138542,
+      "pacote": "FACE 1 795dfefc 97 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.5138624,
+      "pacote": "ACK 1 795dfefc 97 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.5138736,
+      "pacote": "ACTIVITY 1 795dfefc 97 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.5155876,
+      "pacote": "MOTOR 2 795dfefc 3 -110 -110 1000"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.5171744,
+      "pacote": "MACK 2 795dfefc 3 -110 -110 1000"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.6034591,
+      "pacote": "FACE 1 795dfefc 98 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.6034867,
+      "pacote": "ACK 1 795dfefc 98 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.603531,
+      "pacote": "ACTIVITY 1 795dfefc 98 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.8684811,
+      "pacote": "FACE 1 795dfefc 99 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10621.8685264,
+      "pacote": "ACK 1 795dfefc 99 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10621.8685664,
+      "pacote": "ACTIVITY 1 795dfefc 99 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.1356184,
+      "pacote": "FACE 1 795dfefc 100 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.1356414,
+      "pacote": "ACK 1 795dfefc 100 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.1356666,
+      "pacote": "ACTIVITY 1 795dfefc 100 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.3978884,
+      "pacote": "FACE 1 795dfefc 101 6 2 0 3500"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.3979079,
+      "pacote": "ACK 1 795dfefc 101 6 2 0"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.397928,
+      "pacote": "ACTIVITY 1 795dfefc 101 0 1200"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.5382109,
+      "pacote": "STOP 1 795dfefc 3"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.5382736,
+      "pacote": "SACK 1 795dfefc 3"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.5401695,
+      "pacote": "EXPR 1 795dfefc 11 6 2 0 1800"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.5401846,
+      "pacote": "EACK 1 795dfefc 11 6 2 0 1800"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.5415166,
+      "pacote": "STOP 1 795dfefc 4"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.5415343,
+      "pacote": "SACK 1 795dfefc 4"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.541722,
+      "pacote": "STOP 1 795dfefc 5"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.5417435,
+      "pacote": "SACK 1 795dfefc 5"
+    },
+    {
+      "direcao": "tx",
+      "tempo": 10622.5417537,
+      "pacote": "GOODNIGHT 1 795dfefc 12"
+    },
+    {
+      "direcao": "rx",
+      "tempo": 10622.5417623,
+      "pacote": "NACK 1 795dfefc 12"
+    }
+  ],
+  "observacao_humana": "pendente",
+  "interface_aberta": false,
+  "serial_simulada": true,
+  "chat_ativo": true,
+  "tipo": "runtime principal real com observadores de modelo e serial"
+}

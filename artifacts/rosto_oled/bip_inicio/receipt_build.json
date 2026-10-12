@@ -1,0 +1,18 @@
+{
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "flags": "-DLAYLAY_WIFI=0 -DLAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "flash_usada_bytes": 392038,
+  "globais_bytes": 17388,
+  "upload_porta": "COM4",
+  "upload_exit_code": 0,
+  "hash_gravacao_verificado": true,
+  "mac": "ac:27:6e:72:ba:70",
+  "fonte_sha256": "a9ff51fc5f6242db4549a9ba865dc2fefa4b06520ea742e3b5ba4e9a5d6a0294",
+  "bin_sha256": "396bbc73dc63aa65932d232ee7d417bf7c025bbbc5a7e37b9a0eacf32456f58f",
+  "host_bip_perfis": [0, 1],
+  "host_vizinhos": ["handshake", "motor", "stop", "glitch", "boca"],
+  "observacao_auditiva": "RED: Pedro nao ouviu som em nenhum teste",
+  "resistor_informado_ohms": 220,
+  "montagem_completa_confirmada": true
+}

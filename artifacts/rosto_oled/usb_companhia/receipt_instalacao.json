@@ -1,0 +1,76 @@
+{
+  "firmware_usb_gravado": true,
+  "hashflash_verificado": true,
+  "wifi_compilado": false,
+  "mac": "ac:27:6e:72:ba:70",
+  "bin_sha256": "0f7e0e0dcf238337e65b7a1de817077bb0516cb1c7e41a1e9f4da58a88bab245",
+  "face_confirmada": true,
+  "diagnostico": {
+    "configurado": true,
+    "conectado": true,
+    "sessao": "5f177aad",
+    "transporte": "serial",
+    "modo_conexao": "manual",
+    "endpoint": "",
+    "porta_ativa": "COM4",
+    "evidencia_recente": true,
+    "aplicacao_confirmada": true,
+    "estado": "disponivel",
+    "motivo": "frame_confirmado_pelo_esp",
+    "confirmado": [
+      0,
+      1,
+      0
+    ],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "hack": {
+      "suportado": true,
+      "aplicacao_confirmada": true,
+      "ativo": false,
+      "motivo": "overlay_confirmado_pelo_esp",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": true,
+      "aplicacao_confirmada": false,
+      "motivo": "aguardando_falha",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "suportado": true,
+      "disponivel": true,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": false,
+      "motivo": "",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "stop": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "motor_enviado": false,
+  "prova_movimento_fisico": false
+}

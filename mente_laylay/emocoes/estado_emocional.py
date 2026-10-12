@@ -174,6 +174,18 @@ def aplicar_evento_emocional(
     ):
         return estado
     emocao = str(dados.get("emocao") or "calma")
+    if (dados.get("origem") == "pedido_expressao_usuario"
+        and dados.get("arco") == "expressao_solicitada"
+        and dados.get("natureza_evidencia") == "fato_observado"
+        and dados.get("alvo") == "laylay" and dados.get("confianca") == 1.0):
+        # Encenação aceita substitui a pose, inclusive calma. Não altera o humor
+        # nem é uma causa de tristeza/raiva sentida atribuída ao usuário.
+        if float(dados.get("ts") or 0) < float(episodio_anterior.get("ts") or 0):
+            return estado
+        novo = aplicar_estado_emocional(estado, emocao, int(dados["nivel"]),
+                                       causa=str(dados["causa"]), agora=instante, duracao_s=60.0)
+        novo["episodio_emocional"] = dados
+        return novo
     if emocao == "calma":
         return estado
     try:

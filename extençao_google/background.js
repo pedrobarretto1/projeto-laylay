@@ -1,4 +1,6 @@
 
+importScripts("streaming_background.js");
+
 let websocket = null;
 const WS_URL = "ws://localhost:8080";
 
@@ -1618,6 +1620,8 @@ setInterval(() => {
 }, 5000);
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Metadados do player pertencem somente ao canal local do Terminal.
+  if (request?.type === "LAYLAY_STREAMING_LOCAL") return;
   if (request?.target === "offscreen") return;
   if (request?.type === "GET_CANONICAL_MUSIC_TAB") {
     findBestYouTubeCandidate(false).then((escolhido) => {

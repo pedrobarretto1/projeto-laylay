@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
 
 from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
+from mente_laylay.cognicao.modelo_corporal import formatar_modelo_corporal
 from mente_laylay.cognicao.qualidade_comunicacao import (
     montar_mensagens_pedido_fonte_textual,
     montar_mensagens_reconhecimento_limite,
@@ -144,6 +145,7 @@ def preparar_contexto_resposta_ia(
         _get(ctx, "contexto_retrato_expressivo", "") or ""
     ).strip()
     contexto_contrato_fala = str(_get(ctx, "contexto_contrato_fala", "") or "").strip()
+    contexto_corporal = str(_get(ctx, "contexto_corporal", "") or "").strip()
     contexto_fundamentacao_prioritaria = str(
         _get(ctx, "contexto_fundamentacao_prioritaria", "") or ""
     ).strip()
@@ -208,6 +210,8 @@ def preparar_contexto_resposta_ia(
         contexto_extra += "\n" + contexto_postura + "\n"
     if contexto_retrato_expressivo:
         contexto_extra += "\n" + contexto_retrato_expressivo + "\n"
+    if contexto_corporal:
+        contexto_extra += "\n" + contexto_corporal + "\n"
     if contexto_fundamentacao_prioritaria:
         # Receipt factual por último: nenhuma decoração do prompt pode
         # deslocar a fonte de verdade do turno.
@@ -244,7 +248,7 @@ def preparar_contexto_resposta_ia(
     # cortá-lo pode transformar disponibilidade/limites em suposição da LLM.
     # Separá-los permite que preparação e transporte preservem o par
     # system/user sem interpretar nomes de habilidades ou cortar receipts.
-    trechos_turno = (contexto_contrato_fala, contexto_habilidades, contexto_fundamentacao_prioritaria)
+    trechos_turno = (contexto_contrato_fala, contexto_habilidades, contexto_corporal, contexto_fundamentacao_prioritaria)
     instrucao_turno = "\n\n".join(trecho for trecho in trechos_turno if trecho)
     prompt_principal = prompt_com_humor
     for trecho in trechos_turno:
@@ -463,6 +467,7 @@ class ContextoPromptRuntime:
             "contexto_contrato_fala": contexto_contrato_fala,
             "contexto_postura": contexto_postura,
             "contexto_retrato_expressivo": contexto_retrato_expressivo,
+            "contexto_corporal": formatar_modelo_corporal(estado.get("modelo_corporal")),
             "contexto_fundamentacao_prioritaria": fundamentacao_prioritaria,
         }
         try:
@@ -483,6 +488,7 @@ class ContextoPromptRuntime:
                     "contrato_fala": contexto_contrato_fala,
                     "postura": contexto_postura,
                     "retrato_expressivo": contexto_retrato_expressivo,
+                    "corpo": contexto["contexto_corporal"],
                     "historico": historico_prompt,
                     "total": resultado[1],
                 }
@@ -622,7 +628,7 @@ class ContextoPromptRuntime:
             trechos_prompt = (
                 (fundamentacao,)
                 if lista_factual_materializada
-                else (contrato, retrato, habilidades, fundamentacao)
+                else (contrato, retrato, habilidades, formatar_modelo_corporal(estado.get("modelo_corporal")), fundamentacao)
             )
             instrucao = "\n\n".join(
                 # Quando a pesquisa já materializou candidatos, esse bloco é o

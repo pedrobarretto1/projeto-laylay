@@ -1,0 +1,19 @@
+﻿{
+    "conexoes":  [
+                     {
+                         "tipo":  null,
+                         "guid":  "{A3AAB99C-1590-4F40-A24C-5D7CCD208C0C}",
+                         "nome":  "Ethernet",
+                         "compartilhamento_ativo":  false,
+                         "dispositivo":  "Realtek PCIe GbE Family Controller"
+                     },
+                     {
+                         "tipo":  null,
+                         "guid":  "{02297707-3F74-4DAA-A4B4-7BB2402835D4}",
+                         "nome":  "Wi-Fi",
+                         "compartilhamento_ativo":  false,
+                         "dispositivo":  "Broadcom 802.11ac Wireless USB Adapter"
+                     }
+                 ],
+    "horario":  "2026-10-11T02:26:35"
+}

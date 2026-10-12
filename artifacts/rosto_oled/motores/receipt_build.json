@@ -1,0 +1,15 @@
+{
+  "ts_utc": "2026-10-11T03:52:45.313662+00:00",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "programa_bytes": 383732,
+  "ram_estatica_bytes": 15772,
+  "perfil": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "fonte_sha256": "d5c8c6076f258681cb9265a60e827f91b481dac89e4d08f03bea252e867bee95",
+  "binario_sha256": "3ed5635f394268805387d312d09b46c2ba58e30e4de7657a8292cb7db2308a01",
+  "opcoes": "compiler.cpp.extra_flags=-DLAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "upload": "COM4 gravada com hash verificado, antes da troca de GPIO",
+  "falha_upload": "COM4 ocupada, sem gravação",
+  "motor_fisico_testado": true,
+  "giro_confirmado": false
+}

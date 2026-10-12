@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from typing import Any, Callable, Dict
 
 from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+from mente_laylay.personalidade.leitura_social_conversa import analisar_avaliacao_social_direta
 
 
 _CONCLUSAO_PROPRIA = re.compile(
@@ -139,12 +141,46 @@ def _tem_conquista_autoral_afirmada(texto: str, padrao: str) -> bool:
     return False
 
 
+def analisar_pedido_expressao(texto: str) -> Dict[str, Any]:
+    """Entidades de expressão na leitura canônica; menção não é pedido de pose."""
+    bruto = str(texto or "").strip()
+    if not bruto or "?" in bruto or _TRECHO_CITADO.search(bruto):
+        return {}
+    base = "".join(c for c in unicodedata.normalize("NFKD", bruto.casefold())
+                   if not unicodedata.combining(c))
+    base = re.sub(r"\s+", " ", base).strip(" .!,")
+    base = re.sub(r"^(?:laylay|lay)[, ]+", "", base)
+    base = re.sub(r"[, ]+(?:por favor|laylay|lay)$", "", base).strip(" ,")
+    nomes = {"feliz": "alegre", "alegre": "alegre", "triste": "triste",
+             "brava": "brava", "irritada": "irritada", "surpresa": "surpresa",
+             "surpreendida": "surpresa", "envergonhada": "envergonhada",
+             "timida": "envergonhada", "debochada": "debochada", "calma": "calma"}
+    if base in {"volte ao normal", "volta ao normal", "se acalme", "acalme-se"}:
+        emocao, nivel = "calma", 1
+    else:
+        pedido = re.fullmatch(
+            r"(?:fica|fique|(?:mostra|mostre|faca) (?:uma )?(?:carinha|cara|expressao)) "
+            r"(?:(um pouco|muito|bem|bastante|super) )?(" + "|".join(nomes) + r")", base)
+        if not pedido:
+            return {}
+        emocao = nomes[pedido[2]]
+        nivel = 1 if emocao == "calma" or pedido[1] == "um pouco" else 3 if pedido[1] else 2
+    return {"emocao": emocao, "nivel": nivel, "alvo": "laylay", "confianca": 1.0,
+            "trecho_evidencia": bruto, "autoriza_execucao": False,
+            "memorizar_como_fato": False, "natureza": "expressao_solicitada"}
+
+
 def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
     """Identifica o papel humano da fala sem decidir comandos."""
     bruto = str(texto or "").strip()
     base = re.sub(r"\s+", " ", bruto.casefold()).strip()
     if not base:
         return {}
+    pedido = analisar_pedido_expressao(bruto)
+    if pedido:
+        return {"funcao": "pedido_expressao", "objetivo": "encenar a expressão pedida sem inventar sentimentos ou efeitos externos",
+                "postura_esperada": "brincalhona", "permite_pergunta": False,
+                "confianca": 1.0, "expressao_solicitada": pedido, "texto": bruto, "ts": time.time()}
     regras = (
         ("correcao", r"^(?:eu\s+)?(?:estou\s+(?:perguntando|falando)|perguntei|falei)\s+(?:sobre|d[aoe])\b[^.!?]{1,180}\bn[aã]o\s+(?:sobre|d[aoe])\b", "reconhecer a correcao de escopo sem confundir contexto com autorizacao"),
         ("encerramento", r"\b(?:era so isso|era só isso|por hoje e so|por hoje é só|ate mais|até mais|falou|depois a gente ve|depois a gente vê)\b", "encerrar o assunto sem retomar contexto antigo"),
@@ -170,6 +206,8 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         "agradecimento": ("gratidao", "calorosa", False),
         "reacao_positiva": ("alegria_leve", "breve", False),
         "elogio": ("afeto", "envergonhada", False),
+        "critica_pessoal": ("avaliacao_negativa", "sensivel_sem_culpar", False),
+        "rejeicao_pessoal": ("distanciamento", "respeitosa_sem_cobrar", False),
         "desabafo": ("sofrimento", "acolhedora", True),
         "frustracao": ("frustracao", "reparadora", False),
         "decepcao": ("decepcao", "cuidadosa", False),
@@ -178,6 +216,19 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         "relato": ("neutra", "interessada", True),
     }
     for funcao, padrao, objetivo in regras:
+        if funcao == "elogio":
+            avaliacao = analisar_avaliacao_social_direta(bruto)
+            if not avaliacao:
+                continue
+            tipo = avaliacao["tipo"]
+            funcao_social = "elogio" if tipo == "elogio_pessoal" else tipo
+            emocao, postura, permite_pergunta = perfis[funcao_social]
+            return {"funcao": funcao_social,
+                    "objetivo": ("receber o elogio dirigido à Laylay" if tipo == "elogio_pessoal"
+                                 else "reconhecer a avaliação pessoal sem culpar, cobrar afeto ou depreciar o usuário"),
+                    "emocao_implicita": emocao, "postura_esperada": postura,
+                    "permite_pergunta": permite_pergunta, "confianca": avaliacao["confianca"],
+                    "avaliacao_social": avaliacao, "texto": bruto, "ts": time.time()}
         # Correções e encerramentos mantêm prioridade. Antes de classificar
         # conquista, a leitura causal já existente distingue alívio autoral
         # de mera conclusão, hipótese ou citação.

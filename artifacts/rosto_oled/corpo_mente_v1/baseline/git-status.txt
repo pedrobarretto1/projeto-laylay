@@ -1,0 +1,168 @@
+ M cliente/terminal_laylay_2.py
+ M "exten\303\247ao_google/background.js"
+ M "exten\303\247ao_google/manifest.json"
+ M laylay.py
+ M "melhorias e planos/PLANO_ENSINO_FUNDAMENTADO_LAYLAY.md"
+ M "melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md"
+ M "melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md"
+ M mente_laylay/autonomia/analise_comandos.py
+ M mente_laylay/autonomia/classificacao_habilidade.py
+ M mente_laylay/autonomia/comandos_imediatos.py
+ M mente_laylay/autonomia/composicao_ciclo_comandos.py
+ M mente_laylay/autonomia/composicao_servicos.py
+ M mente_laylay/autonomia/coordenador_intencao.py
+ M mente_laylay/autonomia/dispatcher_comandos_json.py
+ M mente_laylay/autonomia/executor_cooperacao.py
+ M mente_laylay/autonomia/governanca_cooperacao.py
+ M mente_laylay/autonomia/orquestracao_cooperativa.py
+ M mente_laylay/autonomia/orquestrador_deterministico.py
+ M mente_laylay/autonomia/quadro_cooperacao.py
+ M mente_laylay/autonomia/resposta_ia_runtime.py
+ M mente_laylay/autonomia/roteador_intencao.py
+ M mente_laylay/cognicao/contrato_fala.py
+ M mente_laylay/cognicao/contratos_turno.py
+ M mente_laylay/cognicao/decisao_turno.py
+ M mente_laylay/cognicao/geracao_concreta.py
+ M mente_laylay/cognicao/guardiao_alegacoes.py
+ M mente_laylay/cognicao/modalidade_turno.py
+ M mente_laylay/cognicao/orquestrador_turno_runtime.py
+ M mente_laylay/cognicao/plano_turno.py
+ M mente_laylay/cognicao/qualidade_comunicacao.py
+ M mente_laylay/cognicao/validacao_contrato_fala.py
+ M mente_laylay/emocoes/contrato_causal.py
+ M mente_laylay/emocoes/estado_emocional.py
+ M mente_laylay/emocoes/leitura_usuario.py
+ M mente_laylay/especialistas/capacidades.py
+ M mente_laylay/especialistas/mapa_habilidades.py
+ M mente_laylay/integracao/configuracao_aplicacao.py
+ M mente_laylay/integracao/contexto_execucao_ia.py
+ M mente_laylay/integracao/llm_http.py
+ M mente_laylay/integracao/ponte_cooperacao_aplicacao.py
+ M mente_laylay/integracao/registro_servicos_aplicacao.py
+ M mente_laylay/memoria_mental/contexto_imediato.py
+ M mente_laylay/memoria_mental/continuidade_geral.py
+ M mente_laylay/memoria_mental/disponibilidade_operacional.py
+ M mente_laylay/memoria_mental/estado_compartilhado_runtime.py
+ M mente_laylay/memoria_mental/memoria_confiavel.py
+ M mente_laylay/memoria_mental/politica_reexecucao.py
+ M mente_laylay/neural/README.md
+ M mente_laylay/personalidade/autoria_conversacional.py
+ M mente_laylay/personalidade/confirmacao_llm.py
+ M mente_laylay/personalidade/leitura_social_conversa.py
+ M mente_laylay/personalidade/orquestrador_fala_runtime.py
+ M mente_laylay/personalidade/perfil_amizade.py
+ M mente_laylay/personalidade/voz_runtime.py
+ M requirements.txt
+ M scripts/tests/test_configuracao_aplicacao.py
+ M scripts/tests/test_contrato_prompt_transporte.py
+ M scripts/tests/test_regressoes_contexto_operacional.py
+ M scripts/tests/test_terminal_3_p1_ui.py
+ M scripts/tests/test_terminal_musica_fila_clicavel.py
+ M scripts/tests/test_voz_configuravel.py
+?? artifacts/reacao_social/
+?? artifacts/rosto_oled/
+?? artifacts/streaming/
+?? cliente/terminal_2/assets/icons/streaming.svg
+?? cliente/terminal_2/streaming.py
+?? cliente/terminal_2/streaming_fontes.py
+?? "exten\303\247ao_google/STREAMING.md"
+?? "exten\303\247ao_google/streaming_background.js"
+?? "exten\303\247ao_google/streaming_detector.js"
+?? firmware/
+?? mente_laylay/autonomia/companhia_corporal.py
+?? mente_laylay/autonomia/executor_corpo.py
+?? mente_laylay/cognicao/decisao_corporal.py
+?? mente_laylay/cognicao/escopo_autorizacao.py
+?? mente_laylay/cognicao/gramatica_corpo.py
+?? mente_laylay/especialistas/corpo_motor_runtime.py
+?? mente_laylay/especialistas/corpo_wifi_transporte.py
+?? mente_laylay/especialistas/rosto_oled_runtime.py
+?? mente_laylay/integracao/composicao_rosto_oled.py
+?? mente_laylay/memoria_mental/atividade_operacional_runtime.py
+?? scripts/CONFIGURAR_CORPO_WIFI.ps1
+?? scripts/analises/sonda_ablacao_catalogo_v1.py
+?? scripts/analises/sonda_apoio_independente_v1.py
+?? scripts/analises/sonda_apoio_por_ocorrencia_v1.py
+?? scripts/analises/sonda_argumento_escopo_v1.py
+?? scripts/analises/sonda_argumento_isolado_v1.py
+?? scripts/analises/sonda_candidatos_ocorrencia_v1.py
+?? scripts/analises/sonda_continuacao_operacional.py
+?? scripts/analises/sonda_contrastes_escopo_v1.py
+?? scripts/analises/sonda_contrato_proposta_legada.py
+?? scripts/analises/sonda_escopo_geracao_real.py
+?? scripts/analises/sonda_escopo_propostas_mistas.py
+?? scripts/analises/sonda_evidencia_interferencia_v1.py
+?? scripts/analises/sonda_interferencia_contextual_v1.py
+?? scripts/analises/sonda_interpretacao_legada.py
+?? scripts/analises/sonda_ligacao_ocorrencia_v1.py
+?? scripts/analises/sonda_mencao_referente_v1.py
+?? scripts/analises/sonda_papel_apos_selecao_v1.py
+?? scripts/analises/sonda_pergunta_direta_v1.py
+?? scripts/analises/sonda_pergunta_relacional_v1.py
+?? scripts/analises/sonda_predicado_catalogado_v1.py
+?? scripts/analises/sonda_prioridade_turnos_mistos.py
+?? scripts/analises/sonda_transferencia_papel_isolado_v1.py
+?? scripts/analises/validar_reacao_social.py
+?? scripts/analises/validar_streaming_local.py
+?? scripts/configurar_corpo_wifi.py
+?? scripts/consultar_hotspot_windows.ps1
+?? scripts/hotspot_corpo_windows.ps1
+?? scripts/testar_motor_continuo_5s.py
+?? scripts/testar_motores_bancada.py
+?? scripts/tests/test_atividade_operacional.py
+?? scripts/tests/test_comemoracao_passeio.py
+?? scripts/tests/test_companhia_corporal.py
+?? scripts/tests/test_configurar_corpo_wifi.py
+?? scripts/tests/test_consulta_sobre_ato_operacional.py
+?? scripts/tests/test_continuacao_prioritaria_mista.py
+?? scripts/tests/test_contrato_explicativo_por_ato.py
+?? scripts/tests/test_corpo_motor.py
+?? scripts/tests/test_corpo_transporte_oled.py
+?? scripts/tests/test_corpo_wifi_transporte.py
+?? scripts/tests/test_decisao_corporal_v1.py
+?? scripts/tests/test_escopo_autorizacao_composicao.py
+?? scripts/tests/test_escopo_autorizacao_por_ato.py
+?? scripts/tests/test_explicacao_sem_continuacao.py
+?? scripts/tests/test_expressao_solicitada.py
+?? scripts/tests/test_falha_operacional_visual.py
+?? scripts/tests/test_nucleo_explicativo_diagnostico.py
+?? scripts/tests/test_presenca_corporal_v2.py
+?? scripts/tests/test_prioridade_turnos_mistos_composicao.py
+?? scripts/tests/test_reacao_social_causal.py
+?? scripts/tests/test_reparo_explicativo_misto.py
+?? scripts/tests/test_rosto_oled.py
+?? scripts/tests/test_segmentacao_limites_citados.py
+?? scripts/tests/test_segmentacao_limites_citados_composicao.py
+?? scripts/tests/test_som_corporal.py
+?? scripts/tests/test_sonda_ablacao_catalogo_v1.py
+?? scripts/tests/test_sonda_apoio_independente_v1.py
+?? scripts/tests/test_sonda_apoio_por_ocorrencia_v1.py
+?? scripts/tests/test_sonda_argumento_escopo_v1.py
+?? scripts/tests/test_sonda_argumento_isolado_v1.py
+?? scripts/tests/test_sonda_candidatos_ocorrencia_v1.py
+?? scripts/tests/test_sonda_contrastes_escopo_v1.py
+?? scripts/tests/test_sonda_contrato_proposta_legada.py
+?? scripts/tests/test_sonda_escopo_geracao_real.py
+?? scripts/tests/test_sonda_escopo_propostas_mistas.py
+?? scripts/tests/test_sonda_evidencia_interferencia_v1.py
+?? scripts/tests/test_sonda_interferencia_contextual_v1.py
+?? scripts/tests/test_sonda_interpretacao_legada.py
+?? scripts/tests/test_sonda_ligacao_ocorrencia_v1.py
+?? scripts/tests/test_sonda_mencao_referente_v1.py
+?? scripts/tests/test_sonda_papel_apos_selecao_v1.py
+?? scripts/tests/test_sonda_pergunta_direta_v1.py
+?? scripts/tests/test_sonda_pergunta_relacional_v1.py
+?? scripts/tests/test_sonda_predicado_catalogado_v1.py
+?? scripts/tests/test_sonda_transferencia_papel_isolado_v1.py
+?? scripts/tests/test_terminal_streaming.py
+?? scripts/tests/test_vinculo_condicao_acao.py
+?? scripts/tests/test_vinculo_realizacao_nuclear.py
+?? scripts/validar_corpo_glitch_fisico.py
+?? scripts/validar_decisao_corporal_fisico.py
+?? scripts/validar_glitch_boca_oled.py
+?? scripts/validar_hack_fisico.py
+?? scripts/validar_hack_oled.py
+?? scripts/validar_presenca_corporal_fisico.py
+?? scripts/validar_rosto_oled.py
+?? scripts/validar_som_olhos_fisico.py
+?? scripts/validar_sono_oled.py

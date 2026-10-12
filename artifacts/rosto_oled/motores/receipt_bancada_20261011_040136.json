@@ -1,0 +1,57 @@
+{
+  "ts_utc": "2026-10-11T04:01:36.383070+00:00",
+  "pinout": {
+    "AIN1": 1,
+    "AIN2": 2,
+    "BIN1": 3,
+    "BIN2": 4,
+    "SLEEP": 7
+  },
+  "fonte_sha256": "0c8916f8c2d53826be82a06dab9371f9890d0ed54bc6ec4378f22a0eaee21990",
+  "hardware_simulado": false,
+  "composicao_serial_instalada": true,
+  "perfil_build": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "autorizacao": "Pedro: liberar motores de teste distintos dos N20; mapa confirmado e montagem na protoboard sem rodas",
+  "prova_rotacao": true,
+  "prova_parada_fisica": true,
+  "comandos_naturais_instalados": false,
+  "pulsos": [
+    {
+      "nome": "esquerdo sentido A",
+      "enviado": "MOTOR 1 dbd6a8f7 1 255 0 250",
+      "receipt_pwm": "MACK 1 dbd6a8f7 1 255 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido A",
+      "enviado": "MOTOR 1 dbd6a8f7 2 0 255 250",
+      "receipt_pwm": "MACK 1 dbd6a8f7 2 0 255 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "esquerdo sentido B",
+      "enviado": "MOTOR 1 dbd6a8f7 3 -255 0 250",
+      "receipt_pwm": "MACK 1 dbd6a8f7 3 -255 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido B",
+      "enviado": "MOTOR 1 dbd6a8f7 4 0 -255 250",
+      "receipt_pwm": "MACK 1 dbd6a8f7 4 0 -255 250",
+      "stop_confirmado": true
+    }
+  ],
+  "pwm": 255,
+  "duracao_ms": 250,
+  "porta": "COM4",
+  "configuracao_pwm_confirmada": true,
+  "parada_final_confirmada": true,
+  "avaliacao_humana": {
+    "resposta": "Sim, os dois ficaram mais fortes e pararam",
+    "origem": "resposta direta de Pedro após quatro pulsos PWM255",
+    "escopo": "dois motores, dois sentidos, parada percebida entre pulsos",
+    "prova_rotacao": true,
+    "prova_parada_fisica": true,
+    "medicao_temporal_do_corte": false
+  }
+}

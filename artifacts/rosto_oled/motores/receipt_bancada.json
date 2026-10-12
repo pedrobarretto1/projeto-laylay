@@ -1,0 +1,54 @@
+{
+  "ts_utc": "2026-10-11T03:53:11.707323+00:00",
+  "fonte_sha256": "d5c8c6076f258681cb9265a60e827f91b481dac89e4d08f03bea252e867bee95",
+  "hardware_simulado": false,
+  "composicao_serial_instalada": true,
+  "perfil_build": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "autorizacao": "Pedro: liberar motores de teste distintos dos N20; mapa confirmado e montagem na protoboard sem rodas",
+  "prova_rotacao": false,
+  "prova_parada_fisica": false,
+  "comandos_naturais_instalados": false,
+  "pulsos": [
+    {
+      "nome": "esquerdo sentido A",
+      "enviado": "MOTOR 1 e5c97eba 1 180 0 250",
+      "receipt_pwm": "MACK 1 e5c97eba 1 180 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido A",
+      "enviado": "MOTOR 1 e5c97eba 2 0 180 250",
+      "receipt_pwm": "MACK 1 e5c97eba 2 0 180 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "esquerdo sentido B",
+      "enviado": "MOTOR 1 e5c97eba 3 -180 0 250",
+      "receipt_pwm": "MACK 1 e5c97eba 3 -180 0 250",
+      "stop_confirmado": true
+    },
+    {
+      "nome": "direito sentido B",
+      "enviado": "MOTOR 1 e5c97eba 4 0 -180 250",
+      "receipt_pwm": "MACK 1 e5c97eba 4 0 -180 250",
+      "stop_confirmado": true
+    }
+  ],
+  "porta": "COM4",
+  "configuracao_pwm_confirmada": true,
+  "parada_final_confirmada": true,
+  "pinout": {
+    "AIN1": 0,
+    "AIN2": 1,
+    "BIN1": 3,
+    "BIN2": 10,
+    "SLEEP": 7
+  },
+  "avaliacao_humana": {
+    "resposta": "Não giraram",
+    "origem": "resposta direta de Pedro após quatro pulsos",
+    "resultado": "RED físico apesar de MACK e STOPPED",
+    "prova_rotacao": false
+  },
+  "controle_humano_previo": "Pedro informou que esses motores de teste já giraram a 5 V nas saídas da DRV8833; sem multímetro"
+}

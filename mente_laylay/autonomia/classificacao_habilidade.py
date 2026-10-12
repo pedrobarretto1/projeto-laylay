@@ -6,6 +6,9 @@ from typing import Any, Dict
 
 
 HABILIDADE_POR_INTENT = {
+    "CORPO_MOVER": "corpo_motor",
+    "CORPO_PARAR": "corpo_motor",
+    "CORPO_COMPANHIA": "corpo_motor",
     "BRIEFING_REPEAT": "agenda",
     "CANCELAR_ACAO": "sistema",
     "CANCEL_DELETE_ITEM": "arquivos",

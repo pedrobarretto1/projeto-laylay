@@ -1,0 +1,39 @@
+{
+  "ts_utc": "2026-10-11T16:27:46.867373+00:00",
+  "endpoint": "192.168.137.109:8765",
+  "autorizacao": "Pedro: teste continuo para frente por 5 segundos; area delimitada ou rodas suspensas confirmadas",
+  "pwm_esquerdo": 100,
+  "pwm_direito": 100,
+  "duracao_ms": 5000,
+  "comandos_motor_enviados": 1,
+  "hardware_simulado": false,
+  "prova_rotacao": true,
+  "prova_parada_fisica": true,
+  "fonte_prova_fisica": "observacao_humana_Pedro",
+  "aplicacao_pwm_confirmada": true,
+  "falhas_transporte": [],
+  "janela_comando_s": 5.066,
+  "concluido": true,
+  "parada_final": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso"
+  },
+  "heartbeat_encerrado": true,
+  "frequencia_pwm_hz_perfil": 1000,
+  "observacao_humana": "Pedro: Sim, giraram e pararam sem reiniciar",
+  "firmware_normal_restaurado": {
+    "limite_ms": 500, "frequencia_pwm_hz": 1000, "porta": "COM4",
+    "upload_exit_code": 0, "hash_gravacao_verificado": true,
+    "sha256_bin": "8714A678B27399884484861AA58F3D7EC5E413A6185BFDD75D33E7661911667D"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fonte_sha256": "7fccfad8e05c8f3ce397961d56e11f8507c351ca9fb202658f7176f83b4d2425",
+  "bin_sha256": "92689b903a2dde29bbcf98e7ef38c56b87d59de04fbf54514e17afb5fd898c2c",
+  "perfil": "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "programa_bytes": 387950,
+  "ram_bytes": 15836,
+  "porta": "COM4",
+  "mac": "ac:27:6e:72:ba:70",
+  "upload_hash_verificado": true,
+  "regressivos": {"passed": 425, "subtests_passed": 22, "tempo_s": 20.07, "suite_completa": false},
+  "boca_humana": {
+    "confirmado": true,
+    "resposta": "Sim, ficou melhor"
+  },
+  "glitch_humano": {
+    "confirmado": true,
+    "resposta": "Sim, ficou legal",
+    "forma": "DEMO_GLITCH local"
+  },
+  "motor_humano_natural": {
+    "confirmado": true,
+    "resposta": "Sim, giraram e pararam",
+    "prova_deslocamento": false,
+    "corte_eletrico_medido": false
+  },
+  "encerramento_demo": {
+    "parada_legada_confirmada": true,
+    "ready_confirmado": true,
+    "nonce": "4439069d",
+    "modo_final": "sono_sem_FACE"
+  }
+}

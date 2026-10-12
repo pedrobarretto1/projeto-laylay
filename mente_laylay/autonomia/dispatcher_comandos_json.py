@@ -20,7 +20,7 @@ def _get(ctx: Dict[str, Any], key: str, default: Any = None) -> Any:
     return default
 
 
-def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict[str, Any] | None:
+def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "", *, compactar_aliases: bool = False) -> Dict[str, Any] | None:
     """Converte o contrato JSON antigo para a intenção canônica da Laylay."""
     if not isinstance(cmd, dict):
         return None
@@ -65,6 +65,14 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
         }
         if alvo and not params.get(chave_alvo):
             params[chave_alvo] = alvo
+        if compactar_aliases:
+            for alias in ("alvo", "url", "app", "query", "nome"):
+                if alias != chave_alvo and alias in params:
+                    # Somente redundância de representação: conflito entre
+                    # seletores não pode desaparecer na projeção para escopo.
+                    if params[alias] != params.get(chave_alvo):
+                        return None
+                    params.pop(alias)
         params.setdefault("target", destino)
         return {"intent": intent, "params": params}
 
@@ -156,7 +164,7 @@ def adaptar_acao_json_para_intencao(cmd: Dict[str, Any], alvo: str = "") -> Dict
     return None
 
 
-def normalizar_candidato_json_para_intencao(cmd: Dict[str, Any]) -> Dict[str, Any] | None:
+def normalizar_candidato_json_para_intencao(cmd: Dict[str, Any], *, compactar_aliases: bool = False) -> Dict[str, Any] | None:
     """Projeta uma representação isolada, sem resolver alvo ou autorizar efeito.
 
     Nomes canônicos vêm do catálogo compartilhado. Formatos flat usam o
@@ -179,7 +187,7 @@ def normalizar_candidato_json_para_intencao(cmd: Dict[str, Any]) -> Dict[str, An
             return None
         copia["intent"] = intent
         return copia
-    return adaptar_acao_json_para_intencao(copia)
+    return adaptar_acao_json_para_intencao(copia, compactar_aliases=compactar_aliases)
 
 
 def executar_comandos_json(
