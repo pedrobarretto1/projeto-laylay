@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, Iterable, Mapping, TYPE_CHECKING
+import re
 
 from mente_laylay.cognicao.contratos_turno import (
     ContratoDecisaoTurno, ContratoOcorrenciaTurno, ContratoPropostaPrincipal, ExtracaoRespostaIA,
@@ -16,7 +17,16 @@ from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.cognicao.escopo_autorizacao import (
     AutorizacaoAto, construir_autorizacoes_por_ato, exige_escopo_por_ato,
     vincular_proposta_ao_ato,
+    coletar_atos_aguardando_materializacao,
+    AtoAguardandoMaterializacao,
+    _identidade_operacional,
 )
+from mente_laylay.cognicao.materializacao_contextual import (
+    MaterializacaoAtoContextual, ExecucaoContextualVinculada, materializar_por_publicacoes,
+)
+from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
+from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+from mente_laylay.cognicao.roteiro_execucao_por_atos import EtapaExecucaoPrincipal, RoteiroExecucaoPrincipal
 
 if TYPE_CHECKING:
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
@@ -130,6 +140,52 @@ def consolidar_arbitragem(
     return ContratoDecisaoTurno.de_mapping(novo).como_dict()
 
 
+def _revisao_bloqueada_coerente(
+    turno: Mapping[str, Any], plano: Mapping[str, Any],
+    original: str, texto_retrato: str,
+) -> bool:
+    """Reconhece ausência deliberada de proposta, nunca ausência de fonte.
+
+    Não reinterpreta linguagem ou revoga veto. Os produtores já publicaram
+    revisão e bloqueio; suas duas projeções precisam concordar integralmente.
+    Correlação permite responder/observar o turno, não executar o pedido.
+    """
+    revisao = turno.get("revisao_intra_turno")
+    decisao = plano.get("decisao_turno")
+    if (not isinstance(revisao, Mapping) or not isinstance(decisao, Mapping)
+        or revisao != plano.get("revisao_intra_turno")
+        or revisao.get("detectada") is not True
+        or any(type(revisao.get(k)) is not bool for k in ("resolvida", "cancelada"))
+        or turno.get("texto_operacional_efetivo") != ""
+        or plano.get("texto_operacional_efetivo") != ""
+        or revisao.get("texto_operacional_efetivo") != ""
+        or turno.get("autoriza_execucao") is not False
+        or turno.get("veto_execucao_operacional") is not True
+        or plano.get("autoriza_execucao") is not False
+        or plano.get("veto_execucao_operacional") is not True
+        or plano.get("requer_execucao") is not False
+        or decisao.get("permite_acao") is not False
+        or decisao.get("proprietario") != "conversa"
+        or decisao.get("origem_decisao") != "classificador_turno"
+        or texto_retrato != original):
+        return False
+    fonte_revisao = revisao.get("texto_original")
+    if (not isinstance(fonte_revisao, str)
+        or re.sub(r"\s+", " ", original).strip()[:500]
+        != fonte_revisao.strip()[:500]):
+        return False
+    if revisao.get("resolvida") is False and revisao.get("cancelada") is False:
+        return (revisao.get("tipo") == "ambigua"
+                and turno.get("modalidade") == "correcao"
+                and turno.get("natureza_acao") == "revisao_ambigua"
+                and turno.get("origem_veto_execucao_operacional") == "revisao_ambigua")
+    return (revisao.get("resolvida") is True and revisao.get("cancelada") is True
+            and revisao.get("tipo") == "cancelamento"
+            and turno.get("modalidade") == "recusa"
+            and turno.get("natureza_acao") == "cancelamento_revisao"
+            and turno.get("origem_veto_execucao_operacional") == "revisao_cancelada")
+
+
 def motivo_incoerencia_contratos_turno(
     turno: Mapping[str, Any] | None,
     plano: Mapping[str, Any] | None,
@@ -207,6 +263,8 @@ def motivo_incoerencia_contratos_turno(
             if "texto_operacional_efetivo" in planejamento else original_plano
         )
         if not operacional_turno or not operacional_plano:
+            if _revisao_bloqueada_coerente(leitura, planejamento, original_turno, texto_retrato):
+                return ""
             return "contratos incoerentes: texto operacional incompleto"
         if len({operacional_turno, operacional_plano, texto_retrato}) > 1:
             return "contratos incoerentes: texto operacional de turno/plano/retrato divergente"
@@ -349,7 +407,7 @@ def filtrar_comandos_pelo_turno(
         elif not exige_vinculo and permitidos and intent not in permitidos:
             motivo = _MOTIVO_INTENCAO_INCOMPATIVEL
         else:
-            if exige_vinculo:
+            if exige_vinculo or autorizacoes_por_ato:
                 indice_ato = vincular_proposta_ao_ato(comando, leitura, autorizacoes_por_ato, atos_usados)
                 if indice_ato is None:
                     rejeitados.append({"intent": intent, "motivo": "proposta sem vínculo ao ato autorizado"})
@@ -365,7 +423,7 @@ def filtrar_comandos_pelo_turno(
         "proprietario": str(contrato.get("proprietario") or "conversa"),
         "veto_execucao_operacional": veto_execucao,
     }
-    if exige_vinculo:
+    if exige_vinculo or autorizacoes_por_ato:
         resultado["atos_autorizados_vinculados"] = sorted(atos_usados)
     if com_procedencia:
         # Correlação não concede autorização e não transforma rejeição em culpa.
@@ -482,19 +540,27 @@ class ValidadorComandosTurnoRuntime:
         turno = mental.get("turno_atual") or {}
         plano = mental.get("plano_turno_atual") or {}
         retrato = mental.get("retrato_turno_atual") or {}
+        candidatos = list(comandos or ())
         autorizacoes = ()
-        if exige_escopo_por_ato(turno):
-            # Conferir ocorrência/permissão antes de consultar qualquer resolver.
-            admissao = filtrar_comandos_pelo_turno([], turno=turno, plano=plano,
-                retrato=retrato, proposta_principal=proposta_principal)
-            if admissao["autoriza_execucao"]:
-                autorizacoes = construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
+        exige_vinculo = exige_escopo_por_ato(turno)
+        # Conferir ocorrência/permissão/intenção antes de consultar o resolver.
+        # Um único ato já resolvido também delimita parâmetros; não basta o
+        # candidato manter o intent. Reusar o vínculo exato, sem outro parser.
+        admissao = filtrar_comandos_pelo_turno([] if exige_vinculo else candidatos,
+            turno=turno, plano=plano, retrato=retrato, proposta_principal=proposta_principal)
+        if admissao["autoriza_execucao"] and (exige_vinculo or admissao["comandos"]):
+            autorizacoes = construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
         resultado = filtrar_comandos_pelo_turno(
-            comandos, turno=turno, plano=plano,
+            candidatos, turno=turno, plano=plano,
             retrato=retrato, proposta_principal=proposta_principal,
             autorizacoes_por_ato=autorizacoes,
         )
-        if exige_escopo_por_ato(turno):
+        # Não devolver a proposta da LLM como execução futura. Conserva-se
+        # somente a obrigação literal deste frame, sem inferir seu antecedente.
+        resultado["atos_aguardando_materializacao"] = (
+            coletar_atos_aguardando_materializacao(turno) if resultado["autoriza_execucao"] else ()
+        )
+        if exige_vinculo or autorizacoes:
             # Registro do contrato local; não é memória factual, receipt ou
             # autorização reutilizável fora deste frame/ato.
             resultado["escopo_operacional_por_ato"] = [
@@ -516,6 +582,111 @@ class ValidadorComandosTurnoRuntime:
             comandos, proposta_principal=proposta_principal,
             extracao_original=extracao_original,
         )
+
+    def materializar_ato_contextual(
+        self, ato: AtoAguardandoMaterializacao, proposta: ContratoPropostaPrincipal,
+        observacoes: tuple[ExecucaoObservada | ExecucaoContextualVinculada, ...],
+    ) -> MaterializacaoAtoContextual | None:
+        """Revalida frame/fonte antes e depois da resolução, sem admitir efeito."""
+        if type(ato) is not AtoAguardandoMaterializacao or type(proposta) is not ContratoPropostaPrincipal:
+            return None
+        mental = self._estado_runtime.snapshot()["mental"]
+        turno, plano, retrato = (mental.get(k) or {} for k in
+            ("turno_atual", "plano_turno_atual", "retrato_turno_atual"))
+        admissao = filtrar_comandos_pelo_turno([], turno=turno, plano=plano,
+            retrato=retrato, proposta_principal=proposta)
+        if (not admissao["autoriza_execucao"] or not admissao["ocorrencia_vinculada"]
+            or ato not in coletar_atos_aguardando_materializacao(turno)
+            or ato.fonte_textual != proposta.texto_usuario):
+            return None
+        try:
+            resultado = materializar_por_publicacoes(ato, turno, mental, observacoes, self._resolver_ato)
+        except Exception:
+            return None
+        depois = self._estado_runtime.snapshot()["mental"]
+        if any(depois.get(k) != mental.get(k) for k in
+               ("turno_atual", "plano_turno_atual", "retrato_turno_atual")):
+            return None
+        return resultado
+
+    def preparar_execucao_por_atos(
+        self, comandos: list[dict], proposta: ContratoPropostaPrincipal,
+    ) -> RoteiroExecucaoPrincipal | None:
+        """Ordena pedidos já admitidos e obrigações, nunca comandos da LLM recusados."""
+        if type(proposta) is not ContratoPropostaPrincipal or not proposta.proveniencia_conhecida:
+            return None
+        mental = self._estado_runtime.snapshot()["mental"]
+        turno = mental.get("turno_atual") or {}
+        admissao = filtrar_comandos_pelo_turno([], turno=turno, plano=mental.get("plano_turno_atual"),
+            retrato=mental.get("retrato_turno_atual"), proposta_principal=proposta)
+        if not admissao["autoriza_execucao"] or not admissao["ocorrencia_vinculada"]:
+            return None
+        obrigacoes = coletar_atos_aguardando_materializacao(turno)
+        if len(turno.get("segmentos") or ()) < 2:
+            return None
+        autorizacoes = construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
+        etapas, usados = [], set()
+        for comando in comandos:
+            indice = vincular_proposta_ao_ato(comando, turno, autorizacoes, usados)
+            if indice is None:
+                return None
+            usados.add(indice)
+            texto = next(a.texto for a in autorizacoes if a.indice == indice)
+            etapas.append(EtapaExecucaoPrincipal(indice, texto, SnapshotComandoIA(comando)))
+        etapas.extend(EtapaExecucaoPrincipal(a.indice, a.como_dict()["texto_original"], obrigacao=a) for a in obrigacoes)
+        esperados = {i for i, s in enumerate(turno.get("segmentos") or ())
+            if s.get("autoriza_execucao") is True and not s.get("veto_execucao_operacional")
+            and not s.get("requer_esclarecimento")}
+        if {e.indice for e in etapas} != esperados:
+            # Uma proposta omitida não pode desaparecer de um roteiro dito
+            # completo. Não promover esse recorte ao protocolo progressivo.
+            return None
+        return RoteiroExecucaoPrincipal(proposta, tuple(sorted(etapas, key=lambda e: e.indice)))
+
+    def etapa_independente_vigente(
+        self, etapa: EtapaExecucaoPrincipal, proposta: ContratoPropostaPrincipal,
+    ) -> bool:
+        if type(etapa) is not EtapaExecucaoPrincipal or etapa.pedido is None:
+            return False
+        mental = self._estado_runtime.snapshot()["mental"]
+        turno = mental.get("turno_atual") or {}
+        admissao = filtrar_comandos_pelo_turno([], turno=turno, plano=mental.get("plano_turno_atual"),
+            retrato=mental.get("retrato_turno_atual"), proposta_principal=proposta)
+        if not admissao["autoriza_execucao"] or not admissao["ocorrencia_vinculada"]:
+            return False
+        autorizacoes = tuple(a for a in construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
+                             if a.indice == etapa.indice and a.texto == etapa.texto)
+        return vincular_proposta_ao_ato(etapa.pedido.como_dict(), turno, autorizacoes, set()) == etapa.indice
+
+    def admitir_ato_contextual(
+        self, materializacao: MaterializacaoAtoContextual, proposta: ContratoPropostaPrincipal,
+        observacoes: tuple[ExecucaoObservada | ExecucaoContextualVinculada, ...],
+    ) -> AutorizacaoAto | None:
+        """Autoridade é do ato atual revalidado, não do candidato ou receipt."""
+        from mente_laylay.memoria_mental.resultado_acao import identificar_solicitacao_execucao
+        if type(materializacao) is not MaterializacaoAtoContextual:
+            return None
+        atual = self.materializar_ato_contextual(materializacao.ato, proposta, observacoes)
+        if atual != materializacao:
+            return None
+        pedido = identificar_solicitacao_execucao(atual.pedido.como_dict(), nova_identidade=True)
+        return AutorizacaoAto(atual.ato.turno_id, atual.ato.indice,
+            atual.ato.como_dict()["texto_original"], SnapshotComandoIA(pedido))
+
+    def admissao_contextual_vigente(
+        self, admissao: AutorizacaoAto, materializacao: MaterializacaoAtoContextual,
+        proposta: ContratoPropostaPrincipal,
+        observacoes: tuple[ExecucaoObservada | ExecucaoContextualVinculada, ...],
+    ) -> bool:
+        """Última guarda antes do executor; fonte/receipt podem ter sido revogados."""
+        if type(admissao) is not AutorizacaoAto or type(materializacao) is not MaterializacaoAtoContextual:
+            return False
+        if (admissao.turno_id != materializacao.ato.turno_id or admissao.indice != materializacao.ato.indice
+            or admissao.texto != materializacao.ato.como_dict()["texto_original"]):
+            return False
+        atual = self.materializar_ato_contextual(materializacao.ato, proposta, observacoes)
+        return bool(atual == materializacao and _identidade_operacional(admissao.pedido.como_dict())
+                    == _identidade_operacional(materializacao.pedido.como_dict()) is not None)
 
 
 def criar_validador_comandos_turno_runtime(

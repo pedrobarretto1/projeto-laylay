@@ -109,7 +109,9 @@ def test_guard_titulo_com_antes_continua_sendo_busca_musical() -> None:
         normalizar_query_musical=lambda texto: texto,
     ) == {
         "intent": "MUSIC_SEARCH",
-        "params": {"query": "musica antes do amanhecer"},
+        # Tipo externo não integra o título. Continua busca, nunca prev;
+        # a expectativa antiga conservava justamente a moldura corrigida.
+        "params": {"query": "antes do amanhecer"},
     }
 
 

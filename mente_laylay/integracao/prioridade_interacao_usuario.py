@@ -1,7 +1,28 @@
 from __future__ import annotations
 
 import threading
-from typing import Any
+import math
+from typing import Any, Mapping
+
+
+def conversa_em_andamento(contexto: Mapping[str, Any], *, agora: float,
+                         ultima_fala_ts: float = 0.0) -> bool:
+    """Prioridade vem da atividade vigente; canal aberto sozinho não a retém."""
+    if any(contexto.get(c) for c in ('interacao_usuario_ativa',
+            'interacao_em_andamento', 'usuario_falando', 'is_speaking')):
+        return True
+    if not (contexto.get('modo_chat') or contexto.get('conversa_ativa')):
+        return False
+    if contexto.get('turno_ativo'):
+        return True
+    try:
+        referencias = (float(contexto.get('ultima_entrada_ts') or 0),
+                       float(ultima_fala_ts or contexto.get('ultima_fala_normal_ts') or 0))
+        if not math.isfinite(agora) or any(not math.isfinite(t) for t in referencias):
+            return True
+        return any(t > 0 and agora-t < 30 for t in referencias)
+    except (TypeError, ValueError, OverflowError):
+        return True
 
 
 class PrioridadeInteracaoUsuarioRuntime:

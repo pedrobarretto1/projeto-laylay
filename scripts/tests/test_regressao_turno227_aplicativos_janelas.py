@@ -150,6 +150,7 @@ class _ContextoCadeia:
         }
         self.falas: list[str] = []
         self.registros: list[dict] = []
+        self.receipts: list[dict] = []
 
     def montar(self) -> dict:
         return {
@@ -164,7 +165,7 @@ class _ContextoCadeia:
                 lambda _texto, fala, **_kwargs: self.falas.append(fala)
             ),
             "_registrar_resultado_execucao": (
-                lambda resultado, *_args, **_kwargs: self.registros.append(
+                lambda resultado, *_args, **_kwargs: self.receipts.append(
                     dict(resultado)
                 )
             ),
@@ -224,7 +225,12 @@ def test_red_ciclo_canonico_executa_mutacoes_e_confirmacao_readonly() -> None:
     assert [item["intent"] for item in contexto.registros] == [
         "APP_OPEN",
         "ORGANIZAR_DESKTOP",
-        "LIST_WINDOWS",
+    ]
+    # Publicação do fallback não é uma segunda chamada ao executor.
+    # LIST_WINDOWS é leitura tratada pela porta de consulta do ciclo.
+    assert [item["intent"] for item in contexto.receipts] == ["APP_OPEN", "ORGANIZAR_DESKTOP", "LIST_WINDOWS"]
+    assert [item["id_solicitacao"] for item in contexto.receipts[:2]] == [
+        item["id_solicitacao"] for item in contexto.registros[:2]
     ]
 
 

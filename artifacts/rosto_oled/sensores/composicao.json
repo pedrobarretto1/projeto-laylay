@@ -1,0 +1,193 @@
+{
+  "amostras": [
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 74,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 35,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 30,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 64,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 30,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 64,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 64,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 30,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 31,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 66,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 31,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 66,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 31,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 66,
+        "status": 4
+      }
+    },
+    {
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 30,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    }
+  ],
+  "face_confirmado": true,
+  "comandos_firmware": [
+    "HELLO",
+    "CAPS",
+    "GCAPS",
+    "MCAPS",
+    "LCAPS",
+    "SCAPS",
+    "SENCAPS",
+    "ECAPS",
+    "RCAPS",
+    "FACE",
+    "ACTIVITY",
+    "SOUND",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "FACE",
+    "ACTIVITY",
+    "DIST",
+    "STOP",
+    "GOODNIGHT"
+  ],
+  "motor_enviado": false,
+  "protecao_calibrada": false,
+  "integracao_sensor_na_mente": false,
+  "encerrada": true
+}

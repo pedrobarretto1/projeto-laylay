@@ -12,7 +12,9 @@ class Adafruit_SSD1306 {
   int frames = 0;
   uint32_t demoraDisplay = 0;
   bool desaparecerAposDisplay = false;
-  Adafruit_SSD1306(int, int, WireSimulada *, int) {}
+  uint8_t bufferI2c[1024] = {};
+  uint8_t *getBuffer() { return bufferI2c; }
+  Adafruit_SSD1306(int, int, WireSimulada *, int, uint32_t=400000, uint32_t=400000) {}
   bool begin(int, int, bool, bool) { return Wire.presente; }
   void clearDisplay() { memset(pixels, 0, sizeof(pixels)); }
   void drawPixel(int x, int y, int c) { if (x >= 0 && x < 128 && y >= 0 && y < 64) pixels[y][x] = c; }

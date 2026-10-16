@@ -186,8 +186,31 @@ def normalizar_candidato_json_para_intencao(cmd: Dict[str, Any], *, compactar_al
         if campo != "intent" or intent not in intents_registradas() or not isinstance(cmd["params"], dict):
             return None
         copia["intent"] = intent
+        # Equivalência de representação já aceita pelo executor de volume:
+        # nível explícito sem modo é atribuição. Só na visão para comparação;
+        # não converter valor/unidade, eliminar extras ou reparar conflitos.
+        params = copia["params"]
+        if (compactar_aliases and intent == "VOLUME" and "nivel_volume" in params
+                and not any(k in params for k in ("acao", "modo", "delta"))):
+            params["acao"] = "set"
+        if compactar_aliases and intent == "OPEN_URL" and "url" in params:
+            if "alvo" in params and params["alvo"] != params["url"]:
+                return None
+            params["alvo"] = params.pop("url")
+        # Proveniência declarada não identifica o efeito. O executor de agenda
+        # não usa rota_original; removê-la só desta cópia de comparação, nunca
+        # do comando executável. Não apagar nomes iguais em outras posições,
+        # estruturas no lugar de texto ou parâmetros operacionais/desconhecidos.
+        if compactar_aliases and intent == "AGENDAR_ACAO" and "rota_original" in params:
+            if not isinstance(params["rota_original"], str):
+                return None
+            params.pop("rota_original")
         return copia
-    return adaptar_acao_json_para_intencao(copia, compactar_aliases=compactar_aliases)
+    adaptado = adaptar_acao_json_para_intencao(copia, compactar_aliases=compactar_aliases)
+    # A representação flat convertida recebe a mesma projeção de aliases;
+    # o caminho de execução legado (compactar=False) conserva seu contrato.
+    return (normalizar_candidato_json_para_intencao(adaptado, compactar_aliases=True)
+            if compactar_aliases and adaptado is not None else adaptado)
 
 
 def executar_comandos_json(
@@ -201,17 +224,26 @@ def executar_comandos_json(
     fala_salva_no_inicio: bool,
 ) -> Dict[str, Any]:
     """Executa cada comando e apresenta o pedido composto uma única vez."""
+    from mente_laylay.cognicao.roteiro_execucao_por_atos import RoteiroExecucaoPrincipal
+    roteiro = _get(ctx, "roteiro_execucao_principal")
+    if "roteiro_execucao_principal" in ctx and type(roteiro) is not RoteiroExecucaoPrincipal:
+        return {"erros": ["roteiro de execução por atos inválido; nenhum efeito iniciado."]}
     agrupar = _get(ctx, "_agrupar_resultados_operacionais")
-    usar_lote = callable(agrupar) and isinstance(comandos, list) and len(comandos) > 1
+    quantidade = len(roteiro.etapas) if roteiro is not None else len(comandos) if isinstance(comandos, list) else 0
+    usar_lote = callable(agrupar) and quantidade > 1
     lote = (
         agrupar(texto_usuario=texto, enviar_mensagem=_get(ctx, "enviar_mensagem"))
         if usar_lote else nullcontext()
     )
     with lote as agrupamento:
-        resultado = _executar_comandos_json_sem_lote(
-            ctx, texto, comandos, fala_limpa_original, tipo_interacao,
-            fala_ja_emitida, fala_emitida_por_acao, fala_salva_no_inicio,
-        )
+        if roteiro is not None:
+            resultado = _executar_roteiro_por_atos(ctx, texto, roteiro, fala_limpa_original,
+                tipo_interacao, fala_ja_emitida, fala_emitida_por_acao, fala_salva_no_inicio)
+        else:
+            resultado = _executar_comandos_json_sem_lote(
+                ctx, texto, comandos, fala_limpa_original, tipo_interacao,
+                fala_ja_emitida, fala_emitida_por_acao, fala_salva_no_inicio,
+            )
         if agrupamento is not None and resultado.get("erros"):
             # O receipt da etapa falha já descreve o que não aconteceu. Se a
             # falha ocorreu antes de existir receipt, mantenha uma conclusão.
@@ -222,6 +254,76 @@ def executar_comandos_json(
             "fala_composta": str(agrupamento.fala_publicada),
         })
     return resultado
+
+
+def _executar_roteiro_por_atos(ctx, texto, roteiro, fala, tipo, fala_emitida, por_acao, salva):
+    """Orquestra a fonte; admissão continua no validador, efeito no executor."""
+    from mente_laylay.cognicao.escopo_autorizacao import AutorizacaoAto
+    from mente_laylay.cognicao.materializacao_contextual import MaterializacaoAtoContextual, ExecucaoContextualVinculada
+    erros, observacoes, materializacoes, comandos, tratados, fontes = [], [], [], [], [], []
+    callbacks = ("materializar_ato_contextual", "admitir_ato_contextual",
+                 "admissao_contextual_vigente", "etapa_independente_vigente", "proposta_principal_vigente")
+    if (roteiro.proposta.texto_usuario != str(texto or "").strip()
+        or any(not callable(ctx.get(k)) for k in callbacks)
+        or not callable(ctx.get("executar_intencao_observando"))):
+        return {"erros": ["portas da execução por atos indisponíveis; nenhum efeito iniciado."]}
+    for etapa in roteiro.etapas:
+        try:
+            if ctx["proposta_principal_vigente"]() is not True:
+                erros.append("ocorrência da proposta não está vigente; comandos restantes interrompidos.")
+                break
+            contexto_etapa = dict(ctx, salvar_memoria=None)
+            if etapa.obrigacao is not None:
+                tratados.append(etapa.indice)
+                prefixo = tuple(fontes)
+                m = ctx["materializar_ato_contextual"](etapa.obrigacao, prefixo)
+                a = ctx["admitir_ato_contextual"](m, prefixo) if type(m) is MaterializacaoAtoContextual else None
+                if (type(a) is not AutorizacaoAto or a.turno_id != roteiro.proposta.turno_id
+                    or a.indice != etapa.indice or a.texto != etapa.texto):
+                    erros.append(f"etapa contextual não admitida: {etapa.indice + 1} — {etapa.texto}")
+                    continue
+                materializacoes.append(m)
+                pedido = a.pedido.como_dict()
+                contexto_etapa["proposta_principal_vigente"] = lambda a=a, m=m, prefixo=prefixo: (
+                    ctx["proposta_principal_vigente"]() is True
+                    and ctx["admissao_contextual_vigente"](a, m, prefixo) is True)
+            else:
+                pedido = etapa.pedido.como_dict()
+                a = AutorizacaoAto(roteiro.proposta.turno_id, etapa.indice, etapa.texto, etapa.pedido)
+                contexto_etapa["proposta_principal_vigente"] = lambda etapa=etapa: (
+                    ctx["proposta_principal_vigente"]() is True
+                    and ctx["etapa_independente_vigente"](etapa) is True)
+            porta_ato = ctx.get("executar_ato_observando")
+            if callable(porta_ato):
+                guarda = contexto_etapa["proposta_principal_vigente"]
+                contexto_etapa["executar_intencao_observando"] = lambda pedido, texto, a=a, guarda=guarda: (
+                    porta_ato(pedido, texto, a, vigente=guarda))
+            parcial = _executar_comandos_json_sem_lote(contexto_etapa, etapa.texto, [pedido], fala,
+                tipo, fala_emitida, por_acao, salva)
+            comandos.append(pedido)
+            for observacao in parcial.get("execucoes_observadas", ()):
+                observacoes.append(observacao)
+                if not observacao.publicacoes:
+                    erros.append(f"etapa {etapa.indice + 1} sem publicação desta invocação; efeito não confirmado.")
+                # Preservar também a publicação não vinculável. Se o vínculo
+                # falhar, o próximo ato deve fechar, não recuperar sucesso antigo.
+                fontes.append(observacao)
+                if etapa.obrigacao is not None:
+                    fontes[-1] = ExecucaoContextualVinculada(observacao, a, m)
+            erros.extend(parcial.get("erros", ()))
+            fala_emitida = parcial["fala_ja_emitida"]
+            por_acao = parcial["fala_emitida_por_acao"]
+            salva = parcial["fala_salva_no_inicio"]
+        except Exception as erro:
+            erros.append(f"etapa {etapa.indice + 1} não concluída: {type(erro).__name__} — {erro}")
+    salvar = ctx.get("salvar_memoria")
+    if callable(salvar):
+        salvar()
+    return {"erros": erros, "execucoes_observadas": tuple(observacoes),
+        "execucoes_por_ato": tuple(fontes),
+        "atos_materializados": tuple(materializacoes), "indices_contextuais_tratados": tuple(tratados),
+        "comandos_admitidos": comandos, "fala_ja_emitida": fala_emitida,
+        "fala_emitida_por_acao": por_acao, "fala_salva_no_inicio": salva}
 
 
 def _executar_comandos_json_sem_lote(
@@ -235,10 +337,12 @@ def _executar_comandos_json_sem_lote(
     navegador_leitura = _get(ctx, "_registro_navegador_leitura_runtime")
     listar_programas_abertos = _get(ctx, "listar_programas_abertos")
     executar_intencao = _get(ctx, "executar_intencao")
+    executar_observando = _get(ctx, "executar_intencao_observando")
     executar_comando_conteudo = _get(ctx, "_executar_comando_conteudo")
     _autorizar_acao_pratica = _get(ctx, "_autorizar_acao_pratica")
 
     erros_execucao: List[str] = []
+    execucoes_observadas = []
     if not isinstance(comandos, list):
         comandos = []
 
@@ -300,7 +404,18 @@ def _executar_comandos_json_sem_lote(
                 erros_execucao.append(f"executor canônico indisponível para a ação '{acao}'.")
                 continue
             try:
-                retorno = executar_intencao(intencao_canonica, texto)
+                if callable(executar_observando):
+                    from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+                    from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
+                    pedido_capturado = SnapshotComandoIA(intencao_canonica)
+                    observacao = executar_observando(intencao_canonica, texto)
+                    if (type(observacao) is not ExecucaoObservada
+                        or observacao.pedido.como_dict() != pedido_capturado.como_dict()):
+                        raise ValueError("observação não pertence ao pedido despachado")
+                    execucoes_observadas.append(observacao)
+                    retorno = observacao.retorno_legado
+                else:
+                    retorno = executar_intencao(intencao_canonica, texto)
                 tratamento = interpretar_tratamento_operacional(
                     intencao_canonica,
                     retorno,
@@ -352,9 +467,12 @@ def _executar_comandos_json_sem_lote(
     if callable(salvar_memoria):
         salvar_memoria()
 
-    return {
+    resultado_dispatch = {
         "erros": erros_execucao,
         "fala_emitida_por_acao": fala_emitida_por_acao,
         "fala_ja_emitida": fala_ja_emitida,
         "fala_salva_no_inicio": fala_salva_no_inicio,
     }
+    if callable(executar_observando):
+        resultado_dispatch["execucoes_observadas"] = tuple(execucoes_observadas)
+    return resultado_dispatch

@@ -6,6 +6,7 @@ import time
 import pytest
 
 from mente_laylay.cognicao.plano_turno import verificar_fala_turno
+from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao, montar_mensagens_reparo_comunicacao,
 )
@@ -141,7 +142,12 @@ def test_sucesso_narrado_tambem_exige_fonte(fala):
     assert "resultado_operacional_sem_evidencia" in resultado["problemas"]
 
 
-def test_composicao_publica_rejeicao_no_estado_real_sem_efeito():
+@pytest.mark.parametrize("fala,diagnostico", [
+    (HISTORICA, "falha_operacional_sem_evidencia"),
+    ("Consegui abrir o Opera.", "resultado_operacional_sem_evidencia"),
+    ("Consegui pausar a música.", "resultado_operacional_sem_evidencia"),
+])
+def test_composicao_publica_rejeicao_no_estado_real_sem_efeito(fala, diagnostico):
     estado = EstadoCompartilhadoRuntime(mental={"plano_turno_atual": plano()})
     runtime = ComposicaoTurnoRuntime(servicos={
         "_estado_compartilhado_runtime": estado,
@@ -149,11 +155,11 @@ def test_composicao_publica_rejeicao_no_estado_real_sem_efeito():
         "_contexto_horario_atual": lambda: "tarde", "time": time,
         "print": lambda *args: None,
     })
-    resultado = runtime.verificar_fala(HISTORICA, origem="ia_final")
+    resultado = runtime.verificar_fala(fala, origem="ia_final")
     assert resultado["aceita"] is False
     assert estado.mental["plano_turno_atual"]["ultima_verificacao"] == resultado
     assert estado.mental["plano_turno_atual"]["comandos"] == []
-    assert estado.mental["metricas_verificador"]["problema:falha_operacional_sem_evidencia"] == 1
+    assert estado.mental["metricas_verificador"][f"problema:{diagnostico}"] == 1
 
 
 @pytest.mark.parametrize("resposta", [
@@ -210,3 +216,131 @@ def test_relato_nao_sustenta_estado_observavel_narrado(fala):
 def test_incerteza_e_pedido_sobre_estado_nao_sao_alegacoes(fala):
     resultado = avaliar_qualidade_comunicacao(RELATO, fala, plano=plano())
     assert "resultado_operacional_sem_evidencia" not in resultado["problemas"]
+
+
+@pytest.mark.parametrize("fala", [
+    "Consegui abrir os aplicativos do meu catálogo. Não abri nenhum agora.",
+    "Consegui abrir o Opera.",
+    "Consegui salvar o arquivo.",
+    "Consegui enviar o e-mail.",
+    "Consegui criar a playlist.",
+    "Consegui ligar a lâmpada.",
+    "Consegui pausar a música.",
+    "Consegui ajustar o volume.",
+    "Consegui executar o comando.",
+])
+def test_efeito_perifrastico_sem_receipt_exige_reparo_antes_da_publicacao(fala):
+    texto = "Que ações você consegue fazer? Não faça nenhuma agora."
+    estado = plano(texto)
+    estado["evidencia_capacidades"] = {"documentacao": "Aplicativos, arquivos e música disponíveis."}
+    resultado = verificar_fala_turno(fala, plano=estado, origem="ia_final")
+    assert resultado["aceita"] is False
+    assert resultado["acao"] == "reparar"
+    assert "resultado_operacional_sem_evidencia" in resultado["problemas"]
+    assert resultado["contrato_reparo"]["autoriza_execucao"] is False
+
+
+@pytest.mark.parametrize("fala", [
+    "Consigo abrir aplicativos quando você pede.",
+    "Posso pausar a música.",
+    "Poderia ajustar o volume.",
+    "Consegui entender a sua pergunta.",
+    "Consegui criar um exemplo didático.",
+    "Consegui abrir minha mente para essa ideia.",
+    "Consegui ler sua mensagem.",
+    "Consegui ler o exemplo que você colou.",
+    "Não sei se consegui abrir o Opera.",
+    "Se consegui abrir o Opera, isso ainda precisa ser confirmado.",
+    "Você perguntou se consegui abrir o Opera.",
+])
+def test_capacidade_ato_mental_e_escopo_nao_sao_efeito_perifrastico(fala):
+    texto = "Quero saber das suas capacidades, sem executar nada."
+    estado = plano(texto)
+    qualidade = avaliar_qualidade_comunicacao(texto, fala, plano=estado)
+    assert "resultado_operacional_sem_evidencia" not in qualidade["problemas"]
+    guarda = validar_alegacoes_da_fala(fala, plano=estado, origem="canal_voz")
+    assert guarda["fala"] == fala
+    assert guarda["problemas"] == []
+
+
+def test_citacao_literal_de_efeito_perifrastico_nao_vira_acao_da_assistente():
+    texto = 'Explique a frase "consegui abrir o Opera".'
+    fala = 'A frase "consegui abrir o Opera" descreve uma ação concluída.'
+    estado = plano(texto)
+    assert avaliar_qualidade_comunicacao(texto, fala, plano=estado)["aceita"]
+    assert validar_alegacoes_da_fala(fala, plano=estado, origem="canal_voz")["fala"] == fala
+
+
+@pytest.mark.parametrize("origem", ["conversa", "canal_voz"])
+@pytest.mark.parametrize("fonte", ["ausente", "proposta", "outro_alvo", "outro_resultado", "correta"])
+def test_efeito_perifrastico_usa_fonte_especifica_tambem_na_guarda_final(origem, fonte):
+    fala = "Consegui abrir o Opera."
+    comando = receipt(status="aberto", executou=True, confirmado=True, detalhe=fala)
+    if fonte == "proposta":
+        comando["origem"] = "llm"
+    elif fonte == "outro_alvo":
+        comando.update(alvo="Firefox", detalhe="Consegui abrir o Firefox.")
+    elif fonte == "outro_resultado":
+        comando["detalhe"] = "O Opera não abriu."
+    estado = plano("Que aplicativos você consegue abrir?", [] if fonte == "ausente" else [comando])
+    qualidade = avaliar_qualidade_comunicacao(estado["texto_usuario"], fala, plano=estado)
+    guarda = validar_alegacoes_da_fala(fala, plano=estado, origem=origem)
+    if fonte == "correta":
+        assert "resultado_operacional_sem_evidencia" not in qualidade["problemas"]
+        assert guarda["fala"] == fala
+        assert guarda["problemas"] == []
+    else:
+        assert "resultado_operacional_sem_evidencia" in qualidade["problemas"]
+        assert "resultado_operacional_sem_evidencia" in guarda["problemas"]
+        assert fala not in guarda["fala"]
+
+
+@pytest.mark.parametrize("negacao", ["Não", "Nunca", "Jamais"])
+@pytest.mark.parametrize("operacao", ["abrir o Opera", "pausar a música", "ajustar o volume", "mover o arquivo"])
+def test_perifrase_negativa_continua_tentativa_frustrada_nao_sucesso(negacao, operacao):
+    fala = f"{negacao} consegui {operacao}."
+    resultado = avaliar_qualidade_comunicacao(RELATO, fala, plano=plano())
+    assert "falha_operacional_sem_evidencia" in resultado["problemas"]
+    assert "resultado_operacional_sem_evidencia" not in resultado["problemas"]
+    guarda = validar_alegacoes_da_fala(fala, plano=plano(), origem="canal_voz")
+    assert "falha_operacional_sem_evidencia" in guarda["problemas"]
+    assert "resultado_operacional_sem_evidencia" not in guarda["problemas"]
+    assert guarda["fala"] != fala
+
+
+@pytest.mark.parametrize("fala", [
+    "Não sei se consegui abrir o Opera, mas consegui enviar o e-mail.",
+    'A frase "consegui abrir o Opera" descreve uma ação concluída. Consegui abrir o Firefox.',
+])
+def test_escopo_de_ressalva_ou_citacao_nao_libera_segundo_efeito(fala):
+    texto = 'Explique a frase "consegui abrir o Opera".'
+    estado = plano(texto)
+    qualidade = avaliar_qualidade_comunicacao(texto, fala, plano=estado)
+    assert "resultado_operacional_sem_evidencia" in qualidade["problemas"]
+    guarda = validar_alegacoes_da_fala(fala, plano=estado, origem="canal_voz")
+    assert "resultado_operacional_sem_evidencia" in guarda["problemas"]
+
+
+def test_reparo_perifrastico_preserva_capacidade_sem_executor_ou_novo_pedido():
+    texto = "Que aplicativos você consegue abrir? Não abra nenhum agora."
+    fala = "Consegui abrir os aplicativos do catálogo. Não abri nenhum agora."
+    corrigida = "Consigo abrir aplicativos do catálogo quando você pede. Nenhum foi solicitado agora."
+    chamadas = []
+
+    def modelo(mensagens, **opcoes):
+        contrato = json.loads(mensagens[1]["content"])["contrato_de_reparo"]
+        assert contrato["resultado_operacional_desconhecido"] is True
+        assert contrato["autoriza_execucao"] is False
+        chamadas.append(opcoes)
+        return json.dumps({"fala": corrigida, "comandos": []})
+
+    resultado = preparar_resposta_para_execucao(
+        texto, json.dumps({"fala": fala, "comandos": []}),
+        enviar_mensagem_cb=modelo, limpar_texto_fala_cb=lambda valor: valor,
+        fallback_fala="Contingência", memoria_sqlite=None,
+        contexto_comunicacao={"plano_turno": plano(texto)}, log=lambda valor: None,
+    )
+    assert len(chamadas) == 1
+    assert chamadas[0]["_tipo_chamada"] == "reparo_comunicacao"
+    assert resultado["fala"] == corrigida
+    assert resultado["comandos"] == []

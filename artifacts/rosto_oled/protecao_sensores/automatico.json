@@ -1,0 +1,423 @@
+{
+  "ordens_motor": 1,
+  "encerrada": true,
+  "receipts": [
+    {
+      "ok": false,
+      "motivo": "interrompido_por_protecao:BORDA_SEM_RETORNO",
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": true,
+      "pwm_esquerdo": 140,
+      "pwm_direito": 140,
+      "duracao_ms": 3000,
+      "evidencia": "sack",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "cancelado": false,
+      "status": "falha_execucao",
+      "interrompido_por_protecao": true,
+      "risco_detectado": "BORDA_SEM_RETORNO",
+      "protecao": {
+        "suportado": true,
+        "recente": true,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 281,
+            "status": 2
+          },
+          "borda": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 247,
+            "status": 4
+          }
+        },
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "BLOQUEADA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      }
+    }
+  ],
+  "observacoes": [
+    {
+      "ts": 1791985565.2409222,
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 30,
+            "status": 2
+          },
+          "borda": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 65,
+            "status": 4
+          }
+        },
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "RECUANDO",
+          "reflexo_ativo": true,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "condicao": {
+        "estado": "risco_detectado",
+        "motivo_motor": "",
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "reacao_expressiva": "",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "dev": {
+        "conexao": "conectada",
+        "transporte": "serial",
+        "porta": "COM4",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "objetivo_id": "",
+        "trace_id": "",
+        "intencao": "",
+        "fase": "aguardando",
+        "estado": "",
+        "motivo": "",
+        "emocao": "desconhecida",
+        "nivel": "",
+        "experiencia_id": "942f6a36dddc4241b7dc7eb94477f791",
+        "experiencia_turno": "1791937541538537900",
+        "resultado": "pwm_e_parada_confirmados",
+        "erro": "",
+        "som": "sequencia_aceita_pelo_firmware",
+        "sensor_frente": "INVALIDA",
+        "sensor_borda": "INVALIDA",
+        "risco_fisico": "BORDA_SEM_RETORNO",
+        "fase_protecao": "RECUANDO",
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "motor_disponivel": true,
+        "motor_em_andamento": true,
+        "pwm_confirmado": false,
+        "parada_confirmada": false,
+        "deslocamento": "nao_medido",
+        "autoriza_execucao": false,
+        "origem": "diagnostico_corporal_observado"
+      }
+    },
+    {
+      "ts": 1791985566.5914216,
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 142,
+            "status": 2
+          },
+          "borda": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 176,
+            "status": 4
+          }
+        },
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "VERIFICANDO",
+          "reflexo_ativo": true,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "condicao": {
+        "estado": "evadindo_risco",
+        "motivo_motor": "",
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "VERIFICANDO",
+          "reflexo_ativo": true,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "reacao_expressiva": "medo",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "dev": {
+        "conexao": "conectada",
+        "transporte": "serial",
+        "porta": "COM4",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "objetivo_id": "",
+        "trace_id": "",
+        "intencao": "",
+        "fase": "aguardando",
+        "estado": "",
+        "motivo": "",
+        "emocao": "desconhecida",
+        "nivel": "",
+        "experiencia_id": "942f6a36dddc4241b7dc7eb94477f791",
+        "experiencia_turno": "1791937541538537900",
+        "resultado": "pwm_e_parada_confirmados",
+        "erro": "",
+        "som": "sequencia_aceita_pelo_firmware",
+        "sensor_frente": "INVALIDA",
+        "sensor_borda": "INVALIDA",
+        "risco_fisico": "BORDA_SEM_RETORNO",
+        "fase_protecao": "VERIFICANDO",
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "motor_disponivel": true,
+        "motor_em_andamento": true,
+        "pwm_confirmado": false,
+        "parada_confirmada": false,
+        "deslocamento": "nao_medido",
+        "autoriza_execucao": false,
+        "origem": "diagnostico_corporal_observado"
+      }
+    },
+    {
+      "ts": 1791985567.720684,
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 173,
+            "status": 2
+          },
+          "borda": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 139,
+            "status": 4
+          }
+        },
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "BLOQUEADA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "condicao": {
+        "estado": "risco_detectado",
+        "motivo_motor": "",
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "BLOQUEADA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "reacao_expressiva": "",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "dev": {
+        "conexao": "conectada",
+        "transporte": "serial",
+        "porta": "COM4",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "objetivo_id": "",
+        "trace_id": "",
+        "intencao": "",
+        "fase": "aguardando",
+        "estado": "",
+        "motivo": "",
+        "emocao": "desconhecida",
+        "nivel": "",
+        "experiencia_id": "942f6a36dddc4241b7dc7eb94477f791",
+        "experiencia_turno": "1791937541538537900",
+        "resultado": "pwm_e_parada_confirmados",
+        "erro": "",
+        "som": "sequencia_aceita_pelo_firmware",
+        "sensor_frente": "INVALIDA",
+        "sensor_borda": "INVALIDA",
+        "risco_fisico": "BORDA_SEM_RETORNO",
+        "fase_protecao": "BLOQUEADA",
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "motor_disponivel": true,
+        "motor_em_andamento": true,
+        "pwm_confirmado": false,
+        "parada_confirmada": false,
+        "deslocamento": "nao_medido",
+        "autoriza_execucao": false,
+        "origem": "diagnostico_corporal_observado"
+      }
+    },
+    {
+      "ts": 1791985568.2633708,
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 110,
+            "status": 4
+          },
+          "borda": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 144,
+            "status": 4
+          }
+        },
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "BLOQUEADA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "condicao": {
+        "estado": "risco_detectado",
+        "motivo_motor": "interrompido_por_protecao:BORDA_SEM_RETORNO",
+        "protecao": {
+          "incidente_id": 1,
+          "motor_origem_seq": 1,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "BLOQUEADA",
+          "reflexo_ativo": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "reacao_expressiva": "",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "dev": {
+        "conexao": "conectada",
+        "transporte": "serial",
+        "porta": "COM4",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "objetivo_id": "",
+        "trace_id": "",
+        "intencao": "",
+        "fase": "aguardando",
+        "estado": "",
+        "motivo": "",
+        "emocao": "desconhecida",
+        "nivel": "",
+        "experiencia_id": "942f6a36dddc4241b7dc7eb94477f791",
+        "experiencia_turno": "1791937541538537900",
+        "resultado": "pwm_e_parada_confirmados",
+        "erro": "interrompido_por_protecao:BORDA_SEM_RETORNO",
+        "som": "sequencia_aceita_pelo_firmware",
+        "sensor_frente": "INVALIDA",
+        "sensor_borda": "INVALIDA",
+        "risco_fisico": "BORDA_SEM_RETORNO",
+        "fase_protecao": "BLOQUEADA",
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "motor_disponivel": true,
+        "motor_em_andamento": false,
+        "pwm_confirmado": false,
+        "parada_confirmada": true,
+        "deslocamento": "nao_medido",
+        "autoriza_execucao": false,
+        "origem": "diagnostico_corporal_observado"
+      }
+    }
+  ],
+  "catalogo": "Meu controle dos motores está indisponível agora: preciso de uma sessão recente e firmware com MOTOR1 habilitado."
+}

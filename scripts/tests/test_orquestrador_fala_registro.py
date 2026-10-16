@@ -264,7 +264,9 @@ def test_texto_final_chega_ao_terminal_mesmo_se_a_voz_recusar() -> None:
         ) or True
     )
 
-    assert runtime.falar("Resposta visual independente.", "feliz", 2) is False
+    # O retorno público aceita a comunicação entregue por texto. A porta de
+    # voz continua recusada; esse aceite não comprova reprodução de áudio.
+    assert runtime.falar("Resposta visual independente.", "feliz", 2) is True
 
     assert publicadas == [(
         "Resposta visual independente.", "feliz", 2,
@@ -470,3 +472,37 @@ def test_receipt_invalido_atravessa_diretor_e_fila_reais_sem_sucesso_falso():
     assert "não consegui validar" in pedido["texto"].casefold()
     assert textos == [pedido["texto"]]
     assert estado.mental["ultima_resposta"] == pedido["texto"]
+
+
+def test_observador_entrega_resultados_nao_confunde_fila_com_entrega():
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    voz = _VozFalsa()
+    runtime, estado, _, _ = _runtime_de_fala(voz=voz)
+    entregas=[]
+    runtime.registrar_observador_entrega_resultados(lambda **dados: entregas.append(dados))
+    receipt=ResultadoAcao(intent="EMAIL_READ",status="emails_lidos",origem="executor",id_solicitacao="consulta-1",
+        executou=True,confirmado=True,contexto={"itens_apresentados":[{"uid":"a","origem":"email","texto":"Mensagem A"}]})
+    assert runtime.falar_resultado_operacional(receipt,"Mensagem A")
+    assert entregas==[], "Enfileirar áudio não comprova apresentação."
+    callback=voz.falas[-1][1]["_ao_concluir_entrega"]
+    callback(False,"Mensagem A")
+    assert entregas==[]
+    receipt.contexto["itens_apresentados"][0]["uid"]="outro"
+    estado.mental["turno_atual"]={"id":"turno-2"}
+    callback(True,"Mensagem A")
+    assert entregas[0]["resultados"][0].id_solicitacao=="consulta-1"
+    assert entregas[0]["resultados"][0].contexto["itens_apresentados"][0]["uid"]=="a"
+    assert entregas[0]["canal_entrega"]=="audio_reproducao_confirmada"
+
+
+def test_observador_entrega_textual_recebe_receipt_capturado_antes_de_outro_turno():
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    runtime, estado, voz, _ = _runtime_de_fala()
+    entregas=[]
+    runtime.registrar_observador_entrega_resultados(lambda **dados: entregas.append(dados))
+    runtime.registrar_observador_texto_final(lambda *a, **k: True)
+    receipt=ResultadoAcao(intent="EMAIL_READ",status="emails_lidos",origem="executor",id_solicitacao="consulta-1",executou=True,confirmado=True)
+    assert runtime.falar_resultado_operacional(receipt,"Mensagem A")
+    assert len(entregas)==1 and entregas[0]["canal_entrega"]=="texto_publicado"
+    assert entregas[0]["resultados"][0].id_solicitacao=="consulta-1"
+    assert "_ao_concluir_entrega" not in voz.falas[-1][1]

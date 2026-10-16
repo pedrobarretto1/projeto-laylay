@@ -1,0 +1,24 @@
+{
+  "porta": "COM4",
+  "saude": {
+    "dispositivo": "03d017988fdecda9",
+    "boot": "33728a23",
+    "motivo_boot": "ligacao_energia",
+    "motivo_boot_codigo": 1,
+    "uptime_ms": 1202782,
+    "heap_livre": 280252,
+    "heap_minimo": 275148,
+    "perdas_sessao": 1,
+    "motivo_perda_sessao": "TTL",
+    "perda_sessao_em_ms": 138226,
+    "origem": "executor_esp",
+    "autoriza_execucao": false
+  },
+  "trilha": [
+    "HEALTH 1 1201 70ba726e27ac 33728a23 1 1202782 280252 275148 1 TTL 138226"
+  ],
+  "comandos": [
+    "HEALTH 1 1201"
+  ],
+  "serial_fechada": true
+}

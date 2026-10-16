@@ -57,8 +57,9 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
                         fala="Preciso de um pedido atual de movimento ou parada para acionar o corpo.")
     # Um comando proposto não pode trocar a direção presente na fala atual.
     if candidato and intent == "CORPO_MOVER" and any(
-        params.get(chave, candidato["params"][chave]) != candidato["params"][chave]
-        for chave in ("direcao", "pwm", "duracao_ms")
+        params.get(chave, candidato["params"].get(chave)) != candidato["params"].get(chave)
+        for chave in ("direcao", "pwm", "duracao_ms", "angulo_graus")
+        if chave in candidato["params"] or chave in params
     ):
         return concluir("bloqueado_alvo_divergente", ok=False, detalhe="direção difere da fala autorizadora",
                         fala="O movimento proposto não corresponde à direção que você pediu.")
@@ -99,6 +100,12 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
         return concluir("companhia_ativada" if params.get("acao") == "ativar" else "companhia_desativada",
                         ok=True, detalhe="concessão temporária confirmada pelo owner corporal", fala=fala, receipt=receipt)
     if intent == "CORPO_MOVER":
+        if params.get("angulo_graus") is not None:
+            if receipt.get("prova_rotacao") is not True:
+                return concluir("falha_execucao", ok=False, detalhe="ângulo não confirmado pelo MPU",
+                                fala="Não consegui confirmar o giro medido.", receipt=receipt)
+            return concluir("giro_medido_confirmado", ok=True, detalhe="rotação relativa estimada pela IMU e parada elétrica",
+                fala=f"O sensor mediu aproximadamente {abs(receipt['rotacao_medida_graus']):.0f} graus de giro para {params['direcao']}; a ponte confirmou a parada.", receipt=receipt)
         fala = f"Acionei um pulso para {params.get('direcao')}, limitado a até {params.get('duracao_ms', 250)} milissegundos. A ponte confirmou a parada."
     return concluir("corpo_parado" if intent == "CORPO_PARAR" else "pulso_corporal_confirmado", ok=True,
                     detalhe="estado do firmware confirmado; sem medida de giro ou deslocamento", fala=fala, receipt=receipt)

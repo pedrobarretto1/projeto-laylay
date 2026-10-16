@@ -1,0 +1,53 @@
+{
+  "core": "3.3.12",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "biblioteca": "Adafruit_VL53L0X 1.2.5",
+  "upload": "COM4 hash verificado",
+  "xshut": {
+    "frente": 0,
+    "borda": 10
+  },
+  "endereco_7bits": {
+    "frente": 48,
+    "borda": 49
+  },
+  "superficie_inicial_borda_mm": [
+    94,
+    104
+  ],
+  "validacao_humana": {
+    "resposta_separada": "Sim, os dois respondem separadamente",
+    "montagem_definitiva": "Sim, está na posição definitiva"
+  },
+  "painel": {
+    "frente": {
+      "amostras_validas": 62,
+      "intervalo_mm": [
+        55,
+        189
+      ],
+      "estados": [
+        "INVALIDA",
+        "VALIDA"
+      ]
+    },
+    "borda": {
+      "amostras_validas": 65,
+      "intervalo_mm": [
+        81,
+        199
+      ],
+      "estados": [
+        "INVALIDA",
+        "VALIDA"
+      ]
+    }
+  },
+  "protecao_calibrada": false,
+  "integracao_sensor_na_mente": false,
+  "sha256": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "28c040ac6728b99a4de139ad1cca355da8120fff80fa0288e244762ea65e9a38",
+    "firmware/rosto_laylay/sensores_distancia.h": "f450b385bffb1d24c9ee2273db800d7a4befafe5d13079f6cb82c37b991a93b7",
+    "artifacts\\rosto_oled\\sensores\\build\\rosto_laylay.ino.bin": "6d053203fa3584dac1e050f486e3a46d8cc7a44172b8d915d1f29a1083144510"
+  }
+}

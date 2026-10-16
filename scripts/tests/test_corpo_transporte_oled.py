@@ -33,7 +33,7 @@ class EspCorpo:
             resposta = f"MCAPS 1 {p[2]} MOTOR{int(self.motor)}"
         elif p[0] == "SCAPS":
             resposta = "ERROR 1 PACOTE_INVALIDO"
-        elif p[0] in {"LCAPS", "ECAPS", "RCAPS"}:
+        elif p[0] in {"LCAPS", "ECAPS", "RCAPS", "DCAPS", "PCAPS"}:
             resposta = "ERROR 1 PACOTE_INVALIDO"
         elif p[0] == "ACTIVITY":
             resposta = "AACK " + " ".join(p[1:-1])

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import re
+import json
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Mapping
 
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 
@@ -12,8 +13,52 @@ from mente_laylay.memoria_mental.consciencia_temporal import resumo_temporal_par
 from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_com_fala
 from mente_laylay.cognicao.seletor_contexto import selecionar_contexto_turno
 from mente_laylay.cognicao.fundamentacao_factual import avaliar_validade_fundamentacao
-from mente_laylay.memoria_mental.registro_semantico import resumo_registro_semantico_para_prompt
+from mente_laylay.memoria_mental.registro_semantico import (
+    resumo_registro_semantico_para_prompt, formatar_evidencia_da_fala,
+)
 from mente_laylay.memoria_mental.continuidade_geral import resumo_continuidade_para_prompt
+
+
+def projetar_mente_para_interpretacao(mente: Mapping[str, Any] | None) -> Dict[str, Any]:
+    """Projeção operacional para propostas de linguagem, não dump da mente.
+
+    Fontes, validade, referências e pendências seguem completas; plano,
+    pareceres e diagnóstico permanecem no owner, não são repetidos no modelo.
+    A projeção não concede autoridade nem transforma tentativa em receipt.
+    Não corta frases/IDs por posição nem modifica o estado fornecido.
+    """
+    estado = dict(mente or {})
+    campos = (
+        "ultima_acao_contrato", "ultima_acao_params", "ultima_acao_intent",
+        "ultima_acao_alvo", "ultima_acao_status", "ultima_acao_confirmada", "ultima_acao_ok",
+        "ultima_acao_ts", "ultima_acao_promovivel", "ultima_acao_reexecutavel",
+        "ultima_intencao", "ultimo_alvo", "ultima_habilidade", "ultimo_escopo",
+        "ultima_entrada", "ultima_resposta", "retrato_turno_atual",
+        "continuidade_geral", "pendencia_acao_canonica", "pendencia_atual",
+        "esclarecimento_operacional_ativo", "focos_por_dominio", "ultimo_app_janela", "ultimo_site_aba",
+        "ultimo_arquivo", "ultimo_caminho_arquivo", "ultima_pasta",
+        "ultimo_dispositivo_iot", "ultimo_ambiente_iot", "efeitos_reversiveis",
+    )
+    saida = {chave:estado[chave] for chave in campos if chave in estado}
+    # Fachadas de continuidade anteriores ao estado estruturado: somente os
+    # campos semânticos declarados pelos owners, não qualquer chave de prefixo.
+    for prefixo, sufixos in (
+        ("foco_operacional", ("tipo", "alvo", "topico", "habilidade", "intencao", "escopo", "ts")),
+        ("pergunta_aberta", ("texto", "topico", "origem", "tipo", "proposito", "resposta_esperada", "ts")),
+        ("ultima_promessa", ("tipo", "texto", "alvo", "conteudo", "ts")),
+    ):
+        for sufixo in sufixos:
+            chave = f"{prefixo}_{sufixo}"
+            if estado.get(chave) not in (None, "", 0):
+                saida[chave] = estado[chave]
+    turno = estado.get("turno_atual") or {}
+    saida["turno_atual"] = {chave:turno[chave] for chave in (
+        "id", "texto", "texto_original", "retrato_id", "modalidade", "modalidade_geral",
+        "autoriza_execucao", "veto_execucao_operacional",
+    ) if chave in turno}
+    # Materializa somente dados JSON da projeção, inclusive se o legado fornece
+    # coleções sincronizadas. Não copia os locks nem deixa alias para mutação.
+    return json.loads(json.dumps(saida, ensure_ascii=False))
 
 
 _PREFIXOS_CONTEXTO_PRIORITARIO = (
@@ -36,6 +81,7 @@ _PREFIXOS_CONTEXTO_PRIORITARIO = (
     "Última ação real:",
     "MEMÓRIA DE PESSOAS",
     "APREND",
+    "EVIDÊNCIA HISTÓRICA DA PRÓPRIA FALA:",
 )
 
 
@@ -166,6 +212,9 @@ def resumo_mente_integrada_para_prompt(
     registro_semantico = mente.get("registro_semantico")
     if isinstance(registro_semantico, dict):
         blocos.append(resumo_registro_semantico_para_prompt(registro_semantico))
+    evidencia_fala = formatar_evidencia_da_fala(texto_usuario, mente)
+    if evidencia_fala:
+        blocos.append(evidencia_fala)
 
     fundamentacao_bruta = mente.get("fundamentacao_factual_turno")
     fundamentacao = (

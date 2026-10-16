@@ -1,0 +1,3 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto

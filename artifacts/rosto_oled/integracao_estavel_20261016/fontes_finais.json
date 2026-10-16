@@ -1,0 +1,24 @@
+{
+  "head": "d850b8c90cc5ce40bd4832e759ed991ba88cd5cc",
+  "sha256": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "ae8fedf25aab7ebdce21374c01d36f84c76c4b53cb3e47a256a655e0dd81aa79",
+    "firmware/rosto_laylay/imu_corporal.h": "bacf430ec71d132438eadf5b74aed9dacb41a985d396242ff82600b47f24b68a",
+    "firmware/rosto_laylay/sensores_distancia.h": "2aec92f018854571a17c2a194fb15e0fcec9f132a4ed2df87fad9fc30ebef99a",
+    "firmware/rosto_laylay/recuperacao_perifericos.h": "e9187f4ba2f7bdc4c5697b3d23ca45ce20a62567e194105a9c80a453afd26e19",
+    "mente_laylay/cognicao/decisao_corporal.py": "739e7862cd4131bc1b135f10f91212bd18bed721a58200f92e376746fcba5445",
+    "mente_laylay/autonomia/companhia_corporal.py": "cbc8921ff25f453828fa7d204ed8f4b8472925c3158a81bd18159eca5e8ef3ab",
+    "mente_laylay/especialistas/corpo_motor_runtime.py": "4a30acece688b94b56c3e7ec21cd2126f7d98188255865105f7052538f6bf822",
+    "mente_laylay/cognicao/modelo_corporal.py": "38686e91b244e10586a7e913dce2170f3b568c13e0de59b9f26e01ad1b6b784f",
+    "mente_laylay/memoria_mental/experiencia_corporal_runtime.py": "8ed6b105ff8f52bc21de38d24f3f3549806aed659a09e305aaaef3d481bf91cd",
+    "mente_laylay/integracao/prioridade_interacao_usuario.py": "36fbe25fbb7dc894d7ebc1216457f89ddfe8543c7a426dc6d4b649811631b5ab",
+    "mente_laylay/autonomia/motor_iniciativa.py": "2a41d2103f43bfa143a02f41e5751dfe2a9058c1e2cd9a136bff2244bb5ef68f",
+    "mente_laylay/autonomia/porteiro_proatividade.py": "594789f6579172e89314586ea9838d231dea1de6e4215694ae8a27cf2ebed48e",
+    "mente_laylay/integracao/ponte_iniciativa_aplicacao.py": "376cfa80afc6e63ced4c85b40cadce43c8113e4d4200c5c41be185a3e1d0fd77",
+    "mente_laylay/autonomia/resposta_evento_runtime.py": "8c20d1f1d9541184f30f328bb7e6beebd27b95e9be3584e0dcf94cb0b6673e9d",
+    "mente_laylay/cognicao/guardiao_alegacoes.py": "150475f61c094c720346b74f4fe2b902976f4cf44792f5cae88aefb62c2683cc",
+    "mente_laylay/especialistas/capacidades.py": "cbc8380849cd2020d6cbd814b6cff6dd338de30a4893b41b0eee58bce9b90d09",
+    "mente_laylay/especialistas/mapa_habilidades.py": "01261e2ec9aec4908d6e14a1ac61d48d97fcf8d5cb40856098f395ae9ad7a09b",
+    "laylay.py": "035be32334fe84e5063b9f4add8aed901a1751486fa17133334b54960d10513a"
+  },
+  "binario": "cf196486a5da0a78c86c52fe582a01a34b45a6a4410fb263c1869a3fa7d0b9dc"
+}

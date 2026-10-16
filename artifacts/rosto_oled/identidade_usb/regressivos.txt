@@ -1,0 +1,26 @@
+........................................................................ [ 28%]
+....................F
+================================== FAILURES ===================================
+_ test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto _
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4005/test_tcp_real_fragmentado_sinc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000027E407FD2B0>
+servidor = <function servidor.<locals>.criar at 0x0000027E40838460>
+
+    def test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto(tmp_path, monkeypatch, servidor):
+        esp = servidor(fragmentar=True)
+        atividade = {"origem": "atividade_operacional_observada", "falha_id": 1,
+                     "falha_monotonic": time.monotonic(), "ativos": 1}
+        runtime = runtime_rede(tmp_path, monkeypatch, esp, atividade_getter=lambda: atividade)
+        try:
+            assert runtime.sincronizar(), "fronteira AUTH/HELLO/FACE no TCP"
+            diagnostico = runtime.diagnostico()
+            assert diagnostico["aplicacao_confirmada"] and diagnostico["hack"]["ativo"]
+>           assert diagnostico["glitch"]["aplicacao_confirmada"] and diagnostico["motor"]["disponivel"]
+E           assert (False)
+
+scripts\tests\test_corpo_wifi_transporte.py:214: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 92 passed in 30.49s

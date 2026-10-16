@@ -22,6 +22,7 @@ from mente_laylay.integracao.composicao_principal import RegistrosPrincipais
 
 
 DEPENDENCIAS_DETECCAO = (
+    "_email_detectar",
     "_extrair_acao_agendada_local", "_normalizar_texto_com_apelidos",
     "_texto_conversa_casual_sem_acao", "_texto_bloqueia_playlist_agora",
     "_texto_social_curto", "_ignorar_token_solto", "_fluxo_prioritario_da_ia",
@@ -38,6 +39,7 @@ DEPENDENCIAS_DETECCAO = (
 )
 
 DEPENDENCIAS_COMANDOS_IMEDIATOS = (
+    "_email_detectar",
     "_normalizar_texto_com_apelidos", "_texto_social_curto",
     "_resolver_referencia_pessoal",
     "_texto_conversa_casual_sem_acao", "_refinar_contexto_mental",
@@ -55,6 +57,7 @@ DEPENDENCIAS_COMANDOS_IMEDIATOS = (
     "processar_comando_deterministico", "interpretar_comando_local_rapido",
     "resolver_comando_natural", "decisao_comando_ja_avaliada",
     "analisar_intencao", "executar_intencao", "_registrar_resultado_execucao",
+    "_vincular_registro_resultado_execucao",
     "_registrar_autoaprimoramento", "_falar_falha_contextual",
     "resumir_pagina_ou_video", "falar_com_lipsync",
     "_estado_compartilhado_runtime", "_detectar_comando_governanca_iniciativa",
@@ -74,6 +77,7 @@ DEPENDENCIAS_CONTEXTO_CHAT = (
     "_refinar_contexto_mental", "_registrar_autoaprimoramento",
     "_registrar_mente_curta", "_registrar_interacao_temporal",
     "_registrar_resultado_execucao", "_texto_social_curto",
+    "_vincular_registro_resultado_execucao",
     "_texto_conversa_casual_sem_acao", "_texto_tem_comando_explicito",
     "_resposta_conversa_rapida_local", "_parece_elogio_ou_agradecimento_curto",
     "_responder_agradecimento_ou_elogio",
@@ -136,7 +140,13 @@ class ComposicaoEntradaInteracaoRuntime:
         return dict(self._servicos_deteccao)
 
     def _snapshot_interacao(self) -> dict[str, Any]:
-        return dict(self._servicos_interacao)
+        contexto = dict(self._servicos_interacao)
+        vincular = contexto.get("_vincular_registro_resultado_execucao")
+        if callable(vincular):
+            # Snapshot por invocação, nunca no conectar/startup: um callback
+            # assíncrono mantém a origem que antecedeu o executor.
+            contexto["_registrar_resultado_execucao"] = vincular()
+        return contexto
 
     def conectar(
         self, *, servicos: Mapping[str, Any], loop_getter: Callable[[], Any],

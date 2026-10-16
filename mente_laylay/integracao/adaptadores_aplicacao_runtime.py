@@ -9,7 +9,12 @@ from __future__ import annotations
 
 import time
 import hashlib
+from copy import deepcopy
+from functools import wraps
 from typing import Any, Callable, Mapping
+
+from mente_laylay.cognicao.contratos_turno import ContratoOcorrenciaTurno
+from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_turno
 
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
@@ -78,11 +83,28 @@ class AdaptadoresAplicacaoRuntime:
         ns["_registrar_mente_curta_base"](
             texto_usuario, resposta_ia, intencao, alvo, escopo, habilidade,
         )
+        self.observar_mente_curta(texto_usuario, resposta_ia, intencao, alvo, escopo, habilidade)
+
+    def observar_mente_curta(
+        self, texto_usuario: str = "", resposta_ia: str = "", intencao: str = "",
+        alvo: str = "", escopo: str = "", habilidade: str = "",
+    ) -> None:
+        """Notifica os observadores existentes depois da publicação contextual."""
+        ns = self._ns()
         motor = ns.get("_motor_aprendizado_runtime")
         if motor is not None and texto_usuario:
             try:
                 estado = ns.get("_estado_compartilhado_runtime")
                 turno = dict(getattr(estado, "mental", {}).get("turno_atual") or {})
+                corpo = ns.get("_corpo_motor_runtime")
+                experiencias = getattr(corpo, "experiencias", None)
+                feedback_corporal_observado = False
+                if experiencias is not None:
+                    plano = dict(getattr(estado, "mental", {}).get("plano_turno_atual") or {})
+                    modelo = dict(plano.get("retrato_corporal") or {})
+                    if str(plano.get("id")) == str(turno.get("id")) and str(turno.get("texto") or "").strip() == str(texto_usuario).strip():
+                        feedback_corporal_observado = experiencias.observar_feedback(texto_usuario, turno_id=str(turno.get("id") or ""),
+                            referencia_id=str((modelo.get("ultima_experiencia") or {}).get("id") or ""))
                 observado = dict(turno.get("feedback_emissao_observado") or {})
                 mesmo_feedback = bool(
                     observado and observado.get("turno_id") == turno.get("id")
@@ -90,10 +112,11 @@ class AdaptadoresAplicacaoRuntime:
                         str(texto_usuario).strip().encode("utf-8")
                     ).hexdigest()
                 )
-                motor.observar_interacao(
-                    texto_usuario, resposta_ia, habilidade=habilidade, alvo=alvo,
-                    **({"feedback_ja_observado": True} if mesmo_feedback else {}),
-                )
+                if not feedback_corporal_observado:
+                    motor.observar_interacao(
+                        texto_usuario, resposta_ia, habilidade=habilidade, alvo=alvo,
+                        **({"feedback_ja_observado": True} if mesmo_feedback else {}),
+                    )
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] observação textual ignorada: {erro}")
         rede = ns.get("_rede_associativa_runtime")
@@ -111,6 +134,63 @@ class AdaptadoresAplicacaoRuntime:
                     f"⚠️ [REDE ASSOCIATIVA] observação isolada: {type(erro).__name__}"
                 )
 
+    def _capturar_ocorrencia_turno(self) -> ContratoOcorrenciaTurno:
+        mental = self._ns()["_estado_compartilhado_runtime"].retrato_dominio("mental")
+        turno = mental.get("turno_atual") or {}
+        plano = mental.get("plano_turno_atual") or {}
+        return ContratoOcorrenciaTurno(turno.get("id"),
+            str(plano.get("texto_usuario") or turno.get("texto") or ""))
+
+    def vincular_publicacao_conteudo(
+        self, contexto: Mapping[str, Any], *, portas: tuple[str, ...] = ("falar", "registrar_contexto"),
+        portas_com_ocorrencia: tuple[str, ...] = (),
+    ) -> dict[str, Any]:
+        """Vincula uma tarefa de conteúdo antes de agendar sua corrotina.
+
+        Conteúdo calculado não é entrega. Cada porta consulta o mesmo contrato
+        de ocorrência; recusa de entrega impede a publicação contextual seguinte.
+        Não chama portas externas sob lock nem concede autorização de execução.
+        """
+        ocorrencia = self._capturar_ocorrencia_turno()
+        recusada = {"valor": False}
+        def vigente() -> bool:
+            mental = self._ns()["_estado_compartilhado_runtime"].retrato_dominio("mental")
+            return not recusada["valor"] and not motivo_divergencia_ocorrencia_turno(
+                ocorrencia, turno=mental.get("turno_atual"), plano=mental.get("plano_turno_atual"),
+                retrato=mental.get("retrato_turno_atual"))
+        if not set(portas_com_ocorrencia).issubset(portas):
+            raise ValueError("Porta com ocorrência precisa pertencer à publicação vinculada.")
+        def vincular(porta, nome):
+            @wraps(porta)
+            def publicar(*args, **kwargs):
+                if not vigente():
+                    recusada["valor"] = True
+                    return False
+                if nome in portas_com_ocorrencia:
+                    # Contrato explícito da composição, não inspeção de assinatura
+                    # nem identidade inferida de um registro gerado por terceiros.
+                    kwargs["_ocorrencia"] = ocorrencia
+                resultado = porta(*args, **kwargs)
+                if resultado is False:
+                    recusada["valor"] = True
+                return resultado
+            return publicar
+        contexto = dict(contexto)
+        for nome in portas:
+            if callable(contexto.get(nome)):
+                contexto[nome] = vincular(contexto[nome], nome)
+        contexto["publicacao_vigente"] = vigente
+        return contexto
+
+    def vincular_registro_resultado_execucao(self) -> Callable[..., bool | None]:
+        """Captura origem antes do efeito; contexto do receipt não pode trocá-la."""
+        ocorrencia = self._capturar_ocorrencia_turno()
+        @wraps(self.registrar_resultado_execucao)
+        def registrar(*args: Any, **kwargs: Any) -> bool | None:
+            kwargs.pop("_ocorrencia", None)
+            return self.registrar_resultado_execucao(*args, **kwargs, _ocorrencia=ocorrencia)
+        return registrar
+
     def registrar_resultado_execucao(
         self,
         resultado=None,
@@ -119,6 +199,7 @@ class AdaptadoresAplicacaoRuntime:
         *,
         origem: str = "",
         status: str = "",
+        _ocorrencia: ContratoOcorrenciaTurno | None = None,
     ) -> bool | None:
         ns = self._ns()
         if isinstance(resultado, dict):
@@ -150,6 +231,16 @@ class AdaptadoresAplicacaoRuntime:
             and not str(status or resultado.get("status") or "").strip()
             and str(origem or "").strip().casefold() != "executor"
         ):
+            if _ocorrencia is not None:
+                mental = ns["_estado_compartilhado_runtime"].retrato_dominio("mental")
+                if motivo_divergencia_ocorrencia_turno(
+                    _ocorrencia, turno=mental.get("turno_atual"),
+                    plano=mental.get("plano_turno_atual"), retrato=mental.get("retrato_turno_atual"),
+                ):
+                    # O efeito detalhado já foi publicado: esta chamada não
+                    # acrescenta outro receipt à reconciliação. O marcador
+                    # só informa deduplicação, não vigência para o chamador.
+                    return False
             return
         # A base mental já normaliza o retorno legado, mas o plano do turno
         # era montado abaixo diretamente do dict bruto. Isso criava dois
@@ -164,6 +255,31 @@ class AdaptadoresAplicacaoRuntime:
             origem=origem,
             status=status,
         )
+        estado = ns["_estado_compartilhado_runtime"]
+        def divergencia(mental: Mapping[str, Any]) -> str:
+            if _ocorrencia is None:
+                return ""  # Porta legada sem vínculo: não inferir origem de metadados.
+            return motivo_divergencia_ocorrencia_turno(_ocorrencia,
+                turno=mental.get("turno_atual"), plano=mental.get("plano_turno_atual"),
+                retrato=mental.get("retrato_turno_atual"))
+        def preservar_tardio(motivo: str) -> None:
+            registro = {"turno_id": _ocorrencia.turno_id, "motivo": motivo,
+                        "resultado": contrato_plano.como_dict()}
+            def reconciliar(atual):
+                historico = list(atual.get("resultados_execucao_tardios") or [])
+                chave = (registro["turno_id"], contrato_plano.id_solicitacao)
+                historico = [r for r in historico if (r.get("turno_id"),
+                    (r.get("resultado") or {}).get("id_solicitacao")) != chave]
+                return {**dict(atual), "resultados_execucao_tardios": [*historico, registro][-100:]}
+            estado.atualizar("mental", reconciliar)
+        def vigente() -> bool:
+            motivo = divergencia(estado.retrato_dominio("mental"))
+            if motivo:
+                preservar_tardio(motivo)
+                return False
+            return True
+        if not vigente():
+            return False
         # Uma decisão publicada pelo owner antes do executor encerra o turno
         # atual, mas ainda não oferece evidência sobre a habilidade. Alimentar
         # os observadores de efeito aqui inventaria uma falha de execução e
@@ -179,7 +295,6 @@ class AdaptadoresAplicacaoRuntime:
         # de notificar base, aprendizado e limpadores de contexto: esses
         # consumidores também atualizam a mente compartilhada e não podem
         # trocar o RG do recibo pela proposta operacional já reduzida.
-        estado = ns["_estado_compartilhado_runtime"]
         plano = dict(estado.mental.get("plano_turno_atual") or {})
         registro_resultado = {
             "id_solicitacao": contrato_plano.id_solicitacao,
@@ -265,15 +380,27 @@ class AdaptadoresAplicacaoRuntime:
                     "⚠️ [NEURAL:COMANDOS] receipt isolado: "
                     f"{type(erro).__name__}"
                 )
-        ns["_registrar_resultado_execucao_base"](
+        if not vigente():
+            return False
+        publicado_base = ns["_registrar_resultado_execucao_base"](
             resultado, texto, executou, origem=origem, status=status,
+            **({"_ocorrencia": _ocorrencia} if _ocorrencia is not None else {}),
         )
+        if publicado_base is False:
+            if vigente() and _ocorrencia is not None:
+                # Contenção persistente também não pode sumir nem virar sucesso.
+                preservar_tardio("commit_contextual_recusado")
+            return False
+        if not vigente():
+            return False
         motor = ns.get("_motor_aprendizado_runtime")
         if motor is not None and not adiamento_sem_efeito:
             try:
                 motor.observar_resultado(resultado, texto, executou, origem=origem, status=status)
             except Exception as erro:
                 ns["print"](f"⚠️ [APRENDIZADO] resultado não observado: {erro}")
+        if not vigente():
+            return False
         mapa_habilidades = ns.get("_mapa_habilidades_runtime")
         if mapa_habilidades is not None and not adiamento_sem_efeito:
             try:
@@ -286,6 +413,8 @@ class AdaptadoresAplicacaoRuntime:
                 ns["print"](
                     f"⚠️ [HABILIDADES] resultado não refletido no mapa: {type(erro).__name__}"
                 )
+        if not vigente():
+            return False
         try:
             intent = contrato_plano.intent
             params = dict(contrato_plano.params)
@@ -306,6 +435,8 @@ class AdaptadoresAplicacaoRuntime:
                         "⚠️ [CONTEXTO] pergunta anterior não foi limpa: "
                         f"{type(erro).__name__}"
                     )
+            if not vigente():
+                return False
             suspender_topico = ns.get("_suspender_topico_conversacional")
             if callable(suspender_topico) and not adiamento_sem_efeito:
                 try:
@@ -314,6 +445,8 @@ class AdaptadoresAplicacaoRuntime:
                     ns["print"](
                         f"⚠️ [CONTEXTO] não consegui suspender o assunto anterior: {type(erro).__name__}"
                     )
+            if not vigente():
+                return False
             alvo = str(
                 alvo_objeto
                 or params.get("alvo")
@@ -379,6 +512,8 @@ class AdaptadoresAplicacaoRuntime:
                         "⚠️ [REDE ASSOCIATIVA] resultado isolado: "
                         f"{type(erro_rede).__name__}"
                     )
+            if not vigente():
+                return False
             novo = ns["_atualizar_plano_turno_mente"](
                 plano,
                 fase=str(plano.get("fase") or "executado"),
@@ -386,43 +521,70 @@ class AdaptadoresAplicacaoRuntime:
                 erros=plano.get("erros") or (),
                 fala=str(plano.get("fala_planejada") or ""),
             )
-            estado.atualizar_campos("mental", plano_turno_atual=novo)
+            publicado = {"ok": False, "motivo": ""}
+            def anexar(atual):
+                publicado["motivo"] = divergencia(atual)
+                if publicado["motivo"]:
+                    return dict(atual)
+                # Derivar sobre o plano vivo preserva outros receipts do mesmo turno.
+                plano_vivo = dict(atual.get("plano_turno_atual") or {})
+                novo_vivo = (ns["_atualizar_plano_turno_mente"](plano_vivo,
+                    fase=str(plano_vivo.get("fase") or "executado"),
+                    comandos=mesclar_solicitacoes(plano_vivo.get("comandos") or [], [registro_resultado]),
+                    erros=plano_vivo.get("erros") or (), fala=str(plano_vivo.get("fala_planejada") or ""))
+                    if _ocorrencia is not None else novo)
+                publicado["ok"] = True
+                return {**dict(atual), "plano_turno_atual": novo_vivo}
+            estado.atualizar("mental", anexar)
+            if not publicado["ok"]:
+                preservar_tardio(publicado["motivo"])
+                return False
             if adiamento_sem_efeito:
                 return
-            mente_atual = dict(estado.mental)
+            mente_atual = estado.retrato_dominio("mental")
+            pendente = deepcopy(mente_atual.get("correcao_interpretacao_pendente"))
             correcao = ns["_concluir_correcao_interpretacao_mente"](
-                mente_atual.get("correcao_interpretacao_pendente")
-                if isinstance(mente_atual.get("correcao_interpretacao_pendente"), dict)
-                else {},
+                deepcopy(pendente) if isinstance(pendente, dict) else {},
                 intent_correta=intent,
                 alvo_correto=alvo,
                 texto_execucao=texto_identidade or texto,
             )
-            if correcao.get("status") == "confirmada_por_execucao":
+            if not vigente():
+                return False
+            confirmada = correcao.get("status") == "confirmada_por_execucao"
+            if confirmada or correcao.get("status") == "descartada_execucao_nao_correlacionada":
                 # A intenção correta vem do ciclo de correção; slots e ação
                 # vêm do receipt que efetivamente concluiu o pedido.
-                correcao["params_corretos"] = dict(params)
+                if confirmada:
+                    correcao["params_corretos"] = dict(params)
+                motivo_commit = {"ocorrencia": ""}
+                def consumir_correcao(dominios):
+                    atual = dominios["mental"]
+                    motivo_commit["ocorrencia"] = divergencia(atual)
+                    if motivo_commit["ocorrencia"] or atual.get("correcao_interpretacao_pendente") != pendente:
+                        return None
+                    # Comparar o registro inteiro preserva ts/identidade, não
+                    # transforma igualdade de frase em identidade de pendência.
+                    atual["correcao_interpretacao_pendente"] = {}
+                    if confirmada:
+                        historico = list(atual.get("historico_correcoes_interpretacao") or [])[-29:]
+                        atual["historico_correcoes_interpretacao"] = [*historico, deepcopy(correcao)]
+                    return {"mental": atual}
+                consumida = estado.atualizar_dominios(("mental",), consumir_correcao)
+                if motivo_commit["ocorrencia"]:
+                    preservar_tardio(motivo_commit["ocorrencia"])
+                    return False
                 especialista_neural = ns.get("_especialista_neural_comandos_runtime")
-                if especialista_neural is not None:
+                if consumida and confirmada and especialista_neural is not None:
                     try:
-                        especialista_neural.observar_correcao(correcao)
+                        # Observador externo recebe cópia de evento já consumido;
+                        # não pode mutar histórico nem limpar pendência nova.
+                        especialista_neural.observar_correcao(deepcopy(correcao))
                     except Exception as erro_neural:
                         ns["print"](
                             "⚠️ [NEURAL:COMANDOS] correção isolada: "
                             f"{type(erro_neural).__name__}"
                         )
-                historico = list(mente_atual.get("historico_correcoes_interpretacao") or [])[-29:]
-                historico.append(correcao)
-                estado.atualizar_campos(
-                    "mental",
-                    correcao_interpretacao_pendente={},
-                    historico_correcoes_interpretacao=historico,
-                )
-            elif correcao.get("status") == "descartada_execucao_nao_correlacionada":
-                estado.atualizar_campos(
-                    "mental",
-                    correcao_interpretacao_pendente={},
-                )
         except Exception as erro:
             ns["print"](f"⚠️ [PLANO] não consegui anexar resultado real: {erro}")
             return False
@@ -473,39 +635,68 @@ class AdaptadoresAplicacaoRuntime:
             return None
         return metodo(**dados)
 
-    def registrar_contexto_resumo_pagina(self, registro) -> None:
+    def registrar_contexto_resumo_pagina(
+        self, registro: Mapping[str, Any], *,
+        _ocorrencia: ContratoOcorrenciaTurno | None = None,
+    ) -> bool:
         ns = self._ns()
-        dados = dict(registro or {})
+        dados = deepcopy(dict(registro or {}))
         if not dados:
-            return
+            return False
         dados["ts"] = time.time()
         estado = ns["_estado_compartilhado_runtime"]
-        estado.atualizar_campos("mental", ultimo_resumo_pagina=dados)
+        # Chamadas síncronas capturam na entrada; tarefas assíncronas recebem
+        # a ocorrência imutável capturada pela composição antes do agendamento.
+        ocorrencia = _ocorrencia if _ocorrencia is not None else self._capturar_ocorrencia_turno()
+        def vigente(mental):
+            return not motivo_divergencia_ocorrencia_turno(ocorrencia,
+                turno=mental.get("turno_atual"), plano=mental.get("plano_turno_atual"),
+                retrato=mental.get("retrato_turno_atual"))
         referente = str(dados.get("referente") or dados.get("titulo") or "página atual").strip()
         resumo = str(dados.get("resumo") or "").strip()
-        if resumo:
-            ns["_registrar_mente_curta"](
-                "resuma a página atual", resumo,
-                intencao="RESUMIR_PAGINA", alvo=referente,
-                escopo="pagina", habilidade="resumo_pagina",
-            )
-            mensagens = list(estado.memoria_conversa.get("messages", []) or [])
-            mensagens.extend([
-                {"role": "user", "content": "Resuma a página atual."},
-                {"role": "assistant", "content": resumo},
-            ])
-            estado.atualizar_campos("memoria_conversa", messages=mensagens[-30:])
-            conversa = dict(estado.conversacional)
-            topicos = [
-                item for item in list(conversa.get("topicos_conversa_recente") or [])
-                if str(item).strip().casefold() != referente.casefold()
-            ]
-            topicos.append(referente)
-            estado.atualizar_campos(
-                "conversacional", ultimo_topico_conversa=referente,
-                ultimo_topico_ts=time.time(), topicos_conversa_recente=topicos[-8:],
-            )
-        ns["salvar_memoria"]()
+        nomes = ("mental", "memoria_conversa", "conversacional")
+        for _ in range(3):
+            snapshot = estado.snapshot()
+            retratos = {nome: snapshot[nome] for nome in nomes}
+            if not vigente(retratos["mental"]):
+                return False
+            novos = deepcopy(retratos)
+            if resumo:
+                derivar = ns.get("_derivar_mente_curta")
+                if not callable(derivar):
+                    return False  # Não substituir o owner por derivação privada.
+                novos["mental"] = derivar(deepcopy(retratos["mental"]),
+                    deepcopy(retratos["conversacional"]),
+                    texto_usuario="resuma a página atual", resposta_ia=resumo,
+                    intencao="RESUMIR_PAGINA", alvo=referente,
+                    escopo="pagina", habilidade="resumo_pagina")
+                mensagens = list(novos["memoria_conversa"].get("messages") or [])
+                mensagens.extend([
+                    {"role":"user", "content":"Resuma a página atual."},
+                    {"role":"assistant", "content":resumo},
+                ])
+                novos["memoria_conversa"]["messages"] = mensagens[-30:]
+                conversa = novos["conversacional"]
+                topicos = [item for item in list(conversa.get("topicos_conversa_recente") or [])
+                    if str(item).strip().casefold() != referente.casefold()]
+                conversa.update(ultimo_topico_conversa=referente, ultimo_topico_ts=dados["ts"],
+                    topicos_conversa_recente=(topicos + [referente])[-8:])
+            novos["mental"]["ultimo_resumo_pagina"] = deepcopy(dados)
+            def publicar(dominios):
+                # Puro: sem normalizadores, aprendizado ou I/O sob o lock.
+                if not vigente(dominios["mental"]) or dominios != retratos:
+                    return None
+                return novos
+            if estado.atualizar_dominios(nomes, publicar):
+                if resumo and vigente(estado.retrato_dominio("mental")):
+                    self.observar_mente_curta("resuma a página atual", resumo,
+                        "RESUMIR_PAGINA", referente, "pagina", "resumo_pagina")
+                if vigente(estado.retrato_dominio("mental")):
+                    ns["salvar_memoria"]()
+                return True
+            # Conflito no mesmo turno rederiva do snapshot novo; mudança de
+            # ocorrência recusa na próxima leitura. Contenção contínua é limitada.
+        return False
 
     def pronuncias_aprendidas_voz(self) -> dict[str, str]:
         ns = self._ns()

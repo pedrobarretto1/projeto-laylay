@@ -96,6 +96,9 @@ class GmailMental:
         self.stop_event = stop_event or threading.Event()
         self.registrar_falha = registrar_falha
         self.log = log
+        from mente_laylay.integracao.caixa_gmail import CaixaGmailRuntime
+        self.caixa = CaixaGmailRuntime(self)
+        self.ultima_consulta: dict = {}
 
     def configurado(self) -> bool:
         """Indica se o processo recebeu credenciais utilizáveis, sem expô-las."""
@@ -219,71 +222,22 @@ class GmailMental:
         return False
 
     def buscar_nao_lidos(self) -> List[Dict[str, object]]:
-        if not self.configurado():
-            self._ultima_busca_falhou = True
-            return []
-        if imaplib is None:
-            print("⚠️ [Gmail] imaplib não disponível.")
-            return []
+        resultado = self.consultar_mensagens(nao_lidos=True)
+        self._ultima_busca_falhou = resultado.get("ok") is not True
+        return list(resultado.get("mensagens") or []) if not self._ultima_busca_falhou else []
 
-        emails = []
-        self._ultima_busca_falhou = False
-        try:
-            conn = imaplib.IMAP4_SSL("imap.gmail.com", 993)
-            conn.login(self.usuario, self.app_password)
-            conn.select("INBOX", readonly=True)
+    def consultar_mensagens(self, **filtros: object) -> dict:
+        self.ultima_consulta = self.caixa.consultar_mensagens(**filtros)
+        return dict(self.ultima_consulta)
 
-            # UIDs permanecem estáveis mesmo quando mensagens anteriores são
-            # apagadas. Números de sequência podem ser reutilizados e faziam
-            # um email novo colidir com outro já registrado como anunciado.
-            _, data = conn.uid("search", None, "UNSEEN")
-            ids_bytes = data[0].split() if data[0] else []
-            ids_recentes = ids_bytes[-20:]
+    def ler_mensagem(self, referencia: dict) -> dict:
+        return self.caixa.ler_mensagem(referencia)
 
-            for uid_bytes in reversed(ids_recentes):
-                uid = f"uid:{uid_bytes.decode()}"
-                _, msg_data = conn.uid(
-                    "fetch", uid_bytes,
-                    "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT REPLY-TO AUTHENTICATION-RESULTS RETURN-PATH)])",
-                )
-                if not msg_data or not msg_data[0]:
-                    continue
+    def alterar_mensagem(self, referencia: dict, acao: str) -> dict:
+        return self.caixa.alterar_mensagem(referencia, acao)
 
-                raw_header = bytes(msg_data[0][1])
-                msg = _email_lib.message_from_bytes(raw_header)
-
-                assunto = self.decodificar_header(msg.get("Subject", "(sem assunto)"))
-                analise = self.analisar_remetente(
-                    msg.get("From", ""), assunto, msg.get("Authentication-Results", ""), msg.get("Reply-To", "")
-                )
-                remetente = str(analise.get("nome") or "desconhecido")
-                prioritario = self.email_prioritario(remetente, assunto)
-
-                emails.append({
-                    "uid": uid,
-                    "remetente": remetente or "desconhecido",
-                    "assunto": assunto or "(sem assunto)",
-                    "prioritario": prioritario,
-                    "silenciado": any(s in (remetente or "").lower() for s in self.remetentes_silenciados),
-                    "endereco": analise.get("endereco", ""),
-                    "dominio": analise.get("dominio", ""),
-                    "dominio_valido": analise.get("dominio_valido", False),
-                    "autenticado": analise.get("autenticado", False),
-                    "possivel_golpe": analise.get("possivel_golpe", False),
-                    "categoria": self.classificar_categoria(remetente, assunto),
-                })
-
-            conn.logout()
-        except imaplib.IMAP4.error as e:
-            self._ultima_busca_falhou = True
-            print(f"⚠️ [Gmail] Erro IMAP (credenciais?): {e}")
-        except OSError:
-            self._ultima_busca_falhou = True
-        except Exception as e:
-            self._ultima_busca_falhou = True
-            print(f"⚠️ [Gmail] Erro inesperado: {e}")
-
-        return emails
+    def enviar_rascunho(self, rascunho: dict) -> dict:
+        return self.caixa.enviar_rascunho(rascunho)
 
     def _continuidades(self, chave: str, valor: object) -> None:
         if callable(self.continuidades_set):
@@ -404,12 +358,12 @@ class GmailMental:
                         break
                     continue
                 falhas_consecutivas = 0
+                self.nao_lidos_cache[:] = emails
                 if not emails:
                     if self.stop_event.wait(30):
                         break
                     continue
 
-                self.nao_lidos_cache[:] = emails
                 novos = [e for e in emails if e["uid"] not in self.ids_vistos]
                 if not novos:
                     print(f"📧 [Gmail] {len(emails)} não lidos, nenhum novo para anunciar")
@@ -502,6 +456,22 @@ class GmailRuntime:
 
     def configurado(self) -> bool:
         return self.mental.configurado()
+
+    @property
+    def identidade_conta(self) -> str:
+        return self.mental.caixa.identidade_conta
+
+    def consultar_mensagens(self, **filtros: object) -> dict:
+        return self.mental.consultar_mensagens(**filtros)
+
+    def ler_mensagem(self, referencia: dict) -> dict:
+        return self.mental.ler_mensagem(referencia)
+
+    def alterar_mensagem(self, referencia: dict, acao: str) -> dict:
+        return self.mental.alterar_mensagem(referencia, acao)
+
+    def enviar_rascunho(self, rascunho: dict) -> dict:
+        return self.mental.enviar_rascunho(rascunho)
 
     def buscar_nao_lidos(self) -> list:
         emails = self.mental.buscar_nao_lidos()

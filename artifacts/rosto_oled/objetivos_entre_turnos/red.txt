@@ -1,0 +1,28 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_____ test_autoria_principal_vincula_objetivo_anterior_sem_herdar_comando _____
+scripts\tests\test_objetivo_corporal_entre_turnos.py:42: in test_autoria_principal_vincula_objetivo_anterior_sem_herdar_comando
+    assert p.get("objetivo_id") == objetivo, "primeira fronteira: codec descarta referência ao objetivo vivo"
+E   AssertionError: primeira fronteira: codec descarta referência ao objetivo vivo
+E   assert None == '6ea7b0835d3d'
+E    +  where None = <built-in method get of dict object at 0x00000266566F9240>('objetivo_id')
+E    +    where <built-in method get of dict object at 0x00000266566F9240> = {}.get
+________ test_owner_preserva_objetivo_mas_cria_intencao_do_novo_turno _________
+scripts\tests\test_objetivo_corporal_entre_turnos.py:53: in test_owner_preserva_objetivo_mas_cria_intencao_do_novo_turno
+    assert p.get("id"), "a proposta deve chegar ao owner"
+E   AssertionError: a proposta deve chegar ao owner
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x0000026656EA87C0>('id')
+E    +    where <built-in method get of dict object at 0x0000026656EA87C0> = {}.get
+_ test_planejamento_evitar_repeticao_usa_historico_factual_no_owner_existente _
+scripts\tests\test_objetivo_corporal_entre_turnos.py:69: in test_planejamento_evitar_repeticao_usa_historico_factual_no_owner_existente
+    assert corpo.experiencias.selecionar_variante("expressar:1", "rodas_suspensas", 0) != 0
+E   AssertionError: assert 0 != 0
+E    +  where 0 = selecionar_variante('expressar:1', 'rodas_suspensas', 0)
+E    +    where selecionar_variante = <mente_laylay.memoria_mental.experiencia_corporal_runtime.ExperienciaCorporalRuntime object at 0x0000026656F116D0>.selecionar_variante
+E    +      where <mente_laylay.memoria_mental.experiencia_corporal_runtime.ExperienciaCorporalRuntime object at 0x0000026656F116D0> = <mente_laylay.especialistas.corpo_motor_runtime.CorpoMotorRuntime object at 0x0000026656F11590>.experiencias
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_objetivo_corporal_entre_turnos.py::test_autoria_principal_vincula_objetivo_anterior_sem_herdar_comando
+FAILED scripts/tests/test_objetivo_corporal_entre_turnos.py::test_owner_preserva_objetivo_mas_cria_intencao_do_novo_turno
+FAILED scripts/tests/test_objetivo_corporal_entre_turnos.py::test_planejamento_evitar_repeticao_usa_historico_factual_no_owner_existente
+3 failed in 0.93s

@@ -5,6 +5,8 @@ import re
 import unicodedata
 from typing import Any, Dict
 
+from mente_laylay.cognicao.modalidade_turno import proibicao_operacional_independente
+
 _OPERACOES = (
     ("retomar", r"(?:continua|continue|continuar|retoma|retome|retomar|volta\s+a\s+tocar)"),
     ("maximizar", r"(?:maximiza|maximize|maximizar|tela\s+cheia|fullscreen)"),
@@ -144,6 +146,12 @@ def resolver_revisao_intra_turno(texto: str) -> Dict[str, Any]:
             continue
         proposta=bruto[:m.start()].strip(" \t\r\n,;:.!?…")
         if not _tem_operacao(proposta):
+            continue
+        if _norm(m.group("marker")) == "nao" and proibicao_operacional_independente(
+            proposta, bruto[m.start("marker"):], normalizar_texto=None,
+        ):
+            # O owner dos atos já prova tipos distintos. Não transformar uma
+            # proibição independente em revisão que apaga o pedido anterior.
             continue
         achado=m
         break

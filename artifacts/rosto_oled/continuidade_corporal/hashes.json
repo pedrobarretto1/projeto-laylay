@@ -1,0 +1,38 @@
+[
+  {
+    "arquivo": "mente_laylay/autonomia/companhia_corporal.py",
+    "sha256": "828c8340b497de976759675c4507bf27c0a9542d7a05f18b7db9aba8a2a60dae"
+  },
+  {
+    "arquivo": "mente_laylay/especialistas/corpo_motor_runtime.py",
+    "sha256": "8b1b3f3a2929206fb002d1537f2a43bf3cec716df4ef45a18d25dc8bbd22a387"
+  },
+  {
+    "arquivo": "mente_laylay/cognicao/modelo_corporal.py",
+    "sha256": "efcd4b83a909354dac74a0cd170ef3f951ddcc264f81f0d75565b8186096499a"
+  },
+  {
+    "arquivo": "mente_laylay/especialistas/mapa_habilidades.py",
+    "sha256": "5faa8dbf7c862b4018221d99d554a914678f50e7215b280c2bbb9dd3a86149a1"
+  },
+  {
+    "arquivo": "scripts/tests/test_continuidade_intencao_corporal.py",
+    "sha256": "fb5a1a2aab10c544e0e1279f78627c9a4c1ca242caa4bbc544516008b08a7420"
+  },
+  {
+    "arquivo": "scripts/validar_continuidade_corporal_fisica.py",
+    "sha256": "8bffb1fa6eb1cd94dbb2d49e6143865f7e302f2486806f4350ac63af6aebf461"
+  },
+  {
+    "arquivo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\firmware\\rosto_laylay\\rosto_laylay.ino",
+    "firmware_preservado": true
+  },
+  {
+    "arquivo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\firmware\\rosto_laylay\\sono_vivo.h",
+    "firmware_preservado": true
+  },
+  {
+    "arquivo": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\firmware\\rosto_laylay\\som_expressivo.h",
+    "firmware_preservado": true
+  }
+]

@@ -1,0 +1,1049 @@
+{
+  "falha": "",
+  "registros": [
+    {
+      "t": 1.971,
+      "sessao": "5b9a4db6",
+      "protecao": {
+        "incidente_id": 7,
+        "motor_origem_seq": 0,
+        "risco": "BORDA_SEM_RETORNO",
+        "fase": "PRONTA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "medo",
+        "tentativa_busca": 4,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "leituras": {
+        "frente": {
+          "estado": "INVALIDA",
+          "mm": null,
+          "idade_ms": 228,
+          "status": 4
+        },
+        "borda": {
+          "estado": "INVALIDA",
+          "mm": null,
+          "idade_ms": 224,
+          "status": 4
+        }
+      },
+      "companhia": {
+        "ativa": false,
+        "motivo": "consulta_sem_iniciativa_corporal",
+        "transporte_exigido": "serial",
+        "recuperacao_pendente": false,
+        "ttl_maximo_s": null,
+        "gestos_maximos": null,
+        "gestos_emitidos": 0,
+        "intervalo_minimo_s": 2,
+        "pwm_gestos": 230,
+        "duracao_maxima_gesto_ms": 5000,
+        "duracao_planejada_maxima_coreografia_ms": 16000,
+        "movimentos_maximos_por_gesto": 4,
+        "perfil_expressivo": "presenca_coordenada_v2",
+        "perfil_corporal": "rodas_suspensas",
+        "intencao": {},
+        "continuidade_intencao": true,
+        "objetivos_entre_turnos": true,
+        "planejamento_por_historico": true,
+        "validade_objetivo_s": 120,
+        "turnos_objetivo_maximo": 8,
+        "passeio_ativado": false,
+        "comemoracoes_emitidas": 0,
+        "passeios_emitidos": 0,
+        "giro_360_calibrado": false,
+        "restantes_s": null,
+        "vigencia": "sessao_usb_atual_ate_revogacao",
+        "origem": "concessao_explicita_de_sessao",
+        "ativacao_automatica_ao_iniciar": true,
+        "passeio_automatico_ao_iniciar": true,
+        "autoriza_execucao": false,
+        "persistente": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "sensor_269b0efbcc1b812e9ac0158b",
+            "nome": "protecao_sensorial",
+            "tipo": "episodio_sensorial",
+            "turno_id": "",
+            "origem_intencao": "reflexo_firmware",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "busca_em_espera",
+            "confirmado": false,
+            "ts": 1792015940.2534254,
+            "prova_deslocamento": false,
+            "recuperada_da_memoria": true,
+            "fase": "ESPERA_BUSCA",
+            "risco": "OBSTACULO",
+            "observacao_confirmada": true,
+            "tentativa_busca": 4
+          },
+          {
+            "id": "sensor_20c502a93a0c462b3b66fb66",
+            "nome": "protecao_sensorial",
+            "tipo": "episodio_sensorial",
+            "turno_id": "",
+            "origem_intencao": "reflexo_firmware",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "protecao_rearmada",
+            "confirmado": false,
+            "ts": 1792015967.982294,
+            "prova_deslocamento": false,
+            "recuperada_da_memoria": true,
+            "fase": "PRONTA",
+            "risco": "NENHUM",
+            "observacao_confirmada": true,
+            "tentativa_busca": 4
+          }
+        ],
+        "aprendizado": {},
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": true,
+        "ultimo_erro": ""
+      },
+      "modelo": {
+        "origem": "owner_corpo_usb",
+        "ts": 1792016097.0260644,
+        "turno_id": "",
+        "sessao": "5b9a4db6",
+        "concessao_id": "",
+        "conectada": true,
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "perfil": "rodas_suspensas",
+        "condicao": {
+          "estado": "risco_detectado",
+          "motivo_motor": "",
+          "saude_executor": {
+            "motivo_boot": "usb",
+            "motivo_perda_sessao": "TRANSPORTE",
+            "suportado": true,
+            "recente": true,
+            "reinicios_observados": 0
+          },
+          "recuperacao_pendente": false,
+          "protecao": {
+            "incidente_id": 7,
+            "motor_origem_seq": 0,
+            "risco": "BORDA_SEM_RETORNO",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "medo",
+            "tentativa_busca": 4,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "reacao_expressiva": "medo",
+          "origem": "diagnostico_firmware",
+          "autoriza_execucao": false
+        },
+        "experiencia": {
+          "origem": "experiencia_corporal_observada",
+          "historico_recente": [
+            {
+              "id": "sensor_269b0efbcc1b812e9ac0158b",
+              "nome": "protecao_sensorial",
+              "tipo": "episodio_sensorial",
+              "turno_id": "",
+              "origem_intencao": "reflexo_firmware",
+              "perfil": "rodas_suspensas",
+              "variante": 0,
+              "resultado": "busca_em_espera",
+              "confirmado": false,
+              "ts": 1792015940.2534254,
+              "prova_deslocamento": false,
+              "recuperada_da_memoria": true,
+              "fase": "ESPERA_BUSCA",
+              "risco": "OBSTACULO",
+              "observacao_confirmada": true,
+              "tentativa_busca": 4
+            },
+            {
+              "id": "sensor_20c502a93a0c462b3b66fb66",
+              "nome": "protecao_sensorial",
+              "tipo": "episodio_sensorial",
+              "turno_id": "",
+              "origem_intencao": "reflexo_firmware",
+              "perfil": "rodas_suspensas",
+              "variante": 0,
+              "resultado": "protecao_rearmada",
+              "confirmado": false,
+              "ts": 1792015967.982294,
+              "prova_deslocamento": false,
+              "recuperada_da_memoria": true,
+              "fase": "PRONTA",
+              "risco": "NENHUM",
+              "observacao_confirmada": true,
+              "tentativa_busca": 4
+            }
+          ],
+          "aprendizado": {},
+          "feedback": {},
+          "aprendizado_conectado": true,
+          "autoriza_execucao": false,
+          "sensores_fisicos": true,
+          "ultimo_erro": "",
+          "sensorial": {
+            "origem": "experiencia_sensorial_observada",
+            "vigente": true,
+            "episodios_recentes": 0,
+            "buscas_em_espera": 0,
+            "ultima_espera_em": 0,
+            "segundos_ultima_espera": null,
+            "fase_atual": "PRONTA",
+            "risco_atual": "BORDA_SEM_RETORNO",
+            "autoriza_execucao": false,
+            "prova_deslocamento": false
+          }
+        },
+        "intencao_em_curso": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "objetivo_para_continuar": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "percepcao_fisica": {
+          "deslocamento": "nao_medido",
+          "contato": "nao_medido",
+          "distancias": {
+            "suportado": true,
+            "recente": true,
+            "consulta_id": 1,
+            "alerta_suportado": true,
+            "busca_renovada": false,
+            "leituras": {
+              "frente": {
+                "estado": "INVALIDA",
+                "mm": null,
+                "idade_ms": 228,
+                "status": 4
+              },
+              "borda": {
+                "estado": "INVALIDA",
+                "mm": null,
+                "idade_ms": 224,
+                "status": 4
+              }
+            },
+            "protecao": {
+              "incidente_id": 7,
+              "motor_origem_seq": 0,
+              "risco": "BORDA_SEM_RETORNO",
+              "fase": "PRONTA",
+              "reflexo_ativo": false,
+              "reacao_expressiva": "medo",
+              "tentativa_busca": 4,
+              "vigia_ativa": false,
+              "limite_borda_mm": 130,
+              "limite_obstaculo_mm": 100,
+              "origem": "executor_protecao_esp",
+              "autoriza_execucao": false,
+              "rotacao_medida": false,
+              "cobertura": "frente_e_borda_dianteira",
+              "recente": true
+            },
+            "origem": "owner_usb_dist_guard",
+            "autoriza_execucao": false
+          },
+          "obstaculos": "medicao_frontal",
+          "cobertura": "somente_frente_e_borda_dianteira",
+          "rotacao": "nao_medida"
+        },
+        "olhos": [
+          0,
+          1,
+          0
+        ],
+        "motor_em_andamento": false,
+        "emocao_causal": {
+          "nome": "calma",
+          "nivel": 1
+        },
+        "atencao_pc": false,
+        "autoriza_execucao": false,
+        "ultima_experiencia": {
+          "assinatura_observacao": [
+            "PRONTA",
+            "NENHUM",
+            4,
+            true
+          ],
+          "autoriza_execucao": false,
+          "confirmado": false,
+          "consulta_id": 42,
+          "desfechos_observados": [
+            "busca_em_espera",
+            "protecao_rearmada"
+          ],
+          "duracao_comandada_confirmada_ms": 0,
+          "espera_observada_em": 1792015946.2063081,
+          "evidencia": "DIST_GUARD_correlacionados",
+          "familia": "protecao_sensorial",
+          "fase": "PRONTA",
+          "id": "sensor_20c502a93a0c462b3b66fb66",
+          "incidente_id": 7,
+          "iniciada_em": 1792015943.6779566,
+          "leituras_observadas": {
+            "borda": {
+              "estado": "VALIDA",
+              "idade_ms": 140,
+              "mm": 34,
+              "status": 0
+            },
+            "frente": {
+              "estado": "INVALIDA",
+              "idade_ms": 138,
+              "mm": null,
+              "status": 4
+            }
+          },
+          "movimentos_confirmados": 0,
+          "nome": "protecao_sensorial",
+          "observacao_confirmada": true,
+          "origem": "executor_corpo",
+          "origem_intencao": "reflexo_firmware",
+          "parada_confirmada": false,
+          "perfil": "rodas_suspensas",
+          "pertence_ao_turno_atual": false,
+          "prova_deslocamento": false,
+          "recuperada_da_memoria": true,
+          "resultado": "protecao_rearmada",
+          "risco": "NENHUM",
+          "risco_inicial_observado": "OBSTACULO",
+          "sessao": "9d4fa648",
+          "tentativa_busca": 4,
+          "tipo": "episodio_sensorial",
+          "transicoes_observadas": [
+            {
+              "fase": "RECUANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 0,
+              "ts": 1792015943.6779566
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 2,
+              "ts": 1792015944.4758174
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015945.285568
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015946.2063081
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "BORDA_SEM_RETORNO",
+              "tentativa": 4,
+              "ts": 1792015947.8154745
+            },
+            {
+              "fase": "PRONTA",
+              "risco": "NENHUM",
+              "tentativa": 4,
+              "ts": 1792015967.982294
+            }
+          ],
+          "ts": 1792015967.982294,
+          "turno_id": "",
+          "variante": 0
+        }
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "t": 0.007,
+      "comando": "HELLO 1 5b9a4db6",
+      "enviado": true
+    },
+    {
+      "t": 1.426,
+      "comando": "SENTRY 1 5b9a4db6 1 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 2.329,
+      "comando": "SENTRY 1 5b9a4db6 2 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 3.141,
+      "comando": "SENTRY 1 5b9a4db6 3 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 4.064,
+      "comando": "SENTRY 1 5b9a4db6 4 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 4.863,
+      "comando": "SENTRY 1 5b9a4db6 5 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 5.511,
+      "comando": "STOP 1 5b9a4db6 1",
+      "enviado": true
+    },
+    {
+      "t": 5.722,
+      "comando": "SENTRY 1 5b9a4db6 6 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 6.641,
+      "comando": "SENTRY 1 5b9a4db6 7 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 7.438,
+      "comando": "SENTRY 1 5b9a4db6 8 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 8.249,
+      "comando": "SENTRY 1 5b9a4db6 9 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 9.166,
+      "comando": "SENTRY 1 5b9a4db6 10 0 1200",
+      "enviado": true
+    },
+    {
+      "t": 9.605,
+      "comando": "STOP 1 5b9a4db6 2",
+      "enviado": true
+    }
+  ],
+  "evidencias": [
+    {
+      "chave": "corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera",
+      "tipo": "episodio_sensorial_corporal",
+      "escopo": "corpo_motor",
+      "valor": {
+        "descricao_humana": "fases observadas da proteção, sem medir deslocamento",
+        "resultado": "busca_em_espera",
+        "risco": "OBSTACULO"
+      },
+      "contexto": {
+        "experiencia": {
+          "assinatura_observacao": [
+            "ESPERA_BUSCA",
+            "OBSTACULO",
+            4,
+            true
+          ],
+          "autoriza_execucao": false,
+          "confirmado": false,
+          "consulta_id": 16,
+          "desfechos_observados": [
+            "busca_em_espera"
+          ],
+          "duracao_comandada_confirmada_ms": 0,
+          "espera_observada_em": 1792015946.2063081,
+          "evidencia": "DIST_GUARD_correlacionados",
+          "familia": "protecao_sensorial",
+          "fase": "ESPERA_BUSCA",
+          "id": "sensor_20c502a93a0c462b3b66fb66",
+          "incidente_id": 7,
+          "iniciada_em": 1792015943.6779566,
+          "leituras_observadas": {
+            "borda": {
+              "estado": "VALIDA",
+              "idade_ms": 142,
+              "mm": 27,
+              "status": 0
+            },
+            "frente": {
+              "estado": "VALIDA",
+              "idade_ms": 141,
+              "mm": 41,
+              "status": 0
+            }
+          },
+          "movimentos_confirmados": 0,
+          "nome": "protecao_sensorial",
+          "observacao_confirmada": true,
+          "origem": "executor_corpo",
+          "origem_intencao": "reflexo_firmware",
+          "parada_confirmada": false,
+          "perfil": "rodas_suspensas",
+          "pertence_ao_turno_atual": false,
+          "prova_deslocamento": false,
+          "recuperada_da_memoria": false,
+          "resultado": "busca_em_espera",
+          "risco": "OBSTACULO",
+          "risco_inicial_observado": "OBSTACULO",
+          "sessao": "9d4fa648",
+          "tentativa_busca": 4,
+          "tipo": "episodio_sensorial",
+          "transicoes_observadas": [
+            {
+              "fase": "RECUANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 0,
+              "ts": 1792015943.6779566
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 2,
+              "ts": 1792015944.4758174
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015945.285568
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015946.2063081
+            }
+          ],
+          "ts": 1792015946.2063081,
+          "turno_id": "",
+          "variante": 0
+        },
+        "perfil": "rodas_suspensas"
+      },
+      "evidencia": "busca_em_espera",
+      "sinal": 0.5,
+      "origem": "executor_corpo",
+      "confirmado_usuario": false,
+      "criado_em": "2026-10-14 19:12:26.206443",
+      "id_evento": "sensorial:sensor_20c502a93a0c462b3b66fb66:busca_em_espera"
+    },
+    {
+      "chave": "corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera",
+      "tipo": "episodio_sensorial_corporal",
+      "escopo": "corpo_motor",
+      "valor": {
+        "descricao_humana": "fases observadas da proteção, sem medir deslocamento",
+        "resultado": "busca_em_espera",
+        "risco": "OBSTACULO"
+      },
+      "contexto": {
+        "experiencia": {
+          "assinatura_observacao": [
+            "ESPERA_BUSCA",
+            "OBSTACULO",
+            4,
+            true
+          ],
+          "autoriza_execucao": false,
+          "confirmado": false,
+          "consulta_id": 9,
+          "desfechos_observados": [
+            "busca_em_espera"
+          ],
+          "duracao_comandada_confirmada_ms": 0,
+          "espera_observada_em": 1792015940.2534254,
+          "evidencia": "DIST_GUARD_correlacionados",
+          "familia": "protecao_sensorial",
+          "fase": "ESPERA_BUSCA",
+          "id": "sensor_269b0efbcc1b812e9ac0158b",
+          "incidente_id": 6,
+          "iniciada_em": 1792015937.5083451,
+          "leituras_observadas": {
+            "borda": {
+              "estado": "VALIDA",
+              "idade_ms": 140,
+              "mm": 30,
+              "status": 0
+            },
+            "frente": {
+              "estado": "VALIDA",
+              "idade_ms": 138,
+              "mm": 41,
+              "status": 0
+            }
+          },
+          "movimentos_confirmados": 0,
+          "nome": "protecao_sensorial",
+          "observacao_confirmada": true,
+          "origem": "executor_corpo",
+          "origem_intencao": "reflexo_firmware",
+          "parada_confirmada": false,
+          "perfil": "rodas_suspensas",
+          "pertence_ao_turno_atual": false,
+          "prova_deslocamento": false,
+          "recuperada_da_memoria": false,
+          "resultado": "busca_em_espera",
+          "risco": "OBSTACULO",
+          "risco_inicial_observado": "OBSTACULO",
+          "sessao": "9d4fa648",
+          "tentativa_busca": 4,
+          "tipo": "episodio_sensorial",
+          "transicoes_observadas": [
+            {
+              "fase": "PAUSA",
+              "risco": "OBSTACULO",
+              "tentativa": 0,
+              "ts": 1792015937.5083451
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 3,
+              "ts": 1792015938.5245693
+            },
+            {
+              "fase": "CONFERINDO",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015939.4563613
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015940.2534254
+            }
+          ],
+          "ts": 1792015940.2534254,
+          "turno_id": "",
+          "variante": 0
+        },
+        "perfil": "rodas_suspensas"
+      },
+      "evidencia": "busca_em_espera",
+      "sinal": 0.5,
+      "origem": "executor_corpo",
+      "confirmado_usuario": false,
+      "criado_em": "2026-10-14 19:12:20.253762",
+      "id_evento": "sensorial:sensor_269b0efbcc1b812e9ac0158b:busca_em_espera"
+    },
+    {
+      "chave": "corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_rearmada",
+      "tipo": "episodio_sensorial_corporal",
+      "escopo": "corpo_motor",
+      "valor": {
+        "descricao_humana": "fases observadas da proteção, sem medir deslocamento",
+        "resultado": "protecao_rearmada",
+        "risco": "OBSTACULO"
+      },
+      "contexto": {
+        "experiencia": {
+          "assinatura_observacao": [
+            "PRONTA",
+            "NENHUM",
+            4,
+            true
+          ],
+          "autoriza_execucao": false,
+          "confirmado": false,
+          "consulta_id": 42,
+          "desfechos_observados": [
+            "busca_em_espera",
+            "protecao_rearmada"
+          ],
+          "duracao_comandada_confirmada_ms": 0,
+          "espera_observada_em": 1792015946.2063081,
+          "evidencia": "DIST_GUARD_correlacionados",
+          "familia": "protecao_sensorial",
+          "fase": "PRONTA",
+          "id": "sensor_20c502a93a0c462b3b66fb66",
+          "incidente_id": 7,
+          "iniciada_em": 1792015943.6779566,
+          "leituras_observadas": {
+            "borda": {
+              "estado": "VALIDA",
+              "idade_ms": 140,
+              "mm": 34,
+              "status": 0
+            },
+            "frente": {
+              "estado": "INVALIDA",
+              "idade_ms": 138,
+              "mm": null,
+              "status": 4
+            }
+          },
+          "movimentos_confirmados": 0,
+          "nome": "protecao_sensorial",
+          "observacao_confirmada": true,
+          "origem": "executor_corpo",
+          "origem_intencao": "reflexo_firmware",
+          "parada_confirmada": false,
+          "perfil": "rodas_suspensas",
+          "pertence_ao_turno_atual": false,
+          "prova_deslocamento": false,
+          "recuperada_da_memoria": false,
+          "resultado": "protecao_rearmada",
+          "risco": "NENHUM",
+          "risco_inicial_observado": "OBSTACULO",
+          "sessao": "9d4fa648",
+          "tentativa_busca": 4,
+          "tipo": "episodio_sensorial",
+          "transicoes_observadas": [
+            {
+              "fase": "RECUANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 0,
+              "ts": 1792015943.6779566
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 2,
+              "ts": 1792015944.4758174
+            },
+            {
+              "fase": "BUSCANDO",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015945.285568
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "OBSTACULO",
+              "tentativa": 4,
+              "ts": 1792015946.2063081
+            },
+            {
+              "fase": "ESPERA_BUSCA",
+              "risco": "BORDA_SEM_RETORNO",
+              "tentativa": 4,
+              "ts": 1792015947.8154745
+            },
+            {
+              "fase": "PRONTA",
+              "risco": "NENHUM",
+              "tentativa": 4,
+              "ts": 1792015967.982294
+            }
+          ],
+          "ts": 1792015967.982294,
+          "turno_id": "",
+          "variante": 0
+        },
+        "perfil": "rodas_suspensas"
+      },
+      "evidencia": "protecao_rearmada",
+      "sinal": 0.5,
+      "origem": "executor_corpo",
+      "confirmado_usuario": false,
+      "criado_em": "2026-10-14 19:12:47.982541",
+      "id_evento": "sensorial:sensor_20c502a93a0c462b3b66fb66:protecao_rearmada"
+    }
+  ],
+  "consulta_modelo": {
+    "resposta": "{\"fala\":\"Os sensores da frente e borda dianteira não registraram leituras válidas. A proteção sensorial foi rearmada, mas a confirmação de deslocamento ainda não foi estabelecida.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"comandos\":[]}",
+    "modelo_corporal": {
+      "origem": "owner_corpo_usb",
+      "ts": 1792016101.2145147,
+      "turno_id": "",
+      "sessao": "5b9a4db6",
+      "concessao_id": "",
+      "conectada": true,
+      "companhia_ativa": false,
+      "passeio_ativo": false,
+      "perfil": "rodas_suspensas",
+      "condicao": {
+        "estado": "risco_detectado",
+        "motivo_motor": "",
+        "saude_executor": {
+          "motivo_boot": "usb",
+          "motivo_perda_sessao": "TRANSPORTE",
+          "suportado": true,
+          "recente": true,
+          "reinicios_observados": 0
+        },
+        "recuperacao_pendente": false,
+        "protecao": {
+          "incidente_id": 7,
+          "motor_origem_seq": 0,
+          "risco": "BORDA_SEM_RETORNO",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "pavor",
+          "tentativa_busca": 4,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "reacao_expressiva": "pavor",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "sensor_269b0efbcc1b812e9ac0158b",
+            "nome": "protecao_sensorial",
+            "tipo": "episodio_sensorial",
+            "turno_id": "",
+            "origem_intencao": "reflexo_firmware",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "busca_em_espera",
+            "confirmado": false,
+            "ts": 1792015940.2534254,
+            "prova_deslocamento": false,
+            "recuperada_da_memoria": true,
+            "fase": "ESPERA_BUSCA",
+            "risco": "OBSTACULO",
+            "observacao_confirmada": true,
+            "tentativa_busca": 4
+          },
+          {
+            "id": "sensor_20c502a93a0c462b3b66fb66",
+            "nome": "protecao_sensorial",
+            "tipo": "episodio_sensorial",
+            "turno_id": "",
+            "origem_intencao": "reflexo_firmware",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "protecao_rearmada",
+            "confirmado": false,
+            "ts": 1792015967.982294,
+            "prova_deslocamento": false,
+            "recuperada_da_memoria": true,
+            "fase": "PRONTA",
+            "risco": "NENHUM",
+            "observacao_confirmada": true,
+            "tentativa_busca": 4
+          }
+        ],
+        "aprendizado": {},
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": true,
+        "ultimo_erro": "",
+        "sensorial": {
+          "origem": "experiencia_sensorial_observada",
+          "vigente": true,
+          "episodios_recentes": 0,
+          "buscas_em_espera": 0,
+          "ultima_espera_em": 0,
+          "segundos_ultima_espera": null,
+          "fase_atual": "PRONTA",
+          "risco_atual": "BORDA_SEM_RETORNO",
+          "autoriza_execucao": false,
+          "prova_deslocamento": false
+        }
+      },
+      "intencao_em_curso": {
+        "autoriza_execucao": false,
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": false,
+        "pertence_ao_turno_atual": false,
+        "continuidade_disponivel": false
+      },
+      "objetivo_para_continuar": {
+        "autoriza_execucao": false,
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": false,
+        "pertence_ao_turno_atual": false,
+        "continuidade_disponivel": false
+      },
+      "percepcao_fisica": {
+        "deslocamento": "nao_medido",
+        "contato": "nao_medido",
+        "distancias": {
+          "suportado": true,
+          "recente": true,
+          "consulta_id": 6,
+          "alerta_suportado": true,
+          "busca_renovada": false,
+          "leituras": {
+            "frente": {
+              "estado": "INVALIDA",
+              "mm": null,
+              "idade_ms": 125,
+              "status": 4
+            },
+            "borda": {
+              "estado": "INVALIDA",
+              "mm": null,
+              "idade_ms": 128,
+              "status": 4
+            }
+          },
+          "protecao": {
+            "incidente_id": 7,
+            "motor_origem_seq": 0,
+            "risco": "BORDA_SEM_RETORNO",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "pavor",
+            "tentativa_busca": 4,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "obstaculos": "medicao_frontal",
+        "cobertura": "somente_frente_e_borda_dianteira",
+        "rotacao": "nao_medida"
+      },
+      "olhos": [
+        0,
+        1,
+        0
+      ],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "calma",
+        "nivel": 1
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {
+        "assinatura_observacao": [
+          "PRONTA",
+          "NENHUM",
+          4,
+          true
+        ],
+        "autoriza_execucao": false,
+        "confirmado": false,
+        "consulta_id": 42,
+        "desfechos_observados": [
+          "busca_em_espera",
+          "protecao_rearmada"
+        ],
+        "duracao_comandada_confirmada_ms": 0,
+        "espera_observada_em": 1792015946.2063081,
+        "evidencia": "DIST_GUARD_correlacionados",
+        "familia": "protecao_sensorial",
+        "fase": "PRONTA",
+        "id": "sensor_20c502a93a0c462b3b66fb66",
+        "incidente_id": 7,
+        "iniciada_em": 1792015943.6779566,
+        "leituras_observadas": {
+          "borda": {
+            "estado": "VALIDA",
+            "idade_ms": 140,
+            "mm": 34,
+            "status": 0
+          },
+          "frente": {
+            "estado": "INVALIDA",
+            "idade_ms": 138,
+            "mm": null,
+            "status": 4
+          }
+        },
+        "movimentos_confirmados": 0,
+        "nome": "protecao_sensorial",
+        "observacao_confirmada": true,
+        "origem": "executor_corpo",
+        "origem_intencao": "reflexo_firmware",
+        "parada_confirmada": false,
+        "perfil": "rodas_suspensas",
+        "pertence_ao_turno_atual": false,
+        "prova_deslocamento": false,
+        "recuperada_da_memoria": true,
+        "resultado": "protecao_rearmada",
+        "risco": "NENHUM",
+        "risco_inicial_observado": "OBSTACULO",
+        "sessao": "9d4fa648",
+        "tentativa_busca": 4,
+        "tipo": "episodio_sensorial",
+        "transicoes_observadas": [
+          {
+            "fase": "RECUANDO",
+            "risco": "OBSTACULO",
+            "tentativa": 0,
+            "ts": 1792015943.6779566
+          },
+          {
+            "fase": "BUSCANDO",
+            "risco": "OBSTACULO",
+            "tentativa": 2,
+            "ts": 1792015944.4758174
+          },
+          {
+            "fase": "BUSCANDO",
+            "risco": "OBSTACULO",
+            "tentativa": 4,
+            "ts": 1792015945.285568
+          },
+          {
+            "fase": "ESPERA_BUSCA",
+            "risco": "OBSTACULO",
+            "tentativa": 4,
+            "ts": 1792015946.2063081
+          },
+          {
+            "fase": "ESPERA_BUSCA",
+            "risco": "BORDA_SEM_RETORNO",
+            "tentativa": 4,
+            "ts": 1792015947.8154745
+          },
+          {
+            "fase": "PRONTA",
+            "risco": "NENHUM",
+            "tentativa": 4,
+            "ts": 1792015967.982294
+          }
+        ],
+        "ts": 1792015967.982294,
+        "turno_id": "",
+        "variante": 0
+      }
+    },
+    "instrucao_chars": 3033,
+    "json_valido": true,
+    "executou_proposta": false
+  },
+  "encerrada": true,
+  "aprendizado_isolado": true,
+  "prova_deslocamento": false
+}

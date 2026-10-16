@@ -50,6 +50,7 @@ class ComposicaoInteligenciaExternaRuntime:
         requests_get: Callable[..., Any],
         requests_post: Callable[..., Any],
         ao_finalizar_conversa_modo_jogo: Callable[[], Any],
+        atividade_local_getter: Callable[[], bool] | None = None,
         registrar_falha: Callable[..., Any] | None = None,
         registrar_orcamento_prompt: Callable[..., Any] | None = None,
         env_getter: Callable[[str, str], str] = os.getenv,
@@ -145,6 +146,7 @@ class ComposicaoInteligenciaExternaRuntime:
             ao_finalizar_conversa_modo_jogo=ao_finalizar_conversa_modo_jogo,
             registrar_falha=registrar_falha,
             registrar_orcamento_prompt=registrar_orcamento_prompt,
+            atividade_local_getter=atividade_local_getter,
         )
         self.analisar_imagem = partial(
             analisar_imagem_fn,

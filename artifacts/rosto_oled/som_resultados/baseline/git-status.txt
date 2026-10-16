@@ -1,0 +1,4 @@
+ M "melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md"
+ M scripts/tests/test_som_corporal.py
+?? artifacts/rosto_oled/som_resultados/
+?? scripts/tests/test_argumento_modificador_repeticao.py

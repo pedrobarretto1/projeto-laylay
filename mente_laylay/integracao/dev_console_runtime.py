@@ -76,6 +76,22 @@ def _categoria(texto: str) -> str:
     return classificar_categoria_evento_dev(texto)
 
 
+def sanitizar_corpo_dev(bruto: Any) -> dict[str, Any]:
+    """Allowlist pública e somente leitura; nunca expõe sessão/credenciais."""
+    dados = bruto if isinstance(bruto, Mapping) else {}
+    textos = ("conexao", "transporte", "porta", "nome_corpo", "identidade_corpo", "pareamento_corpo", "perfil", "intencao_id", "objetivo_id", "trace_id",
+              "intencao", "fase", "estado", "motivo", "motivo_companhia", "emocao", "nivel", "experiencia_id", "experiencia_turno", "resultado", "erro", "som",
+              "sensor_frente", "sensor_borda", "risco_fisico", "fase_protecao", "reacao_sensor", "tentativa_busca",
+              "motivo_boot", "reinicios_esp", "perdas_sessao_esp", "recuperacao_corporal",
+              "imu_estado", "imu_manuseio", "imu_inclinacao", "imu_rotacao")
+    resultado = {k: sanitizar_texto_dev(dados.get(k), 180) for k in textos}
+    for k in ("companhia_ativa", "passeio_ativo", "motor_disponivel", "motor_em_andamento", "pwm_confirmado", "parada_confirmada", "vigia_sensores_ativa"):
+        resultado[k] = dados.get(k) is True
+    resultado.update(deslocamento="nao_medido", autoriza_execucao=False,
+                     origem="diagnostico_corporal_observado")
+    return resultado
+
+
 def _nivel(texto: str, origem: str) -> str:
     normalizado = texto.casefold()
     if origem == "stderr" or any(
@@ -142,6 +158,8 @@ class DevConsoleRuntime:
         self.limite_eventos = max(100, min(10_000, int(limite_eventos)))
         self._estado_getter = estado_getter
         self._pressao_getter: Callable[[], Mapping[str, Any]] | None = None
+        self._corpo_getter: Callable[[], Mapping[str, Any]] | None = None
+        self._corpo_dev: dict[str, Any] = {}
         self._eventos: deque[dict[str, Any]] = deque(maxlen=self.limite_eventos)
         self._eventos_descartados = 0
         self._sequencia = 0
@@ -175,6 +193,82 @@ class DevConsoleRuntime:
             origem=origem,
             profundidade="debug",
         )
+
+    def configurar_corpo_getter(self, getter: Callable[[], Mapping[str, Any]] | None) -> None:
+        self._corpo_getter = getter
+
+    def atualizar_corpo(self) -> dict[str, Any]:
+        if not callable(self._corpo_getter):
+            return {}
+        try:
+            dados = self._corpo_getter()
+            transporte = dados.get("transporte") or {}
+            corpo = dados.get("corpo") or {}
+            companhia = corpo.get("companhia") or {}
+            i = companhia.get("intencao") or {}
+            experiencia = corpo.get("experiencia") or {}
+            historico = experiencia.get("historico_recente") or []
+            e = historico[-1] if historico else {}
+            resultado = i.get("resultado") or {}
+            som = transporte.get("som") or {}
+            sensores = transporte.get("sensores") or {}
+            leituras = sensores.get("leituras") or {}
+            protecao = sensores.get("protecao") or {}
+            saude=transporte.get("saude") or {}
+            imu=transporte.get("imu") or {}
+            identidade = transporte.get("identidade_usb") or {}
+            def leitura_sensor(nome):
+                s = leituras.get(nome) or {}
+                return f"{s.get('mm')} mm" if s.get("estado") == "VALIDA" else s.get("estado", "não medido")
+            emocao = {0: "calma", 1: "alegre", 2: "triste", 3: "brava", 4: "irritada", 5: "surpresa", 6: "envergonhada", 7: "debochada", 8: "acalmando-se"}
+            resumo = sanitizar_corpo_dev({
+                "conexao": "conectada" if transporte.get("aplicacao_confirmada") is True else "desconectada",
+                "transporte": transporte.get("transporte"), "porta": transporte.get("porta_ativa"),
+                "nome_corpo": identidade.get("nome"), "identidade_corpo": identidade.get("dispositivo"),
+                "pareamento_corpo": "verificado" if identidade.get("verificada") else "aguardando" if identidade.get("dispositivo") else "não configurado",
+                "perfil": companhia.get("perfil_corporal"), "companhia_ativa": companhia.get("ativa"),
+                "passeio_ativo": companhia.get("passeio_ativado"), "motor_disponivel": corpo.get("disponivel"),
+                "motor_em_andamento": corpo.get("em_andamento"), "pwm_confirmado": corpo.get("aplicacao_pwm_confirmada"),
+                "parada_confirmada": corpo.get("parada_confirmada"), "intencao_id": i.get("id"),
+                "objetivo_id": i.get("objetivo_id"), "trace_id": i.get("turno_id"), "intencao": i.get("nome"),
+                "fase": i.get("fase") or "aguardando", "estado": i.get("estado"),
+                "motivo": i.get("motivo_termino") or (resultado.get("motivo") if resultado.get("ok") is False else None) or i.get("motivo"),
+                "motivo_companhia": companhia.get("motivo"),
+                "emocao": emocao.get(i.get("emocao"), "desconhecida"), "nivel": i.get("nivel"),
+                "experiencia_id": e.get("id"), "experiencia_turno": e.get("turno_id"),
+                "resultado": e.get("resultado") or resultado.get("motivo"),
+                "erro": (resultado.get("motivo") if resultado.get("ok") is False else None) or corpo.get("motivo"), "som": som.get("motivo"),
+                "sensor_frente": leitura_sensor("frente"), "sensor_borda": leitura_sensor("borda"),
+                "imu_estado": imu.get("estado") if imu.get("suportado") else "não disponível",
+                "imu_manuseio": (str(imu.get("manuseio")) + (" · " + str(imu["fase_manuseio"])
+                    if imu.get("fase_manuseio") else "")) if imu.get("recente") else "sem leitura recente",
+                "imu_inclinacao": f"roll {imu.get('roll_graus')}° · pitch {imu.get('pitch_graus')}°" if imu.get("recente") else "não medida",
+                "imu_rotacao": f"{imu.get('yaw_relativo_graus')}° relativos" if imu.get("recente") else "não medida",
+                "risco_fisico": protecao.get("risco") if sensores.get("recente") else "sem leitura recente",
+                "fase_protecao": protecao.get("fase"),
+                "reacao_sensor": protecao.get("reacao_expressiva"), "tentativa_busca": protecao.get("tentativa_busca"),
+                "vigia_sensores_ativa": sensores.get("recente") is True and protecao.get("vigia_ativa") is True,
+                "motivo_boot":saude.get("motivo_boot") if saude.get("suportado") else "sem diagnóstico de boot",
+                "reinicios_esp":saude.get("reinicios_observados"),
+                "perdas_sessao_esp":f"{saude.get('perdas_sessao',0)} · {saude.get('motivo_perda_sessao','não medido')}",
+                "recuperacao_corporal":companhia.get("motivo") if companhia.get("recuperacao_pendente") else "sem retomada pendente",
+            })
+        except Exception:
+            resumo = sanitizar_corpo_dev({"conexao": "indisponivel", "fase": "desconhecida", "erro": "falha_leitura_corporal"})
+        with self._lock:
+            if resumo != self._corpo_dev:
+                campos_transicao = ("intencao", "fase", "conexao", "trace_id", "companhia_ativa", "motivo_companhia", "risco_fisico", "fase_protecao", "reacao_sensor", "tentativa_busca", "reinicios_esp", "perdas_sessao_esp", "recuperacao_corporal")
+                chave_anterior = tuple(self._corpo_dev.get(k) for k in campos_transicao)
+                chave_nova = tuple(resumo.get(k) for k in campos_transicao)
+                self._corpo_dev = resumo
+                # Medições variam continuamente: atualizar painel sem gerar um log por mm.
+                if chave_anterior != chave_nova:
+                    self.registrar_linha(
+                        f"[AUTONOMIA:CORPO] {resumo['intencao'] or 'nenhuma'}/{resumo['fase']} "
+                        f"| {resumo['conexao']} | turno-{resumo['trace_id'] or 'nenhum'} "
+                        f"| {resumo['risco_fisico']}/{resumo['fase_protecao']} | {resumo['reacao_sensor']}",
+                        origem="runtime")
+            return dict(self._corpo_dev)
 
     def registrar_linha(
         self,
@@ -219,6 +313,7 @@ class DevConsoleRuntime:
             return dict(evento)
 
     def snapshot(self) -> dict[str, Any]:
+        corpo = self.atualizar_corpo()
         with self._lock:
             return {
                 "schema_version": 1,
@@ -226,6 +321,7 @@ class DevConsoleRuntime:
                 "event_limit": self.limite_eventos,
                 "events_dropped": self._eventos_descartados,
                 "events": [dict(item) for item in self._eventos],
+                "body": corpo,
             }
 
     def _estado(self) -> dict[str, Any]:
@@ -264,6 +360,10 @@ class DevConsoleRuntime:
         comando = re.sub(r"\s+", " ", str(comando or "").strip().casefold())[:160]
         estado = self._estado()
         mental = self._estado_mental(estado)
+        if comando in {"inspect corpo", "inspect body"}:
+            corpo = self.atualizar_corpo()
+            return self._resultado(comando, "inspect", ["CORPO — OBSERVACIONAL"] +
+                [f"{chave}: {valor}" for chave, valor in corpo.items()])
         if comando == "status" or comando.startswith("status "):
             return self._consultar_status(comando, mental)
         if comando == "perf" or comando.startswith("perf "):

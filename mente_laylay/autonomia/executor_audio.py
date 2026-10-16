@@ -237,6 +237,23 @@ def _registrar_volume_local(
     )
 
 
+def _recusar_volume_invalido(
+    ctx: Dict[str, Any],
+    deps: DependenciasExecutorAudio,
+) -> ResultadoDespacho:
+    deps.marcar_resultado(
+        "acao_invalida",
+        executou=False,
+        confirmado=False,
+    )
+    _falar(ctx, escolher_fala_variada([
+        "Volume como? No talo, baixinho, mudo...",
+        "Como você quer o volume?",
+        "Me diz o nível do som.",
+    ]), "debochada", 2)
+    return ResultadoDespacho.concluido()
+
+
 def _executar_volume(
     params: Dict[str, Any],
     destino: str,
@@ -248,11 +265,27 @@ def _executar_volume(
     ajustar_volume = _get(ctx, "ajustar_volume_sistema")
     ajustar_relativo = _get(ctx, "ajustar_volume_sistema_relativo")
     definir_mudo = _get(ctx, "definir_mudo_sistema")
+    delta = 10
+    if "delta" in params:
+        # A magnitude pertence ao pedido estruturado; não inferir pela fala,
+        # converter tipos ou confundir incremento com um nível absoluto.
+        delta = params["delta"]
+        unidade = params.get("unidade")
+        if (
+            acao not in {"up", "aumentar", "aumenta", "down", "baixar", "baixa"}
+            or type(delta) is not int or not 1 <= delta <= 100
+            or "nivel_volume" in params or "value" in params
+            or ("unidade" in params and (
+                not isinstance(unidade, str)
+                or unidade not in {"pontos_percentuais", "pontos percentuais"}
+            ))
+        ):
+            return _recusar_volume_invalido(ctx, deps)
 
     if acao in {"up", "aumentar", "aumenta"}:
         if destino == "pc_b":
             return _registrar_volume_remoto(
-                {"action": "volume_up", "delta": 10},
+                {"action": "volume_up", "delta": delta},
                 "volume_aumentado",
                 "Aumentei o volume.",
                 "Tentei aumentar o volume, mas o controle não respondeu.",
@@ -263,11 +296,11 @@ def _executar_volume(
         executou = False
         if callable(ajustar_relativo):
             try:
-                ajustar_relativo(10)
+                ajustar_relativo(delta)
                 executou = True
             except Exception:
                 executou = False
-        esperado = min(100, antes + 10) if antes is not None else None
+        esperado = min(100, antes + delta) if antes is not None else None
         return _registrar_volume_local(
             executou=executou,
             esperado=esperado,
@@ -281,7 +314,7 @@ def _executar_volume(
     if acao in {"down", "baixar", "baixa"}:
         if destino == "pc_b":
             return _registrar_volume_remoto(
-                {"action": "volume_down", "delta": 10},
+                {"action": "volume_down", "delta": delta},
                 "volume_baixado",
                 "Baixei o volume.",
                 "Tentei baixar o volume, mas o controle não respondeu.",
@@ -292,11 +325,11 @@ def _executar_volume(
         executou = False
         if callable(ajustar_relativo):
             try:
-                ajustar_relativo(-10)
+                ajustar_relativo(-delta)
                 executou = True
             except Exception:
                 executou = False
-        esperado = max(0, antes - 10) if antes is not None else None
+        esperado = max(0, antes - delta) if antes is not None else None
         return _registrar_volume_local(
             executou=executou,
             esperado=esperado,
@@ -410,17 +443,7 @@ def _executar_volume(
                 alvo=f"volume em {nivel_inteiro}%",
             )
 
-    deps.marcar_resultado(
-        "acao_invalida",
-        executou=False,
-        confirmado=False,
-    )
-    _falar(ctx, escolher_fala_variada([
-        "Volume como? No talo, baixinho, mudo...",
-        "Como você quer o volume?",
-        "Me diz o nível do som.",
-    ]), "debochada", 2)
-    return ResultadoDespacho.concluido()
+    return _recusar_volume_invalido(ctx, deps)
 
 
 def executar_intencao_audio(

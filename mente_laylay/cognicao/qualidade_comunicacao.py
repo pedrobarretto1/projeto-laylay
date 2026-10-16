@@ -466,6 +466,17 @@ def avaliar_qualidade_comunicacao(
     foco = _foco_do_plano(plano)
     resposta_anterior = _normalizar(ultima_resposta)
     plano_atual = dict(plano or {})
+    from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
+    historica = avaliar_fala_historica(fala, plano=plano_atual)
+    if historica is not None:
+        problemas_historicos = historica["problemas"]
+        return {
+            "aceita": not problemas_historicos, "requer_reparo": bool(problemas_historicos),
+            "problemas": problemas_historicos, "problemas_bloqueantes": problemas_historicos,
+            "somente_consultiva": False, "foco": {}, "contrato_reparo": {},
+            "aderencia_contrato": {**historica, "avaliado": True, "aceita": not problemas_historicos},
+            "autoriza_execucao": False,
+        }
     aderencia_contrato = {
         "avaliado": False,
         "aceita": True,

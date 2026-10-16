@@ -2220,9 +2220,10 @@ def test_shadow_distingue_comando_perdido_e_receipt_divergente(tmp_path) -> None
 
 
 def test_receipt_e_correcao_confirmada_chegam_ao_especialista_sem_tomar_executor() -> None:
-    class _Estado:
+    from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+    class _Estado(EstadoCompartilhadoRuntime):
         def __init__(self) -> None:
-            self.mental = {
+            super().__init__(mental={
                 "ultima_entrada": "fecha o chrome",
                 "plano_turno_atual": {
                     "fase": "executado",
@@ -2233,11 +2234,7 @@ def test_receipt_e_correcao_confirmada_chegam_ao_especialista_sem_tomar_executor
                 "correcao_interpretacao_pendente": {
                     "status": "aguardando_interpretacao_correta",
                 },
-            }
-
-        def atualizar_campos(self, dominio: str, **campos) -> None:
-            assert dominio == "mental"
-            self.mental.update(campos)
+            })
 
     class _Neural:
         def __init__(self) -> None:
@@ -2298,9 +2295,10 @@ def test_receipt_e_correcao_confirmada_chegam_ao_especialista_sem_tomar_executor
 
 
 def test_execucao_posterior_descarta_correcao_sem_criar_label_neural() -> None:
-    class _Estado:
+    from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+    class _Estado(EstadoCompartilhadoRuntime):
         def __init__(self) -> None:
-            self.mental = {
+            super().__init__(mental={
                 "ultima_entrada": "Nanda é minha amiga.",
                 "plano_turno_atual": {
                     "fase": "executado",
@@ -2316,11 +2314,7 @@ def test_execucao_posterior_descarta_correcao_sem_criar_label_neural() -> None:
                     ),
                     "intent_errada": "LEARNING_QUERY",
                 },
-            }
-
-        def atualizar_campos(self, dominio: str, **campos) -> None:
-            assert dominio == "mental"
-            self.mental.update(campos)
+            })
 
     class _Neural:
         def __init__(self) -> None:

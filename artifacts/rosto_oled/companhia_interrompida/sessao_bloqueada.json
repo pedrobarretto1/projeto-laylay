@@ -1,0 +1,37 @@
+{
+  "head": "d850b8c90cc5ce40bd4832e759ed991ba88cd5cc",
+  "evidencias": [
+    {
+      "ts": "2026-10-14 21:42:46.720095",
+      "tipo": "execucao_corporal",
+      "chave": "corpo_execucao:rodas_suspensas:atencao_conversa_v1:0",
+      "contexto": "{\"experiencia\": {\"autoriza_execucao\": false, \"confirmado\": false, \"duracao_comandada_confirmada_ms\": 0, \"familia\": \"interagir:0\", \"id\": \"ff2777441ae34afdaa2a317304551f56\", \"iniciada_em\": 1792024963.6309643, \"intencao_id\": \"430dbb0eb840\", \"motivo\": \"falha_execucao\", \"movimentos\": [[-120, 120, 500], [120, -120, 350]], \"movimentos_confirmados\": 0, \"nome\": \"atencao_conversa_v1\", \"objetivo_id\": \"0f030c119461\", \"origem\": \"executor_corpo\", \"origem_intencao\": \"mente_causal\", \"parada_confirmada\": true, \"perfil\": \"rodas_suspensas\", \"pertence_ao_turno_atual\": false, \"prova_deslocamento\": false, \"resultado\": \"gesto_nao_confirmado\", \"sessao\": \"8c561642\", \"ts\": 1792024966.7199755, \"turno_id\": \"\", \"variante\": 0}, \"perfil\": \"rodas_suspensas\"}"
+    },
+    {
+      "ts": "2026-10-14 21:42:43.540579",
+      "tipo": "episodio_sensorial_corporal",
+      "chave": "corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_rearmada",
+      "contexto": "{\"experiencia\": {\"assinatura_observacao\": [\"PRONTA\", \"NENHUM\", 0, true], \"autoriza_execucao\": false, \"confirmado\": false, \"consulta_id\": 28, \"desfechos_observados\": [\"protecao_bloqueada\", \"protecao_rearmada\"], \"duracao_comandada_confirmada_ms\": 0, \"evidencia\": \"DIST_GUARD_correlacionados\", \"familia\": \"protecao_sensorial\", \"fase\": \"PRONTA\", \"id\": \"sensor_f491b2ecc2a5502a76826bf8\", \"incidente_id\": 9, \"iniciada_em\": 1792024947.8612576, \"leituras_observadas\": {\"borda\": {\"estado\": \"VALIDA\", \"idade_ms\": 137, \"mm\": 30, \"status\": 0}, \"frente\": {\"estado\": \"INVALIDA\", \"idade_ms\": 139, \"mm\": null, \"status\": 4}}, \"movimentos_confirmados\": 0, \"nome\": \"protecao_sensorial\", \"observacao_confirmada\": true, \"origem\": \"executor_corpo\", \"origem_intencao\": \"reflexo_firmware\", \"parada_confirmada\": false, \"perfil\": \"rodas_suspensas\", \"pertence_ao_turno_atual\": false, \"prova_deslocamento\": false, \"recuperada_da_memoria\": false, \"resultado\": \"protecao_rearmada\", \"risco\": \"NENHUM\", \"risco_inicial_observado\": \"BORDA_SEM_RETORNO\", \"sessao\": \"8c561642\", \"tentativa_busca\": 0, \"tipo\": \"episodio_sensorial\", \"transicoes_observadas\": [{\"fase\": \"RECUANDO\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024947.8612576}, {\"fase\": \"ESPERA_MEDROSA\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024948.8757243}, {\"fase\": \"BLOQUEADA\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024949.778102}, {\"fase\": \"PRONTA\", \"risco\": \"NENHUM\", \"tentativa\": 0, \"ts\": 1792024963.5404444}], \"ts\": 1792024963.5404444, \"turno_id\": \"\", \"variante\": 0}, \"perfil\": \"rodas_suspensas\"}"
+    },
+    {
+      "ts": "2026-10-14 21:42:29.778240",
+      "tipo": "episodio_sensorial_corporal",
+      "chave": "corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_bloqueada",
+      "contexto": "{\"experiencia\": {\"assinatura_observacao\": [\"BLOQUEADA\", \"BORDA_SEM_RETORNO\", 0, true], \"autoriza_execucao\": false, \"confirmado\": false, \"consulta_id\": 12, \"desfechos_observados\": [\"protecao_bloqueada\"], \"duracao_comandada_confirmada_ms\": 0, \"evidencia\": \"DIST_GUARD_correlacionados\", \"familia\": \"protecao_sensorial\", \"fase\": \"BLOQUEADA\", \"id\": \"sensor_f491b2ecc2a5502a76826bf8\", \"incidente_id\": 9, \"iniciada_em\": 1792024947.8612576, \"leituras_observadas\": {\"borda\": {\"estado\": \"INVALIDA\", \"idade_ms\": 124, \"mm\": null, \"status\": 2}, \"frente\": {\"estado\": \"INVALIDA\", \"idade_ms\": 126, \"mm\": null, \"status\": 4}}, \"movimentos_confirmados\": 0, \"nome\": \"protecao_sensorial\", \"observacao_confirmada\": true, \"origem\": \"executor_corpo\", \"origem_intencao\": \"reflexo_firmware\", \"parada_confirmada\": false, \"perfil\": \"rodas_suspensas\", \"pertence_ao_turno_atual\": false, \"prova_deslocamento\": false, \"recuperada_da_memoria\": false, \"resultado\": \"protecao_bloqueada\", \"risco\": \"BORDA_SEM_RETORNO\", \"risco_inicial_observado\": \"BORDA_SEM_RETORNO\", \"sessao\": \"8c561642\", \"tentativa_busca\": 0, \"tipo\": \"episodio_sensorial\", \"transicoes_observadas\": [{\"fase\": \"RECUANDO\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024947.8612576}, {\"fase\": \"ESPERA_MEDROSA\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024948.8757243}, {\"fase\": \"BLOQUEADA\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024949.778102}], \"ts\": 1792024949.778102, \"turno_id\": \"\", \"variante\": 0}, \"perfil\": \"rodas_suspensas\"}"
+    },
+    {
+      "ts": "2026-10-14 21:42:23.699018",
+      "tipo": "episodio_sensorial_corporal",
+      "chave": "corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_rearmada",
+      "contexto": "{\"experiencia\": {\"assinatura_observacao\": [\"PRONTA\", \"NENHUM\", 0, true], \"autoriza_execucao\": false, \"confirmado\": false, \"consulta_id\": 5, \"desfechos_observados\": [\"protecao_rearmada\"], \"duracao_comandada_confirmada_ms\": 0, \"evidencia\": \"DIST_GUARD_correlacionados\", \"familia\": \"protecao_sensorial\", \"fase\": \"PRONTA\", \"id\": \"sensor_3f6ab0d1e67493b41744cf8e\", \"incidente_id\": 8, \"iniciada_em\": 1792024940.5171173, \"leituras_observadas\": {\"borda\": {\"estado\": \"VALIDA\", \"idade_ms\": 139, \"mm\": 25, \"status\": 0}, \"frente\": {\"estado\": \"INVALIDA\", \"idade_ms\": 141, \"mm\": null, \"status\": 4}}, \"movimentos_confirmados\": 0, \"nome\": \"protecao_sensorial\", \"observacao_confirmada\": true, \"origem\": \"executor_corpo\", \"origem_intencao\": \"reflexo_firmware\", \"parada_confirmada\": false, \"perfil\": \"rodas_suspensas\", \"pertence_ao_turno_atual\": false, \"prova_deslocamento\": false, \"recuperada_da_memoria\": false, \"resultado\": \"protecao_rearmada\", \"risco\": \"NENHUM\", \"risco_inicial_observado\": \"BORDA_SEM_RETORNO\", \"sessao\": \"8c561642\", \"tentativa_busca\": 0, \"tipo\": \"episodio_sensorial\", \"transicoes_observadas\": [{\"fase\": \"RECUANDO\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024940.5171173}, {\"fase\": \"ESPERA_MEDROSA\", \"risco\": \"BORDA_SEM_RETORNO\", \"tentativa\": 0, \"ts\": 1792024941.6576443}, {\"fase\": \"GIRANDO\", \"risco\": \"NENHUM\", \"tentativa\": 0, \"ts\": 1792024942.6747327}, {\"fase\": \"PRONTA\", \"risco\": \"NENHUM\", \"tentativa\": 0, \"ts\": 1792024943.6987972}], \"ts\": 1792024943.6987972, \"turno_id\": \"\", \"variante\": 0}, \"perfil\": \"rodas_suspensas\"}"
+    }
+  ],
+  "painel_observado": {
+    "companhia_ativa": false,
+    "vigia_sensores_ativa": false,
+    "sessao": "8c561642",
+    "resultado": "gesto_nao_confirmado",
+    "fase": "PRONTA",
+    "reinicios_observados": 1
+  }
+}

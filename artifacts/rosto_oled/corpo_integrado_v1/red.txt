@@ -1,0 +1,20 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+__________ test_pedido_manual_devolve_experiencia_apos_pwm_e_parada ___________
+scripts\tests\test_experiencia_corporal_continua.py:13: in test_pedido_manual_devolve_experiencia_apos_pwm_e_parada
+    assert experiencia.get("origem") == "executor_corpo", "primeira fronteira: movimento manual não devolve experiência"
+E   AssertionError: primeira fronteira: movimento manual não devolve experiência
+E   assert None == 'executor_corpo'
+E    +  where None = <built-in method get of dict object at 0x0000021671A7FDC0>('origem')
+E    +    where <built-in method get of dict object at 0x0000021671A7FDC0> = {}.get
+________ test_gesto_espontaneo_devolve_experiencia_sem_proposta_da_llm ________
+scripts\tests\test_experiencia_corporal_continua.py:29: in test_gesto_espontaneo_devolve_experiencia_sem_proposta_da_llm
+    assert experiencia.get("origem") == "executor_corpo", "primeira fronteira: gesto causal ficou fora da experiência"
+E   AssertionError: primeira fronteira: gesto causal ficou fora da experiência
+E   assert None == 'executor_corpo'
+E    +  where None = <built-in method get of dict object at 0x0000021671931E40>('origem')
+E    +    where <built-in method get of dict object at 0x0000021671931E40> = {}.get
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_experiencia_corporal_continua.py::test_pedido_manual_devolve_experiencia_apos_pwm_e_parada
+FAILED scripts/tests/test_experiencia_corporal_continua.py::test_gesto_espontaneo_devolve_experiencia_sem_proposta_da_llm
+2 failed in 1.21s

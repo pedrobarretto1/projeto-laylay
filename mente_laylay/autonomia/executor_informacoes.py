@@ -12,6 +12,7 @@ from mente_laylay.autonomia.roteador_deterministico import texto_questiona_certe
 from mente_laylay.memoria_mental.memoria_confiavel import normalizar_texto
 from mente_laylay.memoria_mental.identidade_usuario import normalizar_nome_usuario
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
+from mente_laylay.especialistas.email_runtime import INTENTS_EMAIL
 from mente_laylay.personalidade.fala_memoria import (
     falar_lembrancas,
     falar_nome_lembrado,
@@ -20,7 +21,7 @@ from mente_laylay.personalidade.fala_memoria import (
 
 INTENCOES_INFORMACOES = frozenset({
     "EMAIL_READ", "EMAIL_SYNC", "BRIEFING_REPEAT", "WEATHER", "LEARNING_QUERY",
-})
+}) | INTENTS_EMAIL
 
 
 @dataclass(frozen=True, slots=True)
@@ -686,6 +687,24 @@ def executar_intencao_informacoes(
     intent = str(intent or "").upper().strip()
     if intent not in INTENCOES_INFORMACOES:
         return ResultadoDespacho.nao_tratado()
+    email_executar = _get(ctx, "_email_executar")
+    if intent in INTENTS_EMAIL and callable(email_executar):
+        resultado = email_executar(intent, params, texto_original)
+        deps.marcar_resultado(str(resultado.get("status") or "falha_execucao"),
+            executou=resultado.get("executou"), confirmado=resultado.get("confirmado"),
+            contexto_resultado={k: resultado[k] for k in (
+                "referencia_email", "rascunho_id", "versao", "message_id", "aceito_pelo_servidor",
+                "entrega_destinatario_confirmada", "recusados", "interpretacao_gerada",
+                "itens_apresentados",
+            ) if k in resultado},
+            evidencia_confirmacao="Resultado do owner de e-mail: " + str(resultado.get("status") or ""))
+        if resultado.get("fala"):
+            _falar(ctx, str(resultado["fala"]))
+        return ResultadoDespacho.concluido()
+    if intent in INTENTS_EMAIL - {"EMAIL_READ", "EMAIL_SYNC"}:
+        deps.marcar_resultado("indisponivel", executou=False, confirmado=False)
+        _falar(ctx, "As operações de e-mail estão indisponíveis nesta composição.")
+        return ResultadoDespacho.concluido()
     if intent == "EMAIL_READ":
         return _ler_emails(params, ctx, deps)
     if intent == "EMAIL_SYNC":

@@ -1,0 +1,33 @@
+{
+  "data": "2026-10-15T21:04:44.822907",
+  "head": "d850b8c90cc5ce40bd4832e759ed991ba88cd5cc",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "esp32 3.3.12",
+  "perfil_gravado": "teste_somente_imu",
+  "flags": {
+    "LAYLAY_WIFI": 0,
+    "LAYLAY_HABILITAR_MOTORES_BANCADA": 0,
+    "LAYLAY_SOM_PONTE": 0,
+    "LAYLAY_SENSORES_DISTANCIA": 0,
+    "LAYLAY_PROTECAO_CORPORAL": 0,
+    "LAYLAY_IMU": 1,
+    "LAYLAY_TESTE_SOMENTE_IMU": 1
+  },
+  "isolado": {
+    "flash_compilador_bytes": 413106,
+    "globais_bytes": 17740,
+    "binario_bytes": 413248,
+    "sha256": "f362de2aaf890464fcac67e09ee36c4ccf16f741a9f06e8481d47fc374028f61",
+    "upload_hash_verificado": true
+  },
+  "integrado_apenas_compilado": {
+    "flash_compilador_bytes": 441894,
+    "globais_bytes": 19508,
+    "gravado": false
+  },
+  "fontes_sha256": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "39885fa29733272ee963cf82be3afb9fb5216a8cad9c6e52bd8d479f4454f603",
+    "firmware/rosto_laylay/imu_corporal.h": "afe0ef31ed0829999a8052d74014e099f26831dbcf46f7a9b69c57f584604e1a",
+    "firmware/rosto_laylay/giro_medido.h": "51f3a2e503a3296ff8d3a38811fae26331e99c739f6ef65a09946d58e6763393"
+  }
+}

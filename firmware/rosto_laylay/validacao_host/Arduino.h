@@ -13,7 +13,7 @@ using std::max;
 inline uint32_t tempoSimulado = 0;
 inline uint32_t subMilissegundos = 0;
 inline bool relogioAvanca = false;
-constexpr int LOW = 0, HIGH = 1, OUTPUT = 3;
+constexpr int LOW = 0, HIGH = 1, INPUT = 1, OUTPUT = 3;
 inline int niveisGpio[32] = {}, modosGpio[32] = {};
 inline uint32_t dutiesPwm[32] = {};
 inline uint32_t frequenciasPwm[32] = {};

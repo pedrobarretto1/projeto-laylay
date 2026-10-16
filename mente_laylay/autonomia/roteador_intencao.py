@@ -84,6 +84,13 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     if not isinstance(resultado, dict):
         return False
 
+    # Recursão começa outro adaptador. O canal comum não pode permanecer
+    # vinculado à publicação do pai quando o filho ainda não publicou nada.
+    canal = _get(ctx, "falar_com_lipsync")
+    if (getattr(canal, "__func__", None) is AdaptadorResultadoOperacional.falar_texto_da_invocacao
+        and type(getattr(canal, "__self__", None)) is AdaptadorResultadoOperacional):
+        ctx = dict(ctx, falar_com_lipsync=canal.__self__.ctx.get("falar_com_lipsync"))
+
     destino = _get(ctx, "_target_from_params", lambda p, t="": "pc_a")
     registrar_mente_curta = _get(ctx, "_registrar_mente_curta")
     falar = _get(ctx, "falar_com_lipsync")
@@ -115,6 +122,10 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     adaptador_resultado = AdaptadorResultadoOperacional(
         resultado, params, texto_original, destino_val, ctx
     )
+    # Escopo só desta invocação; registro global e contexto do chamador
+    # permanecem intactos. Métodos por status já usam o mesmo owner de fala.
+    ctx = dict(ctx, falar_com_lipsync=(adaptador_resultado.falar_texto_da_invocacao
+                                     if callable(ctx.get("falar_com_lipsync")) else None))
 
     def _finalizar_despacho_moderno(despacho) -> bool:
         """Impede que executor moderno sem receipt seja rebaixado a bool legado."""

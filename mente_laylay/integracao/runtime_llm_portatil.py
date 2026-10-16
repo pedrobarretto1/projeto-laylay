@@ -14,6 +14,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any, Callable, Mapping
+from urllib.parse import urlsplit
 
 import requests
 
@@ -50,6 +51,9 @@ class RuntimeLLMPortatil:
         self.sleep = sleep
         self.log = log
         self._lock = threading.RLock()
+        # Observação não pode esperar carregamento/HTTP sob o lock de lifecycle.
+        self._atividade_lock = threading.Lock()
+        self._requisicoes_locais_ativas = 0
         self._processo: Any = None
         self._log_handle: Any = None
         self._encerrado = False
@@ -244,12 +248,30 @@ class RuntimeLLMPortatil:
             self.log("⚠️ [LLM PORTÁTIL] nenhum motor conseguiu carregar o modelo.")
             return False
 
+    @property
+    def requisicao_local_em_andamento(self) -> bool:
+        """Atividade de transporte, não prontidão nem efeito confirmado."""
+        with self._atividade_lock:
+            return self._requisicoes_locais_ativas > 0
+
     def post(self, url: str, **kwargs: Any) -> Any:
-        if self.backend == "portatil" and not self.garantir_servidor():
-            raise requests.exceptions.ConnectionError(
-                "motor LLM portátil indisponível; consulte logs/llama-server.log"
-            )
-        return self.requests_post_original(url, **kwargs)
+        partes = urlsplit(url)
+        local = self.backend != "remoto" and partes.hostname in {
+            "localhost", "127.0.0.1", "::1", "0.0.0.0",
+        }
+        if local:
+            with self._atividade_lock:
+                self._requisicoes_locais_ativas += 1
+        try:
+            if self.backend == "portatil" and not self.garantir_servidor():
+                raise requests.exceptions.ConnectionError(
+                    "motor LLM portátil indisponível; consulte logs/llama-server.log"
+                )
+            return self.requests_post_original(url, **kwargs)
+        finally:
+            if local:
+                with self._atividade_lock:
+                    self._requisicoes_locais_ativas -= 1
 
     def preaquecer(
         self,

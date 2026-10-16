@@ -5,6 +5,7 @@ import pytest
 
 from scripts.tests.test_personalidade_viva_p18_feedback import _montar_composicao
 from mente_laylay.personalidade.orquestrador_fala_runtime import OrquestradorFalaRuntime
+from mente_laylay.memoria_mental.continuidade_contexto import registrar_continuidade_da_fala
 
 
 def _fala(composicao, *, contexto="comandos", publicado=True, voz=True):
@@ -23,7 +24,7 @@ def _fala(composicao, *, contexto="comandos", publicado=True, voz=True):
         "_dirigir_fala_mente": lambda fala, **_k: {"fala": fala},
         "_voz_runtime": SimpleNamespace(falar=falar),
         "_registrar_mente_curta": lambda *_a, **_k: None,
-        "_registrar_continuidade_da_fala_mente": lambda *_a, **_k: None,
+        "_registrar_continuidade_da_fala_mente": registrar_continuidade_da_fala,
         "_encerrar_topico_mente": lambda *_a, **_k: None,
         "salvar_memoria": lambda: None,
         "_registrar_entrega_comunicativa": registrar,

@@ -1,0 +1,10 @@
+{
+  "entradas": [
+    {
+      "id": "inventario_somente_leitura",
+      "texto": "Lista as janelas abertas.",
+      "permitidos": [{"intent": "LIST_WINDOWS", "params": {}}],
+      "expectativa": {"intents_any": ["LIST_WINDOWS"]}
+    }
+  ]
+}

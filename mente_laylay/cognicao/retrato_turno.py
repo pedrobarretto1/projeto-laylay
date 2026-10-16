@@ -9,6 +9,7 @@ from typing import Any, Dict
 from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_pontuada
 from mente_laylay.cognicao.evidencia_operacional import detectar_consulta_lista_iot
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.cognicao.gramatica_operacional import tipo_recurso_pedido_direto, candidato_respeita_tipo_recurso
 from mente_laylay.memoria_mental.continuidade_contexto import (
     estrutura_arquivo_recente,
 )
@@ -154,6 +155,20 @@ def _entidade_curta_ja_conhecida(
 
 
 def _operacao_explicita(
+    texto: str, *, modalidade: str = "",
+) -> tuple[str, tuple[str, ...]]:
+    operacao, intents = _operacao_explicita_por_termos(texto, modalidade=modalidade)
+    tipo = tipo_recurso_pedido_direto(texto)
+    if not tipo or not intents:
+        return operacao, intents
+    compativeis = tuple(intent for intent in intents
+                        if candidato_respeita_tipo_recurso({"intent": intent}, tipo))
+    # Termo dentro do nome não pode criar uma restrição de outro domínio.
+    # Não amplia lista de intents, não decide ação nem remove proteção correta.
+    return (operacao, compativeis) if compativeis else ("", ())
+
+
+def _operacao_explicita_por_termos(
     texto: str, *, modalidade: str = "",
 ) -> tuple[str, tuple[str, ...]]:
     t = str(texto or "").casefold()

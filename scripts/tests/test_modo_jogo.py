@@ -530,7 +530,7 @@ def test_conversa_no_jogo_usa_timeout_curto_sem_alterar_modelo() -> None:
     assert chamadas[0]["json"]["max_tokens"] == 256
 
 
-def test_classificador_json_recebe_none_sem_acordar_modelo_no_jogo() -> None:
+def test_classificador_adiado_recebe_estado_tecnico_sem_acordar_modelo_no_jogo() -> None:
     runtime = LLMHttpRuntime(
         base_url="http://127.0.0.1:11434/v1",
         local_timeout=10,
@@ -543,7 +543,10 @@ def test_classificador_json_recebe_none_sem_acordar_modelo_no_jogo() -> None:
         "messages": [{"role": "system", "content": "Responda JSON com intent e params"}],
         "max_tokens": 100,
     })
-    assert resposta.json()["choices"][0]["message"]["content"] == '{"intent":"NONE","params":{}}'
+    # Sem chamada ao modelo não houve análise: NONE seria evidência semântica
+    # fabricada. A guarda contra acordá-lo acima continua obrigatória.
+    assert resposta.json()["choices"][0]["message"]["content"] == FALHA_LLM_OCUPADA
+    assert resposta.motivo == "economia_modo_jogo"
 
 
 def test_troca_de_tela_so_e_liberada_quando_o_foco_foi_pedido() -> None:

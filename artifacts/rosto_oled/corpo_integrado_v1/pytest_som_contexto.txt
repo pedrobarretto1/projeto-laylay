@@ -1,0 +1,13 @@
+........................................................................ [ 63%]
+....................................F.....                               [100%]
+================================== FAILURES ===================================
+__________ test_perfil_e_preferencia_explicita_preserva_configuracao __________
+scripts\tests\test_decisao_corporal_v1.py:93: in test_perfil_e_preferencia_explicita_preserva_configuracao
+    assert c.perfil_corporal() == "bancada"
+E   AssertionError: assert 'rodas_suspensas' == 'bancada'
+E     
+E     - bancada
+E     + rodas_suspensas
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_decisao_corporal_v1.py::test_perfil_e_preferencia_explicita_preserva_configuracao
+1 failed, 113 passed in 11.93s

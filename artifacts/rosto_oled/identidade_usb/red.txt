@@ -1,0 +1,56 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+___ test_identidade_escolhe_corpo_entre_varias_portas_sem_acordar_outro_esp ___
+
+    def test_identidade_escolhe_corpo_entre_varias_portas_sem_acordar_outro_esp():
+        outro, corpo = placa("aabbccddeeff"), placa()
+        r = runtime({"COM4": outro, "COM8": corpo})
+        try:
+>           assert r.sincronizar(), r.diagnostico()
+E           AssertionError: {'configurado': True, 'conectado': False, 'sessao': '', 'transporte': 'serial', ...}
+E           assert False
+E            +  where False = sincronizar()
+E            +    where sincronizar = <mente_laylay.especialistas.rosto_oled_runtime.RostoOledRuntime object at 0x0000025452143E00>.sincronizar
+
+scripts\tests\test_identidade_corpo_usb.py:33: AssertionError
+______ test_corpo_pareado_ausente_nao_adota_outro_mesmo_com_porta_unica _______
+
+    def test_corpo_pareado_ausente_nao_adota_outro_mesmo_com_porta_unica():
+        outro = placa("aabbccddeeff")
+        r = runtime({"COM4": outro})
+>       assert not r.sincronizar()
+E       assert not True
+E        +  where True = sincronizar()
+E        +    where sincronizar = <mente_laylay.especialistas.rosto_oled_runtime.RostoOledRuntime object at 0x00000254523AC830>.sincronizar
+
+scripts\tests\test_identidade_corpo_usb.py:45: AssertionError
+_ test_configuracao_corporal_persiste_identidade_e_nome_sem_alterar_outros_campos _
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3994/test_configuracao_corporal_per0')
+
+    def test_configuracao_corporal_persiste_identidade_e_nome_sem_alterar_outros_campos(tmp_path):
+        cfg = ConfiguracaoAplicacaoRuntime(raiz=tmp_path)
+        cfg.arquivo_env.write_text("# pessoal\nOUTRA_CHAVE=preservar\n", encoding="utf8")
+>       assert cfg.definir_identidade_corpo_usb(**PAREAMENTO)["saved"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'ConfiguracaoAplicacaoRuntime' object has no attribute 'definir_identidade_corpo_usb'
+
+scripts\tests\test_identidade_corpo_usb.py:53: AttributeError
+_____________ test_identidade_invalida_falha_antes_de_abrir_porta _____________
+
+    def test_identidade_invalida_falha_antes_de_abrir_porta():
+        abertas = []
+        r = RostoOledRuntime(estado_getter=lambda: {}, autodetectar=True,
+            listar_portas=lambda: ("COM4",), abrir_serial=lambda p: abertas.append(p))
+        r.identidade_usb_getter = lambda: {"dispositivo": "invalido", "nome": "Corpo"}
+        assert not r.sincronizar()
+>       assert not abertas
+E       AssertionError: assert not ['COM4']
+
+scripts\tests\test_identidade_corpo_usb.py:64: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_identidade_corpo_usb.py::test_identidade_escolhe_corpo_entre_varias_portas_sem_acordar_outro_esp
+FAILED scripts/tests/test_identidade_corpo_usb.py::test_corpo_pareado_ausente_nao_adota_outro_mesmo_com_porta_unica
+FAILED scripts/tests/test_identidade_corpo_usb.py::test_configuracao_corporal_persiste_identidade_e_nome_sem_alterar_outros_campos
+FAILED scripts/tests/test_identidade_corpo_usb.py::test_identidade_invalida_falha_antes_de_abrir_porta
+4 failed in 1.08s

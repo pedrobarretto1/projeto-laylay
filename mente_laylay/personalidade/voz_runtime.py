@@ -28,15 +28,14 @@ from mente_laylay.personalidade.ritmo_natural import (
 
 
 VOZ_TTS_PADRAO = "pt-BR-FranciscaNeural"
-VOZ_TTS_FALLBACK = "pt-BR-ThalitaMultilingualNeural"
 
 
 def resolver_vozes_tts(environ: Mapping[str, str] | None = None) -> tuple[str, str]:
-    """Resolve as vozes neurais sem prender a configuração ao arquivo principal."""
+    """Preserva a voz escolhida; outra identidade exige reserva explícita."""
     ambiente = os.environ if environ is None else environ
     principal = str(ambiente.get("LAYLAY_TTS_VOICE", "") or "").strip()
     fallback = str(ambiente.get("LAYLAY_TTS_VOICE_FALLBACK", "") or "").strip()
-    return principal or VOZ_TTS_PADRAO, fallback or VOZ_TTS_FALLBACK
+    return principal or VOZ_TTS_PADRAO, fallback
 
 
 class VozRuntime:
@@ -68,6 +67,7 @@ class VozRuntime:
         trace_context_getter: Callable[[], Mapping[str, Any]] | None = None,
         registrar_falha_cb: Callable[..., Any] | None = None,
         fallback_voice: str = "",
+        permitir_fallback_local: bool = False,
         thread_factory: Callable[..., Any] = threading.Thread,
         timer_factory: Callable[..., Any] = threading.Timer,
         log: Callable[[str], Any] = print,
@@ -89,6 +89,7 @@ class VozRuntime:
         ]
         # Mantém o atributo singular por compatibilidade com integrações antigas.
         self.fallback_voice = self.fallback_voices[0] if self.fallback_voices else ""
+        self.permitir_fallback_local = permitir_fallback_local is True
         self.edge_tts = edge_tts_mod
         self.sd = sounddevice_mod
         self.sf = soundfile_mod
@@ -584,7 +585,7 @@ class VozRuntime:
         pitch: str,
         volume: str,
     ) -> str:
-        """Sintetiza com a voz principal e tenta a reserva antes do TTS local."""
+        """Sintetiza com a identidade principal e reservas explicitamente configuradas."""
         vozes = []
         for voice in [self.voice, *self.fallback_voices]:
             if voice and voice not in vozes:
@@ -611,7 +612,7 @@ class VozRuntime:
                 if isinstance(erro, (TimeoutError, asyncio.TimeoutError)):
                     self.log(
                         f"⚠️ [VOZ] síntese neural excedeu {self.tts_timeout_s:.1f}s; "
-                        "usando o fallback local."
+                        "entrega de áudio não confirmada."
                     )
                     break
                 if indice + 1 < len(vozes):
@@ -813,7 +814,7 @@ class VozRuntime:
                             fallback_restante = segmentos[1]
                             self.log(
                                 "⚠️ [VOZ] restante neural ainda não ficou "
-                                "pronto; usando fallback somente nele."
+                                "pronto; áudio restante não confirmado."
                             )
                         elif restante_estado.get("ok"):
                             caminhos.append(restante_arquivo)
@@ -828,7 +829,8 @@ class VozRuntime:
                                 self._relatar_falha(
                                     "falha_sintese_restante",
                                     erro_restante,
-                                    fallback="tts_local_apenas_restante",
+                                    fallback=("tts_local_apenas_restante" if self.permitir_fallback_local
+                                              else "texto_preservado_sem_troca_de_voz"),
                                     fase="sintetizar_restante",
                                 )
                 if interrompida:
@@ -862,7 +864,10 @@ class VozRuntime:
                 self.ducking_volume(False)
 
             if fallback_restante and not interrompida:
-                sucesso = bool(self.fallback_pyttsx(fallback_restante, emocao, nivel))
+                if self.permitir_fallback_local:
+                    sucesso = bool(self.fallback_pyttsx(fallback_restante, emocao, nivel))
+                else:
+                    self.log("⚠️ [VOZ] texto preservado; não vou trocar a voz para completar o áudio.")
 
         except Exception as e:
             cancelar_restante.set()
@@ -872,10 +877,14 @@ class VozRuntime:
                 self.registrar_falha_cb(
                     "tts", "falha_audio", erro=e,
                     classe="degradacao", impacto="fala",
-                    fallback="tts_local_pyttsx",
+                    fallback=("tts_local_pyttsx" if self.permitir_fallback_local
+                              else "texto_preservado_sem_troca_de_voz"),
                 )
             try:
-                sucesso = bool(self.fallback_pyttsx(texto, emocao, nivel))
+                if self.permitir_fallback_local:
+                    sucesso = bool(self.fallback_pyttsx(texto, emocao, nivel))
+                else:
+                    self.log("⚠️ [VOZ] texto preservado; não vou trocar a voz após a falha de áudio.")
             except Exception as erro_fallback:
                 self.log(
                     f"❌ [FALA:FALLBACK] {type(erro_fallback).__name__}: {erro_fallback}"
@@ -1158,6 +1167,36 @@ class VozRuntime:
         if not itens:
             return
 
+        preparados=[]
+        for item in itens:
+            validar=item.get("validar_vigencia") if isinstance(item,dict) else None
+            if callable(validar):
+                try:
+                    vigente=validar() is True
+                except Exception:
+                    vigente=False
+                if not vigente:
+                    self._concluir_itens_proativos([item],False,"observacao_expirada",self.log)
+                    continue
+            preparar=item.get("preparar_entrega_cb") if isinstance(item,dict) else None
+            if callable(preparar):
+                try:
+                    atual=preparar()
+                    if atual is None:
+                        self._concluir_itens_proativos([item],False,"apresentacao_ja_entregue",self.log)
+                        continue
+                    if not isinstance(atual,dict) or not str(atual.get("texto") or "").strip():
+                        raise ValueError("preparacao_entrega_invalida")
+                    item={**item,"texto":str(atual["texto"])}
+                except Exception as erro:
+                    self._reagendar_itens_proativos([item],motivo="falha_preparacao_entrega",atraso_s=2.0)
+                    self.log(f"⚠️ [FALA PROATIVA] preparação isolada: {type(erro).__name__}")
+                    continue
+            preparados.append(item)
+        itens=preparados
+        if not itens:
+            return
+
         def concluir(entregue: bool, motivo: str) -> None:
             self._concluir_itens_proativos(itens, entregue, motivo, self.log)
 
@@ -1396,6 +1435,24 @@ class VozRuntime:
             texto = str(ultimo.get("texto") or self.fallback_fala).strip()
             emocao = str(ultimo.get("emocao") or "calma")
             nivel = int(ultimo.get("nivel") or 1)
+        # A composição do lote pode chamar código externo. Uma observação
+        # aceita ao retirar da fila pode ter expirado antes da publicação.
+        invalidos=[]
+        for item in itens:
+            validar=item.get("validar_vigencia") if isinstance(item,dict) else None
+            if callable(validar):
+                try:
+                    valida=validar() is True
+                except Exception:
+                    valida=False
+                if not valida:
+                    invalidos.append(item)
+        if invalidos:
+            self._concluir_itens_proativos(invalidos,False,"observacao_expirada",self.log)
+            validos=[item for item in itens if item not in invalidos]
+            if validos:
+                self._reagendar_itens_proativos(validos,motivo="recompor_sem_observacao_expirada",atraso_s=.5)
+            return
         try:
             estado_emocional = (
                 self.estado_emocional_getter()
@@ -1471,6 +1528,8 @@ class VozRuntime:
         forcar_inicio: bool = False,
         mesclar_turno: bool = False,
         preservar_ate_entrega: bool = False,
+        preparar_entrega_cb: Callable[[], dict[str, Any] | None] | None = None,
+        validar_vigencia: Callable[[], bool] | None = None,
     ):
         tipo_norm = str(tipo or "").strip().lower()
         texto_limpo = str(texto or "").strip()
@@ -1571,6 +1630,8 @@ class VozRuntime:
             "ts": time.time(),
             "ao_iniciar": ao_iniciar,
             "ao_concluir": ao_concluir,
+            "preparar_entrega_cb": preparar_entrega_cb,
+            "validar_vigencia": validar_vigencia,
             "forcar_inicio": inicio_forcado,
             "preservar_ate_entrega": bool(preservar_ate_entrega),
             "mesclar_turno": reservar_para_turno,

@@ -11,6 +11,10 @@ from dataclasses import dataclass
 import re
 import unicodedata
 
+from mente_laylay.cognicao.referencias_linguagem import (
+    operando_inicia_com_referencia_contextual,
+)
+
 
 def normalizar_gramatica_musical(texto: str) -> str:
     """Normalização estrutural conservadora; preserva pontuação semântica."""
@@ -244,7 +248,7 @@ _REFERENCIA_AMBIGUA = re.compile(
 # Deliberadamente não aceita sujeitos anteriores: "ele toca...", "quando toca...".
 _TOCAR_GENERICO = re.compile(
     r"^(?:por favor\s+)?"
-    r"(?:toca|toque|coloca|coloque|bota|ponha|poe|escuta|escute)\s+"
+    r"(?:toca|toque|coloca|coloque|bota|ponha|poe|põe|escuta|escute)\s+"
     r"(?P<alvo>.+?)[?!.]*$",
     re.IGNORECASE,
 )
@@ -526,13 +530,17 @@ def analisar_gramatica_musical(texto: str) -> AnaliseGramaticalMusical:
     generico = _TOCAR_GENERICO.fullmatch(t)
     if generico:
         alvo = str(generico.group("alvo") or "").strip()
+        # A cópia lexical elimina aspas: nela um título literal e um pronome
+        # parecem iguais. Consultar o operando estrutural mantém a distinção.
+        generico_original = _TOCAR_GENERICO.fullmatch(re.sub(r"\s+", " ", str(texto or "")).strip())
+        operando_original = generico_original.group("alvo") if generico_original else alvo
         dominio_explicito = bool(
             re.search(r"\b(?:musica|faixa|playlist|som)\b", alvo)
         )
         return _resultado(
             texto=t, classe="pedido_direto", operacao="tocar",
             evidencia_diretiva=True,
-            depende_contexto=False,
+            depende_contexto=operando_inicia_com_referencia_contextual(operando_original),
             dominio_explicito=dominio_explicito,
             regra="tocar_generico_ancorado",
             motivo="verbo diretivo inicia a fala e possui complemento",

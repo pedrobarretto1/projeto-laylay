@@ -1,0 +1,641 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "resultado": "sucesso",
+      "id_solicitacao": "fc57e78ad43f498092da6fc951b42313",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "678476f7",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "resultado": "falha",
+      "id_solicitacao": "673c9ea6574f4b2baee389bc4d3e002d",
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "678476f7",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "glitch_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "direcao": "tx",
+      "pacote": "HELLO 1 678476f7",
+      "monotonic": 12036.7657286
+    },
+    {
+      "direcao": "tx",
+      "pacote": "CAPS 1 678476f7",
+      "monotonic": 12036.8690121
+    },
+    {
+      "direcao": "tx",
+      "pacote": "GCAPS 1 678476f7",
+      "monotonic": 12036.9790677
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MCAPS 1 678476f7",
+      "monotonic": 12037.088028
+    },
+    {
+      "direcao": "tx",
+      "pacote": "LCAPS 1 678476f7",
+      "monotonic": 12037.1961012
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SCAPS 1 678476f7",
+      "monotonic": 12037.305986
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ECAPS 1 678476f7",
+      "monotonic": 12037.4139111
+    },
+    {
+      "direcao": "tx",
+      "pacote": "RCAPS 1 678476f7",
+      "monotonic": 12037.5229372
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 1 0 1 0 3500",
+      "monotonic": 12037.6327306
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 1 0 1 0",
+      "monotonic": 12037.7411233
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 1 0 1200",
+      "monotonic": 12037.7412209
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 678476f7 1 0",
+      "monotonic": 12037.8501893
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 678476f7 1 0",
+      "monotonic": 12037.958741
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 2 0 1 0 3500",
+      "monotonic": 12037.9599428
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 2 0 1 0",
+      "monotonic": 12038.0681005
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 2 1 1200",
+      "monotonic": 12038.0681979
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 3 0 1 0 3500",
+      "monotonic": 12038.2283019
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 3 0 1 0",
+      "monotonic": 12038.3348784
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 3 1 1200",
+      "monotonic": 12038.3349468
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 4 0 1 0 3500",
+      "monotonic": 12038.4957197
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 4 0 1 0",
+      "monotonic": 12038.5996434
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 4 1 1200",
+      "monotonic": 12038.5997258
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 5 0 1 0 3500",
+      "monotonic": 12038.760357
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 5 0 1 0",
+      "monotonic": 12038.8650543
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 5 0 1200",
+      "monotonic": 12038.865126
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 6 0 1 0 3500",
+      "monotonic": 12039.0246378
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 6 0 1 0",
+      "monotonic": 12039.1294294
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 6 0 1200",
+      "monotonic": 12039.1295018
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 7 0 1 0 3500",
+      "monotonic": 12039.2893487
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 7 0 1 0",
+      "monotonic": 12039.3947141
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 7 0 1200",
+      "monotonic": 12039.3947936
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 8 0 1 0 3500",
+      "monotonic": 12039.5555111
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 8 0 1 0",
+      "monotonic": 12039.6603492
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 8 0 1200",
+      "monotonic": 12039.6604277
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 9 0 1 0 3500",
+      "monotonic": 12039.8192107
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 9 0 1 0",
+      "monotonic": 12039.9259654
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 9 0 1200",
+      "monotonic": 12039.9260353
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 678476f7 2 1",
+      "monotonic": 12040.0360586
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 678476f7 2 1",
+      "monotonic": 12040.1457875
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 10 0 1 0 3500",
+      "monotonic": 12040.1465247
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 10 0 1 0",
+      "monotonic": 12040.2564156
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 10 1 1200",
+      "monotonic": 12040.2564761
+    },
+    {
+      "direcao": "tx",
+      "pacote": "GLITCH 1 678476f7 1 900",
+      "monotonic": 12040.3661167
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 11 0 1 0 3500",
+      "monotonic": 12040.5261711
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 11 0 1 0",
+      "monotonic": 12040.6333484
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 11 1 1200",
+      "monotonic": 12040.6334129
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 12 0 1 0 3500",
+      "monotonic": 12040.7934345
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 12 0 1 0",
+      "monotonic": 12040.8976048
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 12 1 1200",
+      "monotonic": 12040.8976839
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 13 0 1 0 3500",
+      "monotonic": 12041.0578361
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 13 0 1 0",
+      "monotonic": 12041.1640213
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 13 0 1200",
+      "monotonic": 12041.164088
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 14 0 1 0 3500",
+      "monotonic": 12041.3242151
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 14 0 1 0",
+      "monotonic": 12041.429609
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 14 0 1200",
+      "monotonic": 12041.4296942
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 15 0 1 0 3500",
+      "monotonic": 12041.5899948
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 15 0 1 0",
+      "monotonic": 12041.6961082
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 15 0 1200",
+      "monotonic": 12041.6961833
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 16 0 1 0 3500",
+      "monotonic": 12041.8559201
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 16 0 1 0",
+      "monotonic": 12041.9597012
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 16 0 1200",
+      "monotonic": 12041.9597744
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 678476f7 3 2",
+      "monotonic": 12042.0693726
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 678476f7 3 2",
+      "monotonic": 12042.1786044
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 17 0 1 0 3500",
+      "monotonic": 12042.1788067
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 17 0 1 0",
+      "monotonic": 12042.2874387
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 17 0 1200",
+      "monotonic": 12042.2875165
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 18 0 1 0 3500",
+      "monotonic": 12042.4473248
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 18 0 1 0",
+      "monotonic": 12042.5515156
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 18 0 1200",
+      "monotonic": 12042.5515893
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 19 0 1 0 3500",
+      "monotonic": 12042.7109122
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 19 0 1 0",
+      "monotonic": 12042.8155339
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 19 0 1200",
+      "monotonic": 12042.8156035
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 20 0 1 0 3500",
+      "monotonic": 12042.9758118
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 20 0 1 0",
+      "monotonic": 12043.0821723
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 20 0 1200",
+      "monotonic": 12043.0822445
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 21 0 1 0 3500",
+      "monotonic": 12043.2429957
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 21 0 1 0",
+      "monotonic": 12043.3484803
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 21 0 1200",
+      "monotonic": 12043.3485517
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 22 0 1 0 3500",
+      "monotonic": 12043.5095678
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 22 0 1 0",
+      "monotonic": 12043.616254
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 22 0 1200",
+      "monotonic": 12043.6163334
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 23 0 1 0 3500",
+      "monotonic": 12043.7757926
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 23 0 1 0",
+      "monotonic": 12043.8798804
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 23 0 1200",
+      "monotonic": 12043.8799664
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 24 0 1 0 3500",
+      "monotonic": 12044.039202
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 24 0 1 0",
+      "monotonic": 12044.1457916
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 24 0 1200",
+      "monotonic": 12044.1458719
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 678476f7 25 0 1 0 3500",
+      "monotonic": 12044.3064876
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 678476f7 25 0 1 0",
+      "monotonic": 12044.4126448
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 678476f7 25 0 1200",
+      "monotonic": 12044.4127163
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 678476f7 1",
+      "monotonic": 12044.5724761
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 678476f7 1",
+      "monotonic": 12044.6768658
+    },
+    {
+      "direcao": "tx",
+      "pacote": "GOODNIGHT 1 678476f7 1",
+      "monotonic": 12044.676889
+    },
+    {
+      "direcao": "rx",
+      "pacote": "NACK 1 678476f7 1",
+      "monotonic": 12044.7857418
+    }
+  ],
+  "interface_aberta": false,
+  "motor_enviado": false,
+  "audicao_humana": "usuario relatou teste proprio funcionando; nao acompanhou esta sonda",
+  "origem": "leituras locais de diagnostico reais, owner e composicao de producao"
+}

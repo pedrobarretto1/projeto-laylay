@@ -18,6 +18,7 @@ POLITICAS_CONTEXTO: Dict[str, Dict[str, Any]] = {
     "foco_operacional": {"ts": "foco_operacional_ts", "ttl_s": 300.0, "prefixos": ("foco_operacional_",)},
     "topico_explicito": {"ts": "topico_explicito_ts", "ttl_s": 480.0, "prefixos": ("topico_explicito_",)},
     "ultimo_resumo_pagina": {"objeto": "ultimo_resumo_pagina", "ts_interno": "ts", "ttl_s": 600.0},
+    "email_contexto": {"objeto": "email_contexto", "ts_interno": "ts", "ttl_s": 600.0},
     "capacidade_futura": {"objeto": "capacidade_futura", "ts_interno": "ts", "ttl_s": 600.0},
 }
 

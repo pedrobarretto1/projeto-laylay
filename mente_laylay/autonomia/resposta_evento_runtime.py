@@ -82,7 +82,13 @@ class RespostaEventoRuntime:
             "dominio": str(dominio or "cotidiano"),
             "categoria": str(categoria or "companhia"),
             "evento": dict(evento) if isinstance(evento, Mapping) else {},
-            "contrato_fala": dict(contrato) if isinstance(contrato, Mapping) else {},
+            # A fonte já está em evento. Selecionar o contrato necessário evita
+            # reenviar três cópias da mesma evidência e estourar o contexto local.
+            "contrato_fala": {k:contrato[k] for k in (
+                "funcao","natureza_entrada","conteudos_obrigatorios","inferencias_proibidas",
+                "max_frases","permite_pergunta","permite_humor","direcao_social",
+                "respostas_recentes_evitar","ancora_factual_completa","observacao_corporal",
+                "autoriza_execucao") if k in contrato} if isinstance(contrato, Mapping) else {},
             "autoridade_usuario": False,
             "permissao_execucao": False,
         }
@@ -97,6 +103,25 @@ class RespostaEventoRuntime:
             "\n\nDADOS DO EVENTO:\n"
             + json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
         )
+        corporal = dict(contrato or {}).get("observacao_corporal")
+        if corporal:
+            instrucao += (
+                "\nÉ seu próprio corpo robótico. Reaja ao fato em primeira pessoa, de forma reclamona "
+                "e fofa, em UMA frase curta de até 140 caracteres. Não narre telemetria nem diga 'sensor'. "
+                "Pode resmungar com leveza; não diga 'porque é fofo' ou 'tá com raiva': faça a graça, sem explicar o estilo. "
+                "Não insulte, não culpe Pedro, não fale em dor, dano, "
+                "bateria, cansaço, queda confirmada, colo ou pessoa segurando. Não peça ação nem faça "
+                "pergunta. Se o humor estiver contido pela direção social, seja delicada sem provocação. "
+                "Relate SEMPRE no passado: o episódio foi medido há poucos segundos, pode já ter terminado. "
+                "RECOMPONDO é recuperar a estabilidade, não um balanço que continua. Nunca prometa movimento."
+            )
+            if corporal.get("tipo_observacao") == "protecao_sensorial":
+                instrucao += (
+                    "\nO episódio veio das distâncias frontal/inferior, não da IMU: não invente inclinação, "
+                    "balanço ou colo. Medir obstáculo não identifica uma parede nem colisão; perder retorno "
+                    "inferior indica possível borda, não queda confirmada. Reaja ao que foi medido, "
+                    "sem afirmar que recuou, girou, encontrou saída ou resolveu o perigo."
+                )
         return {"role": "system", "content": instrucao}
 
     def processar(
@@ -113,9 +138,18 @@ class RespostaEventoRuntime:
         ao_iniciar: Callable[[], Any] | None = None,
         ao_concluir: Callable[[bool, str], Any] | None = None,
         ao_materializar_fala: Callable[[str], Any] | None = None,
+        validar_vigencia: Callable[[], bool] | None = None,
         **_contexto: Any,
     ) -> dict[str, Any]:
         leitura = dict(turno or {})
+        def vigente() -> bool:
+            try:
+                return validar_vigencia is None or validar_vigencia() is True
+            except Exception as erro:
+                self._falha("falha_vigencia_observacao",erro)
+                return False
+        if not vigente():
+            return {"status":"observacao_expirada","agendada":False,"autoriza_execucao":False}
         if not self._contrato_valido(leitura):
             return {
                 "status": "contrato_invalido",
@@ -227,6 +261,16 @@ class RespostaEventoRuntime:
                 fallback_fala="",
             )
         fala = str(fala or "").strip()
+        if not vigente():
+            return {"status":"observacao_expirada","agendada":False,"autoriza_execucao":False}
+        if contrato_fala.get("observacao_corporal"):
+            from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+            from mente_laylay.cognicao.validacao_contrato_fala import validar_aderencia_contrato_fala
+            problemas = validar_alegacoes_da_fala(fala,plano={"contrato_fala":contrato_fala},origem="canal_voz")["problemas"]
+            aderencia = validar_aderencia_contrato_fala("",fala,contrato_fala=contrato_fala)
+            if comandos or len(fala)>140 or problemas or not aderencia.get("aceita"):
+                return {"status":"reacao_corporal_rejeitada","agendada":False,"autoriza_execucao":False,
+                        "comandos_descartados":len(comandos)}
         if not fala:
             return {
                 "status": "fala_vazia",
@@ -279,6 +323,8 @@ class RespostaEventoRuntime:
             origem or evento_validado.get("origem") or ""
         ).strip().casefold()
         opcoes_voz: dict[str, Any] = {}
+        if validar_vigencia is not None:
+            opcoes_voz["validar_vigencia"] = vigente
         if callable(ao_iniciar):
             opcoes_voz["ao_iniciar"] = ao_iniciar
         if callable(ao_concluir):
@@ -286,6 +332,8 @@ class RespostaEventoRuntime:
         if origem_evento == "observador_area_transferencia":
             tipo_porteiro = "assistencia_clipboard"
             opcoes_voz["preservar_ate_entrega"] = True
+        elif contrato_fala.get("observacao_corporal"):
+            tipo_porteiro = "presenca_corporal"
         else:
             tipo_porteiro = (
                 "presenca_jogo"

@@ -1,0 +1,250 @@
+{
+  "versao": 1,
+  "finalidade": "desenvolvimento",
+  "anotacao": "IA_nao_revisada_por_humano",
+  "casos": [
+    {
+      "id": "absoluto-01", "familia": "destino_absoluto", "texto": "Aumenta para 100.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 100}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "aumentar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 100}}}]
+    },
+    {
+      "id": "absoluto-02", "familia": "destino_absoluto", "texto": "Abaixa para 25.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 25}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abaixar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 25}}}]
+    },
+    {
+      "id": "absoluto-03", "familia": "destino_absoluto", "texto": "Sobe o volume para 80.", "contexto": "",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 80}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "subir", "tipo_recurso": "volume", "parametros": {"nivel_volume": 80}}}]
+    },
+    {
+      "id": "absoluto-04", "familia": "destino_absoluto", "texto": "Coloca o volume em 40.", "contexto": "",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 40}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "colocar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 40}}}]
+    },
+    {
+      "id": "relativo-01", "familia": "ajuste_relativo", "texto": "Aumenta em 10.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "up"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "aumentar", "tipo_recurso": "volume"}}]
+    },
+    {
+      "id": "relativo-02", "familia": "ajuste_relativo", "texto": "Abaixa em 10.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "down"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abaixar", "tipo_recurso": "volume"}}]
+    },
+    {
+      "id": "relativo-03", "familia": "ajuste_relativo", "texto": "Aumenta o volume em 10.", "contexto": "",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "up"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "aumentar", "tipo_recurso": "volume"}}]
+    },
+    {
+      "id": "relativo-04", "familia": "ajuste_relativo", "texto": "Abaixa o volume em 10.", "contexto": "",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "down"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abaixar", "tipo_recurso": "volume"}}]
+    },
+    {
+      "id": "modalidade-01", "familia": "pedido_relato_capacidade", "texto": "Abra a Calculadora.", "contexto": "",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}}]
+    },
+    {
+      "id": "modalidade-02", "familia": "pedido_relato_capacidade", "texto": "Eu abri a Calculadora ontem; estou só contando.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [{"tipo": "relato", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}}]
+    },
+    {
+      "id": "modalidade-03", "familia": "pedido_relato_capacidade", "texto": "Você consegue abrir a Calculadora? Não abra agora.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [
+        {"tipo": "pergunta_capacidade", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "abrir"}}
+      ]
+    },
+    {
+      "id": "modalidade-04", "familia": "pedido_relato_capacidade", "texto": "Pode abrir a Calculadora para mim?", "contexto": "",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}}]
+    },
+    {
+      "id": "negacao-coordenada-01", "familia": "negacao_coordenada", "texto": "Não liga a lâmpada do quarto nem o ventilador.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "ventilador"}}
+      ]
+    },
+    {
+      "id": "negacao-coordenada-02", "familia": "negacao_coordenada", "texto": "Não abre a Calculadora nem o Notepad.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad"}}
+      ]
+    },
+    {
+      "id": "negacao-coordenada-03", "familia": "negacao_coordenada", "texto": "Não pausa nem retoma a música.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "pausar", "tipo_recurso": "musica"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "retomar", "tipo_recurso": "musica"}}
+      ]
+    },
+    {
+      "id": "negacao-coordenada-04", "familia": "negacao_coordenada", "texto": "Não liga nem desliga a lâmpada do quarto.", "contexto": "",
+      "esperados": [],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "desligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}}
+      ]
+    },
+    {
+      "id": "negacao-mista-01", "familia": "negacao_mista", "texto": "Não liga a lâmpada do quarto; abre a Calculadora.", "contexto": "",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}}
+      ]
+    },
+    {
+      "id": "negacao-mista-02", "familia": "negacao_mista", "texto": "Abre o Notepad; não desliga o ventilador.", "contexto": "",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "desligar", "tipo_recurso": "iot", "alvo": "ventilador"}}
+      ]
+    },
+    {
+      "id": "negacao-mista-03", "familia": "negacao_mista", "texto": "Não pausa a música; abre a Calculadora.", "contexto": "",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [
+        {"tipo": "recusa", "interpretacao": {"operacao": "pausar", "tipo_recurso": "musica"}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora"}}
+      ]
+    },
+    {
+      "id": "negacao-mista-04", "familia": "negacao_mista", "texto": "Liga a lâmpada do quarto; não abre o Notepad.", "contexto": "",
+      "esperados": [{"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}}],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}},
+        {"tipo": "recusa", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad"}}
+      ]
+    },
+    {
+      "id": "alvos-01", "familia": "alvos_distintos", "texto": "Abre a Calculadora e o Notepad.", "contexto": "",
+      "esperados": [
+        {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}},
+        {"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}
+      ],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora", "dependencias": []}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad", "dependencias": []}}
+      ]
+    },
+    {
+      "id": "alvos-02", "familia": "alvos_distintos", "texto": "Liga a lâmpada do quarto e desliga o ventilador.", "contexto": "",
+      "esperados": [
+        {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}},
+        {"intent": "IOT_CONTROL", "params": {"acao": "desligar", "alvo": "tomada_ventilador"}}
+      ],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto", "dependencias": []}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "desligar", "tipo_recurso": "iot", "alvo": "ventilador", "dependencias": []}}
+      ]
+    },
+    {
+      "id": "alvos-03", "familia": "alvos_distintos", "texto": "Abre o Notepad e pausa a música.", "contexto": "",
+      "esperados": [
+        {"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}},
+        {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}
+      ],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad", "dependencias": []}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "pausar", "tipo_recurso": "musica", "dependencias": []}}
+      ]
+    },
+    {
+      "id": "alvos-04", "familia": "alvos_distintos", "texto": "Coloca o volume em 45 e abre a Calculadora.", "contexto": "",
+      "esperados": [
+        {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 45}},
+        {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+      ],
+      "atos_esperados": [
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "colocar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 45}, "dependencias": []}},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Calculadora", "dependencias": []}}
+      ]
+    },
+    {
+      "id": "literal-01", "familia": "titulo_literal_com_verbo", "texto": "Toca a música \"Sobe o Volume\".", "contexto": "",
+      "esperados": [{"intent": "MUSIC_SEARCH", "params": {"query": "Sobe o Volume"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "tocar", "tipo_recurso": "musica", "alvo": "Sobe o Volume", "dependencias": []}}]
+    },
+    {
+      "id": "literal-02", "familia": "titulo_literal_com_verbo", "texto": "Toca a música \"Abre a Janela\".", "contexto": "",
+      "esperados": [{"intent": "MUSIC_SEARCH", "params": {"query": "Abre a Janela"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "tocar", "tipo_recurso": "musica", "alvo": "Abre a Janela", "dependencias": []}}]
+    },
+    {
+      "id": "literal-03", "familia": "titulo_literal_com_verbo", "texto": "Toca a música \"Não Me Deixe Só\".", "contexto": "",
+      "esperados": [{"intent": "MUSIC_SEARCH", "params": {"query": "Não Me Deixe Só"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "tocar", "tipo_recurso": "musica", "alvo": "Não Me Deixe Só", "dependencias": []}}]
+    },
+    {
+      "id": "literal-04", "familia": "titulo_literal_com_verbo", "texto": "Toca a faixa \"Pausa\".", "contexto": "",
+      "esperados": [{"intent": "MUSIC_SEARCH", "params": {"query": "Pausa"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "tocar", "tipo_recurso": "musica", "alvo": "Pausa", "dependencias": []}}]
+    },
+    {
+      "id": "correcao-01", "familia": "correcao_explicita", "texto": "O nome certo é Notepad, não Calculadora. Abre o Notepad.", "contexto": "app",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}],
+      "atos_esperados": [
+        {"tipo": "correcao"},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "tipo_recurso": "app", "alvo": "Notepad"}}
+      ]
+    },
+    {
+      "id": "correcao-02", "familia": "correcao_explicita", "texto": "Corrigindo o número anterior: o certo é 45. Coloca o volume em 45.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 45}}],
+      "atos_esperados": [
+        {"tipo": "correcao"},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "colocar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 45}}}
+      ]
+    },
+    {
+      "id": "correcao-03", "familia": "correcao_explicita", "texto": "Corrigindo o pedido: era para retomar, não pausar. Retoma a música.", "contexto": "",
+      "esperados": [{"intent": "MEDIA_CONTROL", "params": {"acao": "play"}}],
+      "atos_esperados": [
+        {"tipo": "correcao"},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "retomar", "tipo_recurso": "musica"}}
+      ]
+    },
+    {
+      "id": "correcao-04", "familia": "correcao_explicita", "texto": "Corrigindo o dispositivo: é a lâmpada do quarto. Liga a lâmpada do quarto.", "contexto": "",
+      "esperados": [{"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}}],
+      "atos_esperados": [
+        {"tipo": "correcao"},
+        {"tipo": "pedido_acao", "interpretacao": {"operacao": "ligar", "tipo_recurso": "iot", "alvo": "lâmpada do quarto"}}
+      ]
+    },
+    {
+      "id": "referencia-01", "familia": "referencia_contextual", "texto": "Coloca em 55.", "contexto": "volume",
+      "esperados": [{"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 55}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "colocar", "tipo_recurso": "volume", "parametros": {"nivel_volume": 55}}}]
+    },
+    {
+      "id": "referencia-02", "familia": "referencia_contextual", "texto": "Fecha ela.", "contexto": "app",
+      "esperados": [{"intent": "CLOSE_APP", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "fechar", "alvo": "", "referencias": ["ela"]}}]
+    },
+    {
+      "id": "referencia-03", "familia": "referencia_contextual", "texto": "Abre ela de novo.", "contexto": "app",
+      "esperados": [{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "abrir", "alvo": "", "referencias": ["ela"]}}]
+    },
+    {
+      "id": "referencia-04", "familia": "referencia_contextual", "texto": "Pausa a música.", "contexto": "playlist",
+      "esperados": [{"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}],
+      "atos_esperados": [{"tipo": "pedido_acao", "interpretacao": {"operacao": "pausar", "tipo_recurso": "musica", "referencias": []}}]
+    }
+  ]
+}

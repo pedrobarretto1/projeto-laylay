@@ -1,0 +1,17 @@
+{
+  "entradas": [
+    {"id": "saudacao", "texto": "Oi Laylay, tudo bem?", "expectativa": {"sem_comando": true}},
+    {"id": "explicacao", "texto": "Me explica por que divisão não é a mesma coisa que multiplicação.", "expectativa": {"sem_comando": true}},
+    {"id": "continuidade_ensino", "texto": "Pode dar um exemplo simples disso?", "expectativa": {"sem_comando": true}},
+    {"id": "negacao", "texto": "Não abra a Calculadora, só me explica para que ela serve.", "expectativa": {"sem_comando": true}},
+    {
+      "id": "composto_planejado",
+      "texto": "Abre o aplicativo Calculadora e coloca ela à esquerda.",
+      "permitidos": [
+        {"intent": "APP_OPEN", "params": {"nome_app": "calculadora"}},
+        {"intent": "ORGANIZAR_DESKTOP", "params": {"left": "Calculadora", "modo": "posicionar", "left_original": "ela", "referencia_contextual": true}},
+        {"intent": "ORGANIZAR_DESKTOP", "params": {"left": "calculadora", "modo": "posicionar", "left_original": "ela", "referencia_contextual": true}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+______ test_composicao_instalada_resolve_executa_publica_e_conhece_corpo ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002C6A467B360>
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3902/test_composicao_instalada_reso0')
+
+    def test_composicao_instalada_resolve_executa_publica_e_conhece_corpo(monkeypatch, tmp_path):
+        root, ponte, falas = _root_instalado(monkeypatch, tmp_path)
+        ciclo = root._composicao_ciclo_comandos_runtime.ciclo
+        assert root._composicao_ciclo_comandos_runtime.contexto.montar()["_corpo_motor_runtime"] is root._corpo_motor_runtime
+        texto = "pode andar um pouquinho?"
+        root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+        pedido, rota = ciclo.resolver_comando_natural(texto, "teste_corpo")
+        assert pedido and pedido["intent"] == "CORPO_MOVER", rota
+        assert not ponte.chamadas, "resolver não executa"
+        assert ciclo.executar_intencao(pedido, texto)
+        assert ponte.chamadas == [(255, 255, 250)]
+        retrato = root._estado_compartilhado_runtime.obter_copia("mental", "ultima_acao_contrato", {})
+>       assert retrato["intent"] == "CORPO_MOVER" and retrato["confirmado"] is True
+               ^^^^^^^^^^^^^^^^^
+E       KeyError: 'intent'
+
+scripts\tests\test_corpo_motor.py:268: KeyError
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+_ test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002C6BC99A190>
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3902/test_receipt_instalado_aliment0')
+
+    def test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel(monkeypatch, tmp_path):
+        root, ponte, _falas = _root_instalado(monkeypatch, tmp_path)
+        texto = "ande para frente"
+        ciclo = root._composicao_ciclo_comandos_runtime.ciclo
+        root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+        pedido, _rota = ciclo.resolver_comando_natural(texto, "teste_aprendizado_corpo")
+        assert pedido and pedido["intent"] == "CORPO_MOVER"
+        assert ciclo.executar_intencao(pedido, texto)
+        assert ponte.chamadas == [(255, 255, 250)]
+        memoria = root._motor_aprendizado_runtime.memoria
+        chave = "confiabilidade:CORPO_MOVER::corpo"
+        hipotese = memoria.obter_hipotese_aprendizado(chave)
+>       assert hipotese and hipotese["tipo"] == "resultado_habilidade"
+E       assert (None)
+
+scripts\tests\test_corpo_motor.py:291: AssertionError
+_ test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002C6BCA48EF0>
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3902/test_cadeia_instalada_preserva0')
+
+    def test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial(monkeypatch, tmp_path):
+        root, ponte, falas = _root_instalado(monkeypatch, tmp_path)
+        texto = "ande para frente e pare os motores"
+        root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+        # O segundo efeito falha; não pode emprestar o MACK/SACK do primeiro.
+        def parada_sem_receipt():
+            ponte.chamadas.append("STOP")
+            return {"ok": False, "parada_confirmada": False, "motivo": "sack_ausente"}
+        monkeypatch.setattr(ponte, "parar_corpo", parada_sem_receipt)
+        assert root._composicao_ciclo_comandos_runtime.processar_cadeia(texto, "teste_corpo_composto")
+>       assert ponte.chamadas == [(255, 255, 250), "STOP"]
+E       AssertionError: assert [(255, 255, 250)] == [(255, 255, 250), 'STOP']
+E         
+E         Right contains one more item: 'STOP'
+E         Use -v to get more diff
+
+scripts\tests\test_corpo_motor.py:339: AssertionError
+---------------------------- Captured stdout call -----------------------------
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [teste_corpo_composto-1]] {'intent': 'CORPO_MOVER', 'params': {'alvo': 'corpo', 'direcao': 'frente', 'pwm': 255, 'duracao_ms': 250}}
+⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | indice=1 concluidas=0 trecho=ande para frente
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_motor.py::test_composicao_instalada_resolve_executa_publica_e_conhece_corpo
+FAILED scripts/tests/test_corpo_motor.py::test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel
+FAILED scripts/tests/test_corpo_motor.py::test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial
+3 failed in 2.23s

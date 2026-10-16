@@ -1,0 +1,884 @@
+/* Laylay: rosto SSD1306 128x64, ESP32-C3 Super Mini, SDA=8 SCL/SCK=9.
+ * DRV8833 bancada: esquerdo=GPIO1/2, direito=GPIO3/4, nSLEEP=GPIO7.
+ * Biblioteca Adafruit SSD1306 (+ GFX/BusIO). Nenhum movimento automático.
+ * USB CDC On Boot: Enabled. Protocolo v1 ASCII, 115200 baud.
+ */
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <math.h>
+#include "fonte_terminal.h"
+#include "transporte_wifi.h"
+
+// A atualização do rosto mantém tração desativada. Bancada é opt-in no build.
+#ifndef LAYLAY_HABILITAR_MOTORES_BANCADA
+#define LAYLAY_HABILITAR_MOTORES_BANCADA 0
+#endif
+// Perfil explícito e temporário de teste; o build normal conserva 500 ms.
+#ifndef LAYLAY_LIMITE_MOTOR_TESTE_MS
+#define LAYLAY_LIMITE_MOTOR_TESTE_MS 500
+#endif
+#if LAYLAY_LIMITE_MOTOR_TESTE_MS < 500 || LAYLAY_LIMITE_MOTOR_TESTE_MS > 5000
+#error "Limite de bancada fora da janela 500..5000 ms"
+#endif
+#if LAYLAY_LIMITE_MOTOR_TESTE_MS > 500 && LAYLAY_HABILITAR_MOTORES_BANCADA != 1
+#error "Janela estendida exige perfil de motores de bancada"
+#endif
+
+Adafruit_SSD1306 tela(128, 64, &Wire, -1);
+constexpr int PINO_SDA = 8, PINO_SCL = 9;
+// Teste em ponte opt-in: GPIO6 -> 220Ohm -> falante8Ohm -> GPIO5.
+// Sem capacitor polarizado ou conexão do falante ao GND neste perfil.
+#ifndef LAYLAY_SOM_PONTE
+#define LAYLAY_SOM_PONTE 0
+#endif
+static_assert(LAYLAY_SOM_PONTE == 0 || LAYLAY_SOM_PONTE == 1, "Perfil de som invalido");
+constexpr int PINO_SOM = 6;
+constexpr int PINO_SOM_INV = 5;
+constexpr uint32_t FREQUENCIA_BIP_HZ = 1200, DURACAO_BIP_MS = 2000;
+bool bipInicioAtivo = false, bipInicioTentado = false;
+bool pinosSomProntos[2] = {};
+uint32_t inicioBip = 0;
+uint8_t endereco = 0;
+char sessao[9] = "";
+uint32_t sequencia = 0, ultimoPacote = 0, ttl = 3500, ultimoFrame = 0;
+uint32_t proximaPiscada = 2500, inicioPiscada = 0, proximoOlhar = 1200;
+int emocao = 0, nivel = 1, olharAlvo = 0;
+bool falando = false, conectado = false, demonstracao = false, ackPendente = false;
+bool telaInicializada = false;
+// Saída visual apenas. Estes campos nunca autorizam/renovam os motores.
+bool atividade = false, ackAtividadePendente = false, demoHack = false;
+uint32_t sequenciaAtividade = 0, ultimoPacoteAtividade = 0, ttlAtividade = 1000;
+uint32_t inicioHack = 0, inicioDemoHack = 0;
+float painelHack = 0;
+bool glitch = false, ackGlitchPendente = false, demoGlitch = false, demoFala = false;
+uint32_t sequenciaGlitch = 0, inicioGlitch = 0, ttlGlitch = 900, inicioDemoVisual = 0;
+char sessaoSequenciaGlitch[9] = "";
+float olhar = 0, alturaOlho = 22, larguraOlho = 24;
+float inclinacaoPalpebra = 0;
+bool estavaDormindo = true;
+char linha[384]; // Provisionamento USB inclui SSID/senha codificados em hexadecimal.
+size_t tamanhoLinha = 0;
+bool descartandoLinha = false;
+constexpr int PINOS_MOTOR[4] = {1, 2, 3, 4}, PINO_NSLEEP = 7;
+// Mesma frequência/resolução do analogWrite no core ESP32 3.3.12 da referência.
+constexpr uint32_t FREQUENCIA_MOTOR_HZ = 1000;
+bool pinosMotorProntos[4] = {}, motoresProntos = false;
+bool motorPendente = false, motorAtivo = false;
+char sessaoSequenciaMotor[9] = "";
+char sessaoSequenciaParada[9] = "";
+uint32_t sequenciaParada = 0;
+uint32_t sequenciaMotor = 0, inicioMotor = 0, duracaoMotor = 0;
+uint32_t inicioWakeMicros = 0;
+int pwmEsquerdo = 0, pwmDireito = 0;
+int versaoMotor = 1;
+bool ackMotorEmitido = false;
+void invalidarSessao();
+void limparExpressao();
+void pararSomExpressivo();
+bool motorEmUso() { return motorPendente || motorAtivo; }
+bool sessaoTcpExpirada() {
+  if (donoControle != OrigemControle::TCP) return true;
+  return conectado ? uint32_t(millis() - ultimoPacote) >= ttl
+                   : uint32_t(millis() - inicioClienteTcp) >= 5000;
+}
+
+bool telaPresente() {
+  if (!endereco) return false;
+  Wire.beginTransmission(endereco);
+  return Wire.endTransmission() == 0;
+}
+
+void pararMotor() {
+  // Primeiro corta a ponte; falha de PWM nunca impede desligar nSLEEP.
+  digitalWrite(PINO_NSLEEP, LOW);
+  for (int i = 0; i < 4; ++i) {
+    if (pinosMotorProntos[i] && !ledcWrite(PINOS_MOTOR[i], 0)) {
+      ledcDetach(PINOS_MOTOR[i]); pinosMotorProntos[i] = false; motoresProntos = false;
+    }
+    if (!pinosMotorProntos[i]) { digitalWrite(PINOS_MOTOR[i], LOW); pinMode(PINOS_MOTOR[i], OUTPUT); }
+  }
+  motorPendente = motorAtivo = false; pwmEsquerdo = pwmDireito = 0;
+}
+
+bool decimalSemSinal(const char *texto, uint32_t &valor) {
+  if (!*texto) return false;
+  valor = 0;
+  for (; *texto; ++texto) {
+    if (*texto < '0' || *texto > '9') return false;
+    uint32_t digito = *texto - '0';
+    if (valor > (UINT32_MAX - digito) / 10) return false;
+    valor = valor * 10 + digito;
+  }
+  return true;
+}
+
+bool decimalPwm(const char *texto, int &valor) {
+  bool negativo = *texto == '-';
+  uint32_t magnitude;
+  if (!decimalSemSinal(texto + (negativo ? 1 : 0), magnitude) || magnitude > 255) return false;
+  valor = negativo ? -int(magnitude) : int(magnitude); return true;
+}
+
+void atualizarMotor(uint32_t agora) {
+  if (!motorPendente && !motorAtivo) return;
+  // FACE mantém rosto apenas. Nunca renova o prazo absoluto do motor.
+  if (!conectado || agora - ultimoPacote >= ttl || agora - inicioMotor >= duracaoMotor) {
+    pararMotor(); return;
+  }
+  if (!telaInicializada || !telaPresente()) {
+    invalidarSessao(); return;
+  }
+  agora = millis(); // Sondagem I2C também pode consumir a janela do pulso.
+  if (agora - ultimoPacote >= ttl || agora - inicioMotor >= duracaoMotor) { pararMotor(); return; }
+  if (motorPendente && uint32_t(micros() - inicioWakeMicros) >= 1000) {
+    motorPendente = false; motorAtivo = true;
+  }
+  if (motorAtivo) {
+    float fator = 1;
+    if (versaoMotor == 2) {
+      uint32_t idade = agora - inicioMotor;
+      uint32_t subida = min(uint32_t(150), duracaoMotor / 4);
+      uint32_t descida = min(uint32_t(220), duracaoMotor / 4);
+      float fase = idade < subida ? float(idade) / subida
+                  : duracaoMotor - idade < descida ? float(duracaoMotor - idade) / descida : 1;
+      fator = .45f + .55f * fase * fase * (3 - 2 * fase);
+    }
+    int e = lroundf(pwmEsquerdo * fator), d = lroundf(pwmDireito * fator);
+    int duties[4] = {max(0, e), max(0, -e), max(0, d), max(0, -d)};
+    for (int i = 0; i < 4; ++i) if (!ledcWrite(PINOS_MOTOR[i], duties[i])) {
+      pararMotor(); motoresProntos = false; responderLinha("ERROR 1 MOTOR_PWM_INDISPONIVEL"); return;
+    }
+    agora = millis();
+    if (agora - ultimoPacote >= ttl || agora - inicioMotor >= duracaoMotor) { pararMotor(); return; }
+    if (!ackMotorEmitido && fator == 1) {
+      ackMotorEmitido = true; // Confirma o alvo somente quando aplicado nos GPIOs.
+      responder("MACK %d %s %lu %d %d %lu\n", versaoMotor, sessao, (unsigned long)sequenciaMotor,
+                  pwmEsquerdo, pwmDireito, (unsigned long)duracaoMotor);
+    }
+  }
+}
+
+bool sessaoValida(const char *s);
+
+void limparAtividade() {
+  atividade = false; ackAtividadePendente = false; sequenciaAtividade = 0;
+  demoHack = false;
+}
+
+void atualizarAtividade(uint32_t agora) {
+  if (atividade && (!conectado || agora - ultimoPacote >= ttl
+                    || agora - ultimoPacoteAtividade >= ttlAtividade)) {
+    atividade = false; ackAtividadePendente = false;
+  }
+}
+
+void limparGlitch() {
+  glitch = false; ackGlitchPendente = false; demoGlitch = demoFala = false;
+}
+
+void atualizarGlitch(uint32_t agora) {
+  if (glitch && (!conectado || agora - ultimoPacote >= ttl || agora - inicioGlitch >= ttlGlitch)) {
+    glitch = false; ackGlitchPendente = false;
+  }
+}
+
+void invalidarSessao() {
+  limparExpressao();
+  pararSomExpressivo();
+  pararMotor(); limparAtividade(); painelHack = 0; limparGlitch();
+  conectado = false; demonstracao = false; ackPendente = false;
+  emocao = 0; nivel = 1; falando = false;
+  sessao[0] = 0; // Reativação sempre começa por handshake e novo FACE.
+  donoControle = OrigemControle::NENHUMA;
+}
+
+bool separarCampos(const char *entrada, char *pacote, size_t capacidade, char **campos, int total) {
+  if (strlen(entrada) >= capacidade) return false;
+  strcpy(pacote, entrada); char *cursor = pacote;
+  for (int i = 0; i < total; ++i) {
+    while (*cursor && isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+    if (!*cursor) return false;
+    campos[i] = cursor;
+    while (*cursor && !isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+    if (*cursor) *cursor++ = 0;
+  }
+  while (*cursor && isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+  return !*cursor;
+}
+
+void processarAtividade(const char *entrada) {
+  char pacote[128]; char *campos[6]; uint32_t seq, ativo, tempo;
+  if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 6)
+      || strcmp(campos[0], "ACTIVITY") || strcmp(campos[1], "1")
+      || !sessaoValida(campos[2]) || !decimalSemSinal(campos[3], seq) || !seq
+      || !decimalSemSinal(campos[4], ativo) || ativo > 1
+      || !decimalSemSinal(campos[5], tempo) || tempo < 500 || tempo > 2000) {
+    responderLinha("ERROR 1 ACTIVITY_INVALIDA"); return;
+  }
+  uint32_t agora = millis();
+  if (!conectado || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaAtividade
+      || agora - ultimoPacote >= ttl || !telaInicializada) {
+    responderLinha("ERROR 1 ACTIVITY_SEM_SESSAO"); return;
+  }
+  bool oledPresente = telaPresente(); agora = millis();
+  if (!oledPresente || agora - ultimoPacote >= ttl) {
+    invalidarSessao();
+    responderLinha("ERROR 1 ACTIVITY_SEM_SESSAO"); return;
+  }
+  if (ativo && !atividade) inicioHack = agora;
+  sequenciaAtividade = seq; ultimoPacoteAtividade = agora; ttlAtividade = tempo;
+  atividade = ativo; ackAtividadePendente = true;
+}
+
+void processarGlitch(const char *entrada) {
+  char pacote[128]; char *campos[5]; uint32_t seq, tempo;
+  if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 5)
+      || strcmp(campos[0], "GLITCH") || strcmp(campos[1], "1")
+      || !sessaoValida(campos[2]) || !decimalSemSinal(campos[3], seq) || !seq
+      || !decimalSemSinal(campos[4], tempo) || tempo < 500 || tempo > 1600) {
+    responderLinha("ERROR 1 GLITCH_INVALIDO"); return;
+  }
+  uint32_t agora = millis();
+  if (!conectado || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaGlitch
+      || agora - ultimoPacote >= ttl || !telaInicializada) {
+    responderLinha("ERROR 1 GLITCH_SEM_SESSAO"); return;
+  }
+  bool oledPresente = telaPresente(); agora = millis();
+  if (!oledPresente || agora - ultimoPacote >= ttl) {
+    invalidarSessao();
+    responderLinha("ERROR 1 GLITCH_SEM_SESSAO"); return;
+  }
+  sequenciaGlitch = seq; inicioGlitch = agora; ttlGlitch = tempo;
+  glitch = true; ackGlitchPendente = true;
+}
+
+void processarCapacidade(const char *entrada, const char *nome, const char *resultado) {
+  char pacote[128]; char *campos[3];
+  if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 3)
+      || strcmp(campos[0], nome) || strcmp(campos[1], "1")
+      || !sessaoValida(campos[2]) || !sessao[0] || strcmp(campos[2], sessao)
+      || !telaInicializada || !telaPresente()) {
+    responder("ERROR 1 %s_INVALIDAS\n", nome); return;
+  }
+  responder("%s 1 %s %s\n", nome, sessao, resultado);
+}
+
+#include "presenca_expressiva.h"
+
+void processarMotor(const char *entrada) {
+  // Separar tokens antes de validar: largura de sscanf pode dividir uma sessão
+  // longa em sessão + sequência mesmo sem espaço e autorizar outro pacote.
+  char pacote[128]; char *campos[7];
+  if (strlen(entrada) >= sizeof(pacote)) { responderLinha("ERROR 1 MOTOR_INVALIDO"); return; }
+  strcpy(pacote, entrada);
+  char *cursor = pacote;
+  for (int i = 0; i < 7; ++i) {
+    while (*cursor && isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+    if (!*cursor) { responderLinha("ERROR 1 MOTOR_INVALIDO"); return; }
+    campos[i] = cursor;
+    while (*cursor && !isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+    if (*cursor) *cursor++ = 0;
+  }
+  while (*cursor && isspace(static_cast<unsigned char>(*cursor))) ++cursor;
+  uint32_t seq, tempo; int esquerdo, direito;
+  if (*cursor || strcmp(campos[0], "MOTOR") || (strcmp(campos[1], "1") && strcmp(campos[1], "2"))
+      || !sessaoValida(campos[2]) || !decimalSemSinal(campos[3], seq) || !seq
+      || !decimalPwm(campos[4], esquerdo) || !decimalPwm(campos[5], direito)
+      || !decimalSemSinal(campos[6], tempo) || tempo < 50 || tempo > LAYLAY_LIMITE_MOTOR_TESTE_MS) {
+    responderLinha("ERROR 1 MOTOR_INVALIDO"); return;
+  }
+  // Zero é desenergização, inclusive quando a correlação será rejeitada abaixo.
+  bool parada = esquerdo == 0 && direito == 0;
+  if (parada) pararMotor();
+  uint32_t agora = millis();
+  if (!conectado || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaMotor
+      || agora - ultimoPacote >= ttl || !telaInicializada || !motoresProntos) {
+    responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
+  }
+  if (!parada && (motorPendente || motorAtivo)) { responderLinha("ERROR 1 MOTOR_OCUPADO"); return; }
+  bool oledPresente = telaPresente();
+  agora = millis(); // A consulta I2C pode ter consumido a vigência da FACE.
+  if (!oledPresente || agora - ultimoPacote >= ttl) {
+    invalidarSessao();
+    responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
+  }
+  sequenciaMotor = seq; inicioMotor = agora; duracaoMotor = tempo;
+  versaoMotor = campos[1][0] == '2' ? 2 : 1; ackMotorEmitido = false;
+  pwmEsquerdo = esquerdo; pwmDireito = direito;
+  if (parada) {
+    responder("MACK %d %s %lu 0 0 %lu\n", versaoMotor, sessao, (unsigned long)sequenciaMotor, (unsigned long)tempo);
+  } else {
+    // As entradas ainda estão zeradas. Wake de 1 ms acontece pelo loop.
+    digitalWrite(PINO_NSLEEP, HIGH); inicioWakeMicros = micros(); motorPendente = true;
+  }
+}
+
+void processarParada(const char *entrada) {
+  // A desenergização nunca depende da validade/correlação do pedido.
+  pararMotor();
+  if (!strcmp(entrada, "STOP")) { responderLinha("STOPPED 1"); return; }
+  char pacote[128]; char *campos[4]; uint32_t seq;
+  if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 4)
+      || strcmp(campos[0], "STOP") || strcmp(campos[1], "1")
+      || !sessaoValida(campos[2]) || !decimalSemSinal(campos[3], seq) || !seq) {
+    responderLinha("ERROR 1 STOP_INVALIDO"); return;
+  }
+  if (origemEmProcessamento != donoControle || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaParada) {
+    responderLinha("ERROR 1 STOP_SEM_SESSAO"); return;
+  }
+  sequenciaParada = seq;
+  responder("SACK 1 %s %lu\n", sessao, (unsigned long)sequenciaParada);
+}
+
+float misturar(float a, float b, float peso) { return a + (b - a) * peso; }
+float aproximar(float atual, float alvo, float dt, float tempo) {
+  return misturar(atual, alvo, 1 - expf(-dt / tempo));
+}
+
+// Todas as poses usam a mesma geometria. Emoção é apenas o alvo da animação.
+float olhosAlegres = 0, repouso = 1, assimetriaOlhos = 0;
+float repousoInicial = 1;
+uint32_t inicioTransicaoSono = 0;
+float rubor = 0, sobrancelhasTristes = 0, lagrima = 0;
+float brilhoOlhos = 0;
+float olharVertical = 0, enfaseOlhos = 0;
+float velocidadeBalanco = 1.35f, amplitudeBalanco = 1.5f, amplitudeTremor = 0;
+float faseBalanco = 0, faseTremor = 0, faseLagrima = 0;
+uint32_t tempoAnimacao = 0;
+bool animacaoIniciada = false;
+
+void desenharZ(int x, int y, int tamanho) {
+  if (tamanho < 2) return;
+  tela.drawLine(x, y, x + tamanho, y, SSD1306_WHITE);
+  tela.drawLine(x + tamanho, y, x, y + tamanho, SSD1306_WHITE);
+  tela.drawLine(x, y + tamanho, x + tamanho, y + tamanho, SSD1306_WHITE);
+}
+
+void desenharBrilhoOlhos(int x, int y, float intensidade) {
+  int raio = lroundf(2.5f * intensidade);
+  if (raio < 1) return;
+  tela.drawLine(x - raio, y, x + raio, y, SSD1306_WHITE);
+  tela.drawLine(x, y - raio, x, y + raio, SSD1306_WHITE);
+  if (raio >= 2) {
+    tela.drawPixel(x - 1, y - 1, SSD1306_WHITE);
+    tela.drawPixel(x + 1, y + 1, SSD1306_WHITE);
+  }
+}
+
+void desenharTerminal(uint32_t agora) {
+  if (painelHack <= 0) return;
+  // Suavização de entrada e saída: o rosto continua evoluindo por baixo.
+  float fase = painelHack * painelHack * (3 - 2 * painelHack);
+  int topo = lroundf(64 * (1 - fase));
+  if (topo >= 64) return;
+  for (int x = 0; x < 128; ++x) tela.drawFastVLine(x, topo, 64 - topo, SSD1306_BLACK);
+  desenharTextoTerminal(tela, 2, topo + 2, "LAYLAY // TASK");
+  tela.drawLine(0, topo + 11, 127, topo + 11, SSD1306_WHITE);
+  uint32_t idade = agora - inicioHack;
+  int giro = (idade / 120) % 4;
+  if (giro == 0) tela.drawLine(117, topo + 2, 117, topo + 8, SSD1306_WHITE);
+  if (giro == 1) tela.drawLine(114, topo + 2, 120, topo + 8, SSD1306_WHITE);
+  if (giro == 2) tela.drawLine(114, topo + 5, 120, topo + 5, SSD1306_WHITE);
+  if (giro == 3) tela.drawLine(114, topo + 8, 120, topo + 2, SSD1306_WHITE);
+  static const char *const comandos[] = {
+    "> LOAD TASK  0X03", "> MAP ROUTE  0XA1", "> LINK BUS   0X7F",
+    "> QUEUE JOB  0X2C", "> DISPATCH   0XB0", "> WAIT ...   0X15", "> SYNC SLOT  0X09",
+  };
+  // Rótulos decorativos fixos: não são comandos nem resultados reais.
+  uint32_t atual = idade / 420, dentro = idade % 420;
+  int subida = dentro > 340 ? int((dentro - 340) * 8 / 80) : 0;
+  for (int linha = 0; linha < 5; ++linha) {
+    int indice = (atual % 7 + 7 - 4 + linha) % 7;
+    int letras = linha == 4 ? min(21, int(dentro / 17)) : 21;
+    int y = topo + 14 + linha * 8 - subida;
+    desenharTextoTerminal(tela, 2, y, comandos[indice], letras, topo + 14, topo + 52);
+    if (linha == 4 && dentro < 340 && (idade / 120) % 2 == 0) {
+      int x = min(122, 2 + min(letras, int(strlen(comandos[indice]))) * 6);
+      tela.drawLine(x, y + 6, min(127, x + 4), y + 6, SSD1306_WHITE);
+    }
+  }
+  tela.drawLine(0, topo + 53, 127, topo + 53, SSD1306_WHITE);
+  desenharTextoTerminal(tela, 2, topo + 56, "PROCESSANDO");
+  // Indicador indeterminado: sem porcentagem nem promessa de conclusão.
+  tela.drawLine(76, topo + 56, 124, topo + 56, SSD1306_WHITE);
+  tela.drawLine(76, topo + 62, 124, topo + 62, SSD1306_WHITE);
+  int deslocamento = (idade / 22) % 60 - 10;
+  for (int x = max(77, 77 + deslocamento); x < min(124, 87 + deslocamento); ++x)
+    tela.drawFastVLine(x, topo + 58, 3, SSD1306_WHITE);
+}
+
+float suavizarFase(float fase) { return fase * fase * (3 - 2 * fase); }
+
+void desenharGlitch(uint32_t idade, uint32_t tempo) {
+  if (idade >= tempo) return;
+  float fase = idade / float(tempo);
+  float forca = fase < 0.12f ? suavizarFase(fase / 0.12f)
+              : fase > 0.72f ? 1 - suavizarFase((fase - 0.72f) / 0.28f) : 1;
+  uint32_t quadro = idade / 42;
+  if (quadro % 7 == 5 || forca < 0.05f) return; // Respiros entre falhas de sinal.
+  uint8_t faixa[128];
+  for (int parte = 0; parte < 3; ++parte) {
+    int topo = 16 + parte * 14 + int((quadro * 3 + parte * 5) % 7);
+    int sentido = ((quadro + parte) % 2) ? 1 : -1;
+    int deslocamento = sentido * lroundf((3 + (quadro + parte) % 5) * forca);
+    for (int y = topo; y < topo + 2 + int(quadro % 2); ++y) {
+      for (int x = 0; x < 128; ++x) faixa[x] = tela.getPixel(x, y);
+      for (int x = 0; x < 128; ++x) {
+        int origem = x - deslocamento;
+        tela.drawPixel(x, y, origem >= 0 && origem < 128 && faixa[origem] ? SSD1306_WHITE : SSD1306_BLACK);
+      }
+    }
+  }
+  // Ruído curto e localizado, sem piscar a tela inteira nem transmitir texto.
+  for (int bloco = 0; bloco < lroundf(9 * forca); ++bloco) {
+    int x = 16 + int((quadro * 37 + bloco * 19) % 96);
+    int y = 14 + int((quadro * 13 + bloco * 7) % 42);
+    tela.drawLine(x, y, x + 1 + int((quadro + bloco) % 3), y, SSD1306_WHITE);
+    tela.drawLine(x + 1, y + 1, x + 4, y + 1, SSD1306_BLACK);
+  }
+}
+
+void renderizar(uint32_t agora) {
+  // Relógio relativo conserva a fase ao trocar emoção e atravessa millis wrap.
+  float dt = animacaoIniciada ? min(uint32_t(50), uint32_t(agora - tempoAnimacao)) / 1000.0f : 0;
+  tempoAnimacao = agora; animacaoIniciada = true;
+  bool dormindo = !conectado && !demonstracao;
+  atualizarAtividade(agora);
+  atualizarGlitch(agora);
+  atualizarExpressao(agora);
+  uint32_t idadeDemo = agora - inicioDemoVisual;
+  bool demonstrandoGlitch = demoGlitch && idadeDemo % 3600 >= 900 && idadeDemo % 3600 < 1800;
+  bool glitchAlvo = !dormindo && (glitch || demonstrandoGlitch);
+  bool demonstrandoHack = demoHack && uint32_t(agora - inicioDemoHack) % 6000 >= 1200
+                          && uint32_t(agora - inicioDemoHack) % 6000 < 4600;
+  bool hackAlvo = !dormindo && (atividade || demonstrandoHack);
+  if (demoHack) inicioHack = inicioDemoHack;
+  // 300 ms para o percurso; curva suave aplicada à posição do painel.
+  painelHack = hackAlvo ? min(1.0f, painelHack + dt / 0.3f) : max(0.0f, painelHack - dt / 0.3f);
+  if (dormindo != estavaDormindo) {
+    repousoInicial = repouso; inicioTransicaoSono = agora; estavaDormindo = dormindo;
+  }
+  // Curva quintica de ~3 s: velocidade e aceleração zeradas nas extremidades.
+  float faseSono = min(1.0f, uint32_t(agora - inicioTransicaoSono) / (dormindo ? 3000.0f : 3200.0f));
+  float curvaSono = faseSono * faseSono * faseSono * (faseSono * (6 * faseSono - 15) + 10);
+  repouso = misturar(repousoInicial, dormindo ? 1 : 0, curvaSono);
+  float ativo = 1 - repouso;
+  misturaExpressao = aproximar(misturaExpressao, expressaoAtiva && !dormindo ? 1 : 0, dt, 0.18f);
+  float detalhe = misturaExpressao * ativo;
+  // A partitura recebida detalha a emoção causal; não infere um novo estado.
+  // Entrada/saída finitas, com ênfases diferentes em cada frase de gesto.
+  float frase = expressaoAtiva ? min(1.0f, uint32_t(agora - inicioExpressao) / float(ttlExpressao)) : 1;
+  float envelope = expressaoAtiva ? min(1.0f, (1 - frase) * 5) : 0;
+  detalhe *= envelope;
+  float pulso = sinf(frase * 6.283185f) * detalhe;
+  float alturaDetalhe = 0, larguraDetalhe = 0, inclinacaoDetalhe = 0;
+  float alegriaDetalhe = 0, assimetriaDetalhe = 0, ruborDetalhe = 0;
+  float tristezaDetalhe = 0, brilhoDetalhe = 0, verticalDetalhe = 0;
+  if (faseExpressao == 1 || faseExpressao == 3) {
+    switch (estiloExpressao) {
+      case 1: alegriaDetalhe = 1; ruborDetalhe = .8f; brilhoDetalhe = 1;
+              larguraDetalhe = 2 * pulso; verticalDetalhe = -1.5f * fabsf(pulso); break;
+      case 2: alturaDetalhe = -6; inclinacaoDetalhe = -5;
+              tristezaDetalhe = 1; verticalDetalhe = 2.5f; break;
+      case 3: inclinacaoDetalhe = 10; alturaDetalhe = -2; verticalDetalhe = -.8f; break;
+      case 4: alturaDetalhe = -5; inclinacaoDetalhe = 6; assimetriaDetalhe = -2.5f; break;
+      case 5: alturaDetalhe = 8; larguraDetalhe = -5; brilhoDetalhe = 1;
+              verticalDetalhe = -2; break;
+      case 6: alturaDetalhe = -7; larguraDetalhe = -4; ruborDetalhe = 1;
+              assimetriaDetalhe = 2.5f; verticalDetalhe = 2; break;
+      case 7: alturaDetalhe = -4; assimetriaDetalhe = -5; inclinacaoDetalhe = 2; break;
+      case 9: alturaDetalhe = 3; larguraDetalhe = -2; verticalDetalhe = -1; break;
+      case 10: alturaDetalhe = 2; assimetriaDetalhe = 4;
+               verticalDetalhe = -1.5f; break;
+      default: alturaDetalhe = 1.5f * pulso; verticalDetalhe = -pulso; break;
+    }
+  }
+  olharVertical = aproximar(olharVertical, verticalDetalhe * detalhe, dt, .22f);
+  enfaseOlhos = aproximar(enfaseOlhos, pulso * .8f, dt, .18f);
+  if (int32_t(agora - proximoOlhar) >= 0) {
+    olharAlvo = random(-4, 5);
+    proximoOlhar = agora + random(1800, 4200);
+  }
+  float alvoOlhar = dormindo ? 0 : emocao == 6 ? -2.5f : olharAlvo;
+  if (expressaoAtiva && !dormindo) alvoOlhar = faseExpressao == 3 ? 0
+      : ladoExpressao * (estiloExpressao == 6 ? 3.5f : 5.5f);
+  olhar = aproximar(olhar, alvoOlhar, dt, 0.24f);
+  if (!dormindo && ativo > .98f && int32_t(agora - proximaPiscada) >= 0 && inicioPiscada == 0) {
+    inicioPiscada = agora;
+    proximaPiscada = agora + random(2600, 5400);
+  }
+  float abertura = 1;
+  if (inicioPiscada) {
+    uint32_t idade = agora - inicioPiscada;
+    float fase = idade < 75 ? 1 - idade / 75.0f : min(1.0f, (idade - 75) / 145.0f);
+    abertura = fase * fase * (3 - 2 * fase);
+    if (idade >= 220) inicioPiscada = 0;
+  }
+
+  // Constantes em segundos: mesma velocidade com variação de FPS.
+  // Sessão/emoção são invalidadas ao desconectar, mas a geometria visual
+  // permanece até fechar: evita abrir olhos neutros no meio do adormecer.
+  if (!dormindo) {
+  float alturaAlvo = emocao == 5 ? 30 : emocao == 2 ? 19 : emocao == 6 ? 18 : emocao == 7 ? 19 : 26;
+  alturaAlvo += detalhe * (faseExpressao == 0 ? -3 : faseExpressao == 3 ? 2 : faseExpressao == 2 ? -1.5f : 0);
+  alturaAlvo += alturaDetalhe * detalhe;
+  alturaOlho = aproximar(alturaOlho, alturaAlvo, dt, 0.24f);
+  larguraOlho = aproximar(larguraOlho, (emocao == 5 ? 28 : emocao == 6 ? 27 : 32) + larguraDetalhe * detalhe, dt, 0.24f);
+  float inclinacaoBase = emocao == 3 ? 7 + nivel * 1.5f : emocao == 4 ? 4 + nivel : emocao == 2 ? -5 : 0;
+  inclinacaoPalpebra = aproximar(inclinacaoPalpebra, misturar(inclinacaoBase,
+      inclinacaoDetalhe, detalhe * ((faseExpressao == 1 || faseExpressao == 3)
+      && estiloExpressao >= 2 && estiloExpressao <= 7)), dt, 0.24f);
+  float alegriaAlvo = max(emocao == 1 ? 1.0f : 0.0f, alegriaDetalhe * detalhe);
+  olhosAlegres = aproximar(olhosAlegres, alegriaAlvo, dt, 0.24f);
+  assimetriaOlhos = aproximar(assimetriaOlhos, misturar(emocao == 7 ? -5 : 0, assimetriaDetalhe, detalhe), dt, 0.24f);
+  sobrancelhasTristes = aproximar(sobrancelhasTristes, max(emocao == 2 ? 1.0f : 0.0f, tristezaDetalhe * detalhe), dt, 0.24f);
+  rubor = aproximar(rubor, max(emocao == 6 ? 1.0f : emocao == 1 ? 0.7f : 0.0f, ruborDetalhe * detalhe), dt, 0.28f);
+  brilhoOlhos = aproximar(brilhoOlhos, max((emocao == 1 || emocao == 5) ? 1.0f : 0.0f, brilhoDetalhe * detalhe), dt, 0.3f);
+  lagrima = aproximar(lagrima, emocao == 2 ? 1 : 0, dt, 0.32f);
+  }
+  velocidadeBalanco = aproximar(velocidadeBalanco, dormindo ? 1.35f : emocao == 1 ? 3.3f : 1.65f, dt, 0.35f);
+  amplitudeBalanco = aproximar(amplitudeBalanco, dormindo ? 1.5f : emocao == 1 ? 2.6f : 1.1f + nivel * 0.18f, dt, 0.35f);
+  amplitudeTremor = aproximar(amplitudeTremor, !dormindo && (emocao == 3 || emocao == 4) ? (nivel - 1) * 0.35f : 0, dt, 0.3f);
+  faseBalanco = fmodf(faseBalanco + dt * velocidadeBalanco, 6.283185f);
+  faseTremor = fmodf(faseTremor + dt * 18, 6.283185f);
+  faseLagrima = fmodf(faseLagrima + dt * 0.45f, 1.0f);
+  float balanco = sinf(faseBalanco) * amplitudeBalanco;
+  float tremor = sinf(faseTremor) * amplitudeTremor;
+  float cy = 27 + balanco + 6 * repouso + olharVertical * ativo;
+  tela.clearDisplay();
+  for (int lado = 0; lado < 2; ++lado) {
+    float cx = (lado ? 90 : 38) + olhar * ativo + tremor;
+    float olhoY = cy + (lado ? assimetriaOlhos * ativo : 0) + (lado ? -enfaseOlhos : enfaseOlhos) * ativo;
+    float meioW = misturar(larguraOlho / 2, 13, repouso);
+    float h = alturaOlho, raio = min(meioW, h / 2); // Contorno macio, quase oval.
+    for (int dx = -int(meioW); dx <= int(meioW); ++dx) {
+      float r = dx / meioW;
+      float borda = max(0.0f, fabsf(float(dx)) - (meioW - raio));
+      float canto = raio - sqrtf(max(0.0f, raio * raio - borda * borda));
+      float topo = -h / 2 + canto, fundo = h / 2 - canto;
+      float interno = lado ? (1 - r) / 2 : (1 + r) / 2;
+      float corte = fabsf(inclinacaoPalpebra) * (inclinacaoPalpebra >= 0 ? interno : 1 - interno);
+      topo = min(fundo - 2, topo + corte);
+      // Morph contínuo: olho arredondado -> arco alegre -> pálpebra de sono.
+      float arcoAlegre = -4 + 7 * r * r;
+      topo = misturar(topo, arcoAlegre, olhosAlegres);
+      fundo = misturar(fundo, arcoAlegre + 4, olhosAlegres);
+      topo *= abertura; fundo = misturar(2, fundo, abertura);
+      float arcoSono = 4 - 4 * r * r;
+      topo = misturar(topo, arcoSono, repouso);
+      fundo = misturar(fundo, arcoSono + 2, repouso);
+      int y0 = lroundf(olhoY + topo), y1 = lroundf(olhoY + fundo);
+      tela.drawFastVLine(lroundf(cx + dx), y0, max(2, y1 - y0 + 1), SSD1306_WHITE);
+    }
+    float sobrancelha = sobrancelhasTristes * ativo;
+    if (sobrancelha > 0.08f) {
+      int largura = lroundf(11 * sobrancelha);
+      int topo = lroundf(olhoY - h / 2 - 4);
+      int subida = lroundf(3 * sobrancelha);
+      tela.drawLine(lroundf(cx) - largura, topo + (lado ? -subida : subida),
+                    lroundf(cx) + largura, topo + (lado ? subida : -subida), SSD1306_WHITE);
+    }
+    float intensidadeRubor = rubor * ativo;
+    // Duas bochechinhas compactas: o rosto permanece somente com olhos.
+    int raioRubor = lroundf(2 * intensidadeRubor);
+    if (raioRubor > 0) {
+      int y = lroundf(43 + balanco);
+      tela.fillCircle(lroundf(cx - 4), y, raioRubor, SSD1306_WHITE);
+      tela.fillCircle(lroundf(cx + 4), y, raioRubor, SSD1306_WHITE);
+    }
+  }
+
+  float cintilar = (0.72f + 0.28f * sinf(faseBalanco * 1.5f)) * brilhoOlhos * ativo;
+  desenharBrilhoOlhos(10, lroundf(14 - balanco * 0.25f), cintilar);
+  desenharBrilhoOlhos(117, lroundf(10 + balanco * 0.25f), cintilar);
+
+  // Rosto somente com olhos: nenhuma boca ou movimento ligado à voz.
+  float gota = lagrima * ativo;
+  if (gota > 0.4f) {
+    int raio = lroundf(2 * gota);
+    int y = lroundf(40 + faseLagrima * 17);
+    tela.fillCircle(lroundf(104 + olhar * ativo), y, raio, SSD1306_WHITE);
+  }
+  if (repouso > 0.65f) {
+    float forcaZ = (repouso - .65f) / .35f;
+    int fase = (agora / 130) % 24;
+    desenharZ(101 + fase / 8, 22 - fase / 2, lroundf(4 * forcaZ));
+    desenharZ(113, 12 - fase / 4, lroundf(6 * forcaZ));
+  }
+  if (conectado) tela.drawPixel(125, 61, SSD1306_WHITE);
+  if (demonstracao) {
+    tela.setTextSize(1); tela.setTextColor(SSD1306_WHITE);
+    tela.setCursor(0, 56); tela.print("D");
+  }
+  if (!glitchAlvo) desenharTerminal(agora);
+  if (glitchAlvo) desenharGlitch(demonstrandoGlitch ? idadeDemo % 3600 - 900 : agora - inicioGlitch,
+                               demonstrandoGlitch ? 900 : ttlGlitch);
+  tela.display();
+  publicarAckExpressao(); // Receipt depois do frame, distinto de observação humana.
+}
+
+bool sessaoValida(const char *s) {
+  if (strlen(s) != 8) return false;
+  for (int i = 0; i < 8; ++i) if (!isxdigit(s[i])) return false;
+  return true;
+}
+
+#include "som_expressivo.h"
+
+void processarLinha(const char *entrada, OrigemControle origem) {
+  EscopoOrigem escopo(origem);
+  if (origem == OrigemControle::TCP && (!tcpAutenticado || !tcpClientePresente)) return;
+  if (processarConfiguracaoWifi(entrada, origem)) return;
+  bool hello = !strncmp(entrada, "HELLO ", 6);
+  bool demo = !strcmp(entrada, "DEMO") || !strcmp(entrada, "DEMO_HACK")
+           || !strcmp(entrada, "DEMO_GLITCH") || !strcmp(entrada, "DEMO_FALA");
+  if (demo && origem != OrigemControle::USB) { responderLinha("ERROR 1 DEMO_SOMENTE_USB"); return; }
+  if (!hello && !demo && strncmp(entrada, "STOP", 4) && donoControle != OrigemControle::NENHUMA && donoControle != origem) {
+    responderLinha("ERROR 1 OUTRO_CONTROLADOR"); return;
+  }
+  if (!strncmp(entrada, "STOP", 4)) { processarParada(entrada); return; }
+  if (!strncmp(entrada, "GOODNIGHT", 9)) { processarBoaNoite(entrada); return; }
+  if (!strncmp(entrada, "EXPR", 4)) { processarExpressao(entrada); return; }
+  if (!strncmp(entrada, "ECAPS", 5)) {
+    processarCapacidade(entrada, "ECAPS", "OLHOS2"); return;
+  }
+  if (!strncmp(entrada, "RCAPS", 5)) {
+    processarCapacidade(entrada, "RCAPS", motoresProntos ? "RAMPA1" : "RAMPA0"); return;
+  }
+  if (!strncmp(entrada, "SOUND", 5)) { processarSomExpressivo(entrada); return; }
+  if (!strncmp(entrada, "SCAPS", 5)) {
+    processarCapacidade(entrada, "SCAPS", "SOM1"); return;
+  }
+  if (!strncmp(entrada, "MOTOR", 5)) { processarMotor(entrada); return; }
+  if (!strncmp(entrada, "ACTIVITY", 8)) { processarAtividade(entrada); return; }
+  if (!strncmp(entrada, "GLITCH", 6)) { processarGlitch(entrada); return; }
+  if (!strncmp(entrada, "GCAPS", 5)) {
+    processarCapacidade(entrada, "GCAPS", "GLITCH1"); return;
+  }
+  if (!strncmp(entrada, "MCAPS", 5)) {
+    processarCapacidade(entrada, "MCAPS", motoresProntos ? "MOTOR1" : "MOTOR0"); return;
+  }
+  if (!strncmp(entrada, "LCAPS", 5)) {
+    processarCapacidade(entrada, "LCAPS", motoresProntos && LAYLAY_LIMITE_MOTOR_TESTE_MS == 5000 ? "LONGO1" : "LONGO0"); return;
+  }
+  if (!strncmp(entrada, "CAPS", 4)) {
+    char pacote[128]; char *campos[3];
+    if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 3)
+        || strcmp(campos[0], "CAPS") || strcmp(campos[1], "1")
+        || !sessaoValida(campos[2]) || !sessao[0] || strcmp(campos[2], sessao)
+        || !telaInicializada || !telaPresente()) {
+      responderLinha("ERROR 1 CAPS_INVALIDAS"); return;
+    }
+    responder("CAPS 1 %s HACK1\n", sessao); return;
+  }
+  char token[9], extra;
+  if (sscanf(entrada, "HELLO 1 %8s %c", token, &extra) == 1 && sessaoValida(token)) {
+    limparExpressao();
+    pararSomExpressivo();
+    pararMotor();
+    limparAtividade(); painelHack = 0;
+    limparGlitch();
+    if (!telaInicializada || !telaPresente()) { responderLinha("ERROR 1 OLED_AUSENTE"); return; }
+    donoControle = origem;
+    if (origem == OrigemControle::TCP) tcpTinhaSessao = true;
+    if (strcmp(token, sessaoSequenciaMotor)) {
+      strcpy(sessaoSequenciaMotor, token); sequenciaMotor = 0;
+    }
+    if (strcmp(token, sessaoSequenciaGlitch)) {
+      strcpy(sessaoSequenciaGlitch, token); sequenciaGlitch = 0;
+    }
+    if (strcmp(token, sessaoSequenciaParada)) {
+      strcpy(sessaoSequenciaParada, token); sequenciaParada = 0;
+    }
+    strcpy(sessao, token); sequencia = 0; ackPendente = false;
+    demonstracao = false; conectado = false; emocao = 0; nivel = 1; falando = false;
+    responder("READY 1 %s SSD1306 128 64\n", sessao);
+    return;
+  }
+  if (!strcmp(entrada, "DEMO") || !strcmp(entrada, "DEMO_HACK")
+      || !strcmp(entrada, "DEMO_GLITCH") || !strcmp(entrada, "DEMO_FALA")) {
+    limparExpressao();
+    pararMotor();
+    limparAtividade(); painelHack = 0;
+    limparGlitch();
+    demoHack = !strcmp(entrada, "DEMO_HACK"); inicioDemoHack = millis();
+    demoGlitch = !strcmp(entrada, "DEMO_GLITCH"); demoFala = !strcmp(entrada, "DEMO_FALA");
+    inicioDemoVisual = millis();
+    demonstracao = true; conectado = false; ackPendente = false; sessao[0] = 0;
+    donoControle = OrigemControle::USB;
+    responder("%s 1 ATIVA\n", entrada); return;
+  }
+  unsigned long seq, tempo;
+  int emo, intensidade, fala;
+  if (sscanf(entrada, "FACE 1 %8s %lu %d %d %d %lu %c", token, &seq, &emo, &intensidade, &fala, &tempo, &extra) != 6
+      || !sessao[0] || strcmp(token, sessao) || seq <= sequencia
+      || emo < 0 || emo > 8 || intensidade < 1 || intensidade > 3
+      || fala < 0 || fala > 1 || tempo < 500 || tempo > 5000) {
+    responderLinha("ERROR 1 PACOTE_INVALIDO"); return;
+  }
+  sequencia = seq; emocao = emo; nivel = intensidade; falando = fala;
+  ttl = tempo; ultimoPacote = millis(); conectado = true; demonstracao = false;
+  ackPendente = true;
+}
+
+void finalizarBipTeste() {
+  // Retirar a inversão antes de zerar duties: zero invertido seria HIGH.
+#if LAYLAY_SOM_PONTE
+  if (pinosSomProntos[1]) {
+    ledcOutputInvert(PINO_SOM_INV, false);
+    ledcWrite(PINO_SOM_INV, 0);
+    ledcDetach(PINO_SOM_INV);
+  }
+  digitalWrite(PINO_SOM_INV, LOW); pinMode(PINO_SOM_INV, OUTPUT);
+#endif
+  if (pinosSomProntos[0]) {
+    ledcWrite(PINO_SOM, 0);
+    ledcDetach(PINO_SOM);
+  }
+  digitalWrite(PINO_SOM, LOW); pinMode(PINO_SOM, OUTPUT);
+  pinosSomProntos[0] = pinosSomProntos[1] = false;
+  bipInicioAtivo = false;
+}
+
+void iniciarBipTeste() {
+  if (bipInicioTentado) return;
+  bipInicioTentado = true;
+  digitalWrite(PINO_SOM, LOW); pinMode(PINO_SOM, OUTPUT);
+#if LAYLAY_SOM_PONTE
+  digitalWrite(PINO_SOM_INV, LOW); pinMode(PINO_SOM_INV, OUTPUT);
+#endif
+  // Motores já ocupam canais0..3. Frequência diferente reserva outro timer.
+  // Não usar tone/ledcWriteTone: nenhuma mudança de frequência durante o teste.
+  pinosSomProntos[0] = ledcAttachChannel(PINO_SOM, FREQUENCIA_BIP_HZ, 8, 4);
+  bool somPronto = pinosSomProntos[0] && ledcWrite(PINO_SOM, 128);
+#if LAYLAY_SOM_PONTE
+  if (somPronto) {
+    // Mesmo timer/frequência/hpoint, canais distintos e saída5 invertida.
+    pinosSomProntos[1] = ledcAttachChannel(PINO_SOM_INV, FREQUENCIA_BIP_HZ, 8, 5);
+    somPronto = pinosSomProntos[1] && ledcWrite(PINO_SOM_INV, 128)
+                && ledcOutputInvert(PINO_SOM_INV, true);
+  }
+#endif
+  if (!somPronto) {
+    finalizarBipTeste(); responderLinha("BEEP_TEST 1 FALHA_PWM"); return;
+  }
+  inicioBip = millis(); bipInicioAtivo = true;
+  responder("BEEP_TEST 1 MODE %s GPIO %d %d\n",
+    LAYLAY_SOM_PONTE ? "PONTE" : "SIMPLES", PINO_SOM,
+    LAYLAY_SOM_PONTE ? PINO_SOM_INV : -1);
+  responder("BEEP_TEST 1 START %lu %lu MOTOR_HZ %lu %lu %lu %lu\n",
+    (unsigned long)FREQUENCIA_BIP_HZ, (unsigned long)DURACAO_BIP_MS,
+    (unsigned long)ledcReadFreq(1), (unsigned long)ledcReadFreq(2),
+    (unsigned long)ledcReadFreq(3), (unsigned long)ledcReadFreq(4));
+}
+
+void atualizarBipInicio(uint32_t agora) {
+  if (bipInicioAtivo && uint32_t(agora - inicioBip) >= DURACAO_BIP_MS) {
+    finalizarBipTeste(); responderLinha("BEEP_TEST 1 STOP");
+  }
+}
+
+void setup() {
+  limparAtividade(); painelHack = 0;
+  limparGlitch();
+  digitalWrite(PINO_NSLEEP, LOW); pinMode(PINO_NSLEEP, OUTPUT);
+  motoresProntos = LAYLAY_HABILITAR_MOTORES_BANCADA == 1;
+  for (int i = 0; i < 4; ++i) {
+    digitalWrite(PINOS_MOTOR[i], LOW); pinMode(PINOS_MOTOR[i], OUTPUT);
+    pinosMotorProntos[i] = LAYLAY_HABILITAR_MOTORES_BANCADA == 1
+                          && ledcAttach(PINOS_MOTOR[i], FREQUENCIA_MOTOR_HZ, 8);
+    if (!pinosMotorProntos[i]) motoresProntos = false;
+  }
+  pararMotor();
+  Serial.begin(115200);
+#if defined(LAYLAY_BIP_TESTE_INICIO) && LAYLAY_BIP_TESTE_INICIO
+  iniciarBipTeste(); // Perfil histórico de diagnóstico, excluído da versão diária.
+#else
+  digitalWrite(PINO_SOM, LOW); pinMode(PINO_SOM, OUTPUT);
+#endif
+  iniciarWifi();
+  Wire.begin(PINO_SDA, PINO_SCL);
+  Wire.setTimeOut(30);
+  for (uint8_t candidato : {uint8_t(0x3C), uint8_t(0x3D)}) {
+    Wire.beginTransmission(candidato);
+    if (Wire.endTransmission() == 0) { endereco = candidato; break; }
+  }
+  if (endereco) telaInicializada = tela.begin(SSD1306_SWITCHCAPVCC, endereco, true, false);
+  if (!telaInicializada) { responderLinha("ERROR 1 OLED_AUSENTE"); return; }
+  tela.setTextColor(SSD1306_WHITE);
+  renderizar(millis());
+  responderLinha("BOOT 1 LAYLAY_ROSTO");
+}
+
+void loop() {
+  atualizarSomExpressivo(millis());
+  atualizarBipInicio(millis());
+  // Corte antes de ler uma avalanche de comandos ou iniciar I2C/render.
+  atualizarMotor(millis());
+  atualizarWifi();
+  atualizarMotor(millis());
+  // Limite por iteração: entrada serial não paralisa a animação.
+  for (int bytes = 0; bytes < 256 && Serial.available(); ++bytes) {
+    char c = Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      atualizarMotor(millis());
+      if (!descartandoLinha) { linha[tamanhoLinha] = 0; processarLinha(linha); }
+      tamanhoLinha = 0; descartandoLinha = false;
+    } else if (!descartandoLinha) {
+      if (tamanhoLinha < sizeof(linha) - 1) linha[tamanhoLinha++] = c;
+      else { descartandoLinha = true; tamanhoLinha = 0; }
+    }
+  }
+  // Ler depois dos handlers: ultimoPacote pode ter sido atualizado neste loop.
+  uint32_t agora = millis();
+  atualizarMotor(agora);
+  if (conectado && agora - ultimoPacote >= ttl) {
+    invalidarSessao();
+  }
+  atualizarAtividade(millis());
+  atualizarGlitch(millis());
+  if (demonstracao) {
+    emocao = (agora / 3500) % 9; nivel = 2; falando = (agora / 900) % 2;
+    if (demoGlitch) { emocao = 0; falando = false; }
+    if (demoFala) { emocao = ((agora - inicioDemoVisual) / 3600) % 9; falando = (agora - inicioDemoVisual) % 3600 >= 600; }
+  }
+  if (telaInicializada && agora - ultimoFrame >= 33) {
+    ultimoFrame = agora;
+    if (!telaPresente()) {
+      if (ackPendente || ackGlitchPendente) responderLinha("ERROR 1 OLED_AUSENTE");
+      invalidarSessao();
+    } else {
+      atualizarMotor(millis());
+      atualizarAtividade(millis());
+      atualizarGlitch(millis());
+      renderizar(millis());
+      atualizarMotor(millis());
+      if (ackPendente || ackAtividadePendente || ackGlitchPendente) {
+        bool oledPresente = telaPresente(); uint32_t instante = millis();
+        atualizarAtividade(instante); atualizarGlitch(instante);
+        // Um único dono confirma o frame. I2C/display podem consumir a vigência.
+        if (!oledPresente || !conectado || instante - ultimoPacote >= ttl) {
+          if (!oledPresente) responderLinha("ERROR 1 OLED_AUSENTE");
+          invalidarSessao();
+        } else {
+          if (ackPendente) {
+            responder("ACK 1 %s %lu %d %d %d\n", sessao, (unsigned long)sequencia, emocao, nivel, falando);
+          }
+          if (ackAtividadePendente && instante - ultimoPacoteAtividade < ttlAtividade) {
+          responder("AACK 1 %s %lu %d\n", sessao,
+                        (unsigned long)sequenciaAtividade, atividade ? 1 : 0);
+          }
+          if (ackGlitchPendente && instante - inicioGlitch < ttlGlitch) {
+            responder("GACK 1 %s %lu %lu\n", sessao,
+                          (unsigned long)sequenciaGlitch, (unsigned long)ttlGlitch);
+          }
+        }
+        ackPendente = ackAtividadePendente = ackGlitchPendente = false;
+      }
+    }
+  }
+  delay(1); // Cede CPU; nenhuma espera de cena bloqueia leitura serial.
+}

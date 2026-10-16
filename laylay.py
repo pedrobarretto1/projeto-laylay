@@ -371,6 +371,7 @@ from mente_laylay.percepcao.ouvido_whisper import (
 )
 from mente_laylay.integracao.prioridade_interacao_usuario import (
     criar_prioridade_interacao_usuario_runtime as _criar_prioridade_interacao_usuario_runtime,
+    conversa_em_andamento as _conversa_em_andamento,
 )
 from mente_laylay.percepcao.saidas_audio_windows import GerenciadorSaidasAudioWindows
 from mente_laylay.percepcao.alvos_web import (
@@ -610,6 +611,7 @@ from mente_laylay.integracao.composicao_visual import (
 from mente_laylay.integracao.composicao_gmail import (
     criar_composicao_gmail_laylay_runtime as _criar_composicao_gmail_laylay_runtime,
 )
+from mente_laylay.especialistas.email_runtime import criar_email_runtime
 from mente_laylay.integracao.politicas_composicao import (
     aprender_conteudo_area_transferencia as _aprender_conteudo_area_transferencia_mente,
     aprender_pesquisa_semantica_arquivos as _aprender_pesquisa_semantica_arquivos_mente,
@@ -804,11 +806,13 @@ _estado_contexto_runtime = _composicao_estado_aplicacao_runtime.estado
 _contexto_conversa_natural = _estado_contexto_runtime.contexto_conversa_natural
 _obter_contexto_perceptivo = _estado_contexto_runtime.contexto_perceptivo
 _registrar_mente_curta_base = _estado_contexto_runtime.registrar_mente_curta
+_derivar_mente_curta = _estado_contexto_runtime.derivar_mente_curta
 _adaptadores_aplicacao_runtime = _composicao_estado_aplicacao_runtime.adaptadores
 _registrar_mente_curta = _adaptadores_aplicacao_runtime.registrar_mente_curta
 _registrar_interacao_temporal = _estado_contexto_runtime.registrar_interacao_temporal
 _registrar_resultado_execucao_base = _estado_contexto_runtime.registrar_resultado_execucao
 _registrar_resultado_execucao = _adaptadores_aplicacao_runtime.registrar_resultado_execucao
+_vincular_registro_resultado_execucao = _adaptadores_aplicacao_runtime.vincular_registro_resultado_execucao
 _estado_contexto_intencao = _estado_contexto_runtime.estado_contexto_intencao
 _atualizar_contexto_sistema_monitor = _estado_contexto_runtime.atualizar_contexto_sistema_monitor
 _definir_ultimo_proativo_ts = _estado_contexto_runtime.definir_ultimo_proativo_ts
@@ -1214,9 +1218,11 @@ _atividade_operacional_runtime = criar_atividade_operacional_runtime(
 _rosto_oled_runtime = criar_composicao_rosto_oled_runtime(
     interacao_getter=lambda: _prioridade_interacao_usuario_runtime.ativa(),
     companhia_getter=lambda: _corpo_motor_runtime.companhia.diagnostico(),
+    busca_obstaculos_getter=lambda sessao: _corpo_motor_runtime.companhia.autorizar_busca_obstaculos(sessao),
     estado=_estado_compartilhado_runtime,
     observabilidade=_observabilidade_mente_runtime,
     preferir_usb=_configuracao_aplicacao_runtime.companhia_bancada_ao_iniciar(),
+    identidade_usb_getter=_configuracao_aplicacao_runtime.identidade_corpo_usb,
 )
 _corpo_motor_runtime = criar_corpo_motor_runtime(
     transporte=_rosto_oled_runtime,
@@ -1482,6 +1488,7 @@ _composicao_inteligencia_externa_runtime = (
         normalizar_texto_curto=_normalizar_texto_curto,
         requests_get=requests.get,
         requests_post=_runtime_llm_portatil.post,
+        atividade_local_getter=lambda: _runtime_llm_portatil.requisicao_local_em_andamento,
         ao_finalizar_conversa_modo_jogo=_descarregar_modelo_local,
         registrar_falha=_observabilidade_mente_runtime.relatar_falha,
         registrar_orcamento_prompt=(
@@ -2203,6 +2210,8 @@ _recomendar_playlist_real_para_presenca = partial(
 
 
 _diretor_presenca_runtime = _criar_diretor_presenca_runtime_mente(
+    candidato_observado_getter=_corpo_motor_runtime.experiencias.candidato_presenca,
+    validar_observacao=_corpo_motor_runtime.experiencias.evento_presenca_vigente,
     estado_get=lambda: dict(
         _estado_compartilhado_runtime.mental.get("presenca_contextual") or {}
     ),
@@ -2309,6 +2318,12 @@ _motor_aprendizado_runtime = _criar_motor_aprendizado_runtime_mente(
     pesquisar_conhecimento=_pesquisa_contextual_runtime.pesquisar_contexto_tema,
     log=print,
 )
+
+_corpo_motor_runtime.experiencias.conectar_aprendizado(_motor_aprendizado_runtime)
+_dev_console_runtime.configurar_corpo_getter(lambda: {
+    "transporte": _rosto_oled_runtime.diagnostico(), "corpo": _corpo_motor_runtime.diagnostico(),
+})
+_corpo_motor_runtime.observar_corpo_cb = _dev_console_runtime.atualizar_corpo
 
 _ponte_iniciativa_aplicacao_runtime.conectar_aprendizado(
     registrar_feedback=_adaptadores_aplicacao_runtime.registrar_feedback_contextual,
@@ -2520,11 +2535,10 @@ _cliente_llm_runtime = _composicao_inteligencia_externa_runtime.conectar_cliente
     resumo_mente_integrada=_resumo_mente_integrada_para_prompt,
     registrar_metrica=_observabilidade_mente_runtime.registrar_metrica,
     orcamento_turno=_orcamento_llm_turno_runtime,
-    interacao_ativa=lambda: bool(
-        _conversa_estado_get("modo_chat", False)
-        or _conversa_estado_get("conversa_ativa", False)
-        or _estado_compartilhado_runtime.mental.get("interacao_em_andamento")
-    ),
+    interacao_ativa=lambda: bool(_contexto_motor_iniciativa().get("turno_ativo")) or _conversa_em_andamento({
+        **_contexto_motor_iniciativa(),
+        "interacao_em_andamento": _estado_compartilhado_runtime.mental.get("interacao_em_andamento"),
+    }, agora=time.time()),
 )
 _modelo_llm_diferido_runtime.conectar(_cliente_llm_runtime)
 
@@ -2747,6 +2761,10 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
         "remover_prefixo_exec": _remover_prefixo_exec,
         "transcript_api": YouTubeTranscriptApi,
         "registrar_contexto_resumo": _registrar_contexto_resumo_pagina,
+        "vincular_publicacao_conteudo": partial(
+            _adaptadores_aplicacao_runtime.vincular_publicacao_conteudo,
+            portas_com_ocorrencia=("registrar_contexto_resumo",),
+        ),
     },
     modelo_llm=_registro_modelo_llm_runtime,
     cache_habilitado=lambda: _flag_desempenho_ativa(
@@ -2756,8 +2774,8 @@ _resumo_conteudo_runtime = _criar_resumo_conteudo_runtime_mente(
 )
 _otimizacoes_desempenho_refs["resumo"] = _resumo_conteudo_runtime
 resumir_pagina_ou_video = partial(
-    _atividade_operacional_runtime.executar_assincrono,
     _resumo_conteudo_runtime.resumir,
+    executar_assincrono=_atividade_operacional_runtime.executar_assincrono,
 )
 
 _porteiro_runtime = _criar_porteiro_chrome_runtime_mente(
@@ -3173,6 +3191,8 @@ _composicao_ciclo_comandos_runtime = _criar_composicao_ciclo_comandos_runtime(
     atividade_operacional=_atividade_operacional_runtime,
 )
 executar_intencao = _composicao_ciclo_comandos_runtime.executar_intencao
+executar_intencao_observando = _composicao_ciclo_comandos_runtime.executar_intencao_observando
+executar_ato_observando = _composicao_ciclo_comandos_runtime.executar_ato_observando
 _executar_comando_em_texto = _composicao_ciclo_comandos_runtime.executar_texto
 processar_comandos_em_cadeia = _composicao_ciclo_comandos_runtime.processar_cadeia
 processar_comando_deterministico = (
@@ -3577,7 +3597,7 @@ _interpretacao_intencao_runtime = _criar_interpretacao_intencao_runtime_mente(
     contexto_getter=lambda: {
         "estado": {
             "messages": _memoria_conversa_get("messages", []),
-            "mente_integrada_estado": _estado_compartilhado_runtime.mental,
+            "mente_integrada_estado": _estado_compartilhado_runtime.retrato_dominio("mental"),
             "playlist_state": {
                 "name": _registro_musica_leitura_runtime.estado().get(
                     "playlist_ativa", ""
@@ -3671,6 +3691,9 @@ _central_notificacoes_runtime = _criar_central_notificacoes_runtime_mente(
 )
 _central_notificacoes_executar = _central_notificacoes_runtime.executar
 _central_notificacoes_ingerir_sistema = _central_notificacoes_runtime.ingerir_alerta_sistema
+_orquestrador_fala_runtime.registrar_observador_entrega_resultados(
+    _central_notificacoes_runtime.registrar_apresentacao_resultados,
+)
 _agenda_runtime.notificar_evento_cb = _central_notificacoes_runtime.ingerir_agendamento
 _mapa_recursos_runtime.registrar(
     "central_notificacoes",
@@ -3705,6 +3728,23 @@ _gmail_silenciar_remetente = _gmail_runtime.silenciar_remetente
 _gmail_buscar_nao_lidos = _gmail_runtime.buscar_nao_lidos
 _gmail_falar_resumo_estiloso = _gmail_runtime.falar_resumo_estiloso
 gmail_daemon = _gmail_runtime.daemon
+
+_email_runtime = criar_email_runtime(
+    transporte=_gmail_runtime,
+    estado=_estado_compartilhado_runtime,
+    pendencias=_pendencia_acao_runtime,
+    arquivo_rascunhos=os.path.join(PASTA_MEMORIA, "email_rascunhos.sqlite3"),
+    modelo_llm=_registro_modelo_llm_runtime,
+    arquivos=_registro_arquivos_leitura_runtime,
+    cooperacao=_orquestrador_cooperativo_runtime,
+    registrar_feedback=lambda tipo, referencia: _motor_aprendizado_runtime.registrar_feedback_contextual(
+        tipo=tipo, aceito=True if tipo == "aceitacao" else False if tipo == "recusa" else None,
+        resultado=tipo, origem="email", alvo=referencia,
+    ),
+    registrar_falha=_observabilidade_mente_runtime.relatar_falha,
+)
+_email_executar = _email_runtime.executar
+_email_detectar = _email_runtime.detectar
 
 _registros_principais_runtime = _criar_registros_principais(
     memoria_pessoas=_registro_memoria_pessoas_runtime,
@@ -3836,7 +3876,7 @@ _disponibilidade_operacional_runtime = _criar_disponibilidade_operacional_runtim
     area_transferencia_getter=_area_transferencia_runtime.diagnostico,
     caixa_entrada_getter=_caixa_entrada_pessoal_runtime.diagnostico,
     notificacoes_getter=_central_notificacoes_runtime.diagnostico,
-    gmail_getter=lambda: {"configurado": _gmail_runtime.configurado()},
+    gmail_getter=_email_runtime.diagnostico,
     iot_getter=_registro_iot_runtime.diagnostico,
     avatar_getter=_avatar_runtime.diagnostico,
     rosto_oled_getter=_rosto_oled_runtime.diagnostico,
@@ -3963,6 +4003,9 @@ _registro_servicos_aplicacao_runtime.publicar(
 _validador_comandos_turno_runtime = _criar_validador_comandos_turno_runtime(
     estado_runtime=_estado_compartilhado_runtime,
     resolver_ato=lambda texto, frame: _deteccao_deterministica_runtime.detectar(texto, estado_mental=frame),
+)
+_registro_servicos_aplicacao_runtime.publicar(
+    _recuperar_explicacao_ocorrencia_mente=_corpo_motor_runtime.experiencias.recuperar_explicacao,
 )
 _composicao_turno_runtime = _criar_composicao_turno_runtime(
     servicos=_registro_servicos_aplicacao_runtime.snapshot(),

@@ -5,10 +5,11 @@ from dataclasses import replace
 import pytest
 
 from mente_laylay.cognicao.decisao_turno import filtrar_comandos_pelo_turno, criar_validador_comandos_turno_runtime
-from mente_laylay.cognicao.escopo_autorizacao import construir_autorizacoes_por_ato
+from mente_laylay.cognicao.escopo_autorizacao import construir_autorizacoes_por_ato, exige_escopo_por_ato
 from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
 from scripts.tests.test_decisao_unica_turno import _contratos_reais_do_filtro
+from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
 
 
 @pytest.mark.parametrize("texto,proposta", [
@@ -45,6 +46,185 @@ def _runtime(texto, resolver):
     return criar_validador_comandos_turno_runtime(estado_runtime=estado, resolver_ato=resolver), estado
 
 
+@pytest.mark.parametrize("texto,pedidos", [
+    ("ajuste o brilho da lâmpada para 40 e abre o aplicativo Notepad", [
+        {"intent": "IOT_CONTROL", "params": {"acao": "ajustar_brilho", "alvo": "lampada_quarto", "valor": 40}},
+        {"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}]),
+    ("sobe o volume para 40 e abre o aplicativo Notepad", [
+        {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": 40}},
+        {"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}]),
+    ("pausa a música e retoma a música", [
+        {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}},
+        {"intent": "MEDIA_CONTROL", "params": {"acao": "play"}}]),
+    ("abre o aplicativo Calculadora e abre o aplicativo Notepad", [
+        {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}},
+        {"intent": "APP_OPEN", "params": {"nome_app": "Notepad"}}]),
+])
+def test_todos_os_atos_autorizados_exigem_vinculo_individual_sem_perder_pedido_por_restricao_agregada(texto, pedidos):
+    turno, _, _ = _contratos_reais_do_filtro(texto)
+    assert len(turno["segmentos"]) == 2 and all(s["autoriza_execucao"] for s in turno["segmentos"])
+    fontes = fontes_textuais_dos_segmentos(texto, turno["segmentos"])
+    assert len(fontes) == len(turno["segmentos"])
+    mapa = {f.como_dict()["texto_original"]: p for f, p in zip(fontes, pedidos)}
+    chamadas = []
+    def resolver(trecho, frame):
+        chamadas.append((trecho, deepcopy(frame)))
+        return mapa[trecho]
+    validar, estado = _runtime(texto, resolver)
+    antes = estado.snapshot()
+    resultado = validar(deepcopy(pedidos))
+    assert resultado["comandos"] == pedidos
+    assert resultado["atos_autorizados_vinculados"] == [0, 1]
+    assert len(chamadas) == len(resultado["escopo_operacional_por_ato"]) == 2
+    assert all(len(f["turno_atual"]["segmentos"]) == 1 for _, f in chamadas)
+    assert estado.snapshot() == antes
+
+
+@pytest.mark.parametrize("mudanca", [
+    {"nome_app": "Outro aplicativo"}, {"target": "pc_b"},
+    {"_execucao_silenciosa": True},
+])
+def test_conjunto_totalmente_autorizado_nao_empresta_alvo_destino_ou_parametros(mudanca):
+    texto = "abre o aplicativo Calculadora e pausa a música"
+    app = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    pausa = {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}
+    validar, _ = _runtime(texto, lambda trecho, _: app if trecho.startswith("abre") else pausa)
+    errado = deepcopy(app)
+    errado["params"].update(mudanca)
+    resultado = validar([errado, pausa])
+    assert resultado["comandos"] == [pausa]
+    assert resultado["atos_autorizados_vinculados"] == [1]
+
+
+def test_resolucao_parcial_de_conjunto_nao_bloqueia_pedido_independente_nem_autoriza_o_indeterminado():
+    texto = "abre o aplicativo Calculadora e pausa a música"
+    app = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    pausa = {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}
+    validar, _ = _runtime(texto, lambda trecho, _: app if trecho.startswith("abre") else None)
+    resultado = validar([app, pausa])
+    assert resultado["comandos"] == [app]
+    assert resultado["atos_autorizados_vinculados"] == [0]
+    assert len(resultado["rejeitados"]) == 1
+
+
+def test_uma_ordem_em_conjunto_nao_autoriza_propostas_repetidas():
+    texto = "abre o aplicativo Calculadora e pausa a música"
+    app = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    pausa = {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}}
+    validar, _ = _runtime(texto, lambda trecho, _: app if trecho.startswith("abre") else pausa)
+    resultado = validar([app, deepcopy(app), pausa])
+    assert resultado["comandos"] == [app, pausa]
+    assert len(resultado["rejeitados"]) == 1
+
+
+def test_ordens_iguais_explicitamente_repetidas_em_conjunto_tem_escopos_distintos():
+    app = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    validar, _ = _runtime("abre o aplicativo Calculadora e abre o aplicativo Calculadora", lambda *_: app)
+    resultado = validar([app, deepcopy(app)])
+    assert resultado["comandos"] == [app, app]
+    assert resultado["atos_autorizados_vinculados"] == [0, 1]
+
+
+def test_ato_unico_preserva_restricao_agregada_sem_consultar_resolver_novo():
+    validar, _ = _runtime("liga a luz", lambda *_: pytest.fail("ato único mantém caminho existente"))
+    errado = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    assert validar([errado])["rejeitados"][0]["motivo"] == "intenção incompatível com a operação explícita"
+
+
+def test_multiplos_atos_sem_resolver_ficam_fechados_mesmo_com_lista_agregada_vazia():
+    validar, _ = _runtime("abre o aplicativo Calculadora e pausa a música", None)
+    assert validar([{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}])["comandos"] == []
+
+
+def test_escopo_de_conjunto_pertence_ao_turno_e_nao_e_reutilizado_apos_mudanca_de_ocorrencia():
+    texto = "abre o aplicativo Calculadora e pausa a música"
+    validar, _ = _runtime(texto, lambda *_: pytest.fail("proposta obsoleta não consulta resolver"))
+    proposta = ContratoPropostaPrincipal(turno_id="outra", texto_usuario=texto, resposta_bruta='{"comandos": []}')
+    resultado = validar.validar_proposta([{"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}], proposta)
+    assert resultado["comandos"] == [] and resultado["ocorrencia_vinculada"] is False
+
+
+def test_escopo_individual_e_necessario_tambem_quando_nenhum_ato_tem_veto():
+    turno, _, _ = _contratos_reais_do_filtro("abre o aplicativo Calculadora e pausa a música")
+    assert exige_escopo_por_ato(turno) is True
+
+
+@pytest.mark.parametrize("texto,pedido", [
+    ("abre o aplicativo Calculadora e coloca ela à esquerda",
+     {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}),
+    ("liga a luz e deixa ela azul",
+     {"intent": "IOT_CONTROL", "params": {"acao": "ligar", "alvo": "lampada_quarto"}}),
+    ("abre o arquivo notas.txt e apaga ele",
+     {"intent": "FILE_SEARCH", "params": {"query": "notas.txt", "alvo": "notas.txt", "abrir_resultado_exato": True}}),
+])
+def test_ato_dependente_nao_desaparece_quando_so_o_primeiro_pedido_pode_ser_admitido(texto, pedido):
+    validar, estado = _runtime(texto, lambda *_: pedido)
+    antes = estado.snapshot()
+    resultado = validar([pedido])
+    assert resultado["comandos"] == [pedido]
+    etapas = resultado.get("atos_aguardando_materializacao", ())
+    assert len(etapas) == 1
+    dados = etapas[0].como_dict()
+    assert dados["indice"] == 1 and dados["turno_id"] == str(antes["mental"]["turno_atual"]["id"])
+    assert texto[slice(*dados["intervalo"])] == dados["texto_original"]
+    assert dados["autoriza_execucao"] is False and dados["comprova_efeito"] is False
+    assert dados["estado"] == "aguarda_materializacao_contextual"
+    assert "comando" not in dados and "alvo" not in dados and "dependencias" not in dados
+    assert estado.snapshot() == antes
+
+
+@pytest.mark.parametrize("texto", [
+    "não liga a luz", "quando eu confirmar, liga a luz",
+    "abre o aplicativo Calculadora", 'abre o aplicativo Calculadora e toca a música "Ela à Esquerda"',
+])
+def test_obrigacao_contextual_nao_e_criada_para_ato_unico_proibido_ou_titulo_literal(texto):
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.cognicao.retrato_turno import construir_retrato_turno
+    from mente_laylay.cognicao.plano_turno import planejar_turno
+    turno = classificar_modalidade_turno(texto)
+    retrato, _ = construir_retrato_turno(texto, turno=turno, mente={}, contexto_perceptivo={})
+    turno["retrato_id"] = retrato["id"]
+    plano = planejar_turno(texto, turno=turno, mente={})
+    estado = EstadoCompartilhadoRuntime(mental={"turno_atual": turno,
+        "plano_turno_atual": plano, "retrato_turno_atual": retrato})
+    validar = criar_validador_comandos_turno_runtime(estado_runtime=estado)
+    assert validar([]).get("atos_aguardando_materializacao", ()) == ()
+
+
+def test_proposta_obsoleta_nao_publica_obrigacao_contextual_de_outro_turno():
+    texto = "abre o aplicativo Calculadora e coloca ela à esquerda"
+    validar, _ = _runtime(texto, lambda *_: pytest.fail("não consultar resolver obsoleto"))
+    proposta = ContratoPropostaPrincipal(turno_id="outra", texto_usuario=texto, resposta_bruta='{"comandos": []}')
+    assert validar.validar_proposta([], proposta).get("atos_aguardando_materializacao", ()) == ()
+
+
+def test_obrigacao_exportada_nao_compartilha_estruturas_mutaveis_com_o_owner():
+    pedido = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    validar, _ = _runtime("abre o aplicativo Calculadora e coloca ela à esquerda", lambda *_: pedido)
+    ato, = validar([pedido])["atos_aguardando_materializacao"]
+    antes = ato.como_dict()
+    copia = ato.como_dict()
+    copia["intervalo"][0] = 0
+    copia["autoriza_execucao"] = True
+    assert ato.como_dict() == antes
+
+
+@pytest.mark.parametrize("mudanca", [
+    {"intervalo": [0, 1]}, {"origem": "llm"}, {"autoriza_execucao": True},
+    {"comprova_efeito": True}, {"indice_segmento": True}, {"comando": {"intent": "DELETE_ITEM"}},
+])
+def test_contrato_contextual_recusa_fonte_falsa_ou_emprestimo_de_autoridade(mudanca):
+    from mente_laylay.cognicao.escopo_autorizacao import AtoAguardandoMaterializacao
+    from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+    pedido = {"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}
+    validar, _ = _runtime("abre o aplicativo Calculadora e coloca ela à esquerda", lambda *_: pedido)
+    ato, = validar([pedido])["atos_aguardando_materializacao"]
+    dados = ato.fonte.como_dict()
+    dados.update(mudanca)
+    with pytest.raises(ValueError, match="obrigacao_contextual_sem_fonte_vinculada"):
+        AtoAguardandoMaterializacao(ato.turno_id, ato.indice, ato.fonte_textual, SnapshotComandoIA(dados))
+
+
 @pytest.mark.parametrize("texto,pedido,errado", [
     ("Pausa a música agora; quando eu confirmar, retoma a música.",
      {"intent": "MEDIA_CONTROL", "params": {"acao": "pause"}},
@@ -72,7 +252,8 @@ def test_runtime_conserva_operacao_pedida_sem_emprestar_escopo(texto, pedido, er
     assert resultado["comandos"] == [pedido]
     assert resultado["atos_autorizados_vinculados"] == [0]
     assert len(chamadas) == 1
-    assert chamadas[0][0] == antes["mental"]["turno_atual"]["texto_operacional"]
+    fonte = fontes_textuais_dos_segmentos(texto, antes["mental"]["turno_atual"]["segmentos"])[0]
+    assert chamadas[0][0] == fonte.como_dict()["texto_original"]
     assert len(chamadas[0][1]["turno_atual"]["segmentos"]) == 1
     assert estado.snapshot() == antes and candidatos == original
 

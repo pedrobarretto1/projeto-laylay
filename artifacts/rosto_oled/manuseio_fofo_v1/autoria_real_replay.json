@@ -1,0 +1,43 @@
+{
+  "replay_de_observacao_registrada": true,
+  "sensor_ao_vivo": false,
+  "voz_emitida": false,
+  "resultado": {
+    "status": "modelo_indisponivel",
+    "agendada": false,
+    "emissao_fisica": false,
+    "autoriza_execucao": false,
+    "comandos_descartados": 0
+  },
+  "modelo": {
+    "disponivel": true,
+    "endpoint_local": true,
+    "requisicoes": 1,
+    "sucessos": 0,
+    "falhas": 1,
+    "estado": "degradado",
+    "falhas_consecutivas": 1,
+    "ultima_falha_codigo": "estado_tecnico",
+    "memoria_exposta": false,
+    "credencial_exposta": false,
+    "autoriza_execucao": false,
+    "orcamento_turno": {
+      "modo": "orcamento_unico",
+      "limite_chamadas_turno": 2,
+      "turnos": 0,
+      "turno_atual": {},
+      "chamadas_autorizadas": 1,
+      "chamadas_bloqueadas": 0,
+      "chamadas_por_tipo": {
+        "principal": 1
+      },
+      "bloqueios_por_motivo": {},
+      "falhas_consecutivas": 1,
+      "circuito_aberto": false,
+      "circuito_restante_s": 0.0,
+      "probe_em_andamento": false,
+      "conteudo_persistido": false,
+      "autoriza_execucao": false
+    }
+  }
+}

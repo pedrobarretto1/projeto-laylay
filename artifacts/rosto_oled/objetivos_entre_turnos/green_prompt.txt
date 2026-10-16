@@ -1,0 +1,10 @@
+.......................................................................F [ 90%]
+........                                                                 [100%]
+================================== FAILURES ===================================
+_______ test_condicao_atual_no_prompt_nao_empresta_acesso_do_historico ________
+scripts\tests\test_experiencia_corporal_continua.py:125: in test_condicao_atual_no_prompt_nao_empresta_acesso_do_historico
+    assert "não alegue acesso atual" in prompt and "observações de sessões anteriores" in prompt
+E   assert ('não alegue acesso atual' in '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":"","conectada":false,"companhia_ativa":fals... comandos técnicos na intenção. O executor revalida sessão/momento; não anuncie movimento como feito antes do retorno.' and 'observações de sessões anteriores' in '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":"","conectada":false,"companhia_ativa":fals... comandos técnicos na intenção. O executor revalida sessão/momento; não anuncie movimento como feito antes do retorno.')
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_experiencia_corporal_continua.py::test_condicao_atual_no_prompt_nao_empresta_acesso_do_historico
+1 failed, 79 passed in 20.62s

@@ -22,6 +22,10 @@ DEPENDENCIAS_RESPOSTA_CONVERSACIONAL = (
     "_registrar_autoaprimoramento",
 )
 
+DEPENDENCIAS_OPCIONAIS_RESPOSTA_CONVERSACIONAL = (
+    "_vincular_registro_resultado_execucao",
+)
+
 
 class ComposicaoRespostaConversacionalRuntime:
     """Mantém a personalidade disponível antes de ligar integrações tardias."""
@@ -48,7 +52,11 @@ class ComposicaoRespostaConversacionalRuntime:
             raise RuntimeError(
                 "resposta conversacional ainda não conectada às integrações"
             )
-        return dict(self._servicos)
+        contexto = dict(self._servicos)
+        vincular = contexto.get("_vincular_registro_resultado_execucao")
+        if callable(vincular):
+            contexto["_registrar_resultado_execucao"] = vincular()
+        return contexto
 
     def conectar(self, *, servicos: Mapping[str, Any]) -> Any:
         if self._conectado:
@@ -64,7 +72,9 @@ class ComposicaoRespostaConversacionalRuntime:
             )
         self._servicos = {
             nome: servicos[nome]
-            for nome in DEPENDENCIAS_RESPOSTA_CONVERSACIONAL
+            for nome in (*DEPENDENCIAS_RESPOSTA_CONVERSACIONAL,
+                         *DEPENDENCIAS_OPCIONAIS_RESPOSTA_CONVERSACIONAL)
+            if nome in servicos
         }
         self._conectado = True
         return self.runtime

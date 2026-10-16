@@ -1,0 +1,18 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:58748 | sessão=11caca6f pid=27296
+🖥️ [TERMINAL 2] interface iniciada | sessão=11caca6f pid=15904 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=11caca6f
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+
+💬 Você:
+> ⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_serial | classe=degradacao | impacto=servico | tipo=timeouterror

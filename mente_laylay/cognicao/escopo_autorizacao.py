@@ -11,6 +11,7 @@ import json
 from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+from mente_laylay.cognicao.gramatica_operacional import texto_pede_ajuste_parametrico_contextual
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,10 +29,74 @@ class AutorizacaoAto:
             raise ValueError("Autorização por ato exige identidade, fonte e snapshot canônicos.")
 
 
-def exige_escopo_por_ato(turno: Mapping[str, Any]) -> bool:
-    """Ato não autorizado não pode herdar a permissão agregada do turno."""
+@dataclass(frozen=True, slots=True)
+class AtoAguardandoMaterializacao:
+    """Obrigação do turno, não comando, permissão, receipt ou fila autônoma."""
+
+    turno_id: str
+    indice: int
+    fonte_textual: str
+    fonte: SnapshotComandoIA
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.turno_id, str) or not self.turno_id.strip() or self.turno_id != self.turno_id.strip()
+            or type(self.indice) is not int or self.indice < 0
+            or not isinstance(self.fonte_textual, str)
+            or not isinstance(self.fonte, SnapshotComandoIA)):
+            raise ValueError("obrigacao_contextual_sem_identidade")
+        dados = self.fonte.como_dict()
+        intervalo = dados.get("intervalo")
+        if (set(dados) != {"indice_segmento", "texto_original", "intervalo", "origem", "autoriza_execucao", "comprova_efeito"}
+            or type(dados.get("indice_segmento")) is not int or dados.get("indice_segmento") != self.indice
+            or dados.get("origem") != "segmentacao_canonica"
+            or dados.get("autoriza_execucao") is not False or dados.get("comprova_efeito") is not False
+            or not isinstance(intervalo, list) or len(intervalo) != 2
+            or any(type(i) is not int for i in intervalo)
+            or not 0 <= intervalo[0] < intervalo[1] <= len(self.fonte_textual)
+            or self.fonte_textual[slice(*intervalo)] != dados.get("texto_original")):
+            raise ValueError("obrigacao_contextual_sem_fonte_vinculada")
+
+    def como_dict(self) -> dict[str, Any]:
+        dados = self.fonte.como_dict()
+        return {"turno_id": self.turno_id, "indice": self.indice,
+            "texto_original": dados["texto_original"], "intervalo": dados["intervalo"],
+            "origem": dados["origem"], "estado": "aguarda_materializacao_contextual",
+            "autoriza_execucao": False, "comprova_efeito": False}
+
+
+def coletar_atos_aguardando_materializacao(turno: Mapping[str, Any]) -> tuple[AtoAguardandoMaterializacao, ...]:
+    """Conserva pedidos contextuais sem atribuir antecedente ou alvo futuro.
+
+    A classificação declara necessidade de contexto, não dependência causal
+    da etapa anterior. Fonte literal ausente/ambígua não é reconstruída aqui.
+    """
+    from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
     segmentos = turno.get("segmentos") or ()
-    return any(isinstance(s, Mapping) and (
+    if len(segmentos) <= 1:
+        return ()
+    texto = str(turno.get("texto_original") or turno.get("texto") or "")
+    fontes = fontes_textuais_dos_segmentos(texto, segmentos)
+    if len(fontes) != len(segmentos):
+        return ()
+    return tuple(AtoAguardandoMaterializacao(str(turno.get("id") or ""), indice, texto, fontes[indice])
+        for indice, s in enumerate(segmentos) if isinstance(s, Mapping)
+        and s.get("autoriza_execucao") is True and s.get("depende_contexto") is True
+        and not s.get("veto_execucao_operacional") and not s.get("requer_esclarecimento"))
+
+
+def exige_escopo_por_ato(turno: Mapping[str, Any]) -> bool:
+    """Mais de um ato exige escopo próprio, mesmo com permissão agregada.
+
+    O retrato global não delimita cada operação/alvo do conjunto: pode tanto
+    excluir outro pedido legítimo quanto aceitar um alvo que ninguém pediu.
+    Reutiliza-se o resolver e o vínculo exato existentes; ausência de resolução
+    continua fechada. Atribuição paramétrica elíptica também exige vínculo:
+    um valor ilegível ou referente ausente não autoriza outro domínio. Os
+    demais atos únicos conservam seu contrato agregado anterior.
+    """
+    segmentos = turno.get("segmentos") or ()
+    fonte = turno.get("texto_operacional_efetivo", turno.get("texto_original") or turno.get("texto") or "")
+    return texto_pede_ajuste_parametrico_contextual(fonte) or len(segmentos) > 1 or any(isinstance(s, Mapping) and (
         s.get("autoriza_execucao") is False or s.get("veto_execucao_operacional") is True
     ) for s in segmentos)
 
@@ -43,8 +108,14 @@ def construir_autorizacoes_por_ato(
     """Resolve só atos autorizados no frame capturado; falhas ficam fechadas."""
     if not callable(resolver):
         return ()
+    from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+    segmentos = turno.get("segmentos") or ()
+    fonte_turno = str(turno.get("texto_original") or turno.get("texto") or "")
+    fontes = fontes_textuais_dos_segmentos(fonte_turno, segmentos)
+    if len(fontes) != len(segmentos):
+        return ()
     autorizacoes = []
-    for indice, segmento in enumerate(turno.get("segmentos") or ()):
+    for indice, segmento in enumerate(segmentos):
         if not isinstance(segmento, Mapping) or not (
             segmento.get("autoriza_execucao") is True
             and not segmento.get("veto_execucao_operacional")
@@ -55,14 +126,17 @@ def construir_autorizacoes_por_ato(
         texto = str(segmento.get("texto") or "").strip()
         if not texto:
             continue
+        fonte_resolucao = fontes[indice].como_dict()["texto_original"]
         frame = deepcopy(dict(mental))
         # Um resolver não pode usar a permissão agregada como se pertencesse
-        # ao ato isolado. A fala original continua no frame externo do turno.
+        # ao ato isolado. O texto classificado identifica o ato; somente seu
+        # recorte original comprovado fornece argumentos ao resolver.
         frame["turno_atual"] = {**deepcopy(dict(segmento)), "id": turno.get("id"),
-                               "texto": texto, "texto_operacional": texto,
+                               "texto": fonte_resolucao, "texto_original": fonte_resolucao,
+                               "texto_operacional": fonte_resolucao,
                                "segmentos": [deepcopy(dict(segmento))]}
         try:
-            pedido = resolver(texto, frame)
+            pedido = resolver(fonte_resolucao, frame)
             if not isinstance(pedido, dict) or not isinstance(pedido.get("params"), dict):
                 continue
             autorizacoes.append(AutorizacaoAto(str(turno.get("id") or ""), indice,

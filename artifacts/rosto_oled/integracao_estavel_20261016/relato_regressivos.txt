@@ -1,0 +1,10 @@
+..................................................F.............         [100%]
+================================== FAILURES ===================================
+___ test_contexto_de_rodadas_em_companhia_cabe_no_prompt_e_preserva_limites ___
+scripts\tests\test_episodios_sensores_corpo.py:267: in test_contexto_de_rodadas_em_companhia_cabe_no_prompt_e_preserva_limites
+    assert len(prompt)<=3800
+E   assert 3820 <= 3800
+E    +  where 3820 = len('--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":"","conectada":true,"companhia_ativa":true,...ome":"atenta"}}. Intenção não concede permissão/PWM. Executor revalida sessão/momento; só anuncie efeito após retorno.')
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_episodios_sensores_corpo.py::test_contexto_de_rodadas_em_companhia_cabe_no_prompt_e_preserva_limites
+1 failed, 63 passed in 20.75s

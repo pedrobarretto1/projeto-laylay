@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from dataclasses import replace
 import json
 from types import SimpleNamespace
 
@@ -229,6 +230,180 @@ def test_atualizacao_da_mesma_ocorrencia_substitui_a_certeza_antiga():
         assert lote.resultados[0].confirmado is False
     assert len(falas) == len(textos) == 1
     assert "não consegui" in falas[0].casefold() and "Calculadora" in falas[0]
+
+
+def test_fala_direta_do_executor_chega_ao_lote_com_receipt_da_invocacao():
+    from mente_laylay.autonomia.roteador_intencao import executar_intencao
+    _c, owner, _e, falas, textos, receipts, _ch, servicos = _montar()
+    ctx = {**servicos, "organizar_janelas_robusto": lambda esquerda, direita: {
+        "ok": True, "executou": True, "confirmado": True, "status": "layout_confirmado",
+        "nome_esquerda": esquerda, "nome_direita": direita}}
+    with owner.agrupar_resultados_operacionais(texto_usuario="esquerda, direita, esquerda",
+            enviar_mensagem=lambda *_a, **_k: "") as lote:
+        for indice, lado in enumerate(("left", "right", "left")):
+            assert executar_intencao({"intent": "ORGANIZAR_DESKTOP", "params": {lado: "Calculadora"},
+                "id_solicitacao": f"layout-{indice}"}, "pedido autorizado", ctx)
+        assert len(receipts) == 3, "a publicação de todos os efeitos precede a apresentação"
+        assert len(lote.resultados) == 3, "fala comum perdeu o vínculo com os receipts publicados"
+        assert [r.id_solicitacao for r in lote.resultados] == [f"layout-{i}" for i in range(3)]
+        assert not lote.avisos, "confirmação vinculada não é aviso sem receipt"
+    assert textos == falas and len(textos) == 1
+    assert falas[0].count("Calculadora na esquerda") == 2
+    assert falas[0].rfind("Calculadora na esquerda") > falas[0].find("Calculadora na direita")
+
+
+@pytest.mark.parametrize("formato", ["strings", "indices", "ids"])
+def test_autoria_composta_vincula_ocorrencias_literais_iguais_na_ordem_dos_receipts(formato):
+    itens = [ResultadoAcao(intent="IOT_CONTROL", status=status, alvo="lâmpada",
+        executou=True, confirmado=True, origem="executor", id_solicitacao=f"ato-{i}")
+        for i, status in enumerate(("ligado", "desligado", "ligado"))]
+    trechos = ["Liguei a lâmpada", "Desliguei a lâmpada", "Liguei a lâmpada"]
+    partes = (trechos if formato == "strings" else
+        [{"indice": i, "trecho": t} for i, t in enumerate(trechos)] if formato == "indices" else
+        [{"id_solicitacao": itens[i].id_solicitacao, "trecho": t} for i, t in enumerate(trechos)])
+    dados = {"fala": "; ".join(trechos) + ".", "trechos": partes}
+    resultado = personalizar_confirmacao_composta_llm(itens, "fallback seguro",
+        enviar_mensagem=lambda *_a, **_k: json.dumps(dados, ensure_ascii=False))
+    assert resultado.usada_llm, resultado.motivo_fallback
+    assert resultado.fala == dados["fala"]
+
+
+@pytest.mark.parametrize("formato", ["strings", "indices", "ids"])
+def test_cobertura_de_receipts_respeita_ordem_da_fala_e_da_lista(formato):
+    itens = [ResultadoAcao(intent="APP_OPEN", status="app_aberto", alvo=alvo,
+        executou=True, confirmado=True, origem="executor", id_solicitacao=f"app-{i}")
+        for i, alvo in enumerate(("Calculadora", "agenda"))]
+    textos = ["Abri Calculadora", "Abri agenda"]
+    partes = (textos if formato == "strings" else
+        [{"indice": i, "trecho": t} for i, t in enumerate(textos)] if formato == "indices" else
+        [{"id_solicitacao": itens[i].id_solicitacao, "trecho": t} for i, t in enumerate(textos)])
+    for trocar_lista in (False, True):
+        dados = {"fala": "; ".join(textos[::-1] if not trocar_lista else textos) + ".",
+                 "trechos": partes[::-1] if trocar_lista else partes}
+        resultado = personalizar_confirmacao_composta_llm(itens, "fallback seguro",
+            enviar_mensagem=lambda *_a, **_k: json.dumps(dados, ensure_ascii=False))
+        assert not resultado.usada_llm, "ordem do efeito não pode ser trocada pela autoria"
+        assert resultado.fala == "fallback seguro"
+
+
+@pytest.mark.parametrize("formato", ["strings", "indices", "ids"])
+@pytest.mark.parametrize("violacao", ["ocorrencia_omitida", "sobreposicao", "alvo", "certeza", "extra", "id_repetido"])
+def test_repeticao_literal_nao_afrouxa_cobertura_alvo_ou_certeza(formato, violacao):
+    itens = [ResultadoAcao(intent="IOT_CONTROL", status=status, alvo="lâmpada",
+        executou=True, confirmado=True, origem="executor", id_solicitacao=f"ato-{i}")
+        for i, status in enumerate(("ligado", "desligado", "ligado"))]
+    textos = ["Liguei a lâmpada", "Desliguei a lâmpada", "Liguei a lâmpada"]
+    if violacao == "alvo": textos[2] = "Liguei o ventilador"
+    if violacao == "certeza": itens[2] = replace(itens[2], confirmado=None)
+    if violacao == "id_repetido": itens[2] = replace(itens[2], id_solicitacao=itens[0].id_solicitacao)
+    fala = "; ".join(textos) + "."
+    if violacao == "ocorrencia_omitida": fala = "; ".join(textos[:2]) + "."
+    if violacao == "sobreposicao": textos[1] = textos[0] + "; " + textos[1]
+    if violacao == "extra": fala += " Apaguei seu arquivo."
+    partes = (textos if formato == "strings" else
+        [{"indice": i, "trecho": t} for i, t in enumerate(textos)] if formato == "indices" else
+        [{"id_solicitacao": itens[i].id_solicitacao, "trecho": t} for i, t in enumerate(textos)])
+    resultado = personalizar_confirmacao_composta_llm(itens, "fallback seguro",
+        enviar_mensagem=lambda *_a, **_k: json.dumps({"fala": fala, "trechos": partes}, ensure_ascii=False))
+    assert not resultado.usada_llm
+    assert resultado.fala == "fallback seguro"
+
+
+@pytest.mark.parametrize("publicacao", ["aceita", "recusada", "ausente", "erro"])
+def test_fala_direta_nao_toma_receipt_historico_no_lugar_da_publicacao(publicacao):
+    _c, owner, estado, falas, textos, receipts, _ch, servicos = _montar()
+    estado.mental["ultima_acao_contrato"] = ResultadoAcao(intent="APP_OPEN", status="app_aberto",
+        alvo="outro-app", confirmado=True, executou=True, origem="executor", id_solicitacao="historico").como_dict()
+    ctx = dict(servicos)
+    if publicacao == "recusada": ctx["_registrar_resultado_execucao"] = lambda *_a, **_k: False
+    elif publicacao == "ausente": ctx.pop("_registrar_resultado_execucao")
+    elif publicacao == "erro":
+        def falhar(*_a, **_k): raise RuntimeError("indisponível")
+        ctx["_registrar_resultado_execucao"] = falhar
+    adapter = AdaptadorResultadoOperacional({"intent": "APP_OPEN", "id_solicitacao": "atual"},
+        {"nome_app": "Calculadora"}, "abre a Calculadora", "pc_a", ctx)
+    with owner.agrupar_resultados_operacionais(texto_usuario="pedido", enviar_mensagem=lambda *_a, **_k: "") as lote:
+        adapter.marcar_resultado("app_aberto", True, confirmado=True)
+        adapter.falar_texto_da_invocacao("Abri a Calculadora.")
+        assert [r.id_solicitacao for r in lote.resultados] == (["atual"] if publicacao == "aceita" else [])
+    assert len(falas) == len(textos) == 1
+    if publicacao != "aceita":
+        assert "não consegui validar" in falas[0].casefold()
+        assert "Abri" not in falas[0]
+
+
+@pytest.mark.parametrize("mudanca", ["id", "marker", "republicacao_recusada"])
+def test_fala_direta_revalida_vinculo_antes_de_usar_receipt(mudanca):
+    from mente_laylay.memoria_mental.resultado_acao import CHAVE_RESULTADO_OPERACIONAL_PUBLICADO
+    _c, owner, _e, falas, _t, _r, _ch, servicos = _montar()
+    pedido = {"intent": "APP_OPEN", "id_solicitacao": "pedido-original"}
+    adapter = AdaptadorResultadoOperacional(pedido, {"nome_app": "Calculadora"}, "abre", "pc_a", servicos)
+    adapter.marcar_resultado("app_aberto", True, confirmado=True)
+    if mudanca == "id": pedido["id_solicitacao"] = "pedido-alheio"
+    elif mudanca == "marker": pedido.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO)
+    else:
+        adapter.ctx = {**servicos, "_registrar_resultado_execucao": lambda *_a, **_k: False}
+        adapter.marcar_resultado("falha_execucao", False, confirmado=False)
+    with owner.agrupar_resultados_operacionais(texto_usuario="pedido") as lote:
+        adapter.falar_texto_da_invocacao("Abri a Calculadora.")
+        assert not lote.resultados
+    assert len(falas) == 1 and "não consegui validar" in falas[0].casefold()
+
+
+@pytest.mark.parametrize("intent,alvo,status,texto", [
+    ("APP_OPEN", "Calculadora", "app_aberto", "Abri a Calculadora."),
+    ("IOT_CONTROL", "lâmpada", "ligado", "Liguei a lâmpada."),
+    ("LIST_WINDOWS", "janelas", "janelas_listadas", "Calculadora e agenda abertas."),
+])
+def test_canal_direto_vinculado_e_comum_a_efeitos_e_dados(intent, alvo, status, texto):
+    _c, owner, _e, falas, _t, _r, _ch, servicos = _montar()
+    adapter = AdaptadorResultadoOperacional({"intent": intent, "id_solicitacao": "atual"},
+        {"alvo": alvo}, "pedido", "pc_a", servicos)
+    with owner.agrupar_resultados_operacionais(texto_usuario="pedido", enviar_mensagem=lambda *_a, **_k: "") as lote:
+        adapter.marcar_resultado(status, True, confirmado=True)
+        adapter.falar_texto_da_invocacao(texto)
+        assert len(lote.resultados) == 1 and not lote.avisos
+        if intent == "LIST_WINDOWS": assert lote.informacoes == {"atual": texto}
+    if intent == "LIST_WINDOWS": assert falas == [texto]
+
+
+def test_aviso_antes_de_publicacao_nao_recebe_receipt_nem_vira_confirmacao():
+    _c, owner, _e, _f, _t, _r, _ch, servicos = _montar()
+    adapter = AdaptadorResultadoOperacional({"intent": "APP_OPEN"}, {}, "pedido", "pc_a", servicos)
+    with owner.agrupar_resultados_operacionais(texto_usuario="pedido") as lote:
+        adapter.falar_texto_da_invocacao("Qual aplicativo você quer?")
+        assert not lote.resultados and lote.avisos == ["Qual aplicativo você quer?"]
+
+
+def test_recursao_nao_vincula_aviso_do_filho_ao_receipt_do_pai(monkeypatch):
+    from mente_laylay.autonomia import roteador_intencao as router
+    from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
+    _c, owner, _e, _f, _t, _r, _ch, servicos = _montar()
+    def pai(_intent, _params, _destino, ctx, deps, **_kwargs):
+        if _intent != "APP_OPEN": return ResultadoDespacho.nao_tratado()
+        deps.marcar_resultado("app_aberto", True, confirmado=True)
+        filho = {"intent": "INEXISTENTE", "params": {}}
+        retorno = router.executar_intencao(filho, "outro pedido", ctx)
+        from mente_laylay.memoria_mental.resultado_acao import interpretar_tratamento_operacional
+        assert not interpretar_tratamento_operacional(filho, retorno).sucesso_habilidade
+        return ResultadoDespacho.concluido()
+    monkeypatch.setattr(router, "_executar_intencao_janelas", pai)
+    with owner.agrupar_resultados_operacionais(texto_usuario="pedido") as lote:
+        router.executar_intencao({"intent": "APP_OPEN", "params": {"nome_app": "Calculadora"}}, "pedido", servicos)
+        assert not lote.resultados, "o filho sem publicação não pode emprestar o receipt do pai"
+        assert lote.avisos
+
+
+def test_execucao_silenciosa_conserva_canal_indisponivel_na_folha(monkeypatch):
+    from mente_laylay.autonomia import roteador_intencao as router
+    from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
+    _c, _o, _e, falas, textos, _r, _ch, servicos = _montar()
+    def verificar(_intent, _params, _destino, ctx, _deps, **_kwargs):
+        assert ctx["falar_com_lipsync"] is None
+        return ResultadoDespacho.concluido()
+    monkeypatch.setattr(router, "_executar_intencao_janelas", verificar)
+    router.executar_intencao({"intent": "APP_OPEN", "params": {"_execucao_silenciosa": True}}, "pedido", servicos)
+    assert falas == textos == []
 
 
 def test_autoria_composta_aceita_cobertura_positiva_por_indices():

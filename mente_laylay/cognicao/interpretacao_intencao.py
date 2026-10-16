@@ -17,6 +17,8 @@ from mente_laylay.autonomia.roteador_deterministico import (
 )
 from mente_laylay.cognicao.refinamento_pesquisa import refinar_consulta_musical
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
+from mente_laylay.memoria_mental.contexto_integrado import projetar_mente_para_interpretacao
+from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 
 
 PROMPT_INTERPRETACAO = """Você é o cérebro da assistente Laylay. Analise a frase do usuário e retorne apenas um JSON válido com:
@@ -69,7 +71,9 @@ Regras:
 - Em pedido composto para apagar uma pasta e seu conteúdo, DELETE_ITEM deve mirar a pasta.
 - Frases como entra em, vai para ou acessa um site devem resultar em OPEN_URL ou SITE_ENTER conforme o alvo.
 - Fechar aba ou site usa CLOSE_TAB; fechar programa instalado usa CLOSE_APP.
-- Ler, resumir ou explicar emails usa EMAIL_READ ou EMAIL_SYNC.
+- Consultar a lista usa EMAIL_READ; ler ou explicar uma mensagem usa EMAIL_READ com modo="conteudo", pergunta literal e indice quando houver seleção. EMAIL_SYNC atualiza a consulta.
+- Criar, editar, responder, encaminhar ou descartar rascunhos usa EMAIL_DRAFT com acao e instrucao literal; para/cc/bcc somente com endereços fornecidos pelo usuário. Nunca invente destinatários. EMAIL_DRAFT_READ lista ou mostra rascunhos locais.
+- EMAIL_SEND apenas apresenta revisão e cria confirmação pendente. EMAIL_CONFIRM resolve a pendência existente; nunca invente campos confirmado ou autorização. EMAIL_MODIFY com acao="arquivar", "lixeira", "marcar_lido" ou "marcar_nao_lido" pede confirmação da mensagem exata.
 - Reclamação informal sobre remetente ou notificação deve preservar o tom e escolher ação útil de email/notificação.
 - Pergunta de temperatura ou clima usa WEATHER com params.local.
 - Pedido para resumir, explicar ou dizer o conteúdo da página ou vídeo atual usa RESUMIR_PAGINA.
@@ -397,7 +401,7 @@ class InterpretacaoIntencaoRuntime:
             ),
             "contexto_conversas": {
                 **contexto_playlist,
-                "mente_curta": mente,
+                "mente_curta": projetar_mente_para_interpretacao(mente),
                 "autoaprimoramento": self._call(
                     ctx, "resumo_autoaprimoramento_para_prompt", limit=6, default=""
                 ),
@@ -447,6 +451,11 @@ class InterpretacaoIntencaoRuntime:
         except Exception as exc:
             self._cache_analise[chave_cache] = (agora, None)
             self._log(f"⚠️ [IA-FIRST] analisador indisponível: {exc}")
+            return None
+        categoria_tecnica = categoria_estado_tecnico_llm(raw)
+        if categoria_tecnica:
+            self._cache_analise[chave_cache] = (agora, None)
+            self._log(f"⚠️ [IA:INTERPRETAÇÃO] geração não concluída | motivo={categoria_tecnica}")
             return None
         extrair = ctx.get("extrair_json_da_ia")
         texto_json = extrair(raw) if callable(extrair) else extrair_json_resposta(raw)

@@ -7,6 +7,7 @@ ignora arquivos grandes, binários e nomes com aparência de credencial.
 from __future__ import annotations
 
 import os
+import hashlib
 import re
 import subprocess
 import time
@@ -51,8 +52,8 @@ EXPANSOES = {
     "agenda": {"lembrete", "agendamento", "compromisso"},
 }
 PADRAO_SENSIVEL = re.compile(
-    r"(?:^|[._-])(?:\.env|credential|credentials|secret|secrets|token|tokens|"
-    r"password|passwd|senha|private[_-]?key|tinytuya|tuya[_-]?raw|devices)(?:[._-]|$)",
+    r"(?:^|[._-])(?:env|credential|credentials|credencial|credenciais|secret|secrets|segredo|token|tokens|"
+    r"password|passwd|senha|private[_-]?key|id[_-]?(?:rsa|ed25519)|tinytuya|tuya[_-]?raw|devices)(?:[._-]|$)",
     flags=re.IGNORECASE,
 )
 
@@ -475,6 +476,28 @@ class PesquisaSemanticaArquivosRuntime:
         except (OSError, UnicodeError, ValueError):
             self._metricas["falhas"] += 1
             return {"ok": False, "status": "falha_leitura", "conteudo": ""}
+
+    def ler_anexo(self, caminho: str) -> dict[str, Any]:
+        """Materializa bytes pedidos pelo usuário pela mesma política de raízes.
+
+        O receipt permite ao consumidor revisar e revalidar o arquivo. Não
+        publica os bytes no índice, no contexto ou na memória aprendida.
+        """
+        try:
+            alvo = Path(caminho).expanduser().resolve(strict=True)
+            if not self._permitido(alvo) or not alvo.is_file():
+                return {"ok": False, "status": "arquivo_indisponivel", "confirmado": False}
+            if PADRAO_SENSIVEL.search(alvo.name):
+                return {"ok": False, "status": "arquivo_sensivel", "confirmado": False}
+            with alvo.open("rb") as arquivo:
+                dados = arquivo.read(12_000_001)
+            if len(dados) > 12_000_000:
+                return {"ok": False, "status": "arquivo_muito_grande", "confirmado": False}
+            return {"ok": True, "status": "anexo_lido", "confirmado": True, "dados": dados,
+                    "manifesto": {"caminho": str(alvo), "nome": alvo.name, "tamanho": len(dados),
+                                  "sha256": hashlib.sha256(dados).hexdigest()}}
+        except (OSError, RuntimeError, ValueError):
+            return {"ok": False, "status": "falha_leitura", "confirmado": False}
 
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:

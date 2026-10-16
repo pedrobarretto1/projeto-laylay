@@ -85,9 +85,10 @@ def test_cauda_do_overlay_nao_e_execucao_no_pc():
     assert not projetar_execucao_operacional(estado)
 
 
-def test_perfil_e_preferencia_explicita_preserva_configuracao(tmp_path):
+def test_perfil_e_preferencia_explicita_preserva_configuracao(tmp_path,monkeypatch):
     from mente_laylay.integracao.configuracao_aplicacao import ConfiguracaoAplicacaoRuntime, ErroConfiguracaoAplicacao
     arquivo = tmp_path / "configuracao.env"
+    monkeypatch.delenv('LAYLAY_CORPO_PERFIL', raising=False)
     arquivo.write_text("OUTRA_CONFIG=valor\n", encoding="utf-8")
     c = ConfiguracaoAplicacaoRuntime(raiz=tmp_path)
     assert c.perfil_corporal() == "bancada"
@@ -158,7 +159,12 @@ def test_intencao_suspensa_persiste_no_owner_e_publica_no_quadro(monkeypatch):
     identidade=estado.mental["intencao_corporal"]["id"]
     assert quadro.snapshot()["planos_recentes"][-1]["estado"]=="confirmado"
     assert not corpo.companhia.processar()["ok"]
-    assert estado.mental["intencao_corporal"]["id"]==identidade
+    repouso = estado.mental["intencao_corporal"]
+    assert repouso["id"] != identidade
+    assert repouso["nome"] == "descansar" and repouso["fase"] == "repousando"
+    identidade_repouso = repouso["id"]
+    assert not corpo.companhia.processar()["ok"]
+    assert estado.mental["intencao_corporal"]["id"] == identidade_repouso
     assert corpo.executar("CORPO_PARAR",{})["ok"]
     assert not corpo.companhia.processar()["ok"]
 

@@ -1,0 +1,10 @@
+ firmware/rosto_laylay/SOM_OLHOS.md                 |  28 +++
+ firmware/rosto_laylay/rosto_laylay.ino             | 175 ++++++++++++---
+ firmware/rosto_laylay/som_expressivo.h             |  40 +++-
+ .../rosto_laylay/validacao_host/Adafruit_SSD1306.h |   4 +-
+ firmware/rosto_laylay/validacao_host/Arduino.h     |   2 +-
+ firmware/rosto_laylay/validacao_host/Wire.h        |   7 +-
+ .../validacao_host/validar_som_olhos.cpp           |  11 +
+ mente_laylay/autonomia/companhia_corporal.py       | 241 ++++++++++++++++++---
+ mente_laylay/especialistas/rosto_oled_runtime.py   | 182 ++++++++++++++--
+ 9 files changed, 609 insertions(+), 81 deletions(-)

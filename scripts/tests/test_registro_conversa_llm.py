@@ -53,6 +53,12 @@ def test_registros_falham_cedo_quando_contrato_obrigatorio_esta_incompleto() -> 
         RegistroModeloLLM.criar(object())
 
 
+@pytest.mark.parametrize("reserva", [True, -1, 2049, "1024", 1024.0])
+def test_reserva_de_formato_e_metadado_limitado_do_host(reserva):
+    with pytest.raises(ValueError, match="reserva de saída"):
+        PacotePrompt((), reserva_saida_tokens=reserva)
+
+
 def test_registros_devolvem_copias_e_diagnostico_nao_expoe_segredos() -> None:
     prompt = RegistroPreparacaoConversa.criar(_Prompt())
     modelo = RegistroModeloLLM.criar(_Modelo())

@@ -1,0 +1,919 @@
+{
+  "trilha": [
+    {
+      "t": 0.008,
+      "tipo": "tx",
+      "dados": "HELLO 1 e8c54138"
+    },
+    {
+      "t": 0.109,
+      "tipo": "rx",
+      "dados": "READY 1 e8c54138 SSD1306 128 64\n"
+    },
+    {
+      "t": 0.109,
+      "tipo": "tx",
+      "dados": "CAPS 1 e8c54138"
+    },
+    {
+      "t": 0.221,
+      "tipo": "rx",
+      "dados": "CAPS 1 e8c54138 HACK1\n"
+    },
+    {
+      "t": 0.221,
+      "tipo": "tx",
+      "dados": "GCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.331,
+      "tipo": "rx",
+      "dados": "GCAPS 1 e8c54138 GLITCH1\n"
+    },
+    {
+      "t": 0.331,
+      "tipo": "tx",
+      "dados": "MCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.44,
+      "tipo": "rx",
+      "dados": "MCAPS 1 e8c54138 MOTOR1\n"
+    },
+    {
+      "t": 0.44,
+      "tipo": "tx",
+      "dados": "LCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.549,
+      "tipo": "rx",
+      "dados": "LCAPS 1 e8c54138 LONGO1\n"
+    },
+    {
+      "t": 0.55,
+      "tipo": "tx",
+      "dados": "SCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.659,
+      "tipo": "rx",
+      "dados": "SCAPS 1 e8c54138 SOM1\n"
+    },
+    {
+      "t": 0.659,
+      "tipo": "tx",
+      "dados": "SENCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.768,
+      "tipo": "rx",
+      "dados": "SENCAPS 1 e8c54138 ENVIO1\n"
+    },
+    {
+      "t": 0.768,
+      "tipo": "tx",
+      "dados": "ECAPS 1 e8c54138"
+    },
+    {
+      "t": 0.878,
+      "tipo": "rx",
+      "dados": "ECAPS 1 e8c54138 OLHOS2\n"
+    },
+    {
+      "t": 0.878,
+      "tipo": "tx",
+      "dados": "RCAPS 1 e8c54138"
+    },
+    {
+      "t": 0.988,
+      "tipo": "rx",
+      "dados": "RCAPS 1 e8c54138 RAMPA1\n"
+    },
+    {
+      "t": 0.988,
+      "tipo": "tx",
+      "dados": "DCAPS 1 e8c54138"
+    },
+    {
+      "t": 1.095,
+      "tipo": "rx",
+      "dados": "DCAPS 1 e8c54138 SENSORES2\n"
+    },
+    {
+      "t": 1.095,
+      "tipo": "tx",
+      "dados": "PCAPS 1 e8c54138"
+    },
+    {
+      "t": 1.204,
+      "tipo": "rx",
+      "dados": "PCAPS 1 e8c54138 VIGIA1\n"
+    },
+    {
+      "t": 1.205,
+      "tipo": "tx",
+      "dados": "FACE 1 e8c54138 1 0 1 0 3500"
+    },
+    {
+      "t": 1.314,
+      "tipo": "rx",
+      "dados": "ACK 1 e8c54138 1 0 1 0\n"
+    },
+    {
+      "t": 1.314,
+      "tipo": "tx",
+      "dados": "HEALTH 1 1"
+    },
+    {
+      "t": 1.422,
+      "tipo": "rx",
+      "dados": "HEALTH 1 1 70ba726e27ac db0cd82e 1 4557487 280516 275340 7 TTL 4521031\n"
+    },
+    {
+      "t": 1.422,
+      "tipo": "tx",
+      "dados": "SENTRY 1 e8c54138 1 0 1200"
+    },
+    {
+      "t": 1.531,
+      "tipo": "rx",
+      "dados": "SENTRYACK 1 e8c54138 1 0\n"
+    },
+    {
+      "t": 1.531,
+      "tipo": "tx",
+      "dados": "DIST 1 1"
+    },
+    {
+      "t": 1.64,
+      "tipo": "rx",
+      "dados": "DIST 1 1 FRENTE 48 VALIDA 70 41 0 BORDA 49 VALIDA 25 42 0\n"
+    },
+    {
+      "t": 1.64,
+      "tipo": "tx",
+      "dados": "GUARD 1 1"
+    },
+    {
+      "t": 1.75,
+      "tipo": "rx",
+      "dados": "GUARD 1 1 e8c54138 14 0 OBSTACULO PRONTA 130 100 IRRITADA 3 0\n"
+    },
+    {
+      "t": 1.75,
+      "tipo": "tx",
+      "dados": "ACTIVITY 1 e8c54138 1 0 1200"
+    },
+    {
+      "t": 1.858,
+      "tipo": "rx",
+      "dados": "AACK 1 e8c54138 1 0\n"
+    },
+    {
+      "t": 1.858,
+      "tipo": "tx",
+      "dados": "SOUND 1 e8c54138 1 0"
+    },
+    {
+      "t": 1.968,
+      "tipo": "rx",
+      "dados": "ERROR 1 SOM_OCUPADO\n"
+    },
+    {
+      "t": 1.97,
+      "tipo": "ativacao",
+      "dados": {
+        "ok": true,
+        "modo_ativado": true,
+        "passeio_ativado": true,
+        "evidencia": "concessao_temporaria_no_owner_corporal"
+      }
+    },
+    {
+      "t": 1.97,
+      "tipo": "tx",
+      "dados": "FACE 1 e8c54138 2 0 1 0 3500"
+    },
+    {
+      "t": 2.078,
+      "tipo": "rx",
+      "dados": "ACK 1 e8c54138 2 0 1 0\n"
+    },
+    {
+      "t": 2.078,
+      "tipo": "tx",
+      "dados": "SENTRY 1 e8c54138 2 1 1200"
+    },
+    {
+      "t": 2.186,
+      "tipo": "rx",
+      "dados": "SENTRYACK 1 e8c54138 2 1\nHAZARD 1 e8c54138 0 15 OBSTACULO\n"
+    },
+    {
+      "t": 2.186,
+      "tipo": "tx",
+      "dados": "DIST 1 2"
+    },
+    {
+      "t": 2.297,
+      "tipo": "rx",
+      "dados": "DIST 1 2 FRENTE 48 VALIDA 74 4 0 BORDA 49 VALIDA 22 20 0\n"
+    },
+    {
+      "t": 2.297,
+      "tipo": "tx",
+      "dados": "GUARD 1 2"
+    },
+    {
+      "t": 2.405,
+      "tipo": "rx",
+      "dados": "GUARD 1 2 e8c54138 15 0 OBSTACULO RECUANDO 130 100 IRRITADA 0 1\n"
+    },
+    {
+      "t": 2.405,
+      "tipo": "tx",
+      "dados": "ACTIVITY 1 e8c54138 2 0 1200"
+    },
+    {
+      "t": 2.513,
+      "tipo": "rx",
+      "dados": "AACK 1 e8c54138 2 0\n"
+    },
+    {
+      "t": 2.514,
+      "tipo": "tx",
+      "dados": "FACE 1 e8c54138 3 0 1 0 3500"
+    },
+    {
+      "t": 2.732,
+      "tipo": "rx",
+      "dados": "ACK 1 e8c54138 3 0 1 0\n"
+    },
+    {
+      "t": 2.732,
+      "tipo": "tx",
+      "dados": "SENTRY 1 e8c54138 3 1 1200"
+    },
+    {
+      "t": 2.842,
+      "tipo": "rx",
+      "dados": "SENTRYACK 1 e8c54138 3 1\n"
+    },
+    {
+      "t": 2.842,
+      "tipo": "tx",
+      "dados": "DIST 1 3"
+    },
+    {
+      "t": 2.952,
+      "tipo": "rx",
+      "dados": "DIST 1 3 FRENTE 48 VALIDA 65 7 0 BORDA 49 VALIDA 26 4 0\n"
+    },
+    {
+      "t": 2.952,
+      "tipo": "tx",
+      "dados": "GUARD 1 3"
+    },
+    {
+      "t": 3.062,
+      "tipo": "rx",
+      "dados": "GUARD 1 3 e8c54138 15 0 OBSTACULO BUSCANDO 130 100 IRRITADA 2 1\n"
+    },
+    {
+      "t": 3.062,
+      "tipo": "tx",
+      "dados": "ACTIVITY 1 e8c54138 3 0 1200"
+    },
+    {
+      "t": 3.171,
+      "tipo": "rx",
+      "dados": "AACK 1 e8c54138 3 0\n"
+    },
+    {
+      "t": 3.171,
+      "tipo": "antes_motor",
+      "dados": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "e8c54138",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": true,
+          "recente": true,
+          "consulta_id": 3,
+          "alerta_suportado": true,
+          "busca_renovada": true,
+          "leituras": {
+            "frente": {
+              "estado": "VALIDA",
+              "mm": 65,
+              "idade_ms": 116,
+              "status": 0
+            },
+            "borda": {
+              "estado": "VALIDA",
+              "mm": 26,
+              "idade_ms": 113,
+              "status": 0
+            }
+          },
+          "protecao": {
+            "incidente_id": 15,
+            "motor_origem_seq": 0,
+            "risco": "OBSTACULO",
+            "fase": "BUSCANDO",
+            "reflexo_ativo": true,
+            "reacao_expressiva": "irritada",
+            "tentativa_busca": 2,
+            "vigia_ativa": true,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "db0cd82e",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 4557487,
+          "heap_livre": 280516,
+          "heap_minimo": 275340,
+          "perdas_sessao": 7,
+          "motivo_perda_sessao": "TTL",
+          "perda_sessao_em_ms": 4521031,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "suportado": true,
+          "recente": true,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "envio_suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "ERROR 1 SOM_OCUPADO",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": true,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 3.171,
+      "tipo": "tx",
+      "dados": "MOTOR 1 e8c54138 1 100 100 250"
+    },
+    {
+      "t": 3.718,
+      "tipo": "tx",
+      "dados": "STOP 1 e8c54138 1"
+    },
+    {
+      "t": 3.825,
+      "tipo": "rx",
+      "dados": "SACK 1 e8c54138 1\n"
+    },
+    {
+      "t": 3.826,
+      "tipo": "receipt",
+      "dados": {
+        "ok": false,
+        "motivo": "sem_confirmacao_pwm",
+        "aplicacao_pwm_confirmada": false,
+        "parada_confirmada": true,
+        "pwm_esquerdo": 100,
+        "pwm_direito": 100,
+        "duracao_ms": 250,
+        "evidencia": "sack",
+        "prova_rotacao": false,
+        "prova_parada_fisica": false,
+        "cancelado": false,
+        "status": "falha_execucao",
+        "interrompido_por_protecao": false,
+        "risco_detectado": "",
+        "protecao": {
+          "suportado": true,
+          "recente": false,
+          "consulta_id": 3,
+          "alerta_suportado": true,
+          "busca_renovada": true,
+          "leituras": {
+            "frente": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 770,
+              "status": 0
+            },
+            "borda": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 767,
+              "status": 0
+            }
+          },
+          "protecao": {
+            "incidente_id": 15,
+            "motor_origem_seq": 0,
+            "risco": "OBSTACULO",
+            "fase": "BUSCANDO",
+            "reflexo_ativo": true,
+            "reacao_expressiva": "irritada",
+            "tentativa_busca": 2,
+            "vigia_ativa": true,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 3.827,
+      "tipo": "tx",
+      "dados": "STOP 1 e8c54138 2"
+    },
+    {
+      "t": 3.935,
+      "tipo": "rx",
+      "dados": "SACK 1 e8c54138 2\n"
+    },
+    {
+      "t": 3.935,
+      "tipo": "tx",
+      "dados": "STOP 1 e8c54138 3"
+    },
+    {
+      "t": 4.045,
+      "tipo": "rx",
+      "dados": "SACK 1 e8c54138 3\n"
+    },
+    {
+      "t": 4.045,
+      "tipo": "tx",
+      "dados": "GOODNIGHT 1 e8c54138 1"
+    },
+    {
+      "t": 4.154,
+      "tipo": "rx",
+      "dados": "NACK 1 e8c54138 1\n"
+    }
+  ],
+  "receipt": {
+    "ok": false,
+    "motivo": "sem_confirmacao_pwm",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 100,
+    "pwm_direito": 100,
+    "duracao_ms": 250,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "falha_execucao",
+    "interrompido_por_protecao": false,
+    "risco_detectado": "",
+    "protecao": {
+      "suportado": true,
+      "recente": false,
+      "consulta_id": 3,
+      "alerta_suportado": true,
+      "busca_renovada": true,
+      "leituras": {
+        "frente": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 770,
+          "status": 0
+        },
+        "borda": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 767,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 15,
+        "motor_origem_seq": 0,
+        "risco": "OBSTACULO",
+        "fase": "BUSCANDO",
+        "reflexo_ativo": true,
+        "reacao_expressiva": "irritada",
+        "tentativa_busca": 2,
+        "vigia_ativa": true,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": false
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    }
+  },
+  "antes": {
+    "configurado": true,
+    "conectado": true,
+    "sessao": "e8c54138",
+    "transporte": "serial",
+    "modo_conexao": "manual",
+    "endpoint": "",
+    "porta_ativa": "COM4",
+    "evidencia_recente": true,
+    "aplicacao_confirmada": true,
+    "estado": "disponivel",
+    "motivo": "frame_confirmado_pelo_esp",
+    "confirmado": [
+      0,
+      1,
+      0
+    ],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "sensores": {
+      "suportado": true,
+      "recente": true,
+      "consulta_id": 2,
+      "alerta_suportado": true,
+      "busca_renovada": true,
+      "leituras": {
+        "frente": {
+          "estado": "VALIDA",
+          "mm": 74,
+          "idade_ms": 112,
+          "status": 0
+        },
+        "borda": {
+          "estado": "VALIDA",
+          "mm": 22,
+          "idade_ms": 128,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 15,
+        "motor_origem_seq": 0,
+        "risco": "OBSTACULO",
+        "fase": "RECUANDO",
+        "reflexo_ativo": true,
+        "reacao_expressiva": "irritada",
+        "tentativa_busca": 0,
+        "vigia_ativa": true,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    },
+    "saude": {
+      "dispositivo": "03d017988fdecda9",
+      "boot": "db0cd82e",
+      "motivo_boot": "ligacao_energia",
+      "motivo_boot_codigo": 1,
+      "uptime_ms": 4557487,
+      "heap_livre": 280516,
+      "heap_minimo": 275340,
+      "perdas_sessao": 7,
+      "motivo_perda_sessao": "TTL",
+      "perda_sessao_em_ms": 4521031,
+      "origem": "executor_esp",
+      "autoriza_execucao": false,
+      "suportado": true,
+      "recente": true,
+      "reinicios_observados": 0
+    },
+    "expressao": {
+      "suportado": true,
+      "confirmada": false,
+      "motivo": "aguardando_evento",
+      "fase": [
+        0,
+        0,
+        0
+      ],
+      "evidencia": "eack_apos_render",
+      "prova_visual_humana": false,
+      "autoriza_execucao": false
+    },
+    "som": {
+      "resultados_pendentes": [],
+      "suportado": true,
+      "envio_suportado": true,
+      "solicitacao_confirmada": false,
+      "motivo": "ERROR 1 SOM_OCUPADO",
+      "prova_auditiva": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "hack": {
+      "suportado": true,
+      "aplicacao_confirmada": true,
+      "ativo": false,
+      "motivo": "overlay_confirmado_pelo_esp",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": true,
+      "aplicacao_confirmada": false,
+      "motivo": "aguardando_falha",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "rampa_suportada": true,
+      "duracao_maxima_ms": 5000,
+      "suportado": true,
+      "disponivel": true,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": true,
+      "motivo": "",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "depois": {
+    "configurado": true,
+    "conectado": true,
+    "sessao": "e8c54138",
+    "transporte": "serial",
+    "modo_conexao": "manual",
+    "endpoint": "",
+    "porta_ativa": "COM4",
+    "evidencia_recente": true,
+    "aplicacao_confirmada": true,
+    "estado": "disponivel",
+    "motivo": "frame_confirmado_pelo_esp",
+    "confirmado": [
+      0,
+      1,
+      0
+    ],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "sensores": {
+      "suportado": true,
+      "recente": false,
+      "consulta_id": 3,
+      "alerta_suportado": true,
+      "busca_renovada": true,
+      "leituras": {
+        "frente": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 770,
+          "status": 0
+        },
+        "borda": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 767,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 15,
+        "motor_origem_seq": 0,
+        "risco": "OBSTACULO",
+        "fase": "BUSCANDO",
+        "reflexo_ativo": true,
+        "reacao_expressiva": "irritada",
+        "tentativa_busca": 2,
+        "vigia_ativa": true,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": false
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    },
+    "saude": {
+      "dispositivo": "03d017988fdecda9",
+      "boot": "db0cd82e",
+      "motivo_boot": "ligacao_energia",
+      "motivo_boot_codigo": 1,
+      "uptime_ms": 4557487,
+      "heap_livre": 280516,
+      "heap_minimo": 275340,
+      "perdas_sessao": 7,
+      "motivo_perda_sessao": "TTL",
+      "perda_sessao_em_ms": 4521031,
+      "origem": "executor_esp",
+      "autoriza_execucao": false,
+      "suportado": true,
+      "recente": true,
+      "reinicios_observados": 0
+    },
+    "expressao": {
+      "suportado": true,
+      "confirmada": false,
+      "motivo": "aguardando_evento",
+      "fase": [
+        0,
+        0,
+        0
+      ],
+      "evidencia": "eack_apos_render",
+      "prova_visual_humana": false,
+      "autoriza_execucao": false
+    },
+    "som": {
+      "resultados_pendentes": [],
+      "suportado": true,
+      "envio_suportado": true,
+      "solicitacao_confirmada": false,
+      "motivo": "ERROR 1 SOM_OCUPADO",
+      "prova_auditiva": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "hack": {
+      "suportado": true,
+      "aplicacao_confirmada": true,
+      "ativo": false,
+      "motivo": "overlay_confirmado_pelo_esp",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": true,
+      "aplicacao_confirmada": false,
+      "motivo": "aguardando_falha",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "rampa_suportada": true,
+      "duracao_maxima_ms": 5000,
+      "suportado": true,
+      "disponivel": true,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": true,
+      "em_andamento": false,
+      "motivo": "sem_confirmacao_pwm",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso",
+    "interrompido_por_protecao": false,
+    "risco_detectado": "",
+    "protecao": {
+      "suportado": true,
+      "recente": false,
+      "consulta_id": 3,
+      "alerta_suportado": true,
+      "busca_renovada": true,
+      "leituras": {
+        "frente": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 880,
+          "status": 0
+        },
+        "borda": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 877,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 15,
+        "motor_origem_seq": 0,
+        "risco": "OBSTACULO",
+        "fase": "BUSCANDO",
+        "reflexo_ativo": true,
+        "reacao_expressiva": "irritada",
+        "tentativa_busca": 2,
+        "vigia_ativa": true,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": false
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    }
+  },
+  "encerrado": true,
+  "prova_deslocamento": false
+}

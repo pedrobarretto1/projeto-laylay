@@ -439,6 +439,13 @@ def construir_contrato_semantico_evento(
         motivo_supressao_reacao=motivo_supressao_reacao,
         reacao_validada={},
     )
+    corporal = evidencia.get("observacao_corporal")
+    if (evento.get("origem") == "experiencia_corporal" and isinstance(corporal, Mapping)
+            and corporal.get("autoriza_execucao") is False):
+        contrato["observacao_corporal"] = dict(corporal)
+        contrato["conteudos_obrigatorios"] = [*contrato["conteudos_obrigatorios"],
+            "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+            "não confundir expressão de incômodo com dor física ou dano medidos"]
     if "proposta_reacao" in evidencia and not motivo_supressao_reacao:
         reacao, supressao = validar_proposta_reacao_evento(
             evidencia["proposta_reacao"], foco=ancora_factual,
@@ -551,6 +558,14 @@ def _construir_direcao_social_evento(
         permite_humor = True
         motivo = "novidade observada permite curiosidade compartilhada"
         confianca_social = confianca_evento
+    elif (evento.get("origem") == "experiencia_corporal"
+          and isinstance(evidencia.get("observacao_corporal"), Mapping)):
+        fase = evidencia["observacao_corporal"].get("fase_manuseio")
+        objetivo, atitude = "reagir_brevemente", "reclamona_fofa"
+        emocao, nivel = ("irritada", 1) if fase in {"DESCONFIADA", "RESMUNGO"} else ("calma", 1)
+        permite_humor = True
+        motivo = "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário"
+        confianca_social = confianca_evento
     else:
         objetivo = "reagir_brevemente"
         atitude = "natural"
@@ -634,6 +649,7 @@ def construir_contrato_semantico_fala(
     funcao_comunicativa: Mapping[str, Any] | None = None,
     mente: Mapping[str, Any] | None = None,
     falas_recentes: Iterable[str] = (),
+    explicacao_ocorrencia: Any = None,
 ) -> dict[str, Any]:
     """Consolida contexto, continuidade e pareceres num contrato de fala."""
     leitura = dict(turno or {})
@@ -1056,6 +1072,32 @@ def construir_contrato_semantico_fala(
     evento = dict(planejamento.get("evento_emocional_causal") or {})
     if evento:
         resultado["evento_emocional_causal"] = evento
+    if (leitura.get("modalidade") in {"deliberacao", "pergunta"}
+        and leitura.get("autoriza_execucao") is False
+        and not planejamento.get("requer_execucao") and not planejamento.get("comandos")):
+        from mente_laylay.memoria_mental.decisao_observada import ExplicacaoOcorrencia
+        from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
+        from mente_laylay.cognicao.referencias_linguagem import referencia_explicacao_propria
+        referente_explicativo = referencia_explicacao_propria(texto)
+        evidencia = recuperar_evidencia_da_fala(texto, estado)
+        citacao_literal = any(len(_normalizar(f.get("fala", ""))) >= 8
+            and _normalizar(f.get("fala", "")) in _normalizar(str(texto)) for f in evidencia.get("falas", []))
+        if evidencia and (citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia")):
+            resultado["evidencia_fala_historica"] = evidencia
+            resultado["texto_consulta_historica"] = str(texto or "").strip()
+        elif explicacao_ocorrencia is not None:
+            # Uma fonte fornecida mas inválida não vira ausência de contrato.
+            # O juiz compartilhado mantém conclusão fechada, sem inventar causa.
+            resultado["explicacao_ocorrencia"] = explicacao_ocorrencia if (
+                type(explicacao_ocorrencia) is ExplicacaoOcorrencia
+                and explicacao_ocorrencia.turno_consulta == str(resultado.get("turno_id"))
+                and explicacao_ocorrencia.texto_consulta == str(texto)) else None
+        elif referente_explicativo:
+            # Obrigação de fonte independe do sucesso do lookup. O host
+            # conserva a consulta sem atribuir um episódio de outro owner,
+            # negar uma ação ou reconstruir motivo pelo estado presente.
+            resultado["explicacao_ocorrencia"] = ExplicacaoOcorrencia(
+                str(resultado["turno_id"]), str(texto), (), "ausente") if resultado.get("turno_id") else None
     return resultado
 
 
@@ -1102,6 +1144,12 @@ def formatar_contrato_fala_para_prompt(
     dados = dict(contrato or {})
     if not dados:
         return ""
+    if "explicacao_ocorrencia" in dados:
+        from mente_laylay.cognicao.explicacao_fala_historica import formatar_explicacao_ocorrencia
+        return formatar_explicacao_ocorrencia(dados)
+    if "evidencia_fala_historica" in dados:
+        from mente_laylay.cognicao.explicacao_fala_historica import formatar_realizacoes_historicas
+        return formatar_realizacoes_historicas(dados)
     evento = dict(dados.get("evento_emocional_causal") or {})
     linha_emocional = (
         f"Expressão emocional vigente: {evento.get('emocao')}, nível {evento.get('nivel')}; "

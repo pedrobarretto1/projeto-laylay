@@ -13,6 +13,7 @@ from mente_laylay.autonomia.executor_comum import (
 )
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
 from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
+from mente_laylay.cognicao.referencias_linguagem import separar_tipo_e_alvo_nomeado
 from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_variada
 from mente_laylay.personalidade.higiene_fala import limpar_titulo_musical_para_fala
 
@@ -83,16 +84,26 @@ def _pesquisar(
         print("🎵 [AUTONOMIA] MUSIC_SEARCH bloqueado: sem pedido musical explícito.")
         return ResultadoDespacho.concluido(False)
 
-    consulta_pedida = str(
-        params.get("query") or params.get("musica") or params.get("nome") or texto_original
-    ).strip()
+    # Campos estruturados já são operandos da cognição. Ausência permite a
+    # compatibilidade com texto livre; vazio explícito não autoriza inventar
+    # outro alvo a partir da fala. Isto não é permissão nem receipt.
+    campo_consulta = next((campo for campo in ("query", "musica", "nome") if campo in params), None)
+    consulta_pedida = str(params.get(campo_consulta) or "").strip() if campo_consulta else str(texto_original or "").strip()
     query = consulta_pedida
+    if campo_consulta is not None:
+        alvo, tipo, _ = separar_tipo_e_alvo_nomeado(
+            query, ("musica", "música", "faixa", "som", "cancao", "canção"),
+        )
+        # Apenas valida ausência de complemento; não troca o argumento por
+        # essa leitura. "Uma música" não identifica uma faixa reproduzível.
+        if tipo and not alvo:
+            query = ""
     normalizar = _get(ctx, "_normalizar_query_musical")
-    if callable(normalizar):
+    if campo_consulta is None and callable(normalizar):
         query = normalizar(query or texto_original)
     resolver_estilo = _get(ctx, "_resolver_query_musical_por_estilo")
     perfil: Dict[str, Any] = {}
-    if callable(resolver_estilo):
+    if query and callable(resolver_estilo):
         try:
             try:
                 perfil = resolver_estilo(query, texto_original, params)

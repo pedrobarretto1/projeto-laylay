@@ -1,0 +1,22 @@
+..........FF.....                                                        [100%]
+================================== FAILURES ===================================
+____ test_observacao_real_pode_ser_considerada_apos_conversa_ociosa[corpo] ____
+scripts\tests\test_presenca_conversa_ociosa.py:13: in test_observacao_real_pode_ser_considerada_apos_conversa_ociosa
+    assert d['decisao']=='sugerir',d
+E   AssertionError: {'id': 'ini-1000000', 'assinatura': 'observacao:corpo', 'tipo': 'presenca_contexto_util', 'origem': 'experiencia_corporal', ...}
+E   assert 'aguardar' == 'sugerir'
+E     
+E     - sugerir
+E     + aguardar
+___ test_observacao_real_pode_ser_considerada_apos_conversa_ociosa[rotina] ____
+scripts\tests\test_presenca_conversa_ociosa.py:13: in test_observacao_real_pode_ser_considerada_apos_conversa_ociosa
+    assert d['decisao']=='sugerir',d
+E   AssertionError: {'id': 'ini-1000000', 'assinatura': 'observacao:rotina', 'tipo': 'presenca_contexto_util', 'origem': 'observador_janelas', ...}
+E   assert 'aguardar' == 'sugerir'
+E     
+E     - sugerir
+E     + aguardar
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_presenca_conversa_ociosa.py::test_observacao_real_pode_ser_considerada_apos_conversa_ociosa[corpo]
+FAILED scripts/tests/test_presenca_conversa_ociosa.py::test_observacao_real_pode_ser_considerada_apos_conversa_ociosa[rotina]
+2 failed, 15 passed in 3.73s

@@ -1,0 +1,19 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+______ test_composicao_instalada_resolve_executa_publica_e_conhece_corpo ______
+scripts\tests\test_corpo_motor.py:268: in test_composicao_instalada_resolve_executa_publica_e_conhece_corpo
+    assert retrato["intent"] == "CORPO_MOVER" and retrato["confirmado"] is True
+           ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+_______ test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro _______
+scripts\tests\test_som_corporal.py:283: in test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro
+    assert pedido["_laylay_tratamento_operacional"]["confirmado"] is False
+E   assert None is False
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_motor.py::test_composicao_instalada_resolve_executa_publica_e_conhece_corpo
+FAILED scripts/tests/test_som_corporal.py::test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro
+2 failed in 2.81s

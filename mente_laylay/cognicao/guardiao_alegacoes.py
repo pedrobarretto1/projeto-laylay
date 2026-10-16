@@ -489,6 +489,10 @@ def validar_alegacoes_da_fala(
     """Remove somente alegações que exigiriam observação ou mecanismo ausente."""
     contrato = dict(plano or {})
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
+    from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
+    historica = avaliar_fala_historica(original, plano=contrato)
+    if historica is not None:
+        return historica
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     comandos_normalizados = _comandos_normalizados(contrato)
     confirmados = [item for item in comandos_normalizados if item.get("confirmado") is True]
@@ -508,6 +512,24 @@ def validar_alegacoes_da_fala(
         "ia_final", "resposta_ia", "conversa", "canal_voz",
     }
     problemas: list[str] = []
+    corporal = dict(contrato.get("contrato_fala") or {}).get("observacao_corporal")
+    if isinstance(corporal, dict):
+        # IMU fundamenta postura e rotação. Não mede dor, toque, colo, bateria
+        # nem deslocamento: a autora não pode promover essas hipóteses a fatos.
+        if re.search(r"\b(?:dor|doendo|machuc\w*|ferid\w*|bateria|cansad\w*|exaust\w*|"
+                     r"ca[ií]|caindo|colis[aã]o|bati|andei|girei|percorri|recuei|escapei|"
+                     r"no\s+(?:seu\s+)?colo|me\s+segurando)\b",original,re.I):
+            problemas.append("sensacao_corporal_sem_medida")
+        if re.search(r"\b(?:vou|consegui)\s+(?:andar|girar|recuar|sair)|"
+                     r"\b(?:me\s+)?(?:solta|coloca|ponha|para\s+de|pare\s+de)\b",original,re.I):
+            problemas.append("reacao_corporal_promete_ou_ordena_acao")
+        if re.search(r"\b(?:culpa|burro|idiota|odeio|malvado|derrubou|empurrou)\b",original,re.I):
+            problemas.append("reacao_corporal_acusatoria")
+        if corporal.get("tipo_observacao") == "protecao_sensorial" and re.search(
+                r"\b(?:encontrei|achei)\s+(?:uma\s+)?sa[ií]da\b|"
+                r"\b(?:agora\s+(?:est[aá]|ficou|estou)\s+(?:tudo\s+)?segur[oa]|"
+                r"perigo\s+(?:passou|acabou)|(?:livre|longe)\s+da\s+borda)\b",original,re.I):
+            problemas.append("resolucao_fisica_sem_medida")
     mantidas: list[str] = []
     removidas: list[str] = []
     oferta_dependente_removida = False

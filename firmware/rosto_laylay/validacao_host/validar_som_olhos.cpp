@@ -9,6 +9,8 @@ int main(int argc, char **argv) {
   renderizar(tempoSimulado);
   processarLinha("SCAPS 1 abcd0123");
   assert(Serial.saida.find("SOM1")!=std::string::npos);
+  processarLinha("SENCAPS 1 abcd0123");
+  assert(Serial.saida.find("ENVIO1")!=std::string::npos);
   processarLinha("SOUND 1 abcd0123 1 0");
   assert(somExpressivoAtivo && frequenciasPwm[6]==1400 && dutiesPwm[6]==128);
   for(int p:PINOS_MOTOR) assert(dutiesPwm[p]==0 && frequenciasPwm[p]==1000);
@@ -28,6 +30,15 @@ int main(int argc, char **argv) {
   assert(!somExpressivoAtivo && !pinosPwm[6]);
   tempoSimulado=4200; processarLinha("SOUND 1 abcd0123 4 2"); assert(somExpressivoAtivo);
   invalidarSessao(); assert(!somExpressivoAtivo && niveisGpio[6]==LOW);
+  tempoSimulado=6000;
+  processarLinha("HELLO 1 abcd0124");
+  processarLinha("FACE 1 abcd0124 1 0 1 0 3500"); renderizar(tempoSimulado);
+  processarLinha("SOUND 1 abcd0124 1 8");
+  assert(somExpressivoAtivo && frequenciasPwm[6]==1550 && dutiesPwm[6]==128);
+  tempoSimulado+=80; atualizarSomExpressivo(tempoSimulado);
+  assert(!somExpressivoAtivo && !pinosPwm[6] && niveisGpio[6]==LOW);
+  processarLinha("SOUND 1 abcd0124 1 8"); assert(!somExpressivoAtivo);
+  invalidarSessao();
   // Centro inferior do rosto deve ficar sem boca em todas as emoções.
   conectado=true; demonstracao=false; painelHack=0; atividade=false; glitch=false;
   proximaPiscada=proximoOlhar=10000000;

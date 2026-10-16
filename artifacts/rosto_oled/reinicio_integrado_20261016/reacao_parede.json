@@ -1,0 +1,247 @@
+{
+  "erro": "RuntimeError(\"montagem_sem_parede_e_inferior_seguro:{'suportado': True, 'recente': True, 'consulta_id': 1, 'alerta_suportado': True, 'busca_renovada': False, 'leituras': {'frente': {'estado': 'INVALIDA', 'mm': None, 'idade_ms': 225, 'status': 4}, 'borda': {'estado': 'VALIDA', 'mm': 26, 'idade_ms': 228, 'status': 0}}, 'protecao': {'incidente_id': 4, 'motor_origem_seq': 0, 'risco': 'NENHUM', 'fase': 'PRONTA', 'reflexo_ativo': False, 'reacao_expressiva': 'nenhuma', 'tentativa_busca': 0, 'vigia_ativa': False, 'limite_borda_mm': 130, 'limite_obstaculo_mm': 100, 'origem': 'executor_protecao_esp', 'autoriza_execucao': False, 'rotacao_medida': False, 'cobertura': 'frente_e_borda_dianteira', 'recente': True}, 'origem': 'owner_usb_dist_guard', 'autoriza_execucao': False}\")",
+  "amostras": [],
+  "trilha": [
+    {
+      "t": 0.017,
+      "tx": "HELLO 1 47eb1eb9"
+    },
+    {
+      "t": 0.125,
+      "rx": "READY 1 47eb1eb9 SSD1306 128 64\n"
+    },
+    {
+      "t": 0.125,
+      "tx": "CAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.235,
+      "rx": "CAPS 1 47eb1eb9 HACK1\n"
+    },
+    {
+      "t": 0.235,
+      "tx": "GCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.343,
+      "rx": "GCAPS 1 47eb1eb9 GLITCH1\n"
+    },
+    {
+      "t": 0.343,
+      "tx": "MCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.454,
+      "rx": "MCAPS 1 47eb1eb9 MOTOR1\n"
+    },
+    {
+      "t": 0.454,
+      "tx": "LCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.564,
+      "rx": "LCAPS 1 47eb1eb9 LONGO1\n"
+    },
+    {
+      "t": 0.564,
+      "tx": "SCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.672,
+      "rx": "SCAPS 1 47eb1eb9 SOM1\n"
+    },
+    {
+      "t": 0.673,
+      "tx": "SENCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.782,
+      "rx": "SENCAPS 1 47eb1eb9 ENVIO1\n"
+    },
+    {
+      "t": 0.782,
+      "tx": "ECAPS 1 47eb1eb9"
+    },
+    {
+      "t": 0.893,
+      "rx": "ECAPS 1 47eb1eb9 OLHOS2\n"
+    },
+    {
+      "t": 0.893,
+      "tx": "RCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 1.0,
+      "rx": "RCAPS 1 47eb1eb9 RAMPA1\n"
+    },
+    {
+      "t": 1.001,
+      "tx": "DCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 1.107,
+      "rx": "DCAPS 1 47eb1eb9 SENSORES2\n"
+    },
+    {
+      "t": 1.107,
+      "tx": "PCAPS 1 47eb1eb9"
+    },
+    {
+      "t": 1.216,
+      "rx": "PCAPS 1 47eb1eb9 VIGIA1\n"
+    },
+    {
+      "t": 1.216,
+      "tx": "ICAPS 1 47eb1eb9"
+    },
+    {
+      "t": 1.326,
+      "rx": "ICAPS 1 47eb1eb9 IMU1\n"
+    },
+    {
+      "t": 1.326,
+      "tx": "FACE 1 47eb1eb9 1 0 1 0 3500"
+    },
+    {
+      "t": 1.438,
+      "rx": "ACK 1 47eb1eb9 1 0 1 0\n"
+    },
+    {
+      "t": 1.438,
+      "tx": "HEALTH 1 1"
+    },
+    {
+      "t": 1.55,
+      "rx": "HEALTH 1 1 70ba726e27ac 124efe66 1 24777231 280180 275148 4 TRANSPORTE 24716122\n"
+    },
+    {
+      "t": 1.55,
+      "tx": "IMU 1 1"
+    },
+    {
+      "t": 1.659,
+      "rx": "IMU 1 1 104 PRONTA 8 1 122 -18 82879 8 1036 ESTAVEL 152 TRANQUILA 0 24777360 0\n"
+    },
+    {
+      "t": 1.659,
+      "tx": "SENTRY 1 47eb1eb9 1 0 1200"
+    },
+    {
+      "t": 1.768,
+      "rx": "SENTRYACK 1 47eb1eb9 1 0\n"
+    },
+    {
+      "t": 1.768,
+      "tx": "DIST 1 1"
+    },
+    {
+      "t": 1.877,
+      "rx": "DIST 1 1 FRENTE 48 INVALIDA -1 7 4 BORDA 49 VALIDA 26 10 0\n"
+    },
+    {
+      "t": 1.877,
+      "tx": "GUARD 1 1"
+    },
+    {
+      "t": 1.988,
+      "rx": "GUARD 1 1 47eb1eb9 4 0 NENHUM PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 1.988,
+      "tx": "ACTIVITY 1 47eb1eb9 1 0 1200"
+    },
+    {
+      "t": 2.098,
+      "rx": "AACK 1 47eb1eb9 1 0\n"
+    },
+    {
+      "t": 2.105,
+      "tx": "SOUND 1 47eb1eb9 1 0"
+    },
+    {
+      "t": 2.206,
+      "rx": "SOUNDACK 1 47eb1eb9 1 0\n"
+    },
+    {
+      "t": 2.208,
+      "tx": "STOP 1 47eb1eb9 1"
+    },
+    {
+      "t": 2.315,
+      "rx": "SACK 1 47eb1eb9 1\n"
+    },
+    {
+      "t": 2.315,
+      "tx": "STOP 1 47eb1eb9 2"
+    },
+    {
+      "t": 2.425,
+      "rx": "SACK 1 47eb1eb9 2\n"
+    },
+    {
+      "t": 2.425,
+      "tx": "GOODNIGHT 1 47eb1eb9 1"
+    },
+    {
+      "t": 2.532,
+      "rx": "NACK 1 47eb1eb9 1\n"
+    }
+  ],
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso",
+    "interrompido_por_protecao": false,
+    "risco_detectado": "",
+    "protecao": {
+      "suportado": true,
+      "recente": true,
+      "consulta_id": 1,
+      "alerta_suportado": true,
+      "busca_renovada": false,
+      "leituras": {
+        "frente": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 334,
+          "status": 4
+        },
+        "borda": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 337,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 4,
+        "motor_origem_seq": 0,
+        "risco": "NENHUM",
+        "fase": "PRONTA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "nenhuma",
+        "tentativa_busca": 0,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    }
+  },
+  "encerrado": true
+}

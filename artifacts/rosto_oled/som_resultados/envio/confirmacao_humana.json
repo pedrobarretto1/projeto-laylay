@@ -1,0 +1,10 @@
+{
+  "data": "2026-10-12",
+  "origem": "resposta direta de Pedro ao teste na Laylay reaberta",
+  "comando": "despausa a música",
+  "relato": "Sim, ouvi o bip",
+  "audicao_confirmada": true,
+  "estado_final_player_confirmado": false,
+  "confirma_audicao_da_sonda_direta": false,
+  "semantica_som": "envio sem observacao do efeito"
+}

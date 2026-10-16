@@ -89,7 +89,7 @@ def test_busca_usa_uid_estavel_em_vez_de_numero_de_sequencia(
         def logout(self):
             return "BYE", []
 
-    monkeypatch.setattr(modulo_gmail.imaplib, "IMAP4_SSL", lambda *_args: _Conexao())
+    monkeypatch.setattr(modulo_gmail.imaplib, "IMAP4_SSL", lambda *_args, **_kwargs: _Conexao())
     gmail = GmailMental(
         arquivo_estado=str(tmp_path / "gmail.json"),
         usuario="pessoa@example.com",

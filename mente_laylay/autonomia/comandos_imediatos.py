@@ -1153,6 +1153,12 @@ class ComandosImediatosRuntime:
                     ),
                 )
 
+        detectar_email = ns.get("_email_detectar")
+        comando_email = detectar_email(texto) if callable(detectar_email) else None
+        if isinstance(comando_email, dict) and callable(ns.get("executar_intencao")):
+            _executar_intencao_com_contrato(ns, comando_email, texto, origem="prioritario_email")
+            return True
+
         caixa_entrada = ns.get("_caixa_entrada_pessoal_runtime")
         composto_caixa_agenda = segmentar_composto_caixa_agenda(texto)
         if (

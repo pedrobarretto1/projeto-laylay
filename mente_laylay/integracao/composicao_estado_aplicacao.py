@@ -11,6 +11,7 @@ from mente_laylay.integracao.estado_contexto_runtime import criar_estado_context
 
 
 DEPENDENCIAS_ESTADO_CONTEXTO = (
+    "_email_runtime",
     "_conversa_estado_get", "_modo_jogo_runtime", "_pesquisa_contextual_runtime",
     "_normalizar_texto_curto", "_normalizar_texto_com_apelidos",
     "_resumo_mente_integrada_para_prompt", "enviar_mensagem", "_extrair_json_da_ia",
@@ -36,7 +37,7 @@ DEPENDENCIAS_ESTADO_CONTEXTO = (
 )
 
 DEPENDENCIAS_ADAPTADORES_APLICACAO = (
-    "_registrar_mente_curta_base", "_motor_aprendizado_runtime",
+    "_registrar_mente_curta_base", "_derivar_mente_curta", "_motor_aprendizado_runtime", "_corpo_motor_runtime",
     "_rede_associativa_runtime", "print",
     "_registrar_resultado_execucao_base", "_estado_compartilhado_runtime",
     "_especialista_neural_comandos_runtime",

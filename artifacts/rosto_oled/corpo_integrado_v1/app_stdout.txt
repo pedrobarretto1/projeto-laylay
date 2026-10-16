@@ -1,0 +1,32 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:52194 | sessão=e69be1d3 pid=29484
+🖥️ [TERMINAL 2] interface iniciada | sessão=e69be1d3 pid=1924 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=e69be1d3
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120
+🎙️ [OUVIDO:NÍVEL] aguardando voz | pico=0.0000 limiar=0.0120

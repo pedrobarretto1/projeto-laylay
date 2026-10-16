@@ -47,6 +47,7 @@ def test_fallback_local_preserva_intensidade_emocional_na_velocidade() -> None:
 
     runtime = VozRuntime(
         fallback_fala="fallback", voice="voz",
+        permitir_fallback_local=True,
         edge_tts_mod=None, sounddevice_mod=None, soundfile_mod=None,
         pyttsx3_mod=Pyttsx,
         limpar_para_voz_cb=lambda texto: texto,

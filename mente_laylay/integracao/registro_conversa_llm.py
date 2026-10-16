@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import threading
 from typing import Any, Callable, Mapping, Protocol, Sequence, runtime_checkable
+from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
 
 
 def _copiar_mensagens(mensagens: Sequence[Mapping[str, Any]] | None) -> tuple[dict[str, Any], ...]:
@@ -18,6 +19,15 @@ class PacotePrompt:
     mensagens: tuple[dict[str, Any], ...]
     prompt_sistema: str = field(default="", repr=False)
     contexto_fechado: bool = False
+    reserva_saida_tokens: int = 0
+    contrato_saida: ContratoSaidaEstruturada | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        # Reserva do formato definida pelo host, não pelo texto da LLM.
+        if type(self.reserva_saida_tokens) is not int or not 0 <= self.reserva_saida_tokens <= 2048:
+            raise ValueError("reserva de saída exige inteiro entre 0 e 2048")
+        if self.contrato_saida is not None and not isinstance(self.contrato_saida, ContratoSaidaEstruturada):
+            raise TypeError("contrato de saída exige codec do host")
 
 
 @dataclass(frozen=True)
@@ -35,6 +45,14 @@ class PedidoModelo:
     tipo_chamada: str = "principal"
     classe_timeout: str = "normal"
     contexto_fechado: bool = False
+    contrato_saida: ContratoSaidaEstruturada | None = field(default=None, repr=False)
+    reserva_saida_tokens: int = 0
+
+    def __post_init__(self) -> None:
+        if type(self.reserva_saida_tokens) is not int or not 0 <= self.reserva_saida_tokens <= 2048:
+            raise ValueError("reserva de saída exige inteiro entre 0 e 2048")
+        if self.contrato_saida is not None and not isinstance(self.contrato_saida, ContratoSaidaEstruturada):
+            raise TypeError("contrato de saída exige codec do host")
 
     @classmethod
     def criar(
@@ -112,7 +130,8 @@ class RegistroPreparacaoConversa:
         pacote = self.servico.preparar_pacote(texto)
         if not isinstance(pacote, PacotePrompt):
             raise RuntimeError("preparador da conversa devolveu um pacote inválido")
-        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema, pacote.contexto_fechado)
+        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema,
+                            pacote.contexto_fechado, pacote.reserva_saida_tokens, pacote.contrato_saida)
 
     def preparar_instrucao_rapida(self, texto: str) -> str:
         preparar = getattr(self.servico, "preparar_instrucao_rapida", None)
@@ -140,7 +159,8 @@ class RegistroPreparacaoConversa:
         pacote = preparar(mensagens, turno_id=turno_id)
         if not isinstance(pacote, PacotePrompt):
             raise RuntimeError("projeção do modelo devolveu um pacote inválido")
-        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema, pacote.contexto_fechado)
+        return PacotePrompt(_copiar_mensagens(pacote.mensagens), pacote.prompt_sistema,
+                            pacote.contexto_fechado, pacote.reserva_saida_tokens, pacote.contrato_saida)
 
     def diagnostico(self) -> dict[str, Any]:
         bruto = dict(self.servico.diagnostico() or {})
@@ -186,6 +206,8 @@ class RegistroModeloLLM:
             tipo_chamada=str(opcoes.pop("_tipo_chamada", "principal") or "principal"),
             classe_timeout=str(opcoes.pop("_classe_timeout", "normal") or "normal"),
             contexto_fechado=bool(opcoes.pop("_contexto_fechado", False)),
+            contrato_saida=opcoes.pop("_contrato_saida", None),
+            reserva_saida_tokens=opcoes.pop("_reserva_saida_tokens", 0),
         )
         return self.executar(pedido).texto
 

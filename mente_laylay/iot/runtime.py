@@ -7,7 +7,8 @@ import re
 import time
 from typing import Any, Callable, Dict
 
-from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto, normalizar_texto_basico
+from mente_laylay.cognicao.gramatica_operacional import interpretar_relacao_valor_ajuste, localizar_quantidade_ajuste
 from mente_laylay.cognicao.evidencia_operacional import (
     autoriza_candidato_iot_direto,
     bloqueia_controle_iot_por_modalidade,
@@ -452,21 +453,45 @@ class RuntimeIoT:
             ajuste_brilho_relativo = "aumentar"
         elif re.search(r"\b(?:diminui|diminuir|diminua|abaixa|abaixar|abaixe|reduz|reduzir|reduza|baixa|baixar|baixe)\b", t):
             ajuste_brilho_relativo = "diminuir"
-        # Um número ligado explicitamente ao brilho representa o valor final,
-        # mesmo quando a frase também usa "aumenta" ou "diminui".
-        # Ex.: "aumenta o brilho para 100" significa 100, não +20.
+        # O número é destino com PARA/atribuição; EM com direção é magnitude.
+        # A gramática compartilhada preserva o papel antes de materializar valor.
+        fonte_valor = normalizar_texto_basico(texto_operacional)
         brilho_explicito = re.search(
             r"\b(?:brilho(?:\s+(?:da|do)\s+(?:lampada|luz))?[^\d]{0,20}|(?:lampada|luz)[^\d]{0,20})"
             r"(\d{1,3})(?:\s*(?:%|por cento))?\b",
-            t,
+            fonte_valor,
         )
-        if brilho_explicito and alvo_parametro:
-            valor = int(brilho_explicito.group(1))
+        # Dispositivo não tipa uma propriedade escalar: 'luz em um azul' tem
+        # artigo e cor. Extenso exige o parâmetro brilho explicitamente ligado.
+        recurso_brilho = re.search(r"\bbrilho\b", fonte_valor)
+        intervalo_valor = brilho_explicito.span(1) if brilho_explicito else (
+            localizar_quantidade_ajuste(fonte_valor, apos_recurso=recurso_brilho.end())
+            if recurso_brilho else None)
+        if intervalo_valor is not None and alvo_parametro:
+            ajuste = interpretar_relacao_valor_ajuste(fonte_valor, intervalo_valor=intervalo_valor)
+            if ajuste is None:
+                return None
+            permitidas = {"", "pontos percentuais"} if ajuste.modo == "relativo" else {"", "%", "por cento"}
+            if ajuste.unidade not in permitidas:
+                return None
+            valor = ajuste.valor
+            if ajuste.modo == "relativo":
+                anteriores = self._parametros_anteriores(estado, alvo_parametro)
+                atual = anteriores.get("brilho")
+                if type(atual) is not int or not 1 <= atual <= 100 or not 1 <= valor <= 100:
+                    return None  # Sem base conhecida, não inventar brilho70 para aplicar delta.
+                delta = valor if ajuste.direcao == "aumentar" else -valor
+                return {"intent": "IOT_CONTROL", "params": {
+                    "acao": "ajustar_brilho", "alvo": alvo_parametro,
+                    "valor": max(1, min(100, atual + delta)),
+                    "ajuste_relativo": ajuste.direcao, "delta": delta,
+                    "referencia_contextual": True}}
             if 1 <= valor <= 100:
                 return {
                     "intent": "IOT_CONTROL",
                     "params": {"acao": "ajustar_brilho", "alvo": alvo_parametro, "valor": valor},
                 }
+            return None  # Número inválido não pode cair no passo qualitativo padrão.
 
         if valor_eliptico and alvo_parametro:
             valor = int(valor_eliptico.group(1))

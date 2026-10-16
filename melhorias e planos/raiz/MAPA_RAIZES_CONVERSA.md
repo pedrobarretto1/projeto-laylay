@@ -6,6 +6,1203 @@ de produção. Mantém os IDs históricos do registro central.
 
 ## Base e escopo
 
+### Moldura inicial do ato e recuperação de voz — contratos independentes — 14/10/2026
+
+Anexo real reproduz duas raízes, sem consolidar só por aparecerem juntas:
+(a) “e” inicial impede classificação/segmentação e também leitura contextual;
+(b) falha de síntese troca implicitamente a identidade vocal, inclusive no meio
+da resposta. Controle sem conector funciona na mesma sessão; troca de voz está
+no transporte, não na emoção nem na interpretação de comando da LLM.
+
+Uma projeção linguística canônica reutilizada preserva fonte e todas as guardas;
+sem referência válida/valor legível não materializa elipse nem busca musical.
+Voz preserva Francisca e só aceita alternativas explicitamente configuradas;
+falha mantém texto/diagnóstico, não simula áudio entregue. Cinco arquivos de
+produção, sem trocar modelo/configuração ou habilitar rede neural.
+
+78 contratos de conector GREEN; 54/54 instalados; regressão36 módulos com
+1.939 GREEN/2 RED de segmentação musical anteriores. Síntese real Francisca
+decodificada (4,104s), sem reprodução ou escuta. Cleanup do instrumento falhou
+depois; não equivale a falha de síntese nem a processo global GREEN. Arquivos
+selecionados estáveis, agregado da worktree alterado por edições paralelas fora
+do recorte; não afirmar validação global/main/física. Detalhes e backlog do log:
+`resultados_testes/comandos_e_voz_20261014/RELATORIO.md`.
+
+Navegação/pasta/latência/tipo de recurso, apresentação conjunta e alegações
+factuais continuam em suas fronteiras próprias; relatório distingue observação,
+hipótese e causa demonstrada. Não remover guardas para fazer ABRIR genérico,
+resultado sem identidade ou promessa sem receipt parecer sucesso.
+
+### Equivalência operacional — proveniência versus identidade do efeito — 14/10/2026
+
+Raiz das duas recusas legítimas de agenda demonstrada: operação, ação interna e
+prazo coincidem, mas detector e coordenador produzem rótulos diferentes de rota.
+Comparação inclui o metadado, executor não o usa para decidir efeito. Cinco
+resoluções reais e três controles da mesma rota separam isso de falha temporal
+ou operacional. Mesma família de equivalência já registrada, sem novos IDs.
+
+Owner único alterado: projeção compacta do adaptador compartilhado. O rótulo
+textual conhecido da agenda não identifica o efeito; comando executável não é
+alterado. Tipo incorreto, outros caminhos/intents, operação/alvo/valor/prazo/
+destino/extras e consumo duplicado continuam fechados. Não generalizar descarte
+para campos sem contrato auditado; sem outro parser ou mudança de executor.
+
+29/29 focados; 40/40 instalados +14 controles adversariais; 32/32+57/57 vizinhos.
+Regressão29 módulos: 1.610 GREEN/2 RED conhecidos, zero erros/skips. 519 fontes/
+entradas estáveis; sem main/modelo real/voz/persistência de agenda/disparo físico.
+Não encerrar cadeia física ou sistema inteiro. Artefato:
+`resultados_testes/proveniencia_agenda_20261014/RELATORIO.md`.
+
+Próxima primeira fronteira continua sendo musical+negação fundidos pelo
+classificador (dois REDs preservados), não igualdade desta projeção. Gramática
+musical permanece hipótese de owner para investigação separada.
+
+### Integridade da fonte — resolução por ato não recebe a cópia classificada — 14/10/2026
+
+Raiz demonstrada do grupo de títulos: fonte e detector corretos, mas construtor
+de autorização substituía argumento original por minúsculas. 11 RED prévios;
+um owner alterado (escopo_autorizacao), coordenadas compartilhadas reutilizadas,
+fonte/frame originais e igualdade operacional preservada. Sem parser novo ou
+expansão de autoridade. Fixtures passam a comparar a mesma fonte, mantendo
+segurança/contagem/estado; fonte inexistente ou truncada não chama resolver.
+
+1.501 GREEN/2 RED em27 módulos; 519 fontes/entradas estáveis. Painel40 mantém
+só os dois REDs de agenda (rota_original), títulos admitidos. 32/32+57/57
+controles GREEN; sem main/geração/efeito físico/treino/commit. Detalhes:
+`resultados_testes/fonte_literal_ato_20261014/RELATORIO.md`.
+
+Os dois REDs unitários são outra primeira fronteira: musical+negação vira um
+ato antes da resolução. Mesmo resultado com fonte anterior e original. Vincular
+à família histórica de atos mistos como evidência nova do classificador, não
+declarar raiz compartilhada com o erro de geração sem falsificação. Gramática
+musical é hipótese de owner; nenhum patch aqui. Agenda/proveniência continua
+investigação separada. Não apagar esses REDs para chamar regressão de verde.
+
+### Operação/valor — rejeição não autoriza trocar domínio — 14/10/2026
+
+Continuação da pendência abaixo: barreira dependia de inteiro válido e perdia
+natureza do ajuste. 35 RED locais/8 instalados; forma e valor separados no owner
+puro. Fonte original nas portas preserva aspas. Próxima fronteira deu12 RED
+locais/8 instalados: geração principal ainda admitida sem resolução. Mesmo
+vínculo canônico por ato passa a ser obrigatório na atribuição elíptica única.
+Sem novo parser no porteiro; demais atos únicos desconhecidos continuam legado.
+
+1.432 GREEN/26 módulos, 519 fontes/entradas estáveis, 32/32+57/57 controles.
+Painel ampliado40 conserva quatro REDs de admissão legítima (36 GREEN):
+fonte por ato perde caixa literal; proveniência de rota integra identidade
+operacional. Duas diferenças de mecanismo, não quatro novas raízes. Ablação
+da exigência paramétrica mantém essas recusas e reabre as oito inseguras.
+Não relaxar vínculo nem apagar os REDs. Próxima fronteira: fonte original na
+resolução por ato; metadado operacional fica separado. Sem main/geração/efeito
+físico/treino/commit. Detalhes:
+`resultados_testes/natureza_parametrica_20261014/RELATORIO.md`.
+
+### Operação/valor — ligação à continuidade qualificada — 14/10/2026
+
+Mesmo contrato paramétrico, agora na elipse: owner só lia dígitos; 18 RED locais
+e 8 instalados, com controles de dígitos/autoridade. Leitura contextual delega
+inteiro à gramática compartilhada e a mesma forma protege ausência de vínculo.
+Fonte original segue ao valor, evitando sinal apagado. Um arquivo de produção:
+contexto_imediato; TTL/identidade/receipt/destino/autoridade não ampliados.
+
+1.321 GREEN/24 módulos; 26/26+32/32+57/57 instalados, quatro bindings e 519
+fontes/entradas estáveis. Sem main/geração/efeitos físicos; treino pausado.
+Não encerra a fronteira vizinha: quantidade inválida/unidade não admitida pode
+ser rejeitada no owner e convertida em busca musical pelo fluxo genérico.
+Mesma família, contrato de não trocar natureza após falha ainda aberto; não
+fundir com F1/atos mistos nem adicionar exceções de frases. Detalhes:
+`resultados_testes/quantidade_contextual_20261014/RELATORIO.md`.
+
+### Operação/valor — leitura de quantidade antes da proposta — 14/10/2026
+
+Mesma família paramétrica, primeira fronteira anterior: só dígitos próximos
+da propriedade eram lidos; por extenso/modificador causavam busca ou passo
+padrão.10 RED locais/10 instalados com22 controles; não depende de geração,
+TTL ou falha geral do executor. Um leitor puro de literal/intervalo na gramática
+compartilhada atende volume e brilho; owners mantêm unidade/faixa/base e
+autorização. Sem substituição global de palavras ou novo intent/roteador.
+
+Vizinho falsificou prefixo parcial e leitura de artigo/intensidade comocardinal;
+guardas/ligação à propriedade corrigidas antes da validação final.1.256 GREEN/
+23 módulos,32/32 ajustes+57/57 contexto+15/15 base instalados, quatro bindings
+e519 fontes/entradas estáveis. Sem prova física/main/modelo real; neural pausada.
+Elipse por extenso ainda exige ligação ao owner contextual qualificado. Sem
+resolução, atos mistos, F1 e extremos não encerrados. Relatório:
+`resultados_testes/quantidade_literal_20261014/RELATORIO.md`; nenhum commit.
+
+### Escopo por ato — continuação no pedido único resolvido — 14/10/2026
+
+Mesma raiz histórica da admissão agregada: ato único ainda aceitava intent
+correto com operação/alvo/valor/destino divergentes ou invocação repetida.
+Resolver já estava correto;7 RED locais e8 instalados. Reuso do vínculo
+canônico no validador, sem parser/protocolo de autoridade novo. Pedido sem
+resolução conserva contrato legado, não ganha certificado de correção.
+
+Compatibilidade de nível implícito e seletor web fica no adaptador existente.
+Separar dependência anterior de integridade da fonte: URI destruída pelo
+extrator, corrigida no próprio owner; não equivaler URLs por texto normalizado.
+Teste de vigência exige duas ordens para duas execuções, mantendo contagens
+e interrupção.852 GREEN/19 módulos,33/33 painel instalado,519 fontes/entradas
+estáveis;sem efeitos/main/modelo real. F1, atos mistos, extremos e parâmetros
+sem resolução continuam abertos. Evidências/escopo em
+`resultados_testes/escopo_ato_unico_20261014/RELATORIO.md`; nenhum commit.
+
+### Operação/valor — papel da quantidade e fonte literal — 14/10/2026
+
+Continuação da família paramétrica: extração explícita tratava EM10 como set10
+antes da IA. Gramática comum destino/delta agora atende volume e brilho;
+executor recebe magnitude validada, não escolhe sempre10. Faixa/unidade/base
+continuam com seus owners; autorização e receipt não são inferidos do número.
+
+Outra fronteira demonstrada na composição: normalização apagava `%`/decimal
+antes da validação e reintroduzia ação pelo contexto IoT. Fonte e recorte
+canônico preservados nas portas, com correção canônica de verbo mantida.
+Não confundir com erro geral do modelo, nem fundir com F1/atos mistos.
+
+1212 GREEN/2 RED na regressão20 módulos; extremos também RED com numérico
+anterior só em memória.22/22+57/57+15/15 na composição instalada sem efeitos,
+quatro bindings/518 fontes estáveis. Sem prova de main/desktop/voz/aparelhos;
+neural pausada. Próximo contrato é vínculo por ato e admissão paramétrica.
+Detalhes: `resultados_testes/papel_valor_ajuste_20261014/RELATORIO.md`.
+
+### Interpretação natural — evidência por fronteira, sem novo roteador — 14/10/2026
+
+Ensaio aprovado36dev/108 observações,163 testes focados,518 fontes estáveis;
+Qwen atual e produção preservados. spaCy só ambiente3.11 isolado. C35/36,
+C+POS31/36 retornos aceitos não medem acerto semântico; nenhuma promoção.
+Perda da decomposição negado/positivo antecede proposta em um grupo; geração
+de parâmetros não canônicos aparece em outro. São mecanismos a falsificar,
+não automaticamente uma raiz única nem falha de todas as habilidades.
+
+EM10 explícito→set10 foi observado na resolução singular direta; vincular à
+família de operação/valor e investigar owner anterior, sem misturar com elipse
+direcional já validada. Fixtures não-executor não qualificam continuidade;
+não remover esse contrato para melhorar benchmark. A singular não representa
+cadeia inteira, e concordância literal parcial não é semântica universal.
+Detalhes: `resultados_testes/interpretacao_natural_20261014/RELATORIO.md`.
+
+### Continuidade paramétrica — contrato de destino; vocabulário vizinho separado — 14/10/2026
+
+17 RED/36 controles provam falha no owner numérico, antes da IA. Direção só
+com PARA/PRA passa à atribuição absoluta na gramática compartilhada; EM10 não
+vira set10. Mesmo constructo protege ausência de referente. Primeiro212 GREEN/
+2 RED de “reduza”: outra fronteira, vocabulário canônico do ato já catalogado.
+RED próprio6/97; famílias reduzir/elevar nas duas listas globais, sem parser
+ou autorização local. Negação/pergunta/relato/hipótese/literal/conjuntos mantidos.
+
+334 focados,651 amplos+22 subtests,516 fontes estáveis,nove guardas finais;
+sonda instalada15/15 sem IA/efeitos. Confirma interpretação/encaminhamento,
+não volume físico, áudio ou desktop/main. Duas causas documentadas, dois
+blocos mínimos; sem TTL/modelo/treino/config/commit. F1 permanece separada.
+Relatório em resultados_testes/continuacao_operacional_20261014/RELATORIO_DESTINO_ABSOLUTO.md.
+
+### F1 — perífrase não determina a natureza do evento — 14/10/2026
+
+Geração principal inventa efeito “consegui abrir” e percepção “já vi arquivos”;
+passagem pelas guardas demonstrada. Candidato de perífrase/receipt chegou a103
+GREEN, mas falsificado por metáfora e criação de exemplo textual. Próprios
+blocos retirados, produção factual restaurada por patch localizado (diffzero).
+34 RED/71 controles preservados, sem xfail. Próxima fronteira: natureza do
+evento/recurso, modalidade e fonte específica antes da guarda; não lista de
+exceções. Duas coletas reais pelo runner não provaram essa correção e ainda
+negam acesso legítimo. F1 aberta; detalhes no registro e no relatório
+resultados_testes/runner_diagnostico/f1_perifrase_20261014/RELATORIO.md.
+
+### Continuidade operacional — destino absoluto não é variação relativa — 14/10/2026
+
+Novo contraste de Pedro:volume70 confirmado→“aumenta para100” não reconhecido
+após67s;“coloca em100” resolve. Mesma família paramétrica, não F1 nem TTS.
+Modalidade conhece o verbo; primeira lacuna local é gramática de atribuição
+sem nome do parâmetro. PARA/PRA exige destino; EM indica delta e não pode ser
+capturado como set. TTL300 permanece. Reproduzir no owner e na composição
+antes de ampliar a gramática; contexto qualificado não é efeito observado.
+
+### Integridade do pacote — material inaplicável antes do transporte — 13/10/2026
+
+Motor legítimo4105>4096 após seleção lexical.5 RED/8 controles:formatter oferece
+propostas com companhiaFalse. Seleção no owner:só False booleano omite gramática
+da saída vetada,mantendo realidade completa e regraJSON/veto. Um arquivo;
+ativo/indeterminado bytes anteriores,manual/objetivo/TTL/receipt preservados.
+19 GREEN focados. Recorte instalado10 no mesmo runner:modelo/config iguais,
+somente formatter entre baselines,instrução8430→7409,11 HTTP200/zero HTTP400,
+zero efeitos. Uma contingência de chamada duplicada e qualidade F1 permanecem.
+
+Ampliação516 GREEN/5 RED sobre516 fontes estáveis. Quatro falhas de receipt/
+aprendizado/cadeia instalada também com formatter anterior;perfil é dependência
+de ordem/ambiente (isoladoGREEN,após raizRED com anterior). Não ampliar o patch
+ou reescrever testes originais. Base rápida do teste novo corrigida para
+contrato canônico;nenhum novo xfail. Orçamento universal continua aberto para
+corpo ativo,fontes extensas e fala longa. Protocolo inaplicável removido,não
+sensores,realidade,segurança ou personalidade. Relatório protocolo_aplicavel_20261013
+em resultados_testes/runner_diagnostico;sem commit/treino/neural/modelo alterados.
+
+### Integridade do pacote — seleção lexical antes do orçamento — 13/10/2026
+
+Na investigação do overflow principal,primeira fronteira anterior demonstrada:
+catálogo usa substring longa;andar em mandar gera documentação corporal numa
+fala sobre e-mail. Mesmo matcher atende relevância,referência documental e
+detector de consulta.8 RED/17 controles em três domínios e montagem real.
+Owner do catálogo distingue palavra/família/plural/extensão;um arquivo de
+produção,sem retirar atomicidade de fonte/receipt ou mudar root/modelo/neural.
+136 GREEN/um xfail preexistente de citação. Caso principal instalado passa
+a HTTP200 e instrução8739→5994;corpo factual permanece,não prova efeito.
+Fontes estáveis por coleta,paralelo corporal entre coletas:não A/B isolado.
+
+Regressão17 módulos409 GREEN/2 RED/1 xfail,fonte estável. Dois REDs de hipótese/
+prioridade reproduzidos com matcher anterior;testes originais não modificados.
+Final3 entradas/4 HTTP200,zero falhas de geração,mas falas ainda confundem
+capacidade:transporte GREEN não é semântica GREEN. Vizinho motor legítimo
+4105>4096 mantém orçamento global/retry ineficaz ABERTOS. Protocolo corporal
+inativo é hipótese de material inaplicável,não candidato aplicado. Próxima
+fronteira é montagem proporcional sem cortar instrução atual,não outro patch
+por frase. Relatório `orcamento_raiz_20261013/RELATORIO.md` no runner_diagnostico.
+
+### Linguagem natural — projeção operacional, contingência ≠ intenção — 13/10/2026
+
+Candidato na família de integridade do pacote enviado, mesma investigação de
+ordem abaixo. Não AUT-01/publicação tardia, reordenação ou nova habilidade.
+8 RED/um controle antes: diagnóstico infla input em três domínios;
+HTTP400/500/circuito e jogo adiado produzem `NONE`; cliente conta falso sucesso.
+Owner de contexto projeta fontes operacionais completas e mantém diagnósticos
+fora do modelo; intérprete reusa projeção e recusa sentinelas antes do decoder.
+Fallback de transporte usa estados técnicos existentes. Getter root lê snapshot.
+Quatro arquivos de produção; foco/pendências/TTL/certeza negativa preservados,
+sem nova autorização, corte de instrução, mudança de modelo/limite ou treino.
+
+130 focados GREEN. Sonda instalada sem ablação: modelo atual HTTP200 no direto,
+user45989→5328 caracteres, fontes estáveis. Outras duas entradas dão timeout,
+agora explícito: não medir entendimento por isso. Falha400 injetada no HTTP
+instalado confirma None na análise, sentinela no circuito e sucesso=False na
+porta tipada; efeitos/main/voz isolados. Primeira ampla:2935 GREEN/uma falha
+legada que exigia NONE sem modelo em jogo. Revisada para adiamento técnico
+e motivo, preservada guarda de nenhuma chamada HTTP;59 focados GREEN.
+Ampla relevante final:2936 GREEN, um xfail histórico,30 subtests GREEN,
+zero falhas/erros, mas auditoria final detectou resumo_conteudo mudando durante
+o ensaio: preservar o paralelo, não chamar base congelada. Repetição novamente
+2936 GREEN, mas hashes de516 fontes detectam linguagem_email/resumo_conteudo/
+email_runtime alterados; exit2 para recusar base única. Não repetir indefinidamente.
+155 focados finais GREEN com516 fontes estáveis; quatro arquivos do candidato
+iguais à sonda real. Ampla congelada permanece pendente. Não suíte global, treino ou fechamento
+dos RED de volume fora deste recorte.
+
+Próxima fronteira: geração/timeouts/schema e acesso semântico seletivo para
+elipses, sem remover validação do domínio. Catálogo/pendência legítimos enormes
+ainda precisam orçamento no preparador; não declarar capacidade ilimitada.
+Remoção de faixa e cobertura completa dos compostos continuam fora deste patch.
+
+### Linguagem natural — contexto bruto antes da chamada semântica — 13/10/2026
+
+Comparação de ordem somente diagnóstica, produção preservada. Família provável:
+integridade do pacote enviado; mecanismo aqui é excesso de árvores, não antigo
+corte do prompt nem AUT-01 conclusão tardia. O analisador recebe mente inteira,
+com plano/turno/pareceres duplicados. HTTP400 real:16696 tokens para4096;
+fallback `NONE` não é resposta semântica. Painel14 estável no primeiro ensaio,
+mas sem gerações válidas, portanto não autoriza ranking de arquiteturas.
+
+Ablação de contexto só em subprocesso: referências/receipt/continuidade/
+pendências/identidade preservados, regras/catálogo/árbitro mantidos. Primeiro
+user45989→5020 caracteres; modelo passa a HTTP200. v2 teve timeouts/circuito
+e dois arquivos de e-mail mudando: evidência parcial, não culpa do paralelo.
+v3 recorte3 estável: direto local40ms vs IA3,206s; elipse volume não consulta
+IA no atual mas gera set40 e passa no árbitro no contraste4,199s; variante
+longa já chega à IA no atual. Quatro HTTP200, nenhuma execução. Saída da IA
+ainda apresenta parâmetros incompletos/string; estrutura/target/autoridade
+não certificados por esse aceite. Tempo amostral sem controle de aquecimento.
+
+Direção sustentada, não candidata aplicada: conservar híbrido, corrigir
+projeção/orçamento/proveniência contextual primeiro, depois provar oportunidade
+semântica seletiva e schema sem remover segurança do vínculo. Composto na API
+singular não prova cobertura do runtime completo. Remover faixa é operação
+ausente na rota natural, não se corrige com reordenação nem PLAYLIST_DELETE.
+28 testes GREEN de diagnóstico/guardas. Artefatos `ordem_interpretacao_*` em
+contexto_cruzado_20261013; sem main/físico/voz/neural/configuração alterados.
+
+### AUT-01 — derivação contextual isolada → CAS conjunto de conteúdo — 13/10/2026
+
+V271: sete RED canônicos. Guarda externa aceita, registro escreve resumo
+parcial, normalizador/foco intercala turno, base repõe mental antigo e
+mensagens/tópico contaminam a nova ocorrência. Texto igual com ID distinto
+também falha; sem LLM/captura, não é erro de modelo ou expiração de conteúdo.
+
+Owner reutiliza derivador nativo de mente curta e transação existente nos três
+domínios. Derivação fora do lock; CAS de ocorrência + retratos completos; retry
+limitado para writer do mesmo turno. Consumers existentes só após commit, sem
+callback externo sob lock. Factory genérica transmite ocorrência capturada a
+portas com contrato explícito na composição; não é autorização de execução.
+Quatro arquivos de produção, sem firmware/voz/neural/detectores.
+
+V275:24 instalados GREEN. Candidato posterior de cópia expôs RLock das coleções
+vivas no legado: V277 não alcançou fronteira; V278:16 falhas/130 erros em ampla,
+V279:dois RED causais. Entrada legada passa agora snapshot público; preservado
+isolamento. V280:181 GREEN; V281:27 instalados GREEN e fontes estáveis, com
+troca na entrada/normalizador/foco/commit, respostas normal/sentinela/erro.
+Wrapper/root e owner reais; folhas externas/persistência pessoal controladas.
+Sem main/LLM real/voz audível/físico. V282:2892 GREEN, um xfail histórico,
+30 subtests GREEN, zero falhas/erros; fontes congeladas. Recorte de 100 módulos
+e dois controles de feedback, não suíte global nem treino.
+
+AUT-01 permanece parcial: primeira fronteira seguinte é corpo dos consumers
+de voz/aprendizado/persistência e chamadas legadas sem origem, não repetir
+correção por título/frase. V262 volume segue separado e não afrouxado.
+
+### AUT-01 — corrotina/portas de conteúdo precisam da origem capturada na chamada — 13/10/2026
+
+V261: 12 RED / um controle. Conteúdo antigo atravessa fala/contexto após troca
+antes da corrotina, na captura, na LLM ou entre consumers; normal/sentinela/erro.
+Factory genérica compartilha ocorrência canônica entre portas explicitadas,
+consulta antes de cada uma e bloqueia dependentes após recusa. Binding síncrono
+na invocação; o Awaitable mantém origem em vez de buscar turno ao ser agendado.
+Retenção não pode virar sucesso de entrega; cache de leitura não é contexto.
+
+V264 direto não provou root: V265 reproduziu três RED instalados no wrapper de
+atividade que postergava a captura. Root agora captura antes e injeta executor
+assíncrono existente; atividade/política/locks permanecem no owner atual. Três
+arquivos de produção, sem algoritmo/prompt/modelo/voz/firmware/neural.
+V267/V268: 220/215 GREEN. Sonda final V269: 15 casos instalados do wrapper/folha,
+com captura/modelo/voz controlados e contexto instalado, sem main/físico.
+Telemetria de atividade não é conteúdo; compara demais domínios e exige ativos=0.
+V269: 15 GREEN e fontes estáveis. V270: 2872 GREEN em 100 módulos + dois
+controles, um xfail histórico e 30 subtests GREEN; zero falhas, código congelado,
+não suíte global nem fechamento dos RED de volume fora deste recorte.
+
+V262 também teve dois RED de detectores diretos de volume, não alterados nem
+percorrendo esta composição; observação separada a investigar, não contada como
+causa da entrega nem apagada para reduzir falhas.
+
+**Próxima primeira fronteira:** commit interno do registro de conteúdo,
+mental/mensagens/tópicos em etapas; reusar transação dos owners reais sem
+callbacks externos sob lock. Guardas anteriores não provam o corpo dos
+consumers, voz física ou persistência. AUT-01 global continua parcial.
+
+### AUT-01 — deduplicação anterior à guarda esconde origem superada — 13/10/2026
+
+Hipótese de V255 confirmada em V256: 12 RED / 6 controles. Receipt moderno é
+publicado validamente, turno muda, fallback marcado retorna None antes da guarda;
+helper continua autoaprimoramento. Seis RED do retorno e seis do consumidor,
+três domínios e frase igual/diferente. Não é novo efeito nem receipt perdido.
+
+Owner publisher revalida origem nativa antes de descartar duplicata; superada
+retorna False sem republicar/inventar outra reconciliação. Receipt já aceito
+continua o fato histórico, marcador não fornece nova prova detalhada. Controle
+vigente mantém None/sem consumers; status explícito usa guardas normais. Só um
+arquivo de produção; helper já respeita False. Não congelar turno sob lock.
+V257/V259: 161/139 GREEN. V258: 18 casos modernos + 18 legados instalados sem
+RED, fontes estáveis, receipts/efeito/aprendizado fixtures, sem main/voz/físico.
+V260: 2765 GREEN em 96 módulos + dois controles, um xfail histórico e 30
+subtests GREEN; zero falhas, código congelado, não suíte global/main/físico.
+
+**Aberto:** consumers ignorando recusa/pulando publisher; entrega da folha real
+de resumo antes do receipt/voz após rejeição. Guarda pontual não reserva turno
+durante callbacks posteriores. Prioridade seguinte é origem da entrega
+assíncrona, não uma regra de pronome ou treinamento neural.
+
+### AUT-01 — namespace do helper e continuação após recusa — 13/10/2026
+
+V250: 12 RED / 6 controles, três domínios e executor True/False. Helper curto
+consulta composição própria sem factory; vínculo do chat não alcança outro
+namespace. Mesma frase em outro turno também falha. Após transportar vínculo,
+V251: 6 RED / 12 GREEN; contexto/reconciliação íntegros, mas autoaprimoramento
+ignorava recusa explícita. Primeira RED desloca para consumidor posterior.
+
+Owner da composição conversacional transporta factory opcional já canônica e
+vincula por invocação pré-executor; owner do helper só autoaprimora se publisher
+não recusou. Bool legado preserva retorno do executor, não prova receipt vigente
+ou efeito físico nem cancela operação. Dois arquivos de produção, sem parser,
+root, configuração/modelo/neural/corpo. V252/V254: 111/109 GREEN. V253 instalado:
+18 casos sem RED, controls/mudança com frase igual/diferente em APP_OPEN,
+IOT_CONTROL e PLAYLIST_CREATE, efeitos/aprendizado controlados, fontes estáveis,
+sem main/voz/dispositivo/treino real. V255: 2743 GREEN em 96 módulos + dois
+controles, um xfail histórico e 30 subtests GREEN, zero falhas, fontes congeladas;
+não suíte global/main/efeitos reais.
+
+**Aberto:** hipótese do fallback marcado já-publicado que retorna None antes
+da guarda (deduplicação não prova vigência de consumidor); precisa de RED com
+receipt moderno antes de patch. Depois, entrega/fala/contexto da folha de resumo
+antes do receipt ou após rejeição. Root global continua parcial, não neural.
+
+### AUT-01 — alias legado na composição perde origem do callback — 13/10/2026
+
+V244: 9 RED. Entrada/chat recebem publicador bruto porque a composição filtrava
+a factory existente. Callback estrangeiro atinge base/limpadores, inclusive
+resumo no loop asyncio real com sucesso/False/exceção. Contexto protegido não
+pode resolver uma ocorrência não transportada; não é falha específica do Chrome.
+
+Owner `ComposicaoEntradaInteracao`: transportar factory e criar vínculo em cada
+snapshot de invocação antes do efeito, nunca no startup nem no done callback.
+Contrato compartilhado cobre callers imediatos e chat desse namespace. Só esse
+arquivo de produção alterado; compatibilidade sem factory não certifica origem.
+V248: 96 GREEN, controles de nova invocação após troca de turno. V247 instalado:
+cinco casos sem RED, incluindo três conclusões assíncronas com loop real/folha
+de resumo controlada; estado atual íntegro, status/origem tardios preservados.
+Fontes estáveis, sem main/Chrome/voz/modelo/efeito físico. V249: 2718 GREEN em 95
+módulos + dois controles, um xfail histórico e 30 subtests GREEN; zero falhas,
+código congelado, não suíte global.
+
+**Próxima mesma root:** `RespostaConversacionalRuntime.executar_intencao_curta`
+consulta snapshot próprio de `ComposicaoRespostaConversacionalRuntime`, ainda
+alias bruto (inventário, não novo RED). Vínculo recebido pelo chat não migra
+helper que usa outro namespace. Fala/contexto na folha real do resumo antes do
+receipt e entrega após rejeição são fronteiras separadas ainda abertas.
+
+### AUT-01 — pendência não é identificada apenas pela frase ou turno — 13/10/2026
+
+V237: 21 RED / 43 GREEN na escrita final da correção. Mesmo turno e mesma
+frase com outro timestamp não são a mesma pendência. A guarda externa também
+não cobre troca antes do commit; lista histórica capturada perde atualizações
+concorrentes. Confirmar e descartar atravessam essa mesma fronteira.
+
+Owner permanece `AdaptadoresAplicacaoRuntime`: derivação sobre snapshot isolado,
+CAS da ocorrência e registro integral da pendência, consumo/histórico no mesmo
+commit. Anexar à lista viva, limitada a 30. Só consumo confirmado gera evento
+de aprendizado, fora do lock, em cópia isolada. Receipts concorrentes mantêm
+IDs/efeitos distintos, mas a correção é consumida/notificada uma vez. Recusa de
+uma pendência substituída não invalida receipt ainda vigente; troca de turno
+mantém reconciliação tardia. Não reabrir treinamento nem criar state privado.
+
+V242: 101 GREEN com corrida dupla e controles de observer falho/mutante/troca.
+V241 instalado: oito consumos com duas threads, zero RED, mais os seis controles
+de referente e painel de 24 casos sem RED; fontes estáveis. Receipts/observer
+fixtures, sem main/efeitos físicos/modelo/treino. Regressores antigos migrados
+para owner de estado real e verificação da closure instalada, não enfraquecidos
+para aceitar consumo estrangeiro. V243: ampliação em 92 módulos + dois controles
+de feedback: 2669 GREEN, um xfail histórico e 30 subtests GREEN; zero falhas,
+código congelado, não suíte global/main/efeitos de produção.
+
+**Ainda aberto na mesma root:** callers legados sem origem pré-executor;
+vigência da entrega depois de rejeição/troca em observer; main/efeito externo.
+Histórico legítimo não é autorização ou resultado do turno que veio depois.
+Próxima fronteira: composição dos publishers legados, não frases isoladas.
+Inventário inicial: resumo assíncrono em `ComandosImediatosRuntime`, alias global
+via `ComposicaoEntradaInteracao`; bypass ainda precisa de RED causal próprio.
+
+### AUT-01 — escrita interna de contexto precisa de CAS, não só guarda externa — 13/10/2026
+
+Continuação da raiz de retorno antigo, depois do vínculo V215–V225. V226:
+7 RED / 25 controles. Duas substituições completas na base podem restaurar o
+turno antigo durante foco ou contaminar o novo na entrada da base. Também
+apagam escritas independentes no mesmo turno; igualdade de ID não basta.
+O erro precede resolução de `ele/ela`, não é parser de pronome ou executor.
+
+Owner `EstadoContextoRuntime`: deriva sobre snapshot isolado fora do lock e
+publica uma vez pela transação existente, conferindo origem e retrato. Conflito
+do mesmo turno rederiva até quatro vezes; origem diferente recusa. Publisher
+propaga ocorrência pré-executor à base e respeita sua recusa; evidência fica
+separada para reconciliação, nunca sucesso do pedido atual. Portas legadas sem
+origem não rederivam sobre estado concorrente. Não criar lock em torno de
+normalizador/foco nem alterar habilidades para compensar o contexto.
+
+V231: 34 GREEN, com leitor em outra thread, atualização independente preservada
+e contenção limitada. V230: 136 GREEN; fixtures passam a usar estado real e
+separam chamadas de executor e receipts/read-only. V235 instalado: seis casos
+sem RED, três com concorrência real de threads entre derivação antiga e nova
+publicação; referente Bloco de Notas preservado, receipt atual aceito, velho e
+fallback recusados, reconciliação correlacionada. Fontes estáveis; fixtures de
+efeito, sem main/modelo/áudio/dispositivo. V233 teve fontes alteradas durante
+suíte, logo não certificado; V236 com código congelado: 2615 GREEN em 90
+módulos, um xfail histórico e 30 subtests GREEN; zero falhas, não suíte global.
+
+**Aberto:** origem de publishers legados; CAS da correção pendente/histórico;
+fala após resultado rejeitado; concorrência/effects de produção. Próximo owner:
+consumo da correção no publisher, não treinamento da neural. Histórico anterior
+mantido abaixo; a fronteira interna nele pendente é agora protegida no caminho
+vinculado e nos controles descritos, não uma certificação global da root.
+
+### AUT-01 — retorno antigo altera referente natural atual — 13/10/2026
+
+Mesma raiz histórica de resultado-após-ação, não três bugs para `ela`, `ele` e
+`esse aplicativo`. V215 revalidou 13 RED / 4 controles: publisher sem origem
+aceita resultado estrangeiro antes de alimentar contexto/aprendizado/plano.
+Mesma frase com novo ID também falha; alvo/domínio/modelo não explicam a perda.
+
+Owner de contexto captura ocorrência antes do efeito e injeta publisher
+vinculado. Owner da publicação revalida consumidores, conserva resultado
+estrangeiro separadamente e protege commit do plano. V219 revelou bypass no
+fallback do ciclo; agora usa o callback do contexto, não o alias global bruto.
+Não confundir vínculo com autoridade, cancelamento ou confirmação física.
+
+V220: 412 GREEN; V223: 40 GREEN com estado compartilhado real no teste legado.
+V224 instalado: três referentes atuais preservados após callback/fallback antigo,
+receipts atuais aceitos, quarentena correlacionada; painel 24 casos sem RED,
+fontes estáveis, receipts fixtures, sem main/modelo/efeitos físicos.
+Contraprova sem factory reproduz a troca para Calculadora.
+V225 ampliado: 2558 GREEN em 87 módulos, um xfail textual anterior e 30
+subtests GREEN; zero falhas, não suíte global.
+
+**Aberto dentro da mesma root:** publisher legado direto; commit interno da base
+de contexto (`EstadoContextoRuntime`, duas substituições completas e callbacks
+de enriquecimento/foco); commit final da correção/pendência; entrega de fala
+após rejeição. Checagem entre consumidores não garante suas escritas internas.
+Próxima primeira fronteira a provar: CAS no owner do contexto, sem callbacks
+externos sob lock. Não declarar interpretação geral resolvida nem neural liberada.
+
+### Recursos — atividade do transporte não é somente conversa — 13/10/2026
+
+V209, composição instalada: dois REDs, um controle GREEN. Pré-aquecimento passa
+pela leaf local, mas indicador conversacional fica falso e modo jogo não entra
+urgente. Classificação é GREEN e conversa ativa já funciona: primeira perda
+está no transporte → indicador, não na política do jogo nem no timeout do Qwen.
+Contrato canônico inclui infraestrutura/carregamento e preserva atividades
+concorrentes até seus respectivos finais. Atividade não prova prontidão/VRAM.
+
+Owner de POST portátil conta sob lock curto próprio; owner HTTP agrega essa
+observação às pendências e a reutiliza no idle. Composição/uma linha do root
+ligam owners existentes. Sem novo lock de serialização, regra de jogo,
+autorização, efeito/receipt ou configuração. V210/v211: 44/66 GREEN; V213: 332
+GREEN. V212 real: modelo inicialmente frio, atividade/consumer TRUE durante
+aquecimento, primeira conversa 10,941 s sem fallback; antes/após 3,551/3,510 s
+aquecidos. Fontes estáveis, sem main/voz/efeito/publicação física.
+
+Policy de jogo testada com cena/liberação externas controladas; não prova GPU
+livre. V214 ampliado em 86 módulos: 2533 GREEN, xfail textual anterior e 30
+subtests GREEN, zero falhas; não suíte global. Próximo limite é admissão/cancelamento frente ao modo
+jogo: pedido de unload não assegura vencer carregamento em curso. Não confundir
+fim/timeout do cliente com fim físico do servidor. AUT-01/catálogo/firmware
+mantêm raízes separadas; neural continua preservada.
+
+### Startup — corrida real não reproduz perda da primeira conversa — 13/10/2026
+
+V205: modelo inicialmente ausente do Ollama. Background/aquecedor e principal
+instalados; primeira entrada 0,110 s após admissão HTTP do aquecimento, ainda
+pendente. Aquecimento 7,084 s, principal 10,324 s, turno 10,443 s; saudação e
+conclusão únicas, zero efeito/erro/fallback. A conversa usa classe contextual
+30 s, não timeout 8 s da autoria. Antes/após: 3,478/3,480 s com modelo já
+aquecido pelo primeiro caso. Antes da interação, o callback dispensa o aquecedor;
+não confundir esses controles com partidas frias independentes.
+
+Modelo real e composição do recorte, porém sem main/prioridade/publicação/voz
+ou memória pessoal. Não criar espera/timeout novo sem RED. V207/v208: 127/198
+GREEN selecionados; v206 nenhum teste (arquivo selecionado inexistente).
+Produção/configuração/neural/firmware preservados, fontes estáveis.
+
+Observação separada: indicador conversacional de requisição ativa não cobre o
+pré-aquecimento direto. Consumer instalado: entrada urgente do modo jogo.
+Hipótese de cobertura insuficiente da atividade local, não efeito adverso
+comprovado. Reproduzir autoridade/política de recursos antes do patch; unificar
+ocupação não equivale a pôr o aquecedor atrás de um lock que bloqueia a conversa.
+AUT-01/catálogo/ocorrências de receipts mantêm causas e evidências próprias.
+
+### Autoria — chamada fria da sonda não equivale ao startup normal — 13/10/2026
+
+V199 timeout antes da resposta; v202 mesmo payload real termina em 11,629 s
+com modelo inicialmente ausente do `/api/ps`, e em 2,973/2,962 s aquecido com
+limite original de 8 s. Todas as redações aceitas, mantendo ocorrências iguais.
+HTTP/modelo/estrutura geral não explicam o RED. A diferença fria inclui carga e
+primeiro prompt; métricas nativas aquecidas não separam essas parcelas frias.
+O limite observacional de 60 s não foi adotado na produção.
+
+Owner de prontidão já existe: runtime local pré-aquecido por serviço background
+no main. A sonda v199 importava o root sem esse startup. V203 reusa esse owner,
+registro/preparador/cliente/orçamento instalados: Qwen real aceito em 3,037 s,
+timeout 8 s, uma chamada, zero bloqueios. Evidência histórica apenas para redação,
+sem admitir receipt atual/executar/publicar/falar. Não confundir essa composição
+de autoria com prova completa de main. V204 130 GREEN. Produção/configuração,
+modelo, neural, voz e firmware não modificados. Apenas diagnóstico/testes novos.
+
+Próxima fronteira de risco, ainda sem RED de produção: interação antes de
+pré-aquecimento terminar e modelo expirado depois do startup. Medir prontidão
+efetiva/concorrência; não adicionar espera global, duplicar aquecedor ou ampliar
+timeout por hipótese. AUT-01 e catálogo paralelo continuam causas distintas.
+
+### Apresentação — ocorrência literal não é identidade textual única — 13/10/2026
+
+Continua v190/v191. V192 RED: `find` reiniciado em zero colide entre ocorrências
+legítimas iguais. V194: três REDs de ordem invertida, 18 controles GREEN.
+Contrato canônico vincula cada receipt/posição à ocorrência posterior ao último
+intervalo aceito; busca sequencial e identidade da posição no host. Só o loop
+operacional de `confirmacao_llm.py` mudou; cobertura, alvo, certeza, sobreposição
+e proibição de alegações/comandos extras permanecem. Cache/executores e loop de
+avisos/conversa não alterados. V195/v196: 73/80 GREEN; v200: 2362 GREEN, xfail
+textual anterior e 30 subtests em 77 módulos relevantes, não suíte global.
+
+V201 instalado/físico CONTROLADO: quatro IDs/receipts, mesma Calculadora,
+dois deslocamentos e uma publicação autorada que conserva esquerda → direita
+→ esquerda. Primeiro layout já satisfeito. Inspeção/fechamento somente da janela
+própria via Computer Use; fontes estáveis. Prioridade retirada na sonda e áudio
+isolado: não main nem qualidade do Qwen real.
+
+V199 autoria real `qwen3:4b-instruct`: transporte local atingiu `ReadTimeout`
+em 8,016 s, sem resposta; efeitos/receipts e contingência íntegros. Primeira RED
+é tempo/transporte, não estrutura inventada pelo modelo nem vínculo literal.
+Separar esse limite da correção validada com provider controlado; investigar
+carregamento/geração/orçamento antes de mudar produção. AUT-01 e catálogo de
+firmware continuam separados. Neural, configuração/modelo e firmware preservados.
+
+### Apresentação — confirmação direta não é aviso sem receipt — 13/10/2026
+
+V176 tinha quatro receipts/efeitos, mas três trechos publicados. V180/v181 RED:
+fala comum do executor perde o receipt antes da acumulação; aviso deduplicado
+não representa uma ocorrência operacional. Cache, geometria, âncora factual e
+direção não explicam essa primeira perda. Contrato compartilhado passa pelo
+adaptador da invocação, reutilizando acumulador/apresentação existentes. Avisos
+antes de publicar continuam avisos; recusa/ID alterado não tomam receipt global;
+filho não herda publicação do pai; canal silencioso continua indisponível.
+Só adaptador e router alterados; nenhuma exceção por nome, lado ou habilidade.
+
+V187 Windows: quatro IDs/receipts, mesma janela, publicação única de todos os
+fatos na ordem; dois deslocamentos medidos e primeiro layout já satisfeito.
+Modelo/áudio isolados e prioridade retirada somente na sonda. Inspeção Computer
+Use; inventário final sem a Calculadora criada. V188: 2333 GREEN, xfail textual
+anterior e 30 subtests; v189: 70 GREEN em outros executores/guardas.
+
+Fronteira seguinte de autoria textual: `find` desde o início associa trechos
+iguais a um único intervalo. V190 RED canônico ligar → desligar → ligar, sem
+efeito IoT; v191 55 GREEN e xfail estrito dessa pendência. Não promover a prova
+de contingência factual a autoria real. Resolver vínculo por ocorrência/ordem
+mantendo guarda de sobreposição e cobertura. AUT-01 segue separado e aberto.
+Incompatibilidade do teste de catálogo com `estado_firmware` paralelo registrada,
+sem mudar código/expectativa para esconder o RED. Nenhum commit/neural/firmware.
+
+### Interpretação natural — cache distingue ato admitido de retry — 13/10/2026
+
+Continua o RED de deduplicação abaixo, sem nova raiz. V169 local e v170 instalado:
+quarto ato igual colide com segundo, três efeitos/receipts para quatro pedidos.
+Candidato mínimo transporta `AutorizacaoAto` pelo dispatcher/composição até o
+coordenador. Cache distingue `(turno, operação, índice)` apenas com fonte/operação
+e admissão vigentes; não recebe nonce da LLM nem vira owner da interpretação.
+Retry e concorrência do mesmo ato continuam uma execução, sem republicar receipt.
+Porta sem índice converge conservadoramente; origem ausente não é reconstruída.
+
+V173: 18 pipelines instalados zero RED. Controles de app, site e volume protegem
+o mesmo contrato. V176 Windows: abrir → esquerda → direita → esquerda, quatro
+receipts/IDs, mesma janela e três deslocamentos conferidos; inspecionada/fechada
+via Computer Use. Modelo/áudio isolados e prioridade retirada só na sonda.
+V178: 2172 GREEN, um xfail textual anterior e 30 subtests; não suíte global.
+Isso prova o recorte da porta por atos, não main/modelo/voz nem todas as habilidades.
+
+Duas pendências separadas: apresentação de v176 omite a última etapa repetida
+(hipótese de limpeza de repetição, owner ainda a localizar), e AUT-01 continua
+13 RED / 4 GREEN em v179, como o diagnóstico histórico de receipt tardio. Seus
+testes não passam pelo cache; não esconder esses resultados no GREEN selecionado.
+Próximas fronteiras: preservação de ordem na publicação textual e correlação da
+ocorrência no publicador, investigadas separadamente. Elipse numérica/CREATE→WRITE
+permanecem outras fronteiras; neural/modelo/firmware não alterados.
+
+### Interpretação natural — continuação de ato já contextual — 13/10/2026
+
+V143/v144 RED: receipt existia, mas transporte não ligava execução contextual
+à admissão/fonte. Classificação e resolver foram controles GREEN. Contrato novo
+efêmero transporta observação+admissão+materialização, sem autoridade própria;
+owner rederiva cada ancestral no prefixo atual. Apenas descendência demonstrada
+sucede um candidato, não proximidade ou nome igual; candidatos independentes
+continuam ambíguos. IDs, fonte, operação, turno, TTL e revogação revalidados.
+
+V146 revelou outro mecanismo: descrição “Calculadora na esquerda” promovida
+como entidade. REDs v147/v148 precederam projeção compartilhada por parâmetro
+estruturado do layout único. Não mexer no receipt para limpar a descrição, nem
+recortar nomes por sufixo textual. V161: 17 pipelines instalados zero RED; segundo
+receipt incerto impede terceiro dependente, preserva volume e conclusão parcial.
+V162: abrir→esquerda→direita com três efeitos/receipts reais na mesma janela do
+Windows, uma conclusão, geometria relida e fontes estáveis. Modelo/áudio isolados,
+prioridade retirada só diagnosticamente; sem prova de main/modelo/voz real.
+V163: 2133 testes e 30 subtests GREEN; xfails textual anterior e cache de atos
+permanecem pendências, não componentes certificados como corrigidos.
+
+**RED remanescente, separado:** deduplicação por `(turno, operação)` colide entre
+atos repetidos após efeito intermediário. Quarto “esquerda” não é nova invocação;
+controle site confirma mesma assinatura. Teste xfail estrito preserva o contrato
+de quatro efeitos. Proteção de conclusão exige publicação desta invocação; cache
+sem receipt novo não é conclusão completa nem libera dependentes por histórico.
+Próxima fronteira: identidade canônica do ato vs retry no cache, não remover
+deduplicação nem ampliar parser. Elipse numérica/CREATE→WRITE continuam separadas.
+
+### Interpretação natural — execução contextual com efeito Windows observado — 13/10/2026
+
+V139 validou entrada instalada no caminho prioritário: APP_OPEN Calculadora
+→ ORGANIZAR_DESKTOP à esquerda, dois receipts confirmados e uma conclusão.
+Isso não certifica o principal, pois a prioridade consumiu a entrada. V140–v141
+retiraram SOMENTE a prioridade no subprocesso, com provider controlado, para
+alcançar o principal instalado e os executores Windows reais. Proposta de posição
+em Notepad foi recusada; alvo veio da fonte/receipt canônicos de Calculadora.
+
+V140 tinha posição lembrada pelo Windows, sem prova de deslocamento novo. V141
+exigiu movimento para direita: mesmo HWND 1310944 passou de [0,0,1280,1032] a
+[1280,0,2560,1032], dois IDs/receipts confirmados, fase executado, uma conclusão.
+Geometria relida independentemente e inspeção visual concordam. V142: 93 testes
+focados GREEN. Somente sonda/testes/registros novos; fontes de produção monitoradas
+estáveis, sem commit/modelo/neural/firmware. Janelas de teste encerradas.
+
+**Avanço delimitado:** efeito Windows comprovado neste recorte; não é main,
+geração/autoria real, áudio físico ou seleção automática da porta principal.
+Não encerra todas as habilidades nem cadeia contextual longa. Próxima fronteira
+mantida: vínculo de execução admitida quando o antecedente também foi contextual.
+Receipts, fonte, autoridade e efeito observado seguem provas separadas.
+
+### Interpretação natural — continuação admitida em sua ordem causal — 13/10/2026
+
+Protocolo por atos agora liga materialização a admissão explícita do owner e
+executor canônico. Snapshot de candidato não autoriza por si só. Fonte/índice/
+operação/referente/ocorrência são revalidados antes do efeito; receipt aceito
+carrega monotonic original, sem ser rejuvenescido pela projeção. Tempo desconhecido,
+incerteza/falha/cache/impostor não liberam continuação. Ordem usa fonte e também
+beneficia pedidos independentes; propostas omitidas não compõem roteiro completo.
+
+App→posição→volume executa nessa ordem com três receipts e uma apresentação,
+mesmo com alvo diferente proposto pela LLM. App incerto não libera posição.
+Porta bool-only mantém compatibilidade sem nova autorização. REDs v125 temporal,
+v127 ordem/conclusão e v129 instalado antecederam seus candidatos. V137: 2100
+GREEN / 30 subtests em 65 módulos, xfail anterior; v138 fontes/prova instalada
+estáveis. Sem main/modelo/Windows/áudio real ou treino/ativação neural.
+
+**Não encerrada globalmente:** falta prova física/runtime; vínculo para antecedente
+que também foi contextual; elipse numérica ainda perde dependência na classificação.
+Não confundir ordem com dependência operacional CREATE→WRITE. Propostas omitidas
+na rota antiga não foram resolvidas. Mapa mantém fronteiras separadas: admissão
+qualificada GREEN em composição não certifica todos os comandos ou efeitos reais.
+
+### Interpretação natural — materialização vinculada ao ato e à publicação — 13/10/2026
+
+Mesmo trabalho de ligação progressiva: receipt do mesmo turno não identifica
+sozinho antecedente ou alvo. Vínculo operacional por ato + projeção isolada do
+receipt + seletor/detector/resolução de referências canônicos geram candidato
+imutável, sem autorização/efeito. Não há parser novo de domínio, histórico
+emprestado, seleção pela última posição ou dupla fonte de verdade. Recusa
+ambiguidade, cache, fonte estrangeira, estado incerto/falho, repetição sem índice
+inequívoco e mudança de máquina; frame é conferido antes/depois. App/site
+protegidos; app seguido de volume independente não perde o antecedente correto.
+
+Quatro REDs reais de contrato v116 antes do candidato (fixtures/atalho inadequado
+separados). RED instalado v121 do principal ainda sem consumidor; v122 liga
+materialização, preservando conclusão parcial e somente primeiro efeito capturado.
+Regressão v124: 2073 GREEN / 30 subtests em 64 módulos, xfail anterior preservado.
+Sem main/modelo/voz/efeitos reais. Produção nova só materializacao_contextual,
+decisao_turno e resposta_ia_runtime. Rede/configuração/raízes paralelas intactas.
+
+**Não liberado:** admissão e execução progressiva. Falta ordem causal (não
+anexar continuação após todos os atos independentes), validade temporal original
+da publicação, revalidação final de autorização/referente/ocorrência e agrupamento
+de uma conclusão com receipts independentes. Timestamps da projeção não provam
+idade do receipt. Contexto anterior sem observação desta chamada não é resolvido
+por este incremento. Classificação isolada da elipse numérica conjunta mostrou
+lacuna anterior (v114), vinculada como achado à continuidade paramétrica existente,
+sem consolidar causas ou declarar falha real completa. Detalhes no registro central.
+
+### Interpretação natural — transporte de receipt qualificado da invocação — 13/10/2026
+
+Continuação da ligação progressiva, não outra raiz por domínio: receipt aceito
+existia no publicador, mas desaparecia no retorno bool do ciclo/dispatcher.
+Cinco REDs antes do candidato; app/volume/IoT e True sem publicação separam
+transporte, tratamento e confirmação. ExecucaoObservada conserva pedido/turno
+capturados e snapshots das publicações aceitas, por ID/intent/origem executor.
+Não é último efeito, autorização, alvo resolvido ou prova de vigência atual.
+Cache, receipt estrangeiro/dict falso e marcador não criam evidência nova;
+concorrência não compartilha coletores, resultado tardio mantém sua origem.
+
+Porta opcional conectada no ciclo/allowlist/contexto real. Retorno legado sem
+a porta preservado após RED amplo de compatibilidade; teste antigo não mudou.
+Regressão v112: 2044 GREEN / 30 subtests, um xfail textual anterior. Prova
+instalada v113 repete transporte em quatro cenários pelo adaptador/registrador
+reais, despacho externo sintético, fontes estáveis e zero REDs. Sem main,
+modelo real, voz, aprendizado ou efeito físico. Nenhum commit/configuração.
+
+**Ainda aberto:** consumir observações no principal, materializar referência
+com owner canônico e revalidar turno/autorização antes do próximo efeito.
+Antecedente não é automaticamente a etapa anterior; identidade de receipt
+também não prova alvo correto. Obrigações continuam não executáveis. Registro
+central distingue transporte GREEN de execução progressiva ainda não entregue.
+
+### Interpretação natural — preservar obrigação contextual antes da execução progressiva — 13/10/2026
+
+Principal valida todos os comandos antes dos efeitos: recusar alvo futuro é
+correto, apagar a parte contextual do resultado é outra fronteira. Fonte
+canônica agora atravessa o validador como obrigação imutável/não executável,
+vinculada ao turno/literal/intervalo, sem comando/alvo/dependência prevista
+pela LLM. Necessidade de contexto não prova qual etapa é antecedente.
+
+Pipeline inclui a parte ainda não materializada em seu resultado parcial;
+não admite o candidato contextual nem inventa receipt. Sem nova fila durável
+ou retomada autônoma. Produção nova só em escopo_autorizacao, decisao_turno
+e resposta_ia_runtime; coordenador/executores/IA/rede/configuração intactos.
+Três REDs de contrato antes; RED instalado da omissão antes do consumidor.
+Regressão 1988 testes / 30 subtests GREEN, um xfail textual anterior preservado;
+24/24 escopos, 12/12 pipelines, demais controles anteriores GREEN. Sem main,
+modelo real, áudio/efeitos físicos; rede pausada/produtor experimental off.
+
+**Execução progressiva ainda não entregue:** falta correlacionar receipt desta
+invocação, materializar pela ponte canônica e revalidar a ocorrência antes do
+novo efeito. Success path de cadeia não substitui success path dessa porta;
+teste instalado atual tem primeira ação sem efeito confirmado. Preservação
+da obrigação/conclusão GREEN não encerra ligação/execução. Detalhes e próximos
+controles no registro central, sem apagar a pendência histórica.
+
+### Interpretação natural — pronome modificado não é nome materializado — 13/10/2026
+
+Primeira RED da continuação referencial: gramática genérica considera “ela à
+esquerda” complemento nomeado, perde depende_contexto e a admissão aceita
+left=ela/nome_app=ele/query=ela azul antes de efeito. Contraste com “deixa”,
+segmentação correta e reprodução instalada sem modelo falsificam perda apenas
+na execução/decoder ou ausência do detector. Mesmo mecanismo em domínios distintos.
+
+Leitor compartilhado do núcleo referencial, literal-aware, alimenta a
+dependência da gramática especializada. Modificador não cria alvo; nome entre
+aspas não vira referência. Raw match preserva aspas mesmo com cortesia/espaços.
+Produção nova só em referencias_linguagem/gramatica_musical; sem novo parser
+de executor, autorização ampla, ativação neural ou produtor experimental.
+
+10 REDs antes / 14 controles; cinco controles instalados GREEN depois. Candidato
+teve um RED adicional de espaços, corrigido sem apagar literalidade. Ponte
+receipted do ciclo já existia e não mudou: controle instalado com receipts
+sintéticos liga Calculadora após confirmação, interrompe falha/incerteza e não
+usa Notepad antigo. Seu GREEN não é ganho causal da ponte nem prova física.
+Regressão final: 1972 testes / 30 subtests GREEN, um xfail textual anterior;
+painel 24/24, pipelines 11/11, registros 9/9, referências 5/5, cadeias 3/3.
+Sem main/áudio/efeitos externos. Detalhes/artefatos/limites no registro central.
+
+Ainda separados: ligação/admissão progressiva no pipeline principal e composto
+referência+negação colapsado. Não transformar alvo futuro previsto pelo modelo
+em receipt; investigar owner da dependência/vigência antes de novo candidato.
+
+### Interpretação natural — autorização por ato também nos conjuntos positivos — 12/10/2026
+
+Continuação da admissão agregada RED descrita abaixo, no contrato existente
+de escopo por ato. Dois pedidos/resoluções corretos eram reduzidos pela
+restrição global de IoT quando nenhum segmento tinha veto. Sem restrição,
+o mesmo gate podia aceitar alvo/destino/volume inventados ou efeito duplicado.
+Não é ausência do detector/resolver nem proposta com parâmetros divergentes;
+contraprova isolou a seleção do gate, não autorizou remover a proteção.
+
+Mais de um segmento agora usa o vínculo individual existente: mesmo owner,
+resolver canônico, identidade operacional e consumo por índice. Ato único
+mantém restrição anterior; resolução ausente continua fechada. Sem nova lista
+de intents, parser de domínio, estado privado ou autorização pelo modelo.
+Produção nova somente em escopo_autorizacao; rede/produtor permanecem pausados/off.
+
+12 REDs causais antes; 91 testes focados GREEN. Composição controlada:
+24/24 escopos, 11/11 pipelines, 9/9 registros GREEN. Brilho/app admitidos em
+ambas as ordens; parâmetros/alvos inventados e proposta duplicada recusados.
+Pipeline conserva duas operações sem efeito confirmado e uma conclusão.
+Regressão: 1924 testes / 30 subtests GREEN, um xfail textual anterior mantido.
+XFAIL de admissão anterior retirado só após XPASS estrito; expectativa intacta.
+Sem main/efeitos físicos/voz real. Histórico, artefatos e limites no registro.
+Referências/dependências e o composto referência+negação continuam fronteiras
+próprias; não declarar toda a interpretação/execução concluída.
+
+### Interpretação natural — vocabulário canônico do ato — 12/10/2026
+
+Continuação da primeira classificação RED identificada nas fontes abaixo.
+Detector de volume já resolve “sobe o volume para 40”; classe conversa nasce
+no owner geral dos atos, antes do modelo. Vocabulários divergentes de pedido,
+complemento lexical e P0 também perdem ajuste de brilho/janela e flexões de
+operações de arquivo. Mesma conjunção com “aumenta” funciona; inversão de ordem
+muda classe, mas não separa o ato desconhecido. Ausência de detector, nome do
+app, modelo/rede e falha geral da conjunção falsificados.
+
+Um vocabulário diretivo agora sustenta pedido, fronteira, moldura e proteção;
+não é parser novo de domínio/executor. Proteções precedem imperativo; literal,
+relato, condição, capacidade e revogação permanecem sem permissão. Produção
+nova somente em modalidade_turno, sem ativar rede/produtor experimental.
+39 REDs antes; 79 testes focados GREEN. Na composição, volume/app reconhecidos
+e admitidos nas duas ordens. Pipeline ordinário conclui sem confirmar efeitos
+capturados como falha. Qwen local passa a registrar dois atos vinculados no
+caso histórico, sem provar significado/efeito nem ligar candidata no cotidiano.
+
+**Próxima fronteira demonstrada:** ajuste de brilho + abertura de app tem dois
+atos reconhecidos e resolvidos, mas retrato agregado restringe a IoT e admissão
+exclui APP_OPEN. Hipótese ligada ao contrato existente de escopo por ato: hoje
+é exigido só quando algum segmento não autoriza. Novo RED/xfail estrito preservado;
+não corrigir por lista global de intents nem misturar ao candidato lexical.
+Referência+negação e identidade textual extensa continuam pendências próprias.
+Regressão final: 1903 testes / 30 subtests GREEN, dois xfails estritos
+preservados; escopos 18/19, pipelines 10/10 e registros 9/9 na composição
+controlada. Sem main/efeitos físicos/áudio ou ativação do produtor no cotidiano.
+Detalhes, artefatos, controles e limites no registro central.
+
+### Interpretação natural — fontes canônicas no produtor — 12/10/2026
+
+Par simples já tem dois segmentos no owner, mas schema permite fonte livre e
+ato fundido. Canal textual agora mapeia os segmentos existentes à utterance
+integral, sem resegmentar/classificar nem conceder permissão. Snapshots e
+schema transportam cópia exata, intervalos/cardinalidade/ordem; falsa fonte,
+truncamento e permutação são recusados. Frame colapsado permanece V1/vetado;
+não transformar segmentação parcial em compreensão completa.
+
+Contraprova e modelo instalado passam a conservar dois literais em pares de
+app/música, site/IoT e arquivo/música. Isso é reaproveitamento da estrutura
+canônica, não prova de semântica aprendida, efeito ou generalização. Pipeline
+completo instalado conserva APP_OPEN permitido e IOT_CONTROL negado; controle
+de metadata conversa preservado, sem remover seu gate para passar teste.
+1815 testes / 30 subtests GREEN, um xfail antigo; candidato continua off.
+
+Duas pendências não agrupadas por aparência: referência+negação já colapsada
+antes do produtor; e primeira cláusula “sobe o volume para 40…” não reconhecida,
+resultando em conversa e sem fontes operacionais na composição mesmo sem LLM.
+Investigar o alcance da leitura de operação/fronteira antes de outros consumers;
+não compensar por transporte, autoridade ampla ou exceção de aplicativo.
+Histórico, controles, artefatos e limites no registro central; rede pausada.
+
+### Interpretação natural — formato negociado versus semântica — 12/10/2026
+
+Pedido principal não carregava schema; teto de transporte recortava reserva.
+Codec tipado existente reutilizado com JSON completo/owner, sem marcador na
+fala. Metadados opcionais do host atravessam pacote/pedido/preparador/serviço;
+pedido ordinário não recebe schema nem teto maior. Resposta inválida ou
+transporte falho não entrega payload ao decoder tipado. Nove REDs iniciais e
+mais um controle de falha antes dos respectivos candidatos.
+
+Prova instalada do schema preserva veto e nenhum comando indevido chega ao
+executor; 13 escopos, 7 pipelines e 9 leituras GREEN, sem main/efeitos/áudio.
+Qwen real passa a emitir objetos vinculados em três pedidos simples. Isso NÃO
+prova sentido/alvo/efeito. Dois compostos continuam RED: atos fundidos ou fonte
+reescrita/duplicada. Guardas não relaxadas; candidata continua off por padrão.
+Regressão 1801 testes / 30 subtests GREEN, um xfail antigo preservado.
+
+Próxima fronteira: decomposição e fidelidade à fonte no produtor, não executor
+ou autorização. Não promover shape a compreensão nem empilhar outro parser.
+Detalhes, hipóteses, baseline, escopo e limites no registro central; rede pausada.
+
+### Interpretação natural — produtor tipado não é adesão por prompt — 12/10/2026
+
+Contrato por ato já existe no decoder; produtor principal ainda pede rótulos.
+Baseline real Qwen3 4B instrutivo: três mensagens, zero interpretações detalhadas.
+Candidato de instrução efêmera passa nos testes locais, mas é falsificado pelo
+modelo: instrução chega ao HTTP e ainda há rótulos, coordenadas falsas ou análise
+no campo comandos. Transporte também reduz reserva 1024 para teto 640. Não
+consolidar essas observações como explicação completa da compreensão semântica.
+
+Princípio aplicado: host localiza literal único; LLM não precisa calcular offsets.
+Intervalo ausente pode ser materializado pela fonte exata, nunca por semelhança.
+Repetições/sobreposição e intervalo explícito falso continuam recusados pelo
+contrato estrito. Isso só prova âncora, não sentido/permissão/efeito.
+Composição: 13/13 escopos, 6/6 pipelines, 9/9 leituras GREEN; regressão 1686
+testes / 30 subtests GREEN, um xfail anterior preservado.
+
+Protocolo experimental desativado por padrão, não ativado pela composição.
+Sonda candidata final ainda possui três REDs, não mascarados como GREEN.
+Próxima fronteira: contrato tipado/negociado no produtor existente e orçamento
+real compatível, antes de conectar propostas a decisões. Não alterar autoridade
+para compensar formato ou literal. Detalhes/baseline/limitações no registro.
+
+### Interpretação natural — coerência de revisão vetada — 12/10/2026
+
+Continuação do RED de publicação de atos abaixo. Fonte original e IDs existem;
+operação vazia é deliberada na revisão ambígua/cancelada. O verificador
+compartilhado confundia ausência de proposta executável com perda de identidade.
+Não corrigir produtor/executor nem remover gate: aceitar estado bloqueado
+somente com revisão concordante, veto explícito em turno/plano, decisão sem
+ação e fonte/IDs preservados. Registro observacional não concede permissão.
+
+Três REDs instalados e sete locais antes; controles de fonte, metadados,
+vigência e contradição de autoridade preservados. Painel final 13/13, pipelines
+6/6 e leituras 9/9 GREEN na composição instalada com propostas injetadas,
+sem main/modelo/áudio/efeitos. Nos dois pipelines bloqueados nenhum comando
+chega ao executor e há conclusão na porta de fala. O composto com pronome
+continua classificado como ambíguo: registro GREEN não demonstra compreensão
+operacional completa. Produção desta continuação somente em decisao_turno.
+
+Um extremo de espaços além de 500 caracteres expôs RED anterior, de projeção
+da identidade textual; registrado separadamente e preservado como xfail estrito.
+Não misturar ao candidato. Detalhes/baseline/provas no registro central.
+Próxima conexão: produtor semântico tipado e consumidores operacionais;
+autoridade/receipts continuam nos owners atuais, rede continua pausada.
+Regressão: 1520 testes / 30 subtests GREEN e um xfail estrito da projeção
+textual anterior; dois controles permanentes dos pipelines bloqueados também
+GREEN. Não contar esse xfail como raiz encerrada.
+
+### Interpretação natural — representação particular de cada ato — 12/10/2026
+
+Primeiro incremento autorizado do plano de integração. Fronteira demonstrada:
+projeção do normalizador descarta dados particulares; lista de objetos no
+envelope principal é transformada em strings. Whitelist legítimo estendido
+por contrato explícito, não removido. Contrato imutável existente de snapshots
+reutilizado para literal/intervalo, operação/tipo/alvo, parâmetros/destino,
+referências/condição/dependências. Não é outro parser nem inteligência de executor.
+
+Valida estrutura e vínculo à fonte integral, não interpretação semântica.
+Proposta continua sem autoridade/efeito e com cobertura parcial; índices da
+proposta não equivalem aos segmentos autorizados. Dados inválidos ficam sem
+vínculo e com diagnóstico; formatos antigos não inventam estrutura nova.
+Produção só em contratos_turno/leitura_semantica_turno/processamento_resposta_ia.
+
+16 REDs de representação e 12 de diagnóstico antes; 151 focados GREEN depois.
+Seis registros instalados GREEN, sem alteração da decisão. Um composto mantém
+três atos na extração, mas a coerência anterior impede publicação por visão
+operacional vazia. RED preservado, não compensado com autorização geral ou
+remoção de guarda. Próxima investigação é o produtor dessa visão de revisão.
+Não declarar conexão completa, acerto do modelo ou entendimento natural ampliado.
+Regressão final estável: 1490 testes e 30 subtests GREEN; composto instalado RED.
+Detalhes, baseline, artefatos e regressão no registro central; rede pausada.
+
+### Interpretação natural — fronteira negativa e escopo por ato — 12/10/2026
+
+Continuação da pendência histórica de classificação abaixo. Primeira RED:
+segmentador exige ordem positiva à direita, absorve proibição independente
+e entrega um bloco inteiro ao veto P0, que corretamente bloqueia o bloco.
+Não remover o veto: reconhecer fronteira negativa com contrato próprio,
+sem transformar menção ou proibição em permissão. Tipos nominais externos
+distintos e ausência de referência são evidência limitada de independência;
+mesmo tipo/alias/elipse continuam conservadores, sem resolver alvo por palpite.
+
+Leitura sintática reutiliza o vocabulário nominal existente. Owner dos atos
+conserva o veto da proibição e revogação posterior mesmo com atos intermediários.
+Composição mostrou outra aplicação equivocada: revisão intra-turno tratava a
+proibição independente como correção global do app. Reutiliza o MESMO contrato,
+sem outra lista de negações ou compensação no executor. Cancelamentos e
+substituições reais mantêm seu gate. Produção só em gramática/modalidade/revisão.
+
+25 REDs locais + controles; candidato falsificado por cancelamento posterior;
+mais 9 REDs de revisão. Painel instalado final 13/13 e pipelines 4/4, sem main,
+modelo real, áudio ou efeitos. Receber chamada na porta não comprova execução.
+Regressão relevante: 1139 testes e 30 subtests GREEN em 41 módulos.
+Histórico, baseline, regressões e limitações no registro central. Não declarar
+domínios inteiros encerrados. Cinco REDs de rota de vídeo preservados; rede
+neural continua pausada e alterações corporais paralelas não pertencem à raiz.
+
+### Interpretação natural — núcleo nominal versus candidato/projeção — 12/10/2026
+
+Primeiro contrato geral aplicado: tipo nominal principal limita o domínio
+do candidato; confiança/verbo genérico/palavra interna de nome não o substituem.
+11 REDs / 4 controles antes, incluindo três playlists capturadas por volume
+e propostas adversariais em domínios distintos. Composição revelou segunda
+fronteira: retrato cria restrição de arquivo dentro do nome de app e bloqueia
+detector correto. Mais seis REDs de projeção; mesmo leitor nominal/catálogo
+usado nos owners responsáveis, não compensação especial no árbitro.
+
+Produção somente em gramatica_operacional/orquestrador_deterministico/
+arbitro_turno/retrato_turno. Porta de IA existente também passa pela restrição.
+Modalidade/autoridade, pendências e efeito continuam independentes. Nomes
+literais conservam fonte textual equivalente; restrições legítimas do retrato
+não são removidas. Não é uma nova rede, catálogo ou parser de executor.
+
+Painel instalado final 57/57 no recorte; 914 testes / 30 subtests GREEN e um
+RED de classificação independente na regressão de 31 módulos. Sem main,
+modelo/efeitos/áudio; registros e limites detalhados no registro central.
+Não trocar ausência de candidato por sucesso: vídeo deixou de virar música,
+mas os cinco REDs de encaminhamento determinístico de vídeo continuam abertos.
+
+Próxima primeira fronteira: oração independente antes de negação posposta
+perde autorização na classificação inteira. Investigar escopo por ato sem
+desativar proteção interna, com comandos conjuntos como controles. Outra
+pendência: vincular operação ao tipo (pesquisar versus reproduzir vídeo),
+evitando a rota YouTube legada que fala como reprodução sem receipt.
+Transformação “a playlist”→“na playlist” em oração posterior é hipótese
+separada ainda a demonstrar. Sem novos IDs por nomes; rede segue pausada.
+
+### Direção aprovada — interpretação natural geral dos comandos — 12/10/2026
+
+Pedro reforçou: foco é compreender o pedido natural e encaminhar corretamente
+à execução em todas as capacidades existentes; não uma frente especial de
+música/vídeo. Separar problemas posteriores de busca, executor, receipt e voz
+do trabalho de compreensão. Preservar esses problemas no registro, não apagá-los
+nem usar interpretação GREEN como confirmação de execução.
+
+**Unidade de melhoria:** contratos compartilhados de leitura do pedido,
+não frase exata, verbo solto, nome de canal ou patch por habilidade. Exemplos
+de vídeo, volume, playlist, arquivo e aplicativo são provas/controles de
+contratos; sem demonstrar a cadeia, não agrupar causas por aparência.
+
+**Contrato-alvo geral:** a fala atual fornece ato, operação, tipo de recurso,
+alvo, parâmetros, destino e condições. O contexto pode preencher somente
+lacunas compatíveis, com fonte/vigência, sem substituir informação explícita.
+O tipo pedido distingue capacidades que compartilham um verbo. O retrato e
+a arbitragem existentes devem carregar essa interpretação; não criar um
+segundo parser privado em cada executor ou um novo sistema de contexto.
+Autorização fica no owner canônico por ato; executor continua dono do efeito.
+Entender a ação não significa afirmar que ela aconteceu.
+
+**Próximo recorte causal:** preservar tipo explícito na disputa entre candidatos
+genéricos. “Coloca um vídeo” é a evidência RED atual; testar a mesma precedência
+entre tipos de arquivo/pasta/app/site/playlist/música/IoT e capacidades vivas
+aplicáveis, antes de propor abstração. Tipo externo deve orientar seleção;
+a mesma palavra dentro de um nome literal não deve mudar a capacidade.
+Não escolher um executor apenas porque aparece “coloca”, “abre” ou “faz”.
+Não encaminhar uma capacidade indisponível para outra só para executar algo.
+
+**Cobertura do painel geral (a construir/ampliar, não GREEN declarado):**
+
+- Pedidos equivalentes diretos, polidos e com variação/erro de escrita;
+  pontuação sozinha não distingue pergunta e ordem.
+- Mesmo verbo em tipos distintos; mesmo tipo com operações distintas;
+  palavras de controle dentro de nomes e citações.
+- Referência/elipse após receipt válido; troca explícita de assunto/alvo;
+  estado vencido, falha anterior e referentes concorrentes.
+- Comandos conjuntos, ordem de execução e dependências; condição futura,
+  negação ou pergunta sobre uma parte não autoriza a outra indevidamente.
+- Correção, repetição e confirmação vinculadas à pendência adequada,
+  sem consumir pedido independente como um “sim”.
+
+Medir ato, operação, tipo/alvo, parâmetros, origem contextual e destino
+separadamente. Cada RED aponta para o primeiro owner divergente. Redução de
+falhas em um domínio precisa de controles em outros antes de chamar o ganho
+de geral. Pedidos claros devem seguir naturalmente; esclarecimento somente
+quando há uma lacuna/ambiguidade relevante, não para compensar parser frágil.
+
+**Separação de acompanhamento:** interpretação é a frente ativa. Busca/seleção,
+efeito material e apresentação/autoria são frentes posteriores ou independentes;
+não ampliar o patch para elas salvo dependência causal comprovada. A correção
+recente do argumento no executor permanece registrada como fronteira posterior,
+não como evolução do entendimento por si só. Rede neural permanece pausada;
+evoluir os owners compartilhados do sistema atual, sem nova migração de modelo.
+Nesta reorganização apenas mapa e registro foram alterados; nenhuma produção,
+teste/gold, configuração ou trabalho paralelo foi modificado.
+
+### Contexto operacional — fronteira cognição/normalização do executor — 12/10/2026
+
+Fronteira posterior abaixo agora reproduzida no executor: argumento estruturado
+passava por interpretação de fala e perdia palavras antes da busca. 21 REDs /
+2 controles. Candidato só em executor_musical: presença de campo é argumento,
+ausência mantém interpretação legada; vazio explícito não cai em alias/fala.
+Tipo sem complemento continua sem alvo pela leitura nominal compartilhada,
+mantendo o controle histórico. Curadoria e normalização de candidatos intocadas.
+11 consultas percorrem executor realmente instalado e chegam intactas à porta
+externa substituída; busca vazia produz receipt negativo e conclusão de falha.
+Sem main/efeito/áudio/geração/seleção real; detalhes e artefatos no registro.
+
+Relato novo: pedido de vídeo Jazzghost capturado por MUSIC_SEARCH antes da
+busca. Cinco REDs / dois controles sem LLM/contexto/executor. Root local de
+tipo/owner ainda aberta, separada da normalização e da falha de autoria;
+similaridade do sintoma não demonstra mesma causa. Próxima investigação é
+preservar tipo explícito e encaminhar à capacidade existente, distinguindo
+pesquisa de reprodução verificada. Sem patch para vídeo nesta etapa; REDs
+não ocultados do inventário. Rede permanece pausada, sem novos IDs por nome.
+
+### Contexto operacional — tipo externo e palavras internas do operando — 12/10/2026
+
+Continuação do RED de query abaixo, não nova raiz por música/título. Detector
+deixava o tipo nominal depois de remover verbo/artigo: 42 REDs / 9 controles.
+Helper compartilhado separa tipo/nome uma vez, conserva literalidade e relações
+nominais. Não resolve entidade nem concede autoridade. Primeiro candidato
+instalado revelou controles de mídia lendo palavras internas: silêncio→mute,
+pausa→pause, mais alto→up. Mais seis REDs pelo mesmo mecanismo de escopo;
+busca e controles agora compartilham a leitura, sem listas de títulos especiais.
+Referência temporal e preferência confirmada continuam contratos independentes.
+
+Produção desta continuação só em referencias_linguagem/roteador_deterministico.
+817 testes / 30 subtests GREEN em 29 módulos; painel instalado final 48/48,
+com receipts fixtures e sem main/execução/entrega/áudio. Artefatos e mudanças
+de expectativas justificadas no registro; resultados anteriores preservados.
+O gold original de máximo respeito passou sem ser alterado.
+
+Próxima fronteira demonstrada localmente: a porta de normalização usada
+depois pelo executor reinterpreta a query correta (ex.: Música de Ontem→busca
+ontem). Não prova efeito errado, mas impede encerrar o pipeline por GREEN
+da interpretação. Separar argumento resolvido de texto livre e de candidatos
+de curadoria, sem pular autorização ou receipt. Executor/normalizador/rede
+não alterados; contexto geral e desktop continuam abertos.
+
+### Contexto operacional — moldura atual antes de herdar parâmetro — 12/10/2026
+
+Continuação das duas fronteiras abaixo, separadas causalmente. HEAD revalidado
+`d850b8c90cc5ce40bd4832e759ed991ba88cd5cc`, sem apagar trabalho paralelo.
+Nome novo já selecionado ainda carregava repetição: RED lexical 24/5 controles.
+Helper compartilhado separa repetição externa de operando literal em playlist,
+app e site. Composição instalada revelou perda anterior de aspas; preservar
+a fonte na porta do detector/coordenador foi necessário, não compensado no
+harness. Nomes persistentes/criação não mudaram; negações/perguntas literais
+continuam sem autorização.
+
+Regra de extremo após VOLUME aceitava palavras em outro ato/alvo: RED 13/5
+controles. Gramática canônica agora exige ajuste inteiro; elipse passa pelo
+owner existente de receipt/identidade/TTL/modalidade. Referente inválido não
+vira título por fallback. São contratos reutilizáveis de operando versus
+moldura e contexto versus autorização, não exceções para jazz ou máximo.
+
+35 testes lexicais e 19 de extremo GREEN; painel instalado final 34/35 GREEN,
+sem main/efeitos/entrega/áudio, com receipts fixtures. Histórico e regressões
+no registro. O RED restante é posterior: domínio MUSIC_SEARCH correto, mas
+query ainda inclui a palavra de tipo “musica”. Gold mantido; não encerrar a
+raiz geral nem declarar execução física. Próxima fronteira: moldura/tipo
+versus conteúdo literal na extração musical, além da validação desktop.
+Rede/modelo/executores/UI não alterados; sem novos IDs para os mesmos sintomas.
+
 ### Contexto operacional — operando atual precede reuso do referente — 12/10/2026
 
 Investigação geral solicitada por Pedro, não encerramento universal do contexto.
@@ -3445,3 +4642,328 @@ confirmada por software nas duas vozes, sem fallback local. Main já aberto
 precisa reiniciar; apreciação acústica e sessão reiniciada permanecem abertas.
 Não fundir com timeout Ollama nem cache COM inválido do pyttsx3. Evidências,
 baseline e limites no registro RV-TTS-403-01. Nenhum commit criado.
+
+### CORPO-DECISAO-V1 — fronteira de experiência contínua, 12/10/2026
+
+Executor corporal → receipts → experiência compartilhada estava ausente nos
+pedidos manuais e gestos causais, apesar de confirmação elétrica. Não fundir
+com as fronteiras de oportunidade, PWM, som ou autoria de intenção já tratadas.
+Owner novo da experiência reutiliza estado, SQLite e aprendizado canônicos;
+writer único preserva ocorrência/turno. Feedback usa o retrato capturado no plano
+e interpretação compartilhada. Maturidade da preferência não concede movimento.
+Condição corrente e observações históricas participam da mesma autoria da Laylay.
+Deslocamento sem sensor permanece não_medido, sem afirmar ausência de movimento.
+Provas e limites no registro CORPO-DECISAO-V1 e relatório corpo_integrado_v1.
+
+Continuação de 13/10/2026: owner da companhia agora preserva objetivo pela
+ocorrência/session/concessão e contexto do turno, com identidade de intenção
+distinta para cada causa/resultado e fases observáveis. REDs específicos de
+identidade e de consumo pré-executor foram registrados separadamente no mesmo
+ciclo, sem fundir com PWM/sons. Reavaliação após intervalo conserva fatos
+vigentes, sem replay ou extensão de autorização. O resultado conclui somente
+sua intenção; o modelo/catálogo leem essa continuidade e limites de observação.
+Provas, mudanças de contrato e ensaio USB em continuidade_corporal/RELATORIO.md.
+
+### CORPO-OBJETIVO-01 — referência atual a objetivo anterior, 13/10/2026
+
+Fronteira posterior à continuidade do turno em CORPO-DECISAO-V1; mantém o ID
+histórico sem confundir experiência/publicação com vínculo entre turnos.
+Autoria principal agora pode propor referência ao objetivo vivo observado pelo
+owner, que revalida sessão/concessão/prazo sem renovar execução antiga. Espera
+da autoria conserva candidato, não comando. Contexto específico de origem,
+saída sem reparo e orçamento íntegro foram necessários na prova com IA real.
+Artefatos RED e ensaio final amostral em objetivos_entre_turnos/RELATORIO.md.
+
+### CORPO-VARIANTE-01 — diversidade a partir de execução observada, 13/10/2026
+
+Mecanismo independente: seleção sem recência factual. Reusa histórico corporal
+e aprendizagem existentes, filtra sessão/perfil/família, reduz repetição sem
+derrubar preferências maduras ou conceder movimento. Não é calibração física.
+Não fundir as regressões paralelas de receipt instalado em corpo/música: dois
+controles também falharam com os módulos anteriores a este incremento.
+
+### EMAIL-IDENTIDADE-01, CONTEUDO-RELATO-01 e EMAIL-REVISAO-01 — 13/10/2026
+
+Incremento de e-mail autorizado por Pedro. Três fronteiras distintas: aviso
+sem referência recuperável/corpo; explicação do relato confundida com prova
+externa; operações sobre rascunho sem identidade e versão revisadas. Os REDs,
+owners, hipóteses falsificadas e controles estão em [EMAIL_V1.md](EMAIL_V1.md).
+O contrato de texto observado é compartilhado com arquivos/páginas; anexos
+usam owner de arquivos e coordenador cooperativo. Estado, pendência, modalidade,
+aprendizado e catálogo continuam canônicos. Worktree paralela preservada.
+
+Consulta/corpo Gmail e autenticação SMTP reais validados; fluxo instalado com
+Qwen real e SMTP controlado. Ainda sem envio/mutação autorizados na caixa real
+e sem prova na sessão desktop diária: incremento não encerrado globalmente.
+
+Fechamento do candidato de código:91 testes focados verdes, regressão de32
+módulos com538 verdes/22 subtestes e três REDs de conversa preexistentes à
+integração, reproduzidos sem os blocos de e-mail. IDs explícitos de rascunho,
+alvo inexistente, lixeira versus rascunho e verbos no conteúdo também foram
+reproduzidos e protegidos. Nenhum RED paralelo foi apagado; evidência e limites
+em EMAIL_V1.md. Permanecem abertos os efeitos externos e a sessão diária.
+
+### CONTEUDO-REFERENCIA-01 / EMAIL-LINGUAGEM-01 — RED desktop, 13/10/2026
+
+O log real de Pedro confirmou fonte/seleção/corpo, mas a explicação caiu no
+extrato. Raiz distinta de CONTEUDO-RELATO-01: o modelo produzia explicação e
+reescrevia espaços/quebras na própria prova, ou excedia o limite de citações.
+Owner compartilhado agora recebe IDs de trechos; host valida e materializa
+literalmente. Não flexibiliza casamento nem converte narrativa em receipt.
+
+Detector de e-mail reutiliza referência/modalidade canônicas e separa seleção
+simples (síntese) de pergunta específica (texto literal). Verde intermediário
+com link de visualização foi preservado; controle da tarefa demonstrou a
+fronteira.111 focados verdes;32 módulos com560 verdes/22 subtestes e os três
+REDs paralelos conhecidos. Gmail/Qwen/composição instalados reais explicaram
+oferta e responderam desconto/cupom da mesma mensagem. Prova diária após
+carregar as fontes, latência inicial, SMTP e mutações permanecem distintas.
+Evidências e limites na continuação de EMAIL_V1.md; nenhum commit.
+
+### NOTIFICACOES-APRESENTACAO-01 — consulta manual seguida de eco, 13/10/2026
+
+Nova fronteira, distinta de compreensão/linguagem de e-mail:central não recebia
+receipt dos itens já apresentados na resposta manual;fila persistente entregava
+o mesmo aviso depois. Segundo texto localizado no compositor proativo;executor
+manual entregava uma só resposta e identidade consulta/monitor era compatível.
+Receipt canônico agora carrega os itens mostrados;orquestrador observa entrega
+textual/áudio confirmado;central satisfaz identidade exata sem apagar evento
+ou considerar fila/leitura como apresentação. Porta genérica de preparação
+recompõe lotes parciais e dispensa lotes satisfeitos antes de falar.
+
+166 focados verdes;regressão42 módulos com910 verdes/22 subtestes e os mesmos
+três REDs paralelos. Composição/fila/Gmail reais readonly mostraram uma lista
+e zero eco do LinkedIn. Áudio/timer controlados;experiência diária após carregar
+fontes continua aberta. Prova em e-mail e avisos de sistema;mensagens novas e
+itens não mostrados preservados. Evidências/limites em EMAIL_V1.md;sem commit.
+
+### CORPO-DECISAO-V1 — episódios dos sensores, 14/10/2026
+
+Continuação da experiência compartilhada: DIST/GUARD correlacionados não
+entravam como episódios no mesmo histórico/aprendizado. Owner existente agora
+materializa sessão/incidente, marcos e proveniência; memória recuperada não é
+risco nem autoridade atuais. Modelo, autoria, catálogo e decisão reutilizam a
+mesma observação. Cotas separam telemetria de orçamento factual dos gestos.
+Provas/limites em artifacts/rosto_oled/experiencia_sensores/RELATORIO.md.
+
+### CORPO-CANCELAMENTO-01 — ocorrência encerrada versus concessão, 14/10/2026
+
+Mecanismo distinto de conexão/receipts sensoriais: guarda de EXPR podia recusar
+um gesto cuja causa acabara, e companhia classificava isso como falha elétrica.
+Owner agora reconhece cancelamento com concessão ainda vigente, sem replay ou
+sucesso falso. RED em três fases e reprodução USB; DEV preserva motivo do
+owner/receipt. Não resolveu a segunda ocorrência relatada depois por Pedro,
+com sem_confirmacao_pwm. Não fundir esse RED com admissão por reflexo abaixo.
+Evidências em artifacts/rosto_oled/companhia_interrompida/RELATORIO.md.
+
+### CORPO-ADMISSAO-PROTECAO-01 — MOTOR durante reflexo local, 14/10/2026
+
+Firmware recusava silenciosamente MOTOR durante pausa do reflexo e devolvia
+MOTOR_OCUPADO durante PWM local. Transporte interpretava ausência de MACK como
+falha elétrica; companhia retirava também SENTRY. Dois REDs C++ e dois ensaios
+USB localizaram as primeiras fronteiras de admissão. Recusa por proteção agora
+é HAZARD correlacionado em ambas as fases, sem reiniciar incidente, emprestar
+PWM ou permitir replay; ocupação por MOTOR normal e falhas elétricas mantidas.
+
+Firmware final gravado COM4, host/regressivos e61 Python passaram. Main normal
+por65s confirmou companhia preservada após gesto interrompido e novos episódios
+na mesma sessão/boot. Pedro: “Sim, continua reagindo”. Aplicação encerrada.
+Não encerra CORPO-I2C-01 ou prova antiqueda/navegação de mesa; estabilidade de
+horas segue sem validação. Fonte/evidências/limites em
+artifacts/rosto_oled/admissao_motor_reflexo/RELATORIO.md. Nenhum commit.
+
+### Correlação de ocorrência — fala entregue e sua evidência na recuperação, 15/10/2026
+
+Primeira perda reproduzida na composição instalada: a publicação conhece texto
+e receipts, mas o histórico não preserva o vínculo; após outro turno, consultas
+à fala antiga não recebem sua fonte. Oito REDs/um controle, incluindo voz aceita
+ou recusada, falsificam falha de áudio e ausência prévia de receipt. Mesma família
+de correlação por ocorrência, nova fronteira demonstrada; não fundir com F1 ou
+com o motivo da decisão corporal apenas por participarem de uma explicação.
+
+Registro semântico existente retém ocorrências entregues com snapshots tipados,
+fonte/turno/canal, TTL e sessão; projeção única normal/rápida. Sem copiar autoridade
+ou substituir última ação. Dez GREEN instalados; 390 GREEN/2 RED em 15 módulos.
+Os dois REDs de pergunta condicional/catálogo reproduzem nas fontes anteriores.
+Mais31 controles de sessão/projeção/limites GREEN, com sobreposição de contagens.
+
+Qwen real distingue histórico/atual no simples; composto preserva falha parcial
+mas acrescenta causa sem prova. F1 de redação fiel continua aberta. Sem main,
+publicação real/voz/hardware ou nova autonomia. Recuperação por sessão não é
+persistência de chat nem captura de motivo autônomo. Provas, snapshots e diff:
+`resultados_testes/compreensao_fala_acao_20261015/recuperacao_real/RELATORIO.md`.
+
+Continuação em 15/10: fonte recuperada estava só no prompt, não no contrato do
+juiz. Replay instalado bloqueia a causa original, mas nega indevidamente o
+sucesso parcial; outra formulação causal sem fonte publica. RED canônico antes
+do patch, mesma evidência histórica agora vinculada ao contrato do julgamento.
+Realização compartilhada separa execução/confirmação de causa/processamento,
+sem comandos atuais e sem aprovar prosa livre. Idempotência e perguntas
+retrospectivas naturais protegidas; não é uma exceção de música ou de frase.
+
+66 GREEN focados / 1 RED de entrega preexistente. Qwen real/HTTP pela composição
+instalada em simples, IoT/música e arquivos/e-mail: todas as falas com cobertura,
+zero comandos; voz/efeitos controlados. A duplicação textual do terceiro caso
+reproduz antes do candidato: entrega visual aceita + bool False da voz permite
+queda até outra publicação. Teste RED preservado, sem patch nessa outra raiz.
+41 REDs vizinhos reproduzem exatamente nas fontes anteriores; outros dois de
+catálogo/condicional já eram conhecidos. F1 livre não encerrada nem fundida com
+essa fronteira demonstrada. Provas/diff/limites em
+`resultados_testes/compreensao_fala_acao_20261015/causalidade_composta/RELATORIO.md`.
+Regressão final: 632 GREEN / 44 RED em 22 módulos; os dois de catálogo também
+repetiram com as fontes anteriores deste candidato. Nenhum RED ocultado.
+
+### Entrega textual no pré-fluxo — continuação da fronteira separada, 15/10
+
+RED mantido acima foi reproduzido: texto publicado, bool False da voz descartado
+como conclusão, queda na finalização seguinte. Owner da divergência é o contrato
+compartilhado de aceitação do orquestrador, não a geração causal do Qwen. Mesmo
+RED com deduplicação da fila real de voz. Aceite agora agrega canais; reprodução
+continua somente em callback. Dois arquivos de produção, nenhum patch no
+pré-fluxo, contrato factual, voz, domínio ou concessão. 90 focados GREEN e replay
+instalado com uma publicação, sem geração seguinte. Histórico e regressão em
+`resultados_testes/compreensao_fala_acao_20261015/entrega_pre_fluxo/RELATORIO.md`.
+Não encerra F1 livre ou prova áudio/interface diária; nenhuma autonomia ativada.
+Validação final: 104 focados GREEN; 417 GREEN / 2 RED na regressão de 17 módulos.
+Os dois de volume repetem ID/mensagem no baseline; uma fixture multimodal atinge
+timeout também antes do candidato, deixando 44 casos sem prova. P20 usa agora o
+owner real de continuidade, eliminando stub None inválido sem mudar asserções.
+
+### C4 — perda do motivo na origem da ocorrência, 15/10
+
+C4 é contrato do plano, não novo ID de raiz. Perda reproduzida pela composição
+instalada antes do efeito: a decisão tem motivo/referência, mas a ocorrência
+retém apenas o ID. Quadro e aprendizado também não receberam essa fonte.
+Mecanismo separado de recuperação da fala entregue e aceitação de entrega.
+
+Fonte imutável `DecisaoObservada` agora nasce no decisor antes da chamada;
+experiência existente valida correlação, conserva no aprendizado/histórico e
+projeta para as duas rotas. Três arquivos existentes e um tipo puro novo;
+sem regra por frase/domínio, novo histórico ou autoridade contextual.
+28 focados GREEN;420 GREEN/17 RED na regressão corporal. Fontes anteriores
+repetem os17 IDs/primeiras asserções (393 GREEN/17 RED).137 GREEN/1 SKIP dos
+contratos de fala. Provas com serial/persistência isolados; sem movimento real.
+
+Inferência real confirmou fonte no HTTP, mas não fidelidade: Qwen inventou
+percepção e sua revisão continuou sem vínculo demonstrado à regra histórica.
+Hipótese de fronteira de julgamento ligada a F1; não declarar causa comum
+provada nem somar outro bug apenas pelo sintoma. C4 segue parcial para repouso,
+expectativas e outros owners. Próxima investigação/limites/evidências:
+`resultados_testes/compreensao_fala_acao_20261015/decisao_antes_efeito/RELATORIO.md`.
+
+Fechamento: replay offline do preparador real admite duas causas sem fonte e
+o controle fiel. RED preservado por `replay_reparo_semantico.py --exigir-fidelidade`;
+dispensa nova inferência para reproduzir essa admissão. Ainda falta capturar
+contrato/referente do julgamento e provar o agrupamento antes de outro candidato.
+
+### Continuação C1/C4/F1 — fonte da ação ausente no contrato da revisão, 15/10
+
+Dois REDs instalados antes do candidato: experiência tem motivo, prompt/reparo
+o recebem, mas o contrato compartilhado só vinculava falas entregues. Revisão
+física não era verificador de causa e admitia outra justificativa sem fonte.
+Ausência de informação e dependência de uma formulação específica foram
+falsificadas. Mesma fronteira conceitual de evidência no prompt versus julgamento;
+novo tipo de fonte, sem recontar F1 por habilidade ou confundir com captura C4.
+
+Owner agora seleciona episódio tipado e consulta/turno o vinculam ao juiz já
+existente. Motivo, tentativa, confirmação e estado atual separados; realização
+limitada, fonte ausente/ambígua e referência desconhecida sem empréstimo de efeito.
+Nove arquivos existentes; sem juiz corporal privado ou patch de processamento,
+voz, executor, firmware, configuração ou autoridade. Nenhum commit.
+
+39 GREEN finais, incluindo Qwen real nas duas rotas e uma publicação por turno
+no replay instalado; nenhuma ação nas consultas. Regressões mantêm15 REDs
+vizinhos, comparados por ID/primeira asserção com fontes anteriores também nos
+subprocessos. Sem efeito físico/UI diária/áudio. F1/C4 gerais continuam abertas.
+Provas, diff, contagens sem soma de lotes e limites:
+`resultados_testes/compreensao_fala_acao_20261015/revisao_causa_sem_fonte/RELATORIO.md`.
+
+### Continuação C1/F1 — obrigação explicativa independente da seleção, 16/10
+
+Próxima fronteira reproduzida: consulta retrospectiva sobre atuação própria,
+sem substantivo do owner corporal ou sem episódio resolvido, perdia a obrigação
+de fonte. Preparação e guarda aceitavam causa inventada. Controle literal no
+mesmo processo recupera motivo; geração controlada reproduz sem Qwen. Não é
+perda C4 na captura nem outra raiz para cada domínio.
+
+Contrato compartilhado qualifica a obrigação antes do lookup: sem fonte,
+conserva consulta tipada com referência ausente, declara o limite e pede qual
+fala/ação. Não nega a tentativa nem toma receipt/motivo vivo. Ciclo sequencial
+revelou seleção de fala anterior incompatível com pergunta sobre ação: RED
+preservado e elegibilidade corrigida no mesmo binding. Citação literal e
+pergunta sobre a própria fala mantêm sua fonte. Leitura gramatical limitada,
+sem exceção por causa, frase ou habilidade.
+
+Três contratos de produção; owners/executores/autoridade inalterados por esta
+tarefa.37 GREEN finais com Qwen local nas duas rotas, seis ciclos publicados
+sem efeito e controles de segurança.11 REDs vizinhos repetem IDs/primeiras
+asserções com apenas os três contratos anteriores, inclusive nos subprocessos.
+Alteração USB paralela em laylay.py preservada e separada do candidato.
+F1 geral, prosa livre, resolução entre owners e runtime diário permanecem
+abertos. Fontes, responsáveis, critérios, diff e limites:
+`resultados_testes/compreensao_fala_acao_20261016/obrigacao_explicativa/RELATORIO.md`.
+
+### CORPO-DECISAO-V1 — IMU e manuseio, 15/10/2026
+
+Continua o owner corporal existente: IMU1 calibrada/recente acrescenta rotação
+relativa e inclinação ao modelo, experiência, aprendizado e DEV→Corpo. Percepção
+não autoriza movimento. Giro por ângulo exige PWM, TURNEND correlacionado e
+parada; não prova posição. Hardware marcado MPU6050 respondeu0x98, compatível
+com ICM20689; releitura das escalas e gravidade plausível confirmadas.
+Pedro aprovou expressão e sensibilidade. A pedido dele, perfil FINAL gravado é
+só IMU/olhos/som, VL53L0X em repouso e motores desarmados. Giro físico pendente
+de sensor fixo ao corpo. Perda de sessão I2C observada no ensaio permanece em
+CORPO-I2C-01; não encerra estabilidade ou ligação corporal global. Provas,
+regressivos antigos reproduzidos e composição USB real sem main/UI em
+`artifacts/rosto_oled/imu_manuseio/RELATORIO.md`.
+
+### CORPO-DECISAO-V1 — manuseio expressivo e comentários, 15/10/2026
+
+Continuidade finita da mesma IMU, com olhos/bips reclamões e fofos, sem nova
+autoridade motora. Experiência factual oferece episódios recentes ao diretor de
+presença/cognição/autora/fila existentes. Relato no passado não exige manter a
+postura; sessão/idade/dado vivo continuam fail-closed. Pedro aprovou visual e
+recomposição. Compactação do evento perdia a evidência: proteção tipada do ato
+system atual, com controles em corpo e cotidiano, preserva conversa comum.
+Reutiliza a fronteira de conservação do ato no transporte, sem criar exceção
+de texto histórico. Perdas de comunicação do ensaio seguem em CORPO-I2C-01.
+Provas/limites: `artifacts/rosto_oled/manuseio_fofo_v1/RELATORIO.md`.
+
+### CORPO-USB-IDENTIDADE-01 — seleção por alvo persistido — 16/10/2026
+
+Evolução autorizada: porta COM/nome não identificam o alvo. Configuração humana
+persiste fingerprint HEALTH e nome; o mesmo owner serial só admite o chip
+esperado e único antes de FACE. Sem pareamento mantém unicidade legada, sem
+adotar outro corpo; transporte não concede movimento.62 focados passaram,
+17 sincronizações reais sem motores e divergência recusada no hardware.
+Pareado como Corpo da Laylay. Outro PC físico pendente; configuração deve
+acompanhar a instalação. REDs vizinhos e CORPO-I2C-01 separados, sem encerramento
+global. `artifacts/rosto_oled/identidade_usb/RELATORIO.md`.
+
+### CORPO-I2C-01 e CORPO-DECISAO-V1 — fronteiras distintas, 16/10/2026
+
+Estabilidade: demonstrado receipt IMU incoerente no limiar75ms e periférico
+ausente sem revalidação. Snapshot único + recuperação espaçada e sem replay,
+com corte prévio da tração, no firmware integrado instalado. Um minuto USB
+saudável não prova causa física resolvida; CORPO-I2C-01 continua aberta.
+
+Decisão: objetivo curto tem propósito/critério/prazo no mesmo owner; quietude
+escolhida impede fallback motor nos dois perfis. Relato sensorial usa experiência
+factual e presença compartilhada; observação nunca vira permissão nem prova de
+fuga. Regra de conversa ociosa reutilizada entre iniciativa, porteiro e cliente,
+com prioridade de turno/claim preservada. Guardião nega conclusão física sem
+medida. Root/USB/modelo consultados sem movimento; falta audição e observação
+física acompanhada. Não consolida esses contratos com a causa elétrica aberta.
+Provas: `artifacts/rosto_oled/integracao_estavel_20261016/RELATORIO.md`.
+
+Adendo16/10 — CORPO-DECISAO-V1 / prioridade do evento observado: o próprio plano
+do evento era classificado pela ponte como turno humano ativo e bloqueava o
+cliente LLM. Mesmo ID, natureza evento e ausência de autoridade em plano/turno
+passam a conservar a prioridade correta; eventos de fontes distintas cobertos.
+RED e regressivos verdes, replay real com autoria. Ensaios USB receberam novos
+episódios, mas não entregaram fala: startup parcial manteve sombra, com timeout
+e rejeição de autoria separados. Não remover guardas nem atribuir sombra à
+aplicação normal sem inicializá-la. Pedro pediu encerramento; perfil integrado
+com motores disponível e preferências preservadas, aplicação fechada. Audição
+e composição completa permanecem pendentes. Evidências:
+`artifacts/rosto_oled/comentario_ausente_20261016/RELATORIO.md`.

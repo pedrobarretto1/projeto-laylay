@@ -1,0 +1,11 @@
+validar_sensores.cpp
+SENSORES_DIAGNOSTICO_OK: endereco, falha isolada, idade, validade, consulta sem MOTOR
+validar_sono_vivo.cpp
+GREEN sono variado, 2 bips discretos/4min, motores parados, reconexao e wrap; maior passo 54 pixels
+validar_som_olhos.cpp
+SOM_OLHOS_OK: notas/pausa/corte/replay/sessao/sem boca/motores preservados
+validar_expressoes_v3.cpp
+EXPRESSOES_V3_OK: estilos distintos, morph finito, sem motor, bips variados e duty preservado
+validar_motor_continuo.cpp
+Perfil normal: ordem de 5s rejeitada GREEN (GPIO simulado).
+PWM de referencia: quatro GPIOs em 1kHz/8bits, ambos canais em +/-100 e STOP GREEN (GPIO simulado).

@@ -17,6 +17,7 @@ from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 from mente_laylay.cognicao.leitura_semantica_turno import normalizar_leitura_semantica
 from mente_laylay.cognicao.guardiao_alegacoes import fala_adia_resposta_sem_continuacao
+from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
 from mente_laylay.cognicao.guardiao_realidade_pessoal import (
     detectar_experiencia_pessoal_inventada,
     remover_trechos_de_realidade_inventada,
@@ -391,7 +392,10 @@ def extrair_leitura_semantica_da_ia(
                 bruto, "leitura_emocional",
             )
     if isinstance(valor, list):
-        tipos = [str(item or "").strip().lower() for item in valor if str(item or "").strip()]
+        atos = [dict(item) if isinstance(item, dict) else
+                {"tipo": str(item or "").strip().lower(), "falante": "pedro", "confianca": 0.82}
+                for item in valor if isinstance(item, dict) or str(item or "").strip()]
+        tipos = [str(ato.get("tipo") or "").strip().lower() for ato in atos]
         if not tipos:
             return {}
         tipos_pergunta = {"pergunta", "pergunta_opiniao", "pergunta_capacidade"}
@@ -406,10 +410,7 @@ def extrair_leitura_semantica_da_ia(
         else:
             modalidade = "conversa"
         valor = {
-            "atos": [
-                {"tipo": tipo, "falante": "pedro", "confianca": 0.82}
-                for tipo in tipos
-            ],
+            "atos": atos,
             "modalidade_geral": modalidade,
             "ato_principal": tipos[-1],
             "operacional": {"pedido_real": "pedido_acao" in tipos},
@@ -603,6 +604,15 @@ def preparar_resposta_para_execucao(
             f"| motivo=plano_atual_sem_autorizacao quantidade={len(comandos)}"
         )
         comandos = []
+    if not comandos:
+        historica = avaliar_fala_historica(fala_limpa, plano=plano_comunicacao)
+        if historica is not None and historica["problemas"]:
+            # Uma causa não coberta não vira negação do efeito confirmado.
+            # O mesmo owner da guarda final realiza só os fatos do receipt.
+            registrar_log("🛡️ [FALA:HISTÓRICA] " + ",".join(historica["problemas"]))
+            fala_limpa = historica["fala"]
+            bot_raw = json.dumps({"fala": fala_limpa, "comandos": []}, ensure_ascii=False)
+            comunicacao_autocorrigida = True
     realidade_bloqueada = False
     problemas_realidade = (
         detectar_experiencia_pessoal_inventada(fala_limpa)

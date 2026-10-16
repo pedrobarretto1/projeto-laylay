@@ -49,6 +49,32 @@ def _resultado_observado_concluiu(resultado: Any) -> bool:
                 and resultado.confirmacao_oferecida not in {"indisponivel", "envio_comando"})
 
 
+def _resultado_observado_enviado(resultado: Any) -> bool:
+    """Envio certificado, sem promover ausência de observação a sucesso."""
+    if not isinstance(resultado, ResultadoAcao):
+        return False
+    from mente_laylay.especialistas.capacidades import consultar_capacidade
+    capacidade = consultar_capacidade(resultado.intent)
+    return bool(resultado.origem == "executor" and resultado.id_solicitacao
+                and resultado.ok is True and resultado.executou is True
+                and resultado.confirmado is None
+                and resultado.estado_final == "executado_sem_confirmacao"
+                and inferir_confirmacao(resultado.status, resultado.executou) is None
+                and capacidade.get("dominio") not in {"desconhecido", "corpo_motor"}
+                and resultado.confirmacao_oferecida != "indisponivel")
+
+
+def projetar_envio_operacional(estado: Mapping[str, Any] | None, *, agora: float | None = None) -> tuple[int, float] | None:
+    """Sinal transitório de envio; não confirma efeito nem autoriza execução."""
+    if not isinstance(estado, Mapping) or estado.get("origem") != _ORIGEM:
+        return None
+    identidade, instante = estado.get("envio_id"), estado.get("envio_monotonic")
+    if type(identidade) is not int or identidade <= 0 or type(instante) not in (int, float):
+        return None
+    idade = float(time.monotonic() if agora is None else agora) - instante
+    return (identidade, float(instante)) if math.isfinite(idade) and 0 <= idade <= VALIDADE_SUCESSO_S else None
+
+
 def projetar_falha_operacional(
     estado: Mapping[str, Any] | None, *, agora: float | None = None,
 ) -> tuple[int, float] | None:
@@ -146,6 +172,10 @@ class AtividadeOperacionalRuntime:
         self._falha_monotonic: float | None = None
         self._sucesso_id = 0
         self._sucesso_monotonic: float | None = None
+        self._envio_id = 0
+        self._envio_monotonic: float | None = None
+        self._receipts_envio: dict[str, None] = {}
+        self._envios_pendentes: set[object] = set()
         self._receipts_sucesso: dict[str, None] = {}
         self._escopo_resultado: ContextVar[object | None] = ContextVar("escopo_resultado_operacional", default=None)
         self._sucessos_pendentes: set[object] = set()
@@ -165,6 +195,8 @@ class AtividadeOperacionalRuntime:
                 "falha_monotonic": self._falha_monotonic,
                 "sucesso_id": self._sucesso_id,
                 "sucesso_monotonic": self._sucesso_monotonic,
+                "envio_id": self._envio_id,
+                "envio_monotonic": self._envio_monotonic,
                 "autoriza_execucao": False,
                 "confirma_efeito": False,
             }
@@ -229,6 +261,29 @@ class AtividadeOperacionalRuntime:
             if raiz is not None:
                 self._escopos_sem_sucesso.add(raiz)
                 self._sucessos_pendentes.discard(raiz)
+                self._envios_pendentes.discard(raiz)
+
+    def _publicar_envio(self) -> None:
+        with self._lock:
+            instante = float(self.monotonic())
+            if math.isfinite(instante):
+                self._envio_id += 1
+                self._envio_monotonic = instante
+                self._publicar()
+
+    def _observar_envio(self, resultado: ResultadoAcao) -> bool:
+        with self._lock:
+            if resultado.id_solicitacao in self._receipts_envio or resultado.id_solicitacao in self._receipts_sucesso:
+                return False
+            self._receipts_envio[resultado.id_solicitacao] = None
+            if len(self._receipts_envio) > 128:
+                self._receipts_envio.pop(next(iter(self._receipts_envio)))
+            raiz = self._escopo_resultado.get()
+            if raiz is None:
+                self._publicar_envio()
+            elif raiz not in self._escopos_sem_sucesso:
+                self._envios_pendentes.add(raiz)
+            return True
 
     def _publicar_sucesso(self) -> None:
         with self._lock:
@@ -261,6 +316,8 @@ class AtividadeOperacionalRuntime:
                 return self._registrar_falha_observada(resultado)
             if _resultado_observado_concluiu(resultado):
                 return self._observar_sucesso(resultado)
+            if _resultado_observado_enviado(resultado):
+                return self._observar_envio(resultado)
         except Exception as erro:
             self._relatar("falha_leitura_receipt_visual", erro)
         return False
@@ -295,9 +352,13 @@ class AtividadeOperacionalRuntime:
                 if contexto_raiz is not None:
                     with self._lock:
                         comemorar = token in self._sucessos_pendentes and token not in self._escopos_sem_sucesso
+                        enviado = token in self._envios_pendentes and token not in self._escopos_sem_sucesso
                         self._sucessos_pendentes.discard(token)
+                        self._envios_pendentes.discard(token)
                         self._escopos_sem_sucesso.discard(token)
-                        if comemorar:
+                        if enviado:
+                            self._publicar_envio()
+                        elif comemorar:
                             self._publicar_sucesso()
             except Exception as erro:
                 self._relatar("falha_fim_visual", erro)

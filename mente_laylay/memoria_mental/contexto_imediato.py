@@ -10,6 +10,12 @@ import math
 from typing import Any, Callable, Dict, Iterable, Mapping, Tuple
 
 from mente_laylay.integracao.registro_iot import PortaIoT
+from mente_laylay.cognicao.normalizacao_linguagem import remover_conector_discursivo_inicial
+from mente_laylay.cognicao.gramatica_operacional import (
+    ler_nivel_atribuicao_contextual as _ler_nivel_contextual,
+    nivel_ajuste_extremo_volume, texto_pede_ajuste_numerico_contextual,
+    texto_pede_ajuste_parametrico_contextual,
+)
 
 from mente_laylay.memoria_mental.reparacao_conversacional import (
     detectar_reparacao_conversacional,
@@ -20,6 +26,7 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     contrato_confirma_referencia_operacional,
     descrever_quarentena_referencia_app,
     foco_por_dominio,
+    _alvo_unico_layout_c1d,
 )
 from mente_laylay.memoria_mental.continuidade_geral import (
     selecionar_continuidade, selecionar_operacao_reexecutavel_compativel,
@@ -274,6 +281,13 @@ def _referencia_de_continuidade(registro: Mapping[str, Any]) -> Dict[str, Any]:
     if intent == "VOLUME":
         tipo = "volume"  # domínio sistema não substitui o subtipo do parâmetro
     alvo = str(registro.get("alvo") or registro.get("topico") or "").strip()
+    if intent == "ORGANIZAR_DESKTOP":
+        # O receipt descreve o layout para apresentação. A identidade da
+        # entidade continua nos parâmetros estruturados do owner compartilhado.
+        # Não recortar "na esquerda" do texto: pode pertencer ao nome real.
+        alvo = _alvo_unico_layout_c1d(registro.get("params"))
+        if not alvo:
+            return {}
     if not alvo and tipo not in {"midia", "volume"}:
         return {}
     return {"tipo": tipo, "alvo": alvo or ("musica" if tipo == "midia" else tipo),
@@ -630,18 +644,6 @@ def referencia_contextual_imediata(
     return {}
 
 
-_AJUSTE_NUMERICO_CONTEXTUAL = re.compile(
-    r"(?:(?P<verbo>coloca|coloque|bota|deixa|poe|põe)\s+)?"
-    r"(?:o\s+)?(?:em|no|para|pra)?\s*(?P<nivel>\d{1,3})\s*%?"
-)
-
-
-def texto_pede_ajuste_numerico_contextual(texto: str) -> bool:
-    """Forma de atribuição sem nome do parâmetro; não escolhe habilidade."""
-    ajuste = _AJUSTE_NUMERICO_CONTEXTUAL.fullmatch(str(texto or "").strip().casefold())
-    return bool(ajuste and ajuste.group("verbo"))
-
-
 def resolver_continuacao_operacional_confirmada(
     texto: str,
     estado: Mapping[str, Any] | None,
@@ -696,7 +698,7 @@ def resolver_continuacao_operacional_confirmada(
     if str(referencia.get("intencao") or "").upper().strip() != intent:
         return None
     candidato = resolver_comando_acao_geral_contextual(
-        _normalizar_com_callback(texto, normalizar_texto), referencia,
+        _normalizar_com_callback(texto, normalizar_texto), referencia, texto_original=texto,
     )
     if not candidato:
         return None
@@ -715,11 +717,12 @@ def resolver_comando_acao_geral_contextual(
     contexto_ref: Dict[str, Any] | None,
     *,
     ultima_playlist: str = "",
+    texto_original: str | None = None,
 ) -> Dict[str, Any] | None:
     # O resolvedor é público e recebe tanto texto já normalizado quanto a
     # frase original em algumas portas prioritárias. A gramática não pode
     # depender da capitalização usada pelo chamador.
-    t = str(texto_normalizado or "").strip().casefold()
+    t = remover_conector_discursivo_inicial(texto_normalizado).casefold()
     if not t:
         return None
     contexto_ref = dict(contexto_ref or {})
@@ -887,13 +890,17 @@ def resolver_comando_acao_geral_contextual(
         }
 
     if tipo_ref == "volume":
+        extremo = nivel_ajuste_extremo_volume(t)
+        if extremo is not None:
+            return {"intent": "VOLUME", "params": {
+                "acao": "set", "nivel_volume": extremo, "referencia_contextual": True}}
         if re.fullmatch(r"(?:desmuta|desmutar|tira do mudo|volta o som)", t):
             return {"intent": "VOLUME", "params": {"acao": "unmute", "referencia_contextual": True}}
         if re.fullmatch(r"(?:muta|mutar|mute|deixa mudo|fica sem som)", t):
             return {"intent": "VOLUME", "params": {"acao": "mute", "referencia_contextual": True}}
-        nivel = _AJUSTE_NUMERICO_CONTEXTUAL.fullmatch(t)
-        if nivel:
-            valor = max(0, min(100, int(nivel.group("nivel"))))
+        nivel = _ler_nivel_contextual(texto_original if texto_original is not None else t)
+        if nivel is not None:
+            valor = max(0, min(100, nivel))
             print(f"🔊 [CONTEXTO-GERAL] ajustando volume recente -> {valor}%")
             return {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": valor, "referencia_contextual": True}}
 
@@ -1512,7 +1519,9 @@ class ContextoImediatoRuntime:
         ):
             return None
         try:
-            resultado = detector(t, self._estado().mental)
+            # O domínio valida argumento/unidade na fonte; ``t`` serve só às
+            # guardas lexicais acima, não substitui a fala por outra sem sinais.
+            resultado = detector(texto, self._estado().mental)
         except Exception:
             return None
         if not isinstance(resultado, dict):
@@ -1601,7 +1610,7 @@ class ContextoImediatoRuntime:
         t = ns["_normalizar_texto_com_apelidos"](texto)
         if not t:
             return None
-        if texto_pede_ajuste_numerico_contextual(t):
+        if texto_pede_ajuste_parametrico_contextual(texto):
             return resolver_continuacao_operacional_confirmada(
                 texto, self._estado().mental, normalizar_texto=ns["_normalizar_texto_com_apelidos"],
             )
@@ -1613,6 +1622,7 @@ class ContextoImediatoRuntime:
                 dominio_preferido=dominio_preferido,
             ),
             ultima_playlist=self._estado().musica_get("ultima_playlist"),
+            texto_original=texto,
         )
 
     def resolver_semantico(self, texto: str) -> Dict[str, Any] | None:
@@ -1694,7 +1704,7 @@ class ContextoImediatoRuntime:
     def resolver(self, texto: str) -> Dict[str, Any] | None:
         ns = self._namespace()
         t = ns["_normalizar_texto_com_apelidos"](texto)
-        if texto_pede_ajuste_numerico_contextual(t):
+        if texto_pede_ajuste_parametrico_contextual(texto):
             return resolver_continuacao_operacional_confirmada(
                 texto, self._estado().mental, normalizar_texto=ns["_normalizar_texto_com_apelidos"],
             )

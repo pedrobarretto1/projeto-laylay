@@ -1,0 +1,22 @@
+..................................................F..................... [ 42%]
+...........................................F............................ [ 84%]
+..........................                                               [100%]
+================================== FAILURES ===================================
+___ test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo ___
+scripts\tests\test_companhia_corporal.py:233: in test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+    assert receipt["intent"] == "CORPO_COMPANHIA" and receipt["confirmado"] is True
+           ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+⚠️ [FALA:AUTORIA] fallback local | motivo=modelo_sem_callback status=companhia_ativada
+_ test_retrato_corporal_negocia_json_no_preparador_e_preserva_campo_fora_da_fala _
+scripts\tests\test_corpo_na_mente.py:83: in test_retrato_corporal_negocia_json_no_preparador_e_preserva_campo_fora_da_fala
+    assert instrucao in compacto["messages"][-2]["content"]
+E   assert '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":null,"conectada":true,"companhia_ativa":tru.... Não anuncie movimento como feito antes do retorno. Se desconectada, explique a indisponibilidade sem prometer gesto.' in '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":null,"conectada":true,"companhia_ativa":tru... é uma proposta; o executor valida a sessão e o momento. Não anuncie movimento como feito antes do retorno. Se descone'
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_companhia_corporal.py::test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+FAILED scripts/tests/test_corpo_na_mente.py::test_retrato_corporal_negocia_json_no_preparador_e_preserva_campo_fora_da_fala
+2 failed, 168 passed in 50.49s

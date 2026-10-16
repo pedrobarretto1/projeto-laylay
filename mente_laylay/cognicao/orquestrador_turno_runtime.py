@@ -1398,6 +1398,12 @@ def _iniciar_planejamento_turno(
         for item in mensagens_recentes
         if isinstance(item, dict) and str(item.get('role') or '').casefold() == 'assistant'
     ][-3:]
+    explicacao_ocorrencia = None
+    recuperar_explicacao = ns.get('_recuperar_explicacao_ocorrencia_mente')
+    if (callable(recuperar_explicacao) and turno.get('autoriza_execucao') is False
+            and turno.get('modalidade') in {'pergunta', 'deliberacao'}
+            and not plano.get('requer_execucao') and not plano.get('comandos')):
+        explicacao_ocorrencia = recuperar_explicacao(texto, turno=turno)
     contrato_fala = construir_contrato_semantico_fala(
         texto,
         turno=turno,
@@ -1405,6 +1411,7 @@ def _iniciar_planejamento_turno(
         funcao_comunicativa=funcao_comunicativa,
         mente=mente_antes_turno,
         falas_recentes=falas_recentes,
+        explicacao_ocorrencia=explicacao_ocorrencia,
     )
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala

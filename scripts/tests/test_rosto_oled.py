@@ -56,7 +56,7 @@ class EspSerial:
         elif partes[0] == "CAPS":
             resposta = f"CAPS 1 {partes[2]} HACK1" if self.hack else "ERROR 1 PACOTE_INVALIDO"
             self.rx.extend((resposta + "\n").encode())
-        elif partes[0] in {"GCAPS", "MCAPS", "SCAPS", "LCAPS", "ECAPS", "RCAPS"}:
+        elif partes[0] in {"GCAPS", "MCAPS", "SCAPS", "LCAPS", "ECAPS", "RCAPS", "DCAPS"}:
             # Firmware anterior rejeita extensões desconhecidas. Isto mantém
             # os testes com clock congelado fiéis ao parser antigo real.
             self.rx.extend(b"ERROR 1 PACOTE_INVALIDO\n")
@@ -373,7 +373,7 @@ def test_intervalo_sem_heartbeats_renova_sessao_antes_de_acordar_com_pose_atual(
     hello_atual = next(p for p in reversed(esp.enviados) if p.startswith("HELLO 1 "))
     assert hello_atual != sessao_anterior
     negociacao = esp.enviados[esp.enviados.index(hello_atual):]
-    assert [p.split()[0] for p in negociacao] == ["HELLO", "CAPS", "GCAPS", "MCAPS", "LCAPS", "SCAPS", "ECAPS", "RCAPS", "FACE"]
+    assert [p.split()[0] for p in negociacao] == ["HELLO", "CAPS", "GCAPS", "MCAPS", "LCAPS", "SCAPS", "ECAPS", "RCAPS", "DCAPS", "FACE"]
     assert " 1 6 2 0 3500" in esp.enviados[-1]
 
 

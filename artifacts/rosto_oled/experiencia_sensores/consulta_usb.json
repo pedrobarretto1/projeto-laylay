@@ -1,0 +1,506 @@
+{
+  "falha": "",
+  "registros": [
+    {
+      "t": 6.997,
+      "sessao": "ceac82ec",
+      "protecao": {
+        "incidente_id": 5,
+        "motor_origem_seq": 0,
+        "risco": "OBSTACULO",
+        "fase": "CANCELADA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "irritada",
+        "tentativa_busca": 2,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "leituras": {
+        "frente": {
+          "estado": "VALIDA",
+          "mm": 45,
+          "idade_ms": 141,
+          "status": 0
+        },
+        "borda": {
+          "estado": "VALIDA",
+          "mm": 41,
+          "idade_ms": 142,
+          "status": 0
+        }
+      },
+      "companhia": {
+        "ativa": false,
+        "motivo": "aguardando_ativacao_explicita",
+        "transporte_exigido": "serial",
+        "recuperacao_pendente": false,
+        "ttl_maximo_s": null,
+        "gestos_maximos": null,
+        "gestos_emitidos": 0,
+        "intervalo_minimo_s": 2,
+        "pwm_gestos": 230,
+        "duracao_maxima_gesto_ms": 5000,
+        "duracao_planejada_maxima_coreografia_ms": 16000,
+        "movimentos_maximos_por_gesto": 4,
+        "perfil_expressivo": "presenca_coordenada_v2",
+        "perfil_corporal": "rodas_suspensas",
+        "intencao": {},
+        "continuidade_intencao": true,
+        "objetivos_entre_turnos": true,
+        "planejamento_por_historico": true,
+        "validade_objetivo_s": 120,
+        "turnos_objetivo_maximo": 8,
+        "passeio_ativado": false,
+        "comemoracoes_emitidas": 0,
+        "passeios_emitidos": 0,
+        "giro_360_calibrado": false,
+        "restantes_s": null,
+        "vigencia": "sessao_usb_atual_ate_revogacao",
+        "origem": "concessao_explicita_de_sessao",
+        "ativacao_automatica_ao_iniciar": true,
+        "passeio_automatico_ao_iniciar": true,
+        "autoriza_execucao": false,
+        "persistente": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [],
+        "aprendizado": {},
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": true,
+        "ultimo_erro": ""
+      },
+      "modelo": {
+        "origem": "owner_corpo_usb",
+        "ts": 1792015895.959306,
+        "turno_id": "",
+        "sessao": "ceac82ec",
+        "concessao_id": "",
+        "conectada": true,
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "perfil": "rodas_suspensas",
+        "condicao": {
+          "estado": "risco_detectado",
+          "motivo_motor": "",
+          "saude_executor": {
+            "motivo_boot": "usb",
+            "motivo_perda_sessao": "TRANSPORTE",
+            "suportado": true,
+            "recente": true,
+            "reinicios_observados": 0
+          },
+          "recuperacao_pendente": false,
+          "protecao": {
+            "incidente_id": 5,
+            "motor_origem_seq": 0,
+            "risco": "OBSTACULO",
+            "fase": "CANCELADA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "irritada",
+            "tentativa_busca": 2,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "reacao_expressiva": "irritada",
+          "origem": "diagnostico_firmware",
+          "autoriza_execucao": false
+        },
+        "experiencia": {
+          "origem": "experiencia_corporal_observada",
+          "historico_recente": [],
+          "aprendizado": {},
+          "feedback": {},
+          "aprendizado_conectado": true,
+          "autoriza_execucao": false,
+          "sensores_fisicos": true,
+          "ultimo_erro": "",
+          "sensorial": {
+            "origem": "experiencia_sensorial_observada",
+            "vigente": true,
+            "episodios_recentes": 0,
+            "buscas_em_espera": 0,
+            "ultima_espera_em": 0,
+            "segundos_ultima_espera": null,
+            "fase_atual": "CANCELADA",
+            "risco_atual": "OBSTACULO",
+            "autoriza_execucao": false,
+            "prova_deslocamento": false
+          }
+        },
+        "intencao_em_curso": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "objetivo_para_continuar": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "percepcao_fisica": {
+          "deslocamento": "nao_medido",
+          "contato": "nao_medido",
+          "distancias": {
+            "suportado": true,
+            "recente": true,
+            "consulta_id": 7,
+            "alerta_suportado": true,
+            "busca_renovada": false,
+            "leituras": {
+              "frente": {
+                "estado": "VALIDA",
+                "mm": 45,
+                "idade_ms": 141,
+                "status": 0
+              },
+              "borda": {
+                "estado": "VALIDA",
+                "mm": 41,
+                "idade_ms": 142,
+                "status": 0
+              }
+            },
+            "protecao": {
+              "incidente_id": 5,
+              "motor_origem_seq": 0,
+              "risco": "OBSTACULO",
+              "fase": "CANCELADA",
+              "reflexo_ativo": false,
+              "reacao_expressiva": "irritada",
+              "tentativa_busca": 2,
+              "vigia_ativa": false,
+              "limite_borda_mm": 130,
+              "limite_obstaculo_mm": 100,
+              "origem": "executor_protecao_esp",
+              "autoriza_execucao": false,
+              "rotacao_medida": false,
+              "cobertura": "frente_e_borda_dianteira",
+              "recente": true
+            },
+            "origem": "owner_usb_dist_guard",
+            "autoriza_execucao": false
+          },
+          "obstaculos": "medicao_frontal",
+          "cobertura": "somente_frente_e_borda_dianteira",
+          "rotacao": "nao_medida"
+        },
+        "olhos": [
+          0,
+          1,
+          0
+        ],
+        "motor_em_andamento": false,
+        "emocao_causal": {
+          "nome": "calma",
+          "nivel": 1
+        },
+        "atencao_pc": false,
+        "autoriza_execucao": false,
+        "ultima_experiencia": {}
+      }
+    },
+    {
+      "t": 11.127,
+      "sessao": "ceac82ec",
+      "protecao": {
+        "incidente_id": 5,
+        "motor_origem_seq": 0,
+        "risco": "NENHUM",
+        "fase": "PRONTA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "nenhuma",
+        "tentativa_busca": 2,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "leituras": {
+        "frente": {
+          "estado": "INVALIDA",
+          "mm": null,
+          "idade_ms": 141,
+          "status": 2
+        },
+        "borda": {
+          "estado": "VALIDA",
+          "mm": 65,
+          "idade_ms": 143,
+          "status": 0
+        }
+      },
+      "companhia": {
+        "ativa": false,
+        "motivo": "aguardando_ativacao_explicita",
+        "transporte_exigido": "serial",
+        "recuperacao_pendente": false,
+        "ttl_maximo_s": null,
+        "gestos_maximos": null,
+        "gestos_emitidos": 0,
+        "intervalo_minimo_s": 2,
+        "pwm_gestos": 230,
+        "duracao_maxima_gesto_ms": 5000,
+        "duracao_planejada_maxima_coreografia_ms": 16000,
+        "movimentos_maximos_por_gesto": 4,
+        "perfil_expressivo": "presenca_coordenada_v2",
+        "perfil_corporal": "rodas_suspensas",
+        "intencao": {},
+        "continuidade_intencao": true,
+        "objetivos_entre_turnos": true,
+        "planejamento_por_historico": true,
+        "validade_objetivo_s": 120,
+        "turnos_objetivo_maximo": 8,
+        "passeio_ativado": false,
+        "comemoracoes_emitidas": 0,
+        "passeios_emitidos": 0,
+        "giro_360_calibrado": false,
+        "restantes_s": null,
+        "vigencia": "sessao_usb_atual_ate_revogacao",
+        "origem": "concessao_explicita_de_sessao",
+        "ativacao_automatica_ao_iniciar": true,
+        "passeio_automatico_ao_iniciar": true,
+        "autoriza_execucao": false,
+        "persistente": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [],
+        "aprendizado": {},
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": true,
+        "ultimo_erro": ""
+      },
+      "modelo": {
+        "origem": "owner_corpo_usb",
+        "ts": 1792015900.0893772,
+        "turno_id": "",
+        "sessao": "ceac82ec",
+        "concessao_id": "",
+        "conectada": true,
+        "companhia_ativa": false,
+        "passeio_ativo": false,
+        "perfil": "rodas_suspensas",
+        "condicao": {
+          "estado": "pronta",
+          "motivo_motor": "",
+          "saude_executor": {
+            "motivo_boot": "usb",
+            "motivo_perda_sessao": "TRANSPORTE",
+            "suportado": true,
+            "recente": true,
+            "reinicios_observados": 0
+          },
+          "recuperacao_pendente": false,
+          "protecao": {
+            "incidente_id": 5,
+            "motor_origem_seq": 0,
+            "risco": "NENHUM",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "nenhuma",
+            "tentativa_busca": 2,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "reacao_expressiva": "nenhuma",
+          "origem": "diagnostico_firmware",
+          "autoriza_execucao": false
+        },
+        "experiencia": {
+          "origem": "experiencia_corporal_observada",
+          "historico_recente": [],
+          "aprendizado": {},
+          "feedback": {},
+          "aprendizado_conectado": true,
+          "autoriza_execucao": false,
+          "sensores_fisicos": true,
+          "ultimo_erro": "",
+          "sensorial": {
+            "origem": "experiencia_sensorial_observada",
+            "vigente": true,
+            "episodios_recentes": 0,
+            "buscas_em_espera": 0,
+            "ultima_espera_em": 0,
+            "segundos_ultima_espera": null,
+            "fase_atual": "PRONTA",
+            "risco_atual": "NENHUM",
+            "autoriza_execucao": false,
+            "prova_deslocamento": false
+          }
+        },
+        "intencao_em_curso": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "objetivo_para_continuar": {
+          "autoriza_execucao": false,
+          "origem": "owner_companhia_corporal",
+          "sessao_vigente": false,
+          "pertence_ao_turno_atual": false,
+          "continuidade_disponivel": false
+        },
+        "percepcao_fisica": {
+          "deslocamento": "nao_medido",
+          "contato": "nao_medido",
+          "distancias": {
+            "suportado": true,
+            "recente": true,
+            "consulta_id": 12,
+            "alerta_suportado": true,
+            "busca_renovada": false,
+            "leituras": {
+              "frente": {
+                "estado": "INVALIDA",
+                "mm": null,
+                "idade_ms": 141,
+                "status": 2
+              },
+              "borda": {
+                "estado": "VALIDA",
+                "mm": 65,
+                "idade_ms": 143,
+                "status": 0
+              }
+            },
+            "protecao": {
+              "incidente_id": 5,
+              "motor_origem_seq": 0,
+              "risco": "NENHUM",
+              "fase": "PRONTA",
+              "reflexo_ativo": false,
+              "reacao_expressiva": "nenhuma",
+              "tentativa_busca": 2,
+              "vigia_ativa": false,
+              "limite_borda_mm": 130,
+              "limite_obstaculo_mm": 100,
+              "origem": "executor_protecao_esp",
+              "autoriza_execucao": false,
+              "rotacao_medida": false,
+              "cobertura": "frente_e_borda_dianteira",
+              "recente": true
+            },
+            "origem": "owner_usb_dist_guard",
+            "autoriza_execucao": false
+          },
+          "obstaculos": "medicao_frontal",
+          "cobertura": "somente_frente_e_borda_dianteira",
+          "rotacao": "nao_medida"
+        },
+        "olhos": [
+          0,
+          1,
+          0
+        ],
+        "motor_em_andamento": false,
+        "emocao_causal": {
+          "nome": "calma",
+          "nivel": 1
+        },
+        "atencao_pc": false,
+        "autoriza_execucao": false,
+        "ultima_experiencia": {}
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "t": 0.006,
+      "comando": "HELLO 1 ceac82ec"
+    },
+    {
+      "t": 1.429,
+      "comando": "SENTRY 1 ceac82ec 1 0 1200"
+    },
+    {
+      "t": 2.334,
+      "comando": "SENTRY 1 ceac82ec 2 0 1200"
+    },
+    {
+      "t": 3.149,
+      "comando": "SENTRY 1 ceac82ec 3 0 1200"
+    },
+    {
+      "t": 4.057,
+      "comando": "SENTRY 1 ceac82ec 4 0 1200"
+    },
+    {
+      "t": 4.851,
+      "comando": "SENTRY 1 ceac82ec 5 0 1200"
+    },
+    {
+      "t": 5.649,
+      "comando": "SENTRY 1 ceac82ec 6 0 1200"
+    },
+    {
+      "t": 6.559,
+      "comando": "SENTRY 1 ceac82ec 7 0 1200"
+    },
+    {
+      "t": 7.357,
+      "comando": "SENTRY 1 ceac82ec 8 0 1200"
+    },
+    {
+      "t": 8.171,
+      "comando": "SENTRY 1 ceac82ec 9 0 1200"
+    },
+    {
+      "t": 9.088,
+      "comando": "SENTRY 1 ceac82ec 10 0 1200"
+    },
+    {
+      "t": 9.881,
+      "comando": "SENTRY 1 ceac82ec 11 0 1200"
+    },
+    {
+      "t": 10.688,
+      "comando": "SENTRY 1 ceac82ec 12 0 1200"
+    },
+    {
+      "t": 11.597,
+      "comando": "SENTRY 1 ceac82ec 13 0 1200"
+    },
+    {
+      "t": 12.238,
+      "comando": "STOP 1 ceac82ec 1"
+    }
+  ],
+  "evidencias": [],
+  "consulta_modelo": {},
+  "encerrada": true,
+  "aprendizado_isolado": true,
+  "prova_deslocamento": false
+}

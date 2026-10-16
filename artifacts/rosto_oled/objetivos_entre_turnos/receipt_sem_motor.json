@@ -1,0 +1,250 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "etapa": "continuidade_autorada",
+      "intencao": {
+        "id": "88a3e033da6f",
+        "objetivo_id": "16519dd4c944",
+        "contexto": [
+          "e4fe08a359e167a5",
+          "56619124",
+          "objetivo-b",
+          "objetivo-b"
+        ],
+        "turno_id": "objetivo-b",
+        "plano_id": "objetivo-b",
+        "sessao": "56619124",
+        "nome": "interagir",
+        "emocao": 0,
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 7412.8470543,
+        "objetivo_contexto": "Gosto de conversar com você, Laylay.",
+        "turnos_objetivo": 2,
+        "objetivo_encerrado": false,
+        "referencia_objetivo": {},
+        "nivel": 1,
+        "desde_monotonic": 7296.2416645,
+        "chave": [
+          "interagir",
+          0,
+          1,
+          "intencao_da_mente",
+          "03a50d321cb3d2a1",
+          null
+        ],
+        "estado": "proposta",
+        "fase": "aguardando",
+        "motivo": "intencao_da_mente",
+        "prioridade": 95,
+        "candidata_a_movimento": false
+      }
+    },
+    {
+      "etapa": "mudanca_assunto",
+      "proposta": {
+        "id": "26742c1c93b415c3",
+        "turno_id": "objetivo-c",
+        "plano_id": "objetivo-c",
+        "nome": "atenta",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "56619124",
+        "concessao_id": "e4fe08a359e167a5",
+        "desde_monotonic": 7298.6317019,
+        "ate_monotonic": 7328.6317019,
+        "autoriza_execucao": false
+      }
+    }
+  ],
+  "consultas": [
+    {
+      "turno": "objetivo-b",
+      "texto": "E eu fico feliz quando você me acompanha nessa conversa. Como você fica?",
+      "resposta": "{\"fala\":\"Estou bem, graças por me deixar com você. A sensação é como uma luz suave que se mantém, sem precisar se mover — só aqui, com a conversa que temos.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"comandos\":[],\"intencao_corporal\":{\"nome\":\"interagir\",\"objetivo_id\":\"16519dd4c944\"}}",
+      "instrucao_chars": 3699,
+      "referencia_observada": {
+        "objetivo_id": "16519dd4c944",
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 7412.8470543,
+        "turnos_objetivo": 1,
+        "nome": "interagir",
+        "motivo": "conversa_em_andamento",
+        "objetivo_contexto": "Gosto de conversar com você, Laylay.",
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": true,
+        "continuidade_disponivel": true,
+        "autoriza_execucao": false
+      },
+      "proposta_vinculada": {
+        "id": "03a50d321cb3d2a1",
+        "turno_id": "objetivo-b",
+        "plano_id": "objetivo-b",
+        "nome": "interagir",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "56619124",
+        "concessao_id": "e4fe08a359e167a5",
+        "desde_monotonic": 7296.2414125,
+        "ate_monotonic": 7326.2414125,
+        "autoriza_execucao": false,
+        "objetivo_id": "16519dd4c944",
+        "objetivo_ate_monotonic": 7412.8470543
+      },
+      "executou_proposta": false
+    },
+    {
+      "turno": "objetivo-c",
+      "texto": "Mudando de assunto: quanto é 17 mais 28?",
+      "resposta": "{\"fala\":\"17 mais 28 é 45.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"intencao_corporal\":{\"nome\":\"atenta\"}}",
+      "instrucao_chars": 3695,
+      "referencia_observada": {
+        "objetivo_id": "16519dd4c944",
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 7412.8470543,
+        "turnos_objetivo": 2,
+        "nome": "interagir",
+        "motivo": "intencao_da_mente",
+        "objetivo_contexto": "Gosto de conversar com você, Laylay.",
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": true,
+        "continuidade_disponivel": true,
+        "autoriza_execucao": false
+      },
+      "proposta_vinculada": {
+        "id": "26742c1c93b415c3",
+        "turno_id": "objetivo-c",
+        "plano_id": "objetivo-c",
+        "nome": "atenta",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "56619124",
+        "concessao_id": "e4fe08a359e167a5",
+        "desde_monotonic": 7298.6317019,
+        "ate_monotonic": 7328.6317019,
+        "autoriza_execucao": false
+      },
+      "executou_proposta": false
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 56619124"
+    },
+    {
+      "tx": "CAPS 1 56619124"
+    },
+    {
+      "tx": "GCAPS 1 56619124"
+    },
+    {
+      "tx": "MCAPS 1 56619124"
+    },
+    {
+      "tx": "LCAPS 1 56619124"
+    },
+    {
+      "tx": "SCAPS 1 56619124"
+    },
+    {
+      "tx": "SENCAPS 1 56619124"
+    },
+    {
+      "tx": "ECAPS 1 56619124"
+    },
+    {
+      "tx": "RCAPS 1 56619124"
+    },
+    {
+      "tx": "FACE 1 56619124 1 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 1 0 1200"
+    },
+    {
+      "tx": "SOUND 1 56619124 1 0"
+    },
+    {
+      "tx": "FACE 1 56619124 2 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 2 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 3 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 3 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 4 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 4 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 5 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 5 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 6 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 6 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 7 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 7 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 8 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 8 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 9 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 9 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 10 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 10 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 11 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 11 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 12 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 12 0 1200"
+    },
+    {
+      "tx": "FACE 1 56619124 13 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 56619124 13 0 1200"
+    },
+    {
+      "tx": "STOP 1 56619124 1"
+    },
+    {
+      "tx": "GOODNIGHT 1 56619124 1"
+    }
+  ],
+  "motor_enviado": false,
+  "prova_deslocamento": false,
+  "interface_aberta": false,
+  "origem": "USB e autoria principal configurada, diagnostico sem execucao"
+}

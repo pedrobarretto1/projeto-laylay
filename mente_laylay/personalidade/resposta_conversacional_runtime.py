@@ -297,10 +297,12 @@ class RespostaConversacionalRuntime:
         ns = self._ns()
         self.log(f"⚡ [ROTEADOR PERGUNTA-CURTA [{origem}]] {resultado}")
         executou = bool(ns["executar_intencao"](resultado, texto_usuario))
-        ns["_registrar_resultado_execucao"](
+        publicacao = ns["_registrar_resultado_execucao"](
             resultado, texto_usuario, executou, origem="pergunta_curta_contextual"
         )
-        if executou:
+        # Recusa do publisher não apaga o efeito já iniciado, mas impede
+        # aprendizado do resultado estrangeiro como sucesso do turno atual.
+        if executou and publicacao is not False:
             ns["_registrar_autoaprimoramento"](
                 resultado,
                 texto_usuario,

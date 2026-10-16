@@ -1228,6 +1228,7 @@ class JanelaLaylay(QMainWindow):
         ] = []
         self._eventos_desenvolvedor: list[dict] = []
         self._ids_eventos_desenvolvedor: set[str] = set()
+        self._corpo_dev_mais_recente: dict = {}
         self._nav: dict[str, QPushButton] = {}
         self._conectado = False
         self._modo = "chat"
@@ -2038,6 +2039,8 @@ class JanelaLaylay(QMainWindow):
                 self.enviar_controle_desenvolvedor
             )
             pagina.definir_conectada(self._conectado)
+            if self._corpo_dev_mais_recente:
+                pagina.aplicar_corpo(self._corpo_dev_mais_recente)
             for evento in self._eventos_desenvolvedor:
                 pagina.registrar_evento(**evento)
             return pagina
@@ -3309,6 +3312,13 @@ class JanelaLaylay(QMainWindow):
             ),
         })
 
+    def _receber_corpo_desenvolvedor(self, corpo: object) -> None:
+        from mente_laylay.integracao.dev_console_runtime import sanitizar_corpo_dev
+        self._corpo_dev_mais_recente = sanitizar_corpo_dev(corpo) if isinstance(corpo, dict) and corpo else {}
+        pagina = self._paginas_carregadas.get("desenvolvedor")
+        if pagina is not None:
+            pagina.aplicar_corpo(self._corpo_dev_mais_recente)
+
     def _receber_eventos_desenvolvedor(self, eventos: object) -> None:
         if not isinstance(eventos, (list, tuple)):
             return
@@ -3373,6 +3383,7 @@ class JanelaLaylay(QMainWindow):
                 self.adicionar_evento(evento.get("title", "Evento"), evento.get("detail", ""), evento.get("level", "info"))
             dev_console = msg.get("dev_console")
             if isinstance(dev_console, dict):
+                self._receber_corpo_desenvolvedor(dev_console.get("body"))
                 self._receber_eventos_desenvolvedor(
                     dev_console.get("events") or []
                 )
@@ -3457,6 +3468,8 @@ class JanelaLaylay(QMainWindow):
                 )
         elif tipo == "dev_events":
             self._receber_eventos_desenvolvedor(msg.get("events") or [])
+            if "body" in msg:
+                self._receber_corpo_desenvolvedor(msg.get("body"))
         elif tipo == "dev_query_result":
             pagina_desenvolvedor = self._paginas_carregadas.get("desenvolvedor")
             if pagina_desenvolvedor is not None:
@@ -3829,6 +3842,7 @@ class JanelaLaylay(QMainWindow):
         self._conectado = conectado
         if not conectado:
             self._requisicao_conversa_id = ""
+            self._corpo_dev_mais_recente = {}
         self._definir_controles_conversa(conectado)
         self.central_inteligente.definir_conectada(conectado)
         self.painel_lateral.definir_conectada(conectado)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable, Mapping
+from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
 
 from mente_laylay.autonomia.coordenador_intencao import (
     DEPENDENCIAS_CICLO_COMANDOS,
@@ -277,6 +278,13 @@ class ComposicaoCicloComandosRuntime:
 
     def executar_intencao(self, resultado: dict, texto_original: str) -> bool:
         return bool(self._obter_ciclo().executar_intencao(resultado, texto_original))
+
+    def executar_intencao_observando(self, resultado: dict, texto_original: str) -> ExecucaoObservada:
+        return self._obter_ciclo().executar_intencao_observando(resultado, texto_original)
+
+    def executar_ato_observando(self, resultado: dict, texto_original: str, ato: Any,
+                               *, vigente: Callable[[], bool]) -> ExecucaoObservada:
+        return self._obter_ciclo().executar_ato_observando(resultado, texto_original, ato, vigente=vigente)
 
     def executar_texto(self, texto: str, origem: str = "") -> bool:
         return bool(self._obter_ciclo().executar_texto(texto, origem))

@@ -1,0 +1,235 @@
+{
+  "falha": "AssertionError: autoria real não vinculou continuidade do propósito",
+  "etapas": [],
+  "consultas": [
+    {
+      "turno": "objetivo-b",
+      "texto": "E eu fico feliz quando você me acompanha nessa conversa. Como você fica?",
+      "resposta": "{\"fala\":\"Estou bem, com calma. Te acompanho com atenção e sinto a conexão com você — é um prazer compartilhar esse momento com você.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"comandos\":[],\"intencao_corporal\":{\"nome\":\"interagir\"}}",
+      "referencia_observada": {
+        "objetivo_id": "a198b6e44416",
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 6699.699424,
+        "turnos_objetivo": 1,
+        "nome": "interagir",
+        "motivo": "conversa_em_andamento",
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": true,
+        "continuidade_disponivel": true,
+        "autoriza_execucao": false
+      },
+      "proposta_vinculada": {
+        "id": "c5762f0fe8458cfa",
+        "turno_id": "objetivo-b",
+        "plano_id": "objetivo-b",
+        "nome": "interagir",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "79a5e688",
+        "concessao_id": "20e43336320ebd11",
+        "desde_monotonic": 6591.5244723,
+        "ate_monotonic": 6621.5244723,
+        "autoriza_execucao": false
+      },
+      "executou_proposta": false
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 79a5e688"
+    },
+    {
+      "tx": "CAPS 1 79a5e688"
+    },
+    {
+      "tx": "GCAPS 1 79a5e688"
+    },
+    {
+      "tx": "MCAPS 1 79a5e688"
+    },
+    {
+      "tx": "LCAPS 1 79a5e688"
+    },
+    {
+      "tx": "SCAPS 1 79a5e688"
+    },
+    {
+      "tx": "SENCAPS 1 79a5e688"
+    },
+    {
+      "tx": "ECAPS 1 79a5e688"
+    },
+    {
+      "tx": "RCAPS 1 79a5e688"
+    },
+    {
+      "tx": "FACE 1 79a5e688 1 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 1 0 1200"
+    },
+    {
+      "tx": "SOUND 1 79a5e688 1 0"
+    },
+    {
+      "tx": "FACE 1 79a5e688 2 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 2 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 3 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 3 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 4 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 4 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 5 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 5 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 6 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 6 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 7 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 7 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 8 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 8 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 9 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 9 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 10 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 10 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 11 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 11 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 12 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 12 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 13 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 13 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 14 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 14 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 15 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 15 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 16 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 16 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 17 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 17 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 18 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 18 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 19 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 19 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 20 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 20 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 21 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 21 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 22 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 22 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 23 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 23 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 24 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 24 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 25 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 25 0 1200"
+    },
+    {
+      "tx": "FACE 1 79a5e688 26 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 79a5e688 26 0 1200"
+    },
+    {
+      "tx": "STOP 1 79a5e688 1"
+    },
+    {
+      "tx": "GOODNIGHT 1 79a5e688 1"
+    }
+  ],
+  "motor_enviado": false,
+  "prova_deslocamento": false,
+  "interface_aberta": false,
+  "origem": "USB e autoria principal configurada, diagnostico sem execucao"
+}

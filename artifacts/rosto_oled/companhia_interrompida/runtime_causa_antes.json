@@ -1,0 +1,419 @@
+{
+  "falha": "",
+  "trilha": [
+    {
+      "t": 0.007,
+      "tipo": "enviado",
+      "dados": "HELLO 1 e6ebd94f"
+    },
+    {
+      "t": 1.425,
+      "tipo": "enviado",
+      "dados": "SENTRY 1 e6ebd94f 1 0 1200"
+    },
+    {
+      "t": 1.97,
+      "tipo": "ativacao",
+      "dados": {
+        "ok": true,
+        "modo_ativado": true,
+        "passeio_ativado": true,
+        "evidencia": "concessao_temporaria_no_owner_corporal"
+      }
+    },
+    {
+      "t": 2.077,
+      "tipo": "enviado",
+      "dados": "SENTRY 1 e6ebd94f 2 1 1200"
+    },
+    {
+      "t": 2.625,
+      "tipo": "enviado",
+      "dados": "SENTRY 1 e6ebd94f 3 1 1200"
+    },
+    {
+      "t": 3.077,
+      "tipo": "enviado",
+      "dados": "EXPR 1 e6ebd94f 1 0 0 -1 380"
+    },
+    {
+      "t": 3.184,
+      "tipo": "expressar_gesto",
+      "dados": {
+        "ok": true,
+        "confirmado": true,
+        "evidencia": "eack_render",
+        "motivo": "",
+        "prova_visual_humana": false
+      }
+    },
+    {
+      "t": 3.278,
+      "tipo": "estimulo_diagnostico",
+      "dados": "fala terminou antes da expressão motora"
+    },
+    {
+      "t": 3.278,
+      "tipo": "expressar_gesto",
+      "dados": {
+        "ok": false,
+        "motivo": "expressao_sem_sessao_ou_causa"
+      }
+    },
+    {
+      "t": 3.29,
+      "tipo": "executar_gesto_corporal",
+      "dados": {
+        "ok": false,
+        "estado": "falhou",
+        "status": "nao_confirmado",
+        "falhas": [
+          {
+            "etapa": "motor",
+            "status": "nao_confirmado"
+          }
+        ]
+      }
+    },
+    {
+      "t": 3.29,
+      "tipo": "enviado",
+      "dados": "STOP 1 e6ebd94f 1"
+    },
+    {
+      "t": 3.622,
+      "tipo": "enviado",
+      "dados": "SENTRY 1 e6ebd94f 4 0 1200"
+    },
+    {
+      "t": 4.28,
+      "tipo": "ciclo",
+      "dados": {
+        "retorno": {
+          "ok": false,
+          "estado": "falhou",
+          "status": "nao_confirmado",
+          "falhas": [
+            {
+              "etapa": "motor",
+              "status": "nao_confirmado"
+            }
+          ]
+        },
+        "companhia": {
+          "ativa": false,
+          "motivo": "gesto_nao_confirmado",
+          "transporte_exigido": "serial",
+          "recuperacao_pendente": false,
+          "ttl_maximo_s": null,
+          "gestos_maximos": null,
+          "gestos_emitidos": 0,
+          "intervalo_minimo_s": 2,
+          "pwm_gestos": 230,
+          "duracao_maxima_gesto_ms": 5000,
+          "duracao_planejada_maxima_coreografia_ms": 16000,
+          "movimentos_maximos_por_gesto": 4,
+          "perfil_expressivo": "presenca_coordenada_v2",
+          "perfil_corporal": "rodas_suspensas",
+          "intencao": {
+            "id": "314e5d9c74c0",
+            "objetivo_id": "87b603a94964",
+            "contexto": [
+              "090c6610a1720949",
+              "e6ebd94f",
+              "",
+              ""
+            ],
+            "turno_id": "",
+            "plano_id": "",
+            "sessao": "e6ebd94f",
+            "nome": "interagir",
+            "emocao": 0,
+            "objetivo_turno_origem": "",
+            "objetivo_ate_monotonic": 19345.9728978,
+            "objetivo_contexto": "",
+            "turnos_objetivo": 1,
+            "objetivo_encerrado": true,
+            "referencia_objetivo": {},
+            "nivel": 1,
+            "desde_monotonic": 19225.9728978,
+            "chave": [
+              "interagir",
+              0,
+              1,
+              "conversa_em_andamento",
+              "",
+              null
+            ],
+            "estado": "interrompida",
+            "fase": "interrompida",
+            "motivo": "conversa_em_andamento",
+            "prioridade": 90,
+            "candidata_a_movimento": true,
+            "motivo_termino": "gesto_nao_confirmado",
+            "resultado": {
+              "experiencia_id": "f872a6168b7d4560a839ed373f00c2a9",
+              "ok": false,
+              "parada_confirmada": false,
+              "prova_deslocamento": false
+            }
+          },
+          "continuidade_intencao": true,
+          "objetivos_entre_turnos": true,
+          "planejamento_por_historico": true,
+          "validade_objetivo_s": 120,
+          "turnos_objetivo_maximo": 8,
+          "passeio_ativado": false,
+          "comemoracoes_emitidas": 0,
+          "passeios_emitidos": 0,
+          "giro_360_calibrado": false,
+          "restantes_s": null,
+          "vigencia": "sessao_usb_atual_ate_revogacao",
+          "origem": "concessao_explicita_de_sessao",
+          "ativacao_automatica_ao_iniciar": true,
+          "passeio_automatico_ao_iniciar": true,
+          "autoriza_execucao": false,
+          "persistente": false
+        },
+        "transporte": {
+          "configurado": true,
+          "conectado": true,
+          "sessao": "e6ebd94f",
+          "transporte": "serial",
+          "modo_conexao": "manual",
+          "endpoint": "",
+          "porta_ativa": "COM4",
+          "evidencia_recente": true,
+          "aplicacao_confirmada": true,
+          "estado": "disponivel",
+          "motivo": "frame_confirmado_pelo_esp",
+          "confirmado": [
+            0,
+            1,
+            0
+          ],
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "sensores": {
+            "suportado": true,
+            "recente": true,
+            "consulta_id": 4,
+            "alerta_suportado": true,
+            "busca_renovada": false,
+            "leituras": {
+              "frente": {
+                "estado": "EXPIRADA",
+                "mm": null,
+                "idade_ms": 359,
+                "status": 4
+              },
+              "borda": {
+                "estado": "EXPIRADA",
+                "mm": null,
+                "idade_ms": 361,
+                "status": 0
+              }
+            },
+            "protecao": {
+              "incidente_id": 5,
+              "motor_origem_seq": 0,
+              "risco": "NENHUM",
+              "fase": "PRONTA",
+              "reflexo_ativo": false,
+              "reacao_expressiva": "nenhuma",
+              "tentativa_busca": 0,
+              "vigia_ativa": false,
+              "limite_borda_mm": 130,
+              "limite_obstaculo_mm": 100,
+              "origem": "executor_protecao_esp",
+              "autoriza_execucao": false,
+              "rotacao_medida": false,
+              "cobertura": "frente_e_borda_dianteira",
+              "recente": true
+            },
+            "origem": "owner_usb_dist_guard",
+            "autoriza_execucao": false
+          },
+          "saude": {
+            "dispositivo": "03d017988fdecda9",
+            "boot": "db0cd82e",
+            "motivo_boot": "ligacao_energia",
+            "motivo_boot_codigo": 1,
+            "uptime_ms": 4025419,
+            "heap_livre": 280516,
+            "heap_minimo": 275340,
+            "perdas_sessao": 4,
+            "motivo_perda_sessao": "TRANSPORTE",
+            "perda_sessao_em_ms": 3967808,
+            "origem": "executor_esp",
+            "autoriza_execucao": false,
+            "suportado": true,
+            "recente": true,
+            "reinicios_observados": 0
+          },
+          "expressao": {
+            "suportado": true,
+            "confirmada": false,
+            "motivo": "",
+            "fase": [
+              0,
+              0,
+              -1
+            ],
+            "evidencia": "eack_apos_render",
+            "prova_visual_humana": false,
+            "autoriza_execucao": false
+          },
+          "som": {
+            "resultados_pendentes": [],
+            "suportado": true,
+            "envio_suportado": true,
+            "solicitacao_confirmada": true,
+            "motivo": "sequencia_aceita_pelo_firmware",
+            "prova_auditiva": false,
+            "autoriza_execucao": false,
+            "confirma_efeito_da_acao": false
+          },
+          "hack": {
+            "suportado": true,
+            "aplicacao_confirmada": true,
+            "ativo": false,
+            "motivo": "overlay_confirmado_pelo_esp",
+            "evidencia": "ack_apos_renderizacao",
+            "prova_optica": false,
+            "autoriza_execucao": false,
+            "confirma_efeito_da_acao": false
+          },
+          "glitch": {
+            "suportado": true,
+            "aplicacao_confirmada": true,
+            "motivo": "glitch_confirmado_pelo_esp",
+            "evidencia": "ack_apos_renderizacao",
+            "prova_optica": false,
+            "autoriza_execucao": false,
+            "confirma_efeito_da_acao": false
+          },
+          "motor": {
+            "rampa_suportada": true,
+            "duracao_maxima_ms": 5000,
+            "suportado": true,
+            "disponivel": true,
+            "aplicacao_pwm_confirmada": false,
+            "parada_confirmada": true,
+            "em_andamento": false,
+            "motivo": "",
+            "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+            "prova_rotacao": false,
+            "prova_parada_fisica": false,
+            "autoriza_execucao": false
+          }
+        },
+        "experiencia": {
+          "id": "f872a6168b7d4560a839ed373f00c2a9",
+          "origem": "executor_corpo",
+          "nome": "atencao_conversa_v1",
+          "familia": "interagir:0",
+          "origem_intencao": "mente_causal",
+          "perfil": "rodas_suspensas",
+          "intencao_id": "314e5d9c74c0",
+          "turno_id": "",
+          "sessao": "e6ebd94f",
+          "iniciada_em": 1792029739.145376,
+          "variante": 0,
+          "movimentos": [
+            [
+              -120,
+              120,
+              500
+            ],
+            [
+              120,
+              -120,
+              350
+            ]
+          ],
+          "objetivo_id": "87b603a94964",
+          "ts": 1792029739.4730365,
+          "confirmado": false,
+          "duracao_comandada_confirmada_ms": 0,
+          "resultado": "gesto_nao_confirmado",
+          "motivo": "nao_confirmado",
+          "movimentos_confirmados": 0,
+          "parada_confirmada": false,
+          "prova_deslocamento": false,
+          "autoriza_execucao": false,
+          "pertence_ao_turno_atual": false
+        }
+      }
+    },
+    {
+      "t": 4.281,
+      "tipo": "enviado",
+      "dados": "STOP 1 e6ebd94f 2"
+    },
+    {
+      "t": 4.389,
+      "tipo": "enviado",
+      "dados": "STOP 1 e6ebd94f 3"
+    }
+  ],
+  "parada": {
+    "ok": true,
+    "motivo": "",
+    "aplicacao_pwm_confirmada": false,
+    "parada_confirmada": true,
+    "pwm_esquerdo": 0,
+    "pwm_direito": 0,
+    "duracao_ms": 0,
+    "evidencia": "sack",
+    "prova_rotacao": false,
+    "prova_parada_fisica": false,
+    "cancelado": false,
+    "status": "sucesso",
+    "interrompido_por_protecao": false,
+    "risco_detectado": "",
+    "protecao": {
+      "suportado": true,
+      "recente": true,
+      "consulta_id": 4,
+      "alerta_suportado": true,
+      "busca_renovada": false,
+      "leituras": {
+        "frente": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 468,
+          "status": 4
+        },
+        "borda": {
+          "estado": "EXPIRADA",
+          "mm": null,
+          "idade_ms": 470,
+          "status": 0
+        }
+      },
+      "protecao": {
+        "incidente_id": 5,
+        "motor_origem_seq": 0,
+        "risco": "NENHUM",
+        "fase": "PRONTA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "nenhuma",
+        "tentativa_busca": 0,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    }
+  },
+  "encerrado": true,
+  "prova_deslocamento": false
+}

@@ -534,6 +534,88 @@ class SnapshotComandoIA:
 
 
 @dataclass(frozen=True, slots=True)
+class ContratoInterpretacaoAto:
+    """Proposta operacional vinculada ao literal, sem validade semântica.
+
+    Formato/âncora não provam operação, alvo, condição satisfeita, autoridade
+    ou efeito. O contexto ainda deve resolver referências, e o porteiro deve
+    validar o pedido. Dependências aqui são propostas sobre atos anteriores,
+    não permissão para executar uma cadeia ou dispensar receipts.
+    Os índices pertencem a esta leitura proposta, não aos segmentos do
+    classificador de autoridade; uma âncora literal não prova equivalência.
+    """
+
+    indice_ato: int
+    fonte_textual: str = field(repr=False)
+    origem: str
+    campos: SnapshotComandoIA = field(repr=False)
+
+    @classmethod
+    def de_proposta(
+        cls, indice_ato: int, fonte_textual: str, origem: str,
+        campos: SnapshotComandoIA,
+    ) -> "ContratoInterpretacaoAto":
+        """O host localiza literal inequívoco; não corrige índice proposto.
+
+        Localizar uma cópia exata só prova coordenadas, não sua interpretação.
+        Repetições, inclusive sobrepostas, exigem intervalo explícito válido.
+        """
+        dados = campos.como_dict()
+        if "intervalo" not in dados:
+            literal = dados.get("texto_original")
+            if not isinstance(literal, str) or not literal or not isinstance(fonte_textual, str):
+                raise ValueError("literal_nao_vinculado")
+            inicio = fonte_textual.find(literal)
+            if inicio < 0 or fonte_textual.find(literal, inicio + 1) >= 0:
+                raise ValueError("literal_ausente_ou_ambiguo")
+            dados["intervalo"] = [inicio, inicio + len(literal)]
+            campos = SnapshotComandoIA(dados)
+        return cls(indice_ato, fonte_textual, origem, campos)
+
+    def __post_init__(self) -> None:
+        if (type(self.indice_ato) is not int or self.indice_ato < 0
+            or not isinstance(self.fonte_textual, str) or not self.fonte_textual
+            or not isinstance(self.origem, str) or not self.origem.strip()
+            or not isinstance(self.campos, SnapshotComandoIA)):
+            raise ValueError("identidade_fonte_invalida")
+        dados = self.campos.como_dict()
+        if set(dados) != {"texto_original", "intervalo", "operacao", "tipo_recurso",
+                          "alvo", "parametros", "destino", "referencias", "condicao", "dependencias"}:
+            raise ValueError("campos_interpretacao_invalidos")
+        if any(not isinstance(dados[k], str) for k in (
+            "texto_original", "operacao", "tipo_recurso", "alvo", "destino", "condicao",
+        )):
+            raise ValueError("campos_textuais_invalidos")
+        intervalo = dados["intervalo"]
+        if (not isinstance(intervalo, list) or len(intervalo) != 2
+            or any(type(i) is not int for i in intervalo)):
+            raise ValueError("intervalo_invalido")
+        inicio, fim = intervalo
+        if (not 0 <= inicio < fim <= len(self.fonte_textual)
+            or self.fonte_textual[inicio:fim] != dados["texto_original"]):
+            raise ValueError("literal_nao_vinculado")
+        if not isinstance(dados["parametros"], dict):
+            raise ValueError("parametros_invalidos")
+        referencias = dados["referencias"]
+        if (not isinstance(referencias, list)
+            or any(not isinstance(r, str) or not r.strip()
+                   or r not in dados["texto_original"] for r in referencias)):
+            raise ValueError("referencias_nao_vinculadas")
+        dependencias = dados["dependencias"]
+        if (not isinstance(dependencias, list)
+            or any(type(i) is not int or not 0 <= i < self.indice_ato for i in dependencias)
+            or len(set(dependencias)) != len(dependencias)):
+            raise ValueError("dependencias_invalidas")
+
+    def como_dict(self) -> Dict[str, Any]:
+        return {
+            **self.campos.como_dict(), "indice_ato": self.indice_ato,
+            "origem": self.origem, "estado": "proposta_nao_validada_semanticamente",
+            "autoriza_execucao": False, "comprova_efeito": False,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ExtracaoRespostaIA:
     """Procedência interna da decodificação; não é autorização nem receipt.
 

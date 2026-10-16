@@ -1,0 +1,40 @@
+FFFFF                                                                    [100%]
+================================== FAILURES ===================================
+__________ test_observar_descansar_e_explorar_competem_pelo_contexto __________
+scripts\tests\test_equilibrio_corporal.py:15: in test_observar_descansar_e_explorar_competem_pelo_contexto
+    assert decidir(ritmo()).nome == "atenta"
+           ^^^^^^^^^^^^^^^^
+scripts\tests\test_equilibrio_corporal.py:14: in decidir
+    return decidir_intencao_corporal({}, {}, permitir_passeio=True, ritmo_corporal=r, agora=100)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: decidir_intencao_corporal() got an unexpected keyword argument 'ritmo_corporal'
+_______ test_momento_quieto_tem_inercia_mas_tarefa_no_pc_tem_prioridade _______
+scripts\tests\test_equilibrio_corporal.py:25: in test_momento_quieto_tem_inercia_mas_tarefa_no_pc_tem_prioridade
+    d = decidir_intencao_corporal({}, {}, permitir_passeio=True, ritmo_corporal=r, agora=110)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: decidir_intencao_corporal() got an unexpected keyword argument 'ritmo_corporal'
+_ test_orcamento_modera_iniciativa_da_mente_sem_conceder_ou_confirmar_efeito __
+scripts\tests\test_equilibrio_corporal.py:34: in test_orcamento_modera_iniciativa_da_mente_sem_conceder_ou_confirmar_efeito
+    d = decidir_intencao_corporal({}, {}, permitir_passeio=True,
+E   TypeError: decidir_intencao_corporal() got an unexpected keyword argument 'ritmo_corporal'
+_ test_ritmo_le_historico_canonico_sem_promover_restauracao_ou_outro_dispositivo _
+scripts\tests\test_equilibrio_corporal.py:53: in test_ritmo_le_historico_canonico_sem_promover_restauracao_ou_outro_dispositivo
+    r = corpo.experiencias.ritmo_recente(sessao=sessao, perfil="bancada", agora=1000)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'ExperienciaCorporalRuntime' object has no attribute 'ritmo_recente'
+_____ test_escolha_quieta_vai_a_mente_e_mantem_identidade_entre_leituras ______
+scripts\tests\test_equilibrio_corporal.py:67: in test_escolha_quieta_vai_a_mente_e_mantem_identidade_entre_leituras
+    assert corpo.companhia.processar().get("em_observacao")
+E   AssertionError: assert None
+E    +  where None = <built-in method get of dict object at 0x0000016C05FFE380>('em_observacao')
+E    +    where <built-in method get of dict object at 0x0000016C05FFE380> = {'ok': True, 'estado': 'confirmado', 'status': 'plano_confirmado', 'falhas': []}.get
+E    +      where {'ok': True, 'estado': 'confirmado', 'status': 'plano_confirmado', 'falhas': []} = processar()
+E    +        where processar = <mente_laylay.autonomia.companhia_corporal.CompanhiaCorporalRuntime object at 0x0000016C05FE8B90>.processar
+E    +          where <mente_laylay.autonomia.companhia_corporal.CompanhiaCorporalRuntime object at 0x0000016C05FE8B90> = <mente_laylay.especialistas.corpo_motor_runtime.CorpoMotorRuntime object at 0x0000016C05FE8910>.companhia
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_equilibrio_corporal.py::test_observar_descansar_e_explorar_competem_pelo_contexto
+FAILED scripts/tests/test_equilibrio_corporal.py::test_momento_quieto_tem_inercia_mas_tarefa_no_pc_tem_prioridade
+FAILED scripts/tests/test_equilibrio_corporal.py::test_orcamento_modera_iniciativa_da_mente_sem_conceder_ou_confirmar_efeito
+FAILED scripts/tests/test_equilibrio_corporal.py::test_ritmo_le_historico_canonico_sem_promover_restauracao_ou_outro_dispositivo
+FAILED scripts/tests/test_equilibrio_corporal.py::test_escolha_quieta_vai_a_mente_e_mantem_identidade_entre_leituras
+5 failed in 1.24s

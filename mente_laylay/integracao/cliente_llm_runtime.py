@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 import time
 from typing import Any, Callable
 from mente_laylay.cognicao.estado_tecnico_llm import estado_bloqueio_orcamento_llm
@@ -282,7 +283,19 @@ class ServicoModeloLLMRuntime:
         self.cliente = cliente
 
     def executar(self, pedido: PedidoModelo) -> ResultadoModelo:
-        return self.cliente.executar(self.preparador.preparar(pedido))
+        resultado = self.cliente.executar(self.preparador.preparar(pedido))
+        if pedido.contrato_saida is None:
+            return resultado
+        if not resultado.sucesso:
+            return ResultadoModelo("", False, rota=resultado.rota)
+        try:
+            dados = pedido.contrato_saida.decodificar_json(resultado.texto)
+        except (TypeError, ValueError, OverflowError, RecursionError):
+            # Não recuperar JSON da prosa ou devolver resposta incompatível
+            # como sucesso. A conversa conserva seu fechamento técnico.
+            return ResultadoModelo("", False, rota="contrato_saida_invalido")
+        return ResultadoModelo(json.dumps(dados, ensure_ascii=False, allow_nan=False),
+                               True, rota=resultado.rota)
 
     def diagnostico(self) -> dict[str, Any]:
         return self.cliente.diagnostico()

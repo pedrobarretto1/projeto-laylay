@@ -1,0 +1,4 @@
+QPainter::begin: A paint device can only be painted by one painter at a time.
+QPainter::translate: Painter not active
+QPainter::begin: A paint device can only be painted by one painter at a time.
+QPainter::translate: Painter not active

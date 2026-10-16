@@ -10,12 +10,19 @@ from typing import Any, Callable, Mapping
 from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
 from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
 from mente_laylay.especialistas.rosto_oled_runtime import projetar_rosto
-from mente_laylay.cognicao.decisao_corporal import decidir_intencao_corporal
-from mente_laylay.cognicao.modelo_corporal import proposta_corporal_vigente
+from mente_laylay.cognicao.decisao_corporal import decidir_intencao_corporal, planejar_objetivo_curto
+from mente_laylay.cognicao.modelo_corporal import (
+    proposta_corporal_vigente, VALIDADE_OBJETIVO_CORPORAL_S, MAX_TURNOS_OBJETIVO_CORPORAL,
+)
 from mente_laylay.cognicao.decisao_turno import motivo_incoerencia_contratos_turno
+from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+from mente_laylay.memoria_mental.decisao_observada import DecisaoObservada
 from mente_laylay.memoria_mental.atividade_operacional_runtime import (
     projetar_sucesso_operacional, projetar_atividade_operacional, projetar_falha_operacional, projetar_execucao_operacional,
 )
+
+# Ritmo de iniciativa, separado de PWM, segurança e reação a fatos novos.
+PAUSAS_PASSEIO_S = (45, 70, 55, 90)
 
 
 @dataclass(frozen=True)
@@ -93,6 +100,8 @@ class CompanhiaCorporalRuntime:
         self._automatica_ao_iniciar = companhia_bancada_ao_iniciar is True
         self._passeio_ao_iniciar = self._automatica_ao_iniciar and passeio_bancada_ao_iniciar is True
         self._ativacao_pendente = self._automatica_ao_iniciar
+        self._retomada_pendente: dict[str, Any] | None = None
+        self._reconexao_estavel: tuple[str, float] | None = None
         self._motivo = "aguardando_ativacao_explicita"
         self._observado = (0, 1, 0)
         self._alternar = False
@@ -126,7 +135,12 @@ class CompanhiaCorporalRuntime:
         with self._lock:
             self._concessao = None
             self._ativacao_pendente = False
+            self._retomada_pendente = None
+            self._reconexao_estavel = None
             self._motivo = motivo
+            if self._intencao:
+                self._intencao.update(estado="interrompida", fase="interrompida", motivo_termino=motivo,
+                                      objetivo_encerrado=True)
         self._publicar()
 
     def _publicar(self) -> None:
@@ -137,12 +151,57 @@ class CompanhiaCorporalRuntime:
                 "perfil": self.perfil_corporal, "autoriza_execucao": False,
                 "prova_deslocamento": False,
             })
+        self.corpo.observar_dev()
+
+    def _suspender_conexao(self, motivo: str) -> bool:
+        """Pedido do owner sobrevive; a concessão elétrica antiga termina."""
+        with self._lock:
+            c=self._concessao
+            if not c or self._revogada.is_set() or not c.get("dispositivo"):
+                return False
+            self._retomada_pendente={k:c[k] for k in ("id","dispositivo","passeio","origem")}
+            self._revogada.set()
+            self._concessao=None
+            self._reconexao_estavel=None
+            self._motivo=motivo
+            if self._intencao:
+                self._intencao.update(estado="interrompida",fase="interrompida",
+                    motivo_termino=motivo,objetivo_encerrado=True)
+        self._publicar()
+        return True
+
+    def _recuperar_conexao(self, diag: Mapping[str, Any]) -> dict[str, Any]:
+        with self._lock:
+            pedido=dict(self._retomada_pendente or {})
+        saude=diag.get("saude") or {}
+        sensores=diag.get("sensores") or {}
+        if (diag.get("transporte")!="serial" or diag.get("aplicacao_confirmada") is not True
+            or not saude.get("recente") or not saude.get("suportado")):
+            self._reconexao_estavel=None
+            return {"ok":False,"motivo":"aguardando_reconexao_identificada"}
+        if saude.get("dispositivo")!=pedido.get("dispositivo"):
+            self.revogar("corpo_diferente_na_reconexao")
+            return {"ok":False,"motivo":"corpo_diferente_na_reconexao"}
+        if sensores.get("suportado") and (not sensores.get("recente") or
+            any((sensores.get("leituras") or {}).get(n,{}).get("estado") not in {"VALIDA","INVALIDA"}
+                for n in ("frente","borda"))):
+            return {"ok":False,"motivo":"aguardando_sensores_na_reconexao"}
+        sessao=str(diag.get("sessao") or "")
+        with self._lock:
+            estavel=self._reconexao_estavel
+            if not estavel or estavel[0]!=sessao:
+                self._reconexao_estavel=(sessao,self.monotonic())
+                return {"ok":False,"motivo":"confirmando_estabilidade_corporal"}
+        if self.monotonic()-estavel[1]<1:
+            return {"ok":False,"motivo":"confirmando_estabilidade_corporal"}
+        return self._ativar_sessao(passeio=pedido["passeio"],retomada=pedido)
 
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
             concessao = dict(self._concessao or {})
             ativa = bool(concessao and not self._revogada.is_set())
             return {"ativa": ativa, "motivo": self._motivo, "transporte_exigido": "serial",
+                    "recuperacao_pendente": bool(self._retomada_pendente),
                     "ttl_maximo_s": None, "gestos_maximos": None, "gestos_emitidos": concessao.get("gestos", 0),
                     "intervalo_minimo_s": INTERVALO_GESTOS_S, "pwm_gestos": 230 if self.perfil_corporal == "rodas_suspensas" else 100,
                     "duracao_maxima_gesto_ms": 5000 if self.perfil_corporal == "rodas_suspensas" else DURACAO_MOTOR_GESTO_MS,
@@ -151,6 +210,11 @@ class CompanhiaCorporalRuntime:
                     "perfil_expressivo": "presenca_coordenada_v2" if self.perfil_corporal == "rodas_suspensas" else "ritmo_emocional_v2",
                     "perfil_corporal": self.perfil_corporal,
                     "intencao": dict(self._intencao),
+                    "continuidade_intencao": True,
+                    "objetivos_entre_turnos": True, "planejamento_por_historico": True,
+                    "objetivos_curtos": True, "quietude_como_objetivo": True,
+                    "validade_objetivo_s": VALIDADE_OBJETIVO_CORPORAL_S,
+                    "turnos_objetivo_maximo": MAX_TURNOS_OBJETIVO_CORPORAL,
                     "passeio_ativado": ativa and concessao.get("passeio") is True,
                     "comemoracoes_emitidas": self._comemoracoes, "passeios_emitidos": self._passeios,
                     "giro_360_calibrado": False,
@@ -159,7 +223,15 @@ class CompanhiaCorporalRuntime:
                     "ativacao_automatica_ao_iniciar": self._automatica_ao_iniciar,
                     "passeio_automatico_ao_iniciar": self._passeio_ao_iniciar,
                     "autoriza_execucao": False,
-                    "persistente": False, "possui_sensores": False}
+                    "persistente": False}
+
+    def autorizar_busca_obstaculos(self, sessao: str) -> bool:
+        """Decisão do owner da concessão, sem transformar diagnóstico em permissão."""
+        with self._lock:
+            c = dict(self._concessao or {})
+            vigente = bool(c and sessao and c.get("sessao")==sessao and not self._revogada.is_set())
+        return bool(vigente and not self._atencao_prioritaria()
+                    and not projetar_execucao_operacional(self._atividade()))
 
     def configurar(self, acao: str, autorizacao: Mapping[str, Any]) -> dict[str, Any]:
         pedido = detectar_intencao_corpo(str(autorizacao.get("texto") or ""))
@@ -172,7 +244,8 @@ class CompanhiaCorporalRuntime:
             return {**retorno, "ok": retorno.get("ok") is True and retorno.get("parada_confirmada") is True}
         return self._ativar_sessao(passeio=pedido["params"].get("passeio") is True)
 
-    def _ativar_sessao(self, *, passeio: bool = False, automatica: bool = False) -> dict[str, Any]:
+    def _ativar_sessao(self, *, passeio: bool = False, automatica: bool = False,
+                      retomada: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Mesmo owner e contrato USB para pedido atual ou preferência explícita."""
         diag = self.corpo.transporte.diagnostico()
         if (diag.get("transporte") != "serial" or not diag.get("sessao")
@@ -190,17 +263,25 @@ class CompanhiaCorporalRuntime:
             # STOP pode chegar enquanto a consulta de transporte está em andamento.
             if automatica and not self._ativacao_pendente:
                 return {"ok": False, "motivo": "ativacao_automatica_revogada"}
+            saude=diag.get("saude") or {}
+            if retomada is not None and (self._retomada_pendente!=retomada
+                or not saude.get("recente") or saude.get("dispositivo")!=retomada.get("dispositivo")):
+                return {"ok":False,"motivo":"retomada_revogada_ou_sem_identidade"}
             self._concessao = {"id": secrets.token_hex(8), "sessao": diag["sessao"],
-                              "origem": "configuracao_explicita_de_bancada" if automatica else "concessao_explicita_de_sessao",
+                              "origem": retomada["origem"] if retomada else "configuracao_explicita_de_bancada" if automatica else "concessao_explicita_de_sessao",
+                              "dispositivo":saude.get("dispositivo","") if saude.get("recente") else "",
                               "gestos": 0, "ultimo_gesto": self.monotonic() - INTERVALO_GESTOS_S,
                               "passeio": passeio,
                               "perfil": self.perfil_corporal,
+                              "ultimo_fim_gesto": self.monotonic(),
                               "proximo_passeio": self.monotonic() + 8}
             self._ativacao_pendente = False
+            self._retomada_pendente=None
+            self._reconexao_estavel=None
             self._observado = retrato  # Não reproduz a emoção anterior à concessão.
             self._sucesso_observado = (self._sucesso() or (0, 0))[0]
             self._falha_observada = (projetar_falha_operacional(self._atividade(), agora=self.monotonic()) or (0, 0))[0]
-            self._motivo = "concessao_usb_vigente"
+            self._motivo = "concessao_usb_renovada_apos_reconexao" if retomada else "concessao_usb_vigente"
             self._revogada.clear()
         self._publicar()
         return {"ok": True, "modo_ativado": True, "passeio_ativado": passeio,
@@ -219,6 +300,9 @@ class CompanhiaCorporalRuntime:
             c = self._concessao
             agora = self.monotonic()
             return bool(c and not self._revogada.is_set() and c["id"] == meta.get("concessao_id")
+                        and (not meta.get("objetivo_curto_id") or (
+                            meta["objetivo_curto_id"] == self._intencao.get("id")
+                            and agora <= meta.get("objetivo_curto_ate", -1)))
                         and c["sessao"] == diag.get("sessao")
                         and 0 <= agora - float(meta.get("proposto_em", -100)) <= (20 if c.get("perfil") == "rodas_suspensas" else 5)
                         and meta.get("perfil", "bancada") == c.get("perfil", "bancada")
@@ -269,18 +353,20 @@ class CompanhiaCorporalRuntime:
         self.estado.atualizar("mental", reservar)
         return reservada
 
-    def _devolver_experiencia(self, proposta: Mapping[str, Any], retorno: Mapping[str, Any], receipts: list[dict[str, Any]]) -> None:
-        confirmado = retorno.get("ok") is True and bool(receipts) and all(
-            r.get("ok") is True and r.get("aplicacao_pwm_confirmada") is True and r.get("parada_confirmada") is True for r in receipts)
-        experiencia = {"origem": "executor_corpo", "turno_id": proposta["turno_id"], "intencao_id": proposta["id"],
-            "nome": proposta["nome"], "resultado": "pwm_e_parada_confirmados" if confirmado else "gesto_nao_confirmado",
-            "confirmado": confirmado, "ts": time.time(), "prova_deslocamento": False, "autoriza_execucao": False}
+    def _devolver_experiencia(self, proposta: Mapping[str, Any], retorno: Mapping[str, Any], receipts: list[dict[str, Any]], *, ocorrencia: Mapping[str, Any] | None = None) -> None:
+        ocorrencia = ocorrencia or self.corpo.experiencias.iniciar(nome=proposta["nome"], origem_intencao="llm_principal",
+            perfil=self.perfil_corporal, turno_id=proposta["turno_id"], intencao_id=proposta["id"])
+        experiencia = self.corpo.registrar_experiencia(ocorrencia, retorno, receipts)
+        if not experiencia:
+            return
+        confirmado = experiencia["confirmado"]
         def concluir(mental):
             plano = dict(mental.get("plano_turno_atual") or {})
             p = dict(plano.get("intencao_corporal") or {})
             vigente = (str(plano.get("id")) == proposta["plano_id"] and p.get("id") == proposta["id"]
                 and not motivo_incoerencia_contratos_turno(mental.get("turno_atual"), plano, mental.get("retrato_turno_atual")))
-            novo = {**mental, "experiencia_corporal": {**experiencia, "pertence_ao_turno_atual": vigente}}
+            # Experiência tem um writer; esta transação só conclui a proposta.
+            novo = {**mental}
             if vigente:
                 novo["plano_turno_atual"] = {**plano, "intencao_corporal": {**p,
                     "estado": "concluida" if confirmado else "interrompida", "resultado": experiencia}}
@@ -289,18 +375,102 @@ class CompanhiaCorporalRuntime:
 
     def _registrar_intencao(self, decisao: Any) -> None:
         agora = self.monotonic()
-        chave = (decisao.nome, decisao.emocao, decisao.nivel)
-        if (tuple(self._intencao.get("chave", ())) != chave
-                or agora >= self._intencao.get("ate_monotonic", 0)):
-            self._intencao = {"id": secrets.token_hex(6), "nome": decisao.nome,
-                "motivo": decisao.motivo, "prioridade": decisao.prioridade,
-                "desde_monotonic": agora, "ate_monotonic": agora + 12,
-                "chave": chave, "candidata_a_movimento": decisao.permite_movimento,
-                "estado": "proposta"}
+        plano = self._plano_pc()
+        turno = self.estado.obter_copia("mental", "turno_atual", {}) if self.estado is not None else {}
+        c = self._concessao or {}
+        contexto = (c.get("id", ""), c.get("sessao", ""), str(turno.get("id") or ""), str(plano.get("id") or ""))
+        # Identidade do objetivo acompanha a ocorrência, nunca um timeout visual.
+        # Este retrato não concede autoridade: proposta/etapas mantêm seus prazos.
+        mesmo_objetivo = tuple(self._intencao.get("contexto", ())) == contexto
+        p = self._proposta_mente(c) if decisao.proposta_id else {}
+        referencia = self._intencao.get("referencia_objetivo") or {}
+        anterior = referencia if p.get("objetivo_id") == referencia.get("objetivo_id") else self._intencao
+        contexto_anterior = tuple(anterior.get("contexto", ()))
+        continuando = bool(p.get("id") == decisao.proposta_id and p.get("objetivo_id")
+            and p["objetivo_id"] == anterior.get("objetivo_id")
+            and contexto_anterior[:2] == contexto[:2]
+            and not anterior.get("objetivo_encerrado")
+            and agora <= anterior.get("objetivo_ate_monotonic", 0)
+            and anterior.get("turnos_objetivo", MAX_TURNOS_OBJETIVO_CORPORAL) < MAX_TURNOS_OBJETIVO_CORPORAL)
+        preservar = mesmo_objetivo or continuando
+        base_objetivo = anterior if continuando else self._intencao
+        objetivo = base_objetivo.get("objetivo_id") if preservar else secrets.token_hex(6)
+        origem_objetivo = base_objetivo.get("objetivo_turno_origem") if preservar else contexto[2]
+        tema_objetivo = base_objetivo.get("objetivo_contexto", "") if preservar else str(plano.get("texto_usuario") or turno.get("texto") or "")[:160]
+        prazo_objetivo = base_objetivo.get("objetivo_ate_monotonic") if preservar else agora + VALIDADE_OBJETIVO_CORPORAL_S
+        turnos_objetivo = base_objetivo.get("turnos_objetivo", 1) + int(continuando and contexto_anterior != contexto) if preservar else 1
+        # Uma referência anterior fica observável enquanto se espera a autoria.
+        # Não é herança de ação nem classificação privada de mudança de assunto.
+        if not mesmo_objetivo and decisao.nome == "atenta" and not decisao.proposta_id:
+            candidata = referencia or self._intencao
+            if (tuple(candidata.get("contexto", ()))[:2] == contexto[:2]
+                    and not candidata.get("objetivo_encerrado")
+                    and agora <= candidata.get("objetivo_ate_monotonic", 0)):
+                campos = ("objetivo_id", "objetivo_turno_origem", "objetivo_ate_monotonic", "turnos_objetivo", "contexto", "nome", "motivo", "objetivo_contexto")
+                referencia = {k: candidata[k] for k in campos if k in candidata}
+        evento = self._conversa().get("episodio_emocional") or {}
+        causa = (self._sucesso() if decisao.nome == "comemorar" else
+                 projetar_falha_operacional(self._atividade(), agora=agora) if decisao.nome == "reagir_falha" else
+                 (evento.get("id"), evento.get("ts"), evento.get("evidencia_ref")) if decisao.nome == "expressar" else None)
+        chave = (decisao.nome, decisao.emocao, decisao.nivel, decisao.motivo, decisao.proposta_id, causa)
+        with self._lock:
+            prazo_curto = self._intencao.get("objetivo_curto", {}).get("ate_monotonic", 0)
+            reavaliar_curto = agora >= prazo_curto and self._intencao.get("estado") != "executando"
+            if not mesmo_objetivo or tuple(self._intencao.get("chave", ())) != chave or reavaliar_curto:
+                self._intencao = {"id": secrets.token_hex(6), "objetivo_id": objetivo,
+                    "contexto": contexto, "turno_id": contexto[2], "plano_id": contexto[3],
+                    "sessao": contexto[1], "nome": decisao.nome, "emocao": decisao.emocao,
+                    "objetivo_turno_origem": origem_objetivo, "objetivo_ate_monotonic": prazo_objetivo,
+                    "objetivo_contexto": tema_objetivo,
+                    "turnos_objetivo": turnos_objetivo,
+                    "objetivo_encerrado": bool((preservar and base_objetivo.get("objetivo_encerrado"))
+                        or (decisao.proposta_id and decisao.nome == "descansar")),
+                    "referencia_objetivo": referencia if decisao.nome == "atenta" and not decisao.proposta_id else {},
+                    "nivel": decisao.nivel, "desde_monotonic": agora, "chave": chave,
+                    "estado": "proposta", "fase": "aguardando" if not decisao.permite_movimento else "pronta"}
+                self._intencao["objetivo_curto"] = planejar_objetivo_curto(decisao, agora=agora)
+            self._intencao.update(motivo=decisao.motivo, prioridade=decisao.prioridade,
+                                 candidata_a_movimento=decisao.permite_movimento)
+            if decisao.pontuacoes:
+                self._intencao["pontuacoes"] = dict(decisao.pontuacoes)
+                if self._intencao.get("momento_ate_monotonic", 0) <= agora:
+                    self._intencao["momento_ate_monotonic"] = agora + decisao.duracao_momento_s
+        self._publicar()
+
+    def _ritmo_corporal(self, concessao: Mapping[str, Any], diagnostico: Mapping[str, Any]) -> dict[str, Any]:
+        ritmo = self.corpo.experiencias.ritmo_recente(sessao=diagnostico["sessao"], perfil=self.perfil_corporal)
+        agora = self.monotonic()
+        turno = self.estado.obter_copia("mental", "turno_atual", {}) if self.estado is not None else {}
+        contexto = (concessao["id"], diagnostico["sessao"], str(turno.get("id") or ""), str(self._plano_pc().get("id") or ""))
+        ritmo.update(tempo_sem_gesto_s=max(0, agora - concessao.get("ultimo_fim_gesto", agora)),
+                     primeira_iniciativa=concessao.get("gestos", 0) == 0)
+        if self._intencao.get("pontuacoes") and tuple(self._intencao.get("contexto", ())) == contexto:
+            ritmo.update(momento_nome=self._intencao.get("nome"),
+                         momento_ate=self._intencao.get("momento_ate_monotonic", 0))
+        return ritmo
+
+    def _fase_intencao(self, identidade: str, fase: str, *, estado: str | None = None,
+                       resultado: Mapping[str, Any] | None = None) -> None:
+        """Um resultado atrasado só conclui a intenção capturada pelo executor."""
+        with self._lock:
+            if self._intencao.get("id") != identidade:
+                return
+            self._intencao["fase"] = fase
+            if estado is not None:
+                self._intencao["estado"] = estado
+            if resultado is not None:
+                self._intencao["resultado"] = dict(resultado)
+            objetivo = self._intencao.get("objetivo_curto")
+            if objetivo:
+                if resultado is not None:
+                    objetivo["estado"] = ("confirmado_por_receipts" if resultado.get("ok") is True
+                        and resultado.get("parada_confirmada") is True else "interrompido")
+                elif estado in {"executando", "interrompida"}:
+                    objetivo["estado"] = estado
         self._publicar()
 
     def _gesto_suspenso(self, decisao: Any, retrato: tuple[int, int, int], *, variante: int = 0) -> GestoCorporal | None:
-        base = self._gesto_suspenso_base(decisao, retrato)
+        base = self._gesto_suspenso_base(decisao, retrato, variante=variante)
         if base is None:
             return None
         # Variações finitas por estilo: mantém a assinatura, muda lado e ritmo.
@@ -311,9 +481,31 @@ class CompanhiaCorporalRuntime:
         return GestoCorporal(f"{base.nome}_v{variante % 3 + 1}",
                              round(base.antecipacao_ms * escala), movimentos, round(base.pausa_ms * escala))
 
-    def _gesto_suspenso_base(self, decisao: Any, retrato: tuple[int, int, int]) -> GestoCorporal | None:
+    def _gesto_suspenso_base(self, decisao: Any, retrato: tuple[int, int, int], *, variante: int = 0) -> GestoCorporal | None:
         nivel, emo = retrato[1], retrato[0]
         forte = min(230, 110 + 35 * nivel)
+        if variante % 3 == 2:
+            # Uma frase distinta após as duas primeiras reações. A causa e a
+            # concessão continuam sendo revalidadas pelo mesmo coordenador.
+            frases = {
+                "comemorar": ((forte, forte, 650), (-forte, forte, 900), (forte, -forte, 1800), (-forte, forte, 900)),
+                "reagir_falha": ((-110, -110, 650), (-130, 130, 700), (130, -130, 1100)),
+                "interagir": ((120, 120, 250), (-120, 120, 450)),
+                "explorar": ((-150, 150, 1100), (160, 160, 3200), (150, -150, 1300)),
+            }
+            emocionais = {
+                1: ((-120, -120, 450), (forte, -forte, 950), (-forte, forte, 1900), (forte, forte, 600)),
+                2: ((-110, -110, 1200), (-110, 110, 550)),
+                3: ((forte, -forte, 1100), (-forte, forte, 1100), (-130, -130, 650)),
+                4: ((-120, -120, 450), (-forte, forte, 1200), (forte, -forte, 450)),
+                5: ((-150, -150, 750), (120, -120, 500), (120, 120, 300)),
+                6: ((-110, -110, 500), (-115, 115, 700), (115, -115, 1100)),
+                7: ((140, -140, 1200), (-110, -110, 400), (-140, 140, 550)),
+            }
+            movimentos = emocionais.get(emo) if decisao.nome == "expressar" else frases.get(decisao.nome)
+            if movimentos:
+                return GestoCorporal(f"{decisao.nome}_frase", 180 if emo == 6 else 100,
+                                    movimentos, 180 if emo in {2, 6} else 100)
         if decisao.nome == "comemorar":
             return GestoCorporal("comemoracao_suspensa", 120,
                 ((forte, -forte, 2500), (-forte, forte, 1800), (forte, forte, 1500)), 140)
@@ -348,21 +540,43 @@ class CompanhiaCorporalRuntime:
     def processar(self) -> dict[str, Any]:
         retrato = self._retrato()
         diag = self.corpo.transporte.diagnostico()
+        self.corpo.experiencias.observar_sensores(diag, perfil=self.perfil_corporal)
         with self._lock:
             anterior = self._observado
             c = dict(self._concessao or {})
             ativar_automaticamente = self._ativacao_pendente
+            recuperar = bool(self._retomada_pendente)
         if not c:
             self._observado = retrato
+            if recuperar:
+                return self._recuperar_conexao(diag)
             if ativar_automaticamente:
                 return self._ativar_sessao(automatica=True, passeio=self._passeio_ao_iniciar)
             return {"ok": False, "motivo": "companhia_inativa"}
         if (diag.get("sessao") != c["sessao"] or diag.get("aplicacao_confirmada") is not True
             or diag.get("transporte") != "serial" or (diag.get("motor") or {}).get("disponivel") is not True):
-            self.revogar("concessao_expirada_ou_conexao_perdida")
+            if not self._suspender_conexao("aguardando_recuperacao_usb"):
+                self.revogar("concessao_expirada_ou_conexao_perdida")
             return {"ok": False, "motivo": self._motivo}
         if not self._olhos_confirmados(diag):
             return {"ok": False, "motivo": "aguardando_retrato_no_oled"}
+        if (diag.get("imu") or {}).get("bloqueio_manuseio") is True:
+            # Observação física suspende iniciativa; não apaga a concessão.
+            return {"ok": False, "motivo": "manuseio_ou_calibracao", "em_observacao": True}
+        sensores = diag.get("sensores") or {}
+        protecao = sensores.get("protecao") or {}
+        vivencia = self.corpo.experiencias.contexto_sensorial(diag,perfil=self.perfil_corporal)
+        if sensores.get("suportado") and sensores.get("recente") and (
+            protecao.get("reflexo_ativo") or protecao.get("fase") in {"BLOQUEADA","FALHA_PWM","CANCELADA","ESPERA_BUSCA"}):
+            decisao = decidir_intencao_corporal(self._conversa(),self._atividade(),permitir_passeio=False,
+                interacao_prioritaria=self._atencao_prioritaria(),vivencia_sensorial=vivencia,agora=self.monotonic())
+            self._registrar_intencao(decisao)
+            self._fase_intencao(self._intencao["id"],"observando_protecao",estado="em_observacao")
+        if protecao.get("reflexo_ativo"):
+            return {"ok": False, "motivo": "reflexo_local_em_andamento", "em_observacao": True}
+        if sensores.get("suportado") and (not sensores.get("recente") or
+            protecao.get("fase") in {"BLOQUEADA", "FALHA_PWM", "CANCELADA", "ESPERA_BUSCA"}):
+            return {"ok": False, "motivo": "aguardando_superficie_segura", "em_observacao": True}
         atividade = self._atividade()
         ocupada = projetar_atividade_operacional(atividade, agora=self.monotonic())
         sucesso = self._sucesso()
@@ -372,14 +586,21 @@ class CompanhiaCorporalRuntime:
         proposta = self._proposta_mente(c)
         decisao = decidir_intencao_corporal(self._conversa(), atividade,
             permitir_passeio=bool(c.get("passeio")), nova_emocao=retrato[:2] != anterior[:2],
+            passeio_em_repouso=self.monotonic() < c["proximo_passeio"],
+            ritmo_corporal=self._ritmo_corporal(c, diag),
             novo_sucesso=novo_sucesso, nova_falha=nova_falha, agora=self.monotonic(),
             interacao_prioritaria=self._atencao_prioritaria(),
             plano=self._plano_pc() if self.perfil_corporal == "rodas_suspensas" or proposta else None,
-            proposta_corporal=proposta)
+            proposta_corporal=proposta, vivencia_sensorial=vivencia)
         self._registrar_intencao(decisao)
-        if self._atencao_prioritaria() or projetar_execucao_operacional(atividade) or ((self.perfil_corporal == "rodas_suspensas" or proposta) and not decisao.permite_movimento):
+        if not decisao.permite_movimento:
+            observar = decisao.nome == "atenta"
+            self._fase_intencao(self._intencao["id"], "observando" if observar else "repousando",
+                estado="em_observacao" if observar else "em_repouso")
+            return {"ok": False, "em_observacao": observar, "em_repouso": not observar, "movimento_executado": False,
+                    "motivo": decisao.motivo}
+        if self._atencao_prioritaria() or projetar_execucao_operacional(atividade):
             return {"ok": False, "motivo": "atividade_pc_prioritaria" if projetar_execucao_operacional(atividade) else decisao.motivo}
-        self._observado = retrato
         contexto_inicial = self._assinatura_contexto()
         origem_gesto = "emocao"
         if novo_sucesso and not ocupada:
@@ -404,6 +625,9 @@ class CompanhiaCorporalRuntime:
                 return {"ok": False, "motivo": "intencao_em_acomodacao"}
             chave_variante = f"{decisao.nome}:{retrato[0]}"
             variante = self._variantes.get(chave_variante, 0)
+            variante = self.corpo.experiencias.selecionar_variante(chave_variante, self.perfil_corporal, variante)
+            if variante is None:
+                return {"ok": False, "motivo": "sem_variante_compativel_com_preferencia"}
             gesto = self._gesto_suspenso(decisao, retrato, variante=variante)
         elif decisao.proposta_id:
             origem_gesto = "mente"
@@ -412,21 +636,55 @@ class CompanhiaCorporalRuntime:
                 PASSEIOS[self._passeios % len(PASSEIOS)] if decisao.nome == "explorar" else
                 GestoCorporal("interacao_mente", 60, ((100, -100, 150),)) if decisao.nome == "interagir" else
                 GESTOS[4] if decisao.nome == "reagir_falha" else None)
-        if gesto is None or self.monotonic() - c["ultimo_gesto"] < INTERVALO_GESTOS_S:
+        if gesto is None:
+            self._observado = retrato
+            return {"ok": False, "motivo": "sem_gesto_novo_ou_em_intervalo"}
+        if self.monotonic() - c["ultimo_gesto"] < INTERVALO_GESTOS_S:
+            self._fase_intencao(self._intencao["id"], "aguardando_intervalo")
             return {"ok": False, "motivo": "sem_gesto_novo_ou_em_intervalo"}
         if decisao.proposta_id:
             if not self._reservar_proposta(proposta, c):
                 return {"ok": False, "motivo": "proposta_corporal_substituida_ou_consumida"}
             origem_gesto = "mente"
+        with self._lock:
+            intencao_capturada = dict(self._intencao)
+        if tuple(intencao_capturada.get("chave", ())[:5]) != (
+                decisao.nome, decisao.emocao, decisao.nivel, decisao.motivo, decisao.proposta_id):
+            return {"ok": False, "motivo": "decisao_corporal_substituida"}
+        identidade = intencao_capturada["id"]
         meta = {"concessao_id": c["id"], "proposto_em": self.monotonic(), "gesto": gesto.nome,
-                "perfil": self.perfil_corporal, "intencao_id": decisao.proposta_id or self._intencao.get("id", ""),
-                "turno_id": proposta.get("turno_id", ""), "origem_intencao": "llm_principal" if decisao.proposta_id else "mente_causal"}
+                "perfil": self.perfil_corporal, "intencao_id": decisao.proposta_id or identidade,
+                "objetivo_id": intencao_capturada["objetivo_id"],
+                "objetivo_curto_id": identidade,
+                "objetivo_curto_ate": intencao_capturada["objetivo_curto"]["ate_monotonic"],
+                "contexto_objetivo": intencao_capturada["contexto"],
+                "turno_id": proposta.get("turno_id") or intencao_capturada.get("turno_id", ""),
+                "origem_intencao": "llm_principal" if decisao.proposta_id else "mente_causal"}
+        # A chave pertence à decisão já tomada, não ao resultado nem a uma
+        # consulta posterior ao estado vivo. Congelar antes de qualquer efeito.
+        causa = intencao_capturada["chave"][-1]
+        fonte_decisao = DecisaoObservada(id=identidade, owner="owner_companhia_corporal",
+            nome=decisao.nome, motivo=decisao.motivo,
+            turno_id=meta["turno_id"], sessao=c["sessao"],
+            intencao_id=meta["intencao_id"], objetivo_id=meta["objetivo_id"],
+            registrada_em=self.corpo.experiencias.clock(),
+            evidencias=SnapshotComandoIA({"referencia_causal": list(causa) if causa is not None else []}),
+            criterios=decisao.pontuacoes)
+        ocorrencia = self.corpo.experiencias.iniciar(nome=gesto.nome, origem_intencao=meta["origem_intencao"],
+            perfil=self.perfil_corporal, intencao_id=meta["intencao_id"],
+            turno_id=proposta.get("turno_id") if decisao.proposta_id else None,
+            variante=variante if self.perfil_corporal == "rodas_suspensas" else 0,
+            familia=chave_variante if self.perfil_corporal == "rodas_suspensas" else gesto.nome,
+            movimentos=gesto.movimentos, decisao_origem=fonte_decisao)
+        ocorrencia["objetivo_id"] = meta["objetivo_id"]
+        meta["experiencia_id"] = ocorrencia["id"]
         with self._lock:
             if not self._concessao or self._concessao["id"] != c["id"] or self._revogada.is_set():
                 return {"ok": False, "motivo": "concessao_revogada"}
             self._concessao["gestos"] += 1
+            self._observado = retrato
             self._concessao["ultimo_gesto"] = self.monotonic()
-            self._concessao["proximo_passeio"] = self.monotonic() + (8, 12, 10, 14)[self._passeios % 4]
+            self._concessao["proximo_passeio"] = self.monotonic() + PAUSAS_PASSEIO_S[self._passeios % len(PAUSAS_PASSEIO_S)]
             if origem_gesto == "sucesso_operacional":
                 self._sucesso_observado = sucesso[0]
                 self._comemoracoes += 1
@@ -437,9 +695,13 @@ class CompanhiaCorporalRuntime:
             self._intencao["estado"] = "executando"
             if self.perfil_corporal == "rodas_suspensas":
                 self._variantes[chave_variante] = self._variantes.get(chave_variante, 0) + 1
+        self._fase_intencao(identidade, "antecipando", estado="executando")
         falha_inicial = atividade.get("falha_id", 0)
         def causa_vigente() -> bool:
             if self._atencao_prioritaria() or projetar_execucao_operacional(self._atividade()):
+                return False
+            turno_atual = self.estado.obter_copia("mental", "turno_atual", {}) if self.estado is not None else {}
+            if (str(turno_atual.get("id") or ""), str(self._plano_pc().get("id") or "")) != tuple(meta["contexto_objetivo"])[2:]:
                 return False
             if self.perfil_corporal == "rodas_suspensas" and self._assinatura_contexto() != contexto_inicial:
                 return False
@@ -454,14 +716,22 @@ class CompanhiaCorporalRuntime:
         # Não enfileira/reenvia um gesto descartado; cada etapa revalida a concessão.
         interrompido_por_causa = False
         receipts_mente: list[dict[str, Any]] = []
+        ultimo_receipt_expressao: dict[str, Any] = {}
         estilo = {"comemorar": 1, "reagir_falha": 4, "explorar": 10, "interagir": 0}.get(decisao.nome, retrato[0])
         coordenar = self.perfil_corporal == "rodas_suspensas" and diag.get("expressao", {}).get("suportado") is True
         def expressar(fase: int, e: int = 0, d: int = 0, duracao: int = 1800) -> dict[str, Any]:
+            nonlocal interrompido_por_causa, ultimo_receipt_expressao
             if not coordenar:
                 return {"ok": True, "suportado": False}
             lado = 0 if e == d else 1 if e > d else -1
-            return self.corpo.transporte.expressar_gesto(estilo, fase, lado, duracao,
+            retorno = self.corpo.transporte.expressar_gesto(estilo, fase, lado, duracao,
                 validar_inicio=lambda: self._vigente(meta) and causa_vigente(), tocar_som=fase == 1)
+            ultimo_receipt_expressao = retorno
+            # A guarda do transporte revalida depois da espera pelo lock. Uma
+            # causa encerrada ali cancela esta ocorrência, não a concessão USB.
+            if retorno.get("motivo") == "expressao_sem_sessao_ou_causa":
+                interrompido_por_causa = self._vigente(meta) and not causa_vigente()
+            return retorno
         def rosto_confirmado() -> dict[str, Any]:
             nonlocal interrompido_por_causa
             d = self.corpo.transporte.diagnostico()
@@ -485,6 +755,7 @@ class CompanhiaCorporalRuntime:
                 if not cue.get("ok"):
                     return {"ok": False, "confirmado": False, "motivo": "expressao_nao_confirmada", "expressao": cue}
                 kwargs_movimento = {"suave": True} if coordenar and diag.get("motor", {}).get("rampa_suportada") is True else {}
+                self._fase_intencao(identidade, "gesticulando", estado="executando")
                 retorno = self.corpo.transporte.mover_corpo(*motores, validar_inicio=validar, **kwargs_movimento)
                 retorno = self.corpo.confirmar_receipt(retorno, "CORPO_MOVER")
                 receipts.append(retorno)
@@ -499,15 +770,41 @@ class CompanhiaCorporalRuntime:
                     "acomodacao": acomodacao,
                     "receipts_movimentos": receipts, "prova_rotacao": False}
 
+        falha_gesto = False
         try:
             retorno = self.coordenador.executar_gesto_corporal(meta, rosto_confirmado, movimento)
         except Exception as erro:
             retorno = {"ok": False, "status": "falha_coordenador_corporal", "motivo": type(erro).__name__}
         if not retorno.get("ok"):
+            detalhe = (receipts_mente[-1] if receipts_mente and not receipts_mente[-1].get("ok")
+                       else ultimo_receipt_expressao if not ultimo_receipt_expressao.get("ok") else {})
+            if detalhe.get("motivo"):
+                retorno = {**retorno, "motivo": detalhe["motivo"]}
+        if not retorno.get("ok") and receipts_mente and receipts_mente[-1].get("interrompido_por_protecao") is True:
+            # O coordenador conclui o plano; o receipt do owner preserva a causa
+            # física específica da mesma execução, sem promover o parcial a sucesso.
+            retorno = {**retorno, "interrompido_por_protecao": True,
+                "risco_detectado": receipts_mente[-1].get("risco_detectado"),
+                "protecao": receipts_mente[-1].get("protecao"), "receipts_movimentos": receipts_mente}
+        if not retorno.get("ok"):
             causa_substituida = interrompido_por_causa and self._vigente(meta)
             falha = not self._revogada.is_set() and not causa_substituida
-            if not causa_substituida:
-                self.revogar("gesto_nao_confirmado")
+            falha_gesto = falha
+            protecao_interrompeu = retorno.get("interrompido_por_protecao") is True
+            if protecao_interrompeu:
+                falha = falha_gesto = False
+                with self._lock:
+                    self._observado = retrato  # Não retoma a emoção interrompida ao liberar a superfície.
+                    self._motivo = "interrompido_por_protecao"
+                    if self._concessao:
+                        self._concessao["proximo_passeio"] = self.monotonic() + 8
+            elif not causa_substituida:
+                d=self.corpo.transporte.diagnostico()
+                conexao_perdida=(d.get("aplicacao_confirmada") is not True or d.get("sessao")!=c["sessao"])
+                if conexao_perdida and self._suspender_conexao("gesto_interrompido_por_desconexao"):
+                    falha=falha_gesto=False
+                else:
+                    self.revogar("gesto_nao_confirmado")
             else:
                 with self._lock:
                     self._motivo = "gesto_interrompido_por_nova_expressao"
@@ -516,14 +813,23 @@ class CompanhiaCorporalRuntime:
                 self.corpo.observar_resultado_cb({**retorno, "status": "falha_gesto_corporal", "origem": "executor"})
             if falha and callable(self.corpo.registrar_falha_cb):
                 self.corpo.registrar_falha_cb("corpo_motor", "gesto_nao_confirmado")
-        self._intencao["estado"] = "concluida" if retorno.get("ok") else "interrompida"
+        retorno_experiencia = {**retorno, **({"cancelado": True} if not retorno.get("ok") and not falha_gesto else {})}
         if decisao.proposta_id:
-            self._devolver_experiencia(proposta, retorno, receipts_mente)
-        if self.perfil_corporal == "rodas_suspensas" and retorno.get("ok"):
-            # A acomodação começa depois da coreografia longa, não durante ela.
+            self._devolver_experiencia(proposta, retorno_experiencia, receipts_mente, ocorrencia=ocorrencia)
+        else:
+            self.corpo.registrar_experiencia(ocorrencia, retorno_experiencia, receipts_mente)
+        self._fase_intencao(identidade, "acomodando" if retorno.get("ok") else "interrompida",
+            estado="concluida" if retorno.get("ok") else "interrompida",
+            resultado={"experiencia_id": ocorrencia["id"], "ok": retorno.get("ok") is True,
+                       "motivo": retorno.get("motivo") or retorno.get("status") or "",
+                       "parada_confirmada": bool(receipts_mente and receipts_mente[-1].get("parada_confirmada") is True),
+                       "prova_deslocamento": False})
+        if retorno.get("ok"):
+            # O sossego começa depois da coreografia, não durante ela.
             with self._lock:
                 if self._concessao and self._concessao["id"] == c["id"]:
-                    self._concessao["proximo_passeio"] = self.monotonic() + (8, 12, 10, 14)[self._passeios % 4]
+                    self._concessao["ultimo_fim_gesto"] = self.monotonic()
+                    self._concessao["proximo_passeio"] = self.monotonic() + PAUSAS_PASSEIO_S[self._passeios % len(PAUSAS_PASSEIO_S)]
         self._publicar()
         return retorno
 

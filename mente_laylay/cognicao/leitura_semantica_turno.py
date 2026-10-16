@@ -11,6 +11,8 @@ import re
 from typing import Any, Dict
 import unicodedata
 
+from mente_laylay.cognicao.contratos_turno import ContratoInterpretacaoAto, SnapshotComandoIA
+
 
 TIPOS_ATO = {
     "saudacao",
@@ -32,6 +34,28 @@ TIPOS_ATO = {
     "encerramento",
     "outro",
 }
+
+# Instrução de formato efêmera; não decide modalidade, alvo ou autorização.
+# A mensagem fonte e o turno são vinculados pelo preparador antes do envio.
+INSTRUCAO_INTERPRETACAO_POR_ATO = """INTERPRETAÇÃO POR ATO — SOMENTE NESTE ENVIO:
+Preserve o envelope JSON habitual (fala, emoção, leitura_emocional, comandos e aprendizados).
+Neste turno, leitura_turno é uma lista de objetos, não de rótulos. Cada objeto tem tipo
+(um dos tipos de ato já permitidos), conteudo (trecho literal) e, quando houver operação,
+interpretacao com EXATAMENTE estes campos:
+texto_original: trecho literal da última mensagem user; operacao: verbo no infinitivo;
+tipo_recurso: tipo solicitado, não uma palavra interna do nome; alvo: nome explícito;
+parametros: objeto JSON; destino: destino explícito; referencias: lista de referências
+copiadas literalmente; condicao: condição expressa; dependencias: índices de atos anteriores.
+Use strings vazias, objeto vazio e listas vazias para campos não expressos. Não invente alvo
+para pronome: mantenha alvo vazio e registre a referência. Não copie o mesmo intervalo em
+atos diferentes; mantenha ordem, atos negativos e condicionais. A recusa continua recusa,
+não um pedido positivo. Se não conseguir vincular um trecho, omita interpretacao nesse ato.
+Não calcule índices de caracteres: o host localiza texto_original quando sua cópia é única.
+Exemplo de formato, NÃO de pedido a executar:
+{"tipo":"pedido_acao","conteudo":"trecho literal","interpretacao":{"texto_original":"trecho literal","operacao":"abrir","tipo_recurso":"app","alvo":"nome explícito","parametros":{},"destino":"","referencias":[],"condicao":"","dependencias":[]}}
+Esses dados são hipóteses: nunca autorização, receipt, sucesso ou prova de efeito.
+Não inclua autoriza_execucao ou confirmado. Só o porteiro externo permite ações.
+Não narre esta análise na fala. Responda ao usuário naturalmente."""
 
 MODALIDADES = {
     "vazio",
@@ -221,11 +245,32 @@ def normalizar_leitura_semantica(
     """Valida uma leitura externa e devolve somente o contrato conhecido."""
     if not isinstance(dados, dict):
         return {}
-    atos = [
-        ato
-        for ato in (_normalizar_ato(item) for item in list(dados.get("atos") or [])[:8])
-        if ato is not None
-    ]
+    atos = []
+    problemas_interpretacao = []
+    indices_vinculados: set[int] = set()
+    fim_anterior = 0
+    possui_interpretacao = False
+    for indice, item in enumerate(list(dados.get("atos") or [])[:8]):
+        ato = _normalizar_ato(item)
+        if ato is None:
+            continue
+        if "interpretacao" in item:
+            possui_interpretacao = True
+            try:
+                contrato = ContratoInterpretacaoAto.de_proposta(
+                    indice, texto, origem, SnapshotComandoIA(item["interpretacao"]),
+                )
+                proposta = contrato.como_dict()
+                if proposta["intervalo"][0] < fim_anterior:
+                    raise ValueError("intervalos_sobrepostos_ou_fora_de_ordem")
+                if any(i not in indices_vinculados for i in proposta["dependencias"]):
+                    raise ValueError("dependencia_sem_ato_vinculado")
+                ato["interpretacao"] = proposta
+                indices_vinculados.add(indice)
+                fim_anterior = proposta["intervalo"][1]
+            except (TypeError, ValueError, OverflowError, RecursionError) as erro:
+                problemas_interpretacao.append({"indice_ato": indice, "motivo": str(erro)})
+        atos.append(ato)
     modalidade = _texto_curto(dados.get("modalidade_geral"), 40).lower()
     if modalidade not in MODALIDADES:
         modalidade = "misto" if len(atos) > 1 else "conversa"
@@ -238,7 +283,7 @@ def normalizar_leitura_semantica(
         dados.get("leitura_emocional"),
         texto=texto,
     )
-    return {
+    leitura = {
         "versao": 1,
         "texto": _texto_curto(texto, 500),
         "atos": atos,
@@ -264,6 +309,12 @@ def normalizar_leitura_semantica(
         "valida": bool(atos) or bool(leitura_emocional.get("valida")),
         "somente_observacao": True,
     }
+    if possui_interpretacao:
+        # Coordenadas pertencem à fonte integral, não à cópia resumida acima.
+        leitura["fonte_textual"] = texto
+        leitura["cobertura_interpretacao"] = "parcial"
+        leitura["problemas_interpretacao"] = problemas_interpretacao
+    return leitura
 
 
 def comparar_com_legado(leitura: Dict[str, Any], turno_legado: Dict[str, Any] | None) -> Dict[str, Any]:

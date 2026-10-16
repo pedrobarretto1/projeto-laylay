@@ -159,8 +159,12 @@ def admissao_instalada(tmp_path_factory):
             ("navegador", "abre o site https://example.test", {"acao": "open_url", "alvo": "https://example.test"}),
         )
         for dominio, texto, comando in casos:
+            # Duas invocações exigem duas ordens explícitas. A antiga fixture
+            # emprestava uma ordem única a duas propostas iguais e mascarava
+            # a guarda entre comandos. Manter duas admissões/efeitos esperados.
+            texto = texto + "; " + texto
             for momento in ("controle", "montagem_dispatch", "entre_comandos", "montagem_finalizacao"):
-                chamadas, publicacoes, novos, validacoes = [], [], [], []
+                chamadas, publicacoes, novos, validacoes, escopos = [], [], [], [], []
                 def trocar():
                     root._iniciar_planejamento_turno(texto, origem="intercalacao_admissao")
                     novos.append(estado.snapshot())
@@ -189,6 +193,7 @@ def admissao_instalada(tmp_path_factory):
                     def validar_proposta_original(self, comandos, principal, extracao):
                         resultado = validar.validar_proposta_original(comandos, principal, extracao)
                         validacoes.append(len(resultado["comandos"]))
+                        escopos.append(resultado.get("escopo_operacional_por_ato"))
                         return resultado
                 ctx = {
                     "marcar_inicio_turno": root._iniciar_planejamento_turno,
@@ -214,7 +219,7 @@ def admissao_instalada(tmp_path_factory):
                     runtime._contexto_getter = getter
                 resultados["casos"][dominio + ":" + momento] = {
                     "chamadas": chamadas, "publicacoes": publicacoes, "validacoes": validacoes,
-                    "novo_preservado": not novos or estado.snapshot() == novos[-1],
+                    "novo_preservado": not novos or estado.snapshot() == novos[-1], "escopos": escopos,
                 }
         sys.__stdout__.write("ADMISSAO_INSTALADA " + json.dumps(resultados) + "\n")
     ''')
@@ -232,7 +237,7 @@ def admissao_instalada(tmp_path_factory):
 def test_runtime_instalado_confere_admissao_apos_montagem_e_entre_comandos(admissao_instalada, dominio, momento):
     assert admissao_instalada["owner_instalado"]
     caso = admissao_instalada["casos"][dominio + ":" + momento]
-    assert caso["validacoes"] == [2], "validador real aceitou antes da intercalação"
+    assert caso["validacoes"] == [2], json.dumps(caso, ensure_ascii=False)
     assert caso["publicacoes"][0] == ["resposta_planejada", True]
     esperados = {
         "controle": ["montagem_dispatch", "executor", "executor", "montagem_finalizacao", "finalizacao"],

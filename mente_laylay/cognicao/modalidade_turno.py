@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 import time
 import unicodedata
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
 
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
@@ -16,6 +19,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
     texto_pede_restauracao_contextual,
+    tipo_recurso_nucleo_operacional,
 )
 from mente_laylay.arquivos.nome_natural import (
     aspas_globalmente_coerentes,
@@ -25,6 +29,7 @@ from mente_laylay.arquivos.nome_natural import (
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
+    remover_conector_discursivo_inicial,
     texto_discute_evidencia_textual,
     tipo_transformacao_conversacional,
 )
@@ -120,6 +125,7 @@ def analisar_protecao_operacional(
     normalizar_texto: Callable[[str], str] | None = None,
 ) -> Dict[str, Any]:
     """Lê negação, hipótese e pergunta antes de qualquer intenção prática."""
+    texto = remover_conector_discursivo_inicial(texto)
     normalizar = normalizar_texto if callable(normalizar_texto) else (
         lambda valor: str(valor or "").casefold().strip()
     )
@@ -710,16 +716,11 @@ def _classificar_modalidade_base(
         r"^(?:voce|você)\s+(?:pode|poderia|consegue|conseguiria)\s+.*\b(?:pra|para)\s+mim\b",
         t,
     ))
-    imperativo_direto = bool(re.search(
-        r"^(?:por favor\s+)?(?:abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
-        r"toca|toque|coloca|coloque|deixa|deixe|bota|põe|poe|cria|crie|apaga|remove|deleta|"
-        r"restaura|restaure|recupera|recupere|"
-        r"maximiza|organiza|pausa|retoma|aumenta|abaixa|diminui|resume|resuma|"
-        r"leia|verifique|encontra|encontre|acha|ache|localiza|localize|"
-        r"escreve|escreva|grava|grave|adiciona|adicione|"
-        r"acrescenta|acrescente)\b",
-        t,
-    ))
+    # Pedido, fronteira entre atos e proteção P0 devem reconhecer a mesma
+    # oração diretiva. Uma lista menor aqui perdia inclusive verbos que a
+    # própria P0 já conhecia (ajuste, renomeie, minimize), e impedia separar
+    # comandos conjuntos. O léxico não resolve capacidade, alvo ou efeito.
+    imperativo_direto = bool(_P0_PEDIDO_DIRETO_INICIAL.match(t))
     # Verbos do corpo entram na mesma classificação de ato e nas mesmas
     # proteções P0. A gramática de domínio só fornece o alvo implícito (a
     # própria ponte), nunca uma segunda política de autorização.
@@ -780,21 +781,6 @@ def _classificar_modalidade_base(
     if re.search(r"\b(?:obrigado|obrigada|valeu|gostei|adorei|odeio|nao gosto|não gosto)\b", t):
         resultado.update(modalidade="reacao", confianca=0.88, motivo="reação ou preferência")
     return resultado
-
-
-_VERBOS_COMANDO = re.compile(
-    r"\b(?:abre|abrir|abra|fecha|fechar|feche|liga|ligar|ligue|desliga|desligar|"
-    r"desligue|toca|tocar|toque|coloca|colocar|coloque|deixa|deixar|deixe|bota|põe|poe|cria|criar|"
-    r"crie|apaga|apagar|remove|remover|deleta|deletar|maximiza|maximizar|pausa|"
-    r"pausar|retoma|aumenta|abaixa|diminui|organiza|agende|agendar|me lembra|me avisa|"
-    r"leia|ler|lê|le|pesquisa|pesquisar|busca|buscar|procura|procurar|"
-    r"encontra|encontre|achar|acha|ache|localiza|localize|pula|pule|"
-    r"captura|capture|trava|bloqueia|escreve|escrever|escreva|grava|gravar|grave|"
-    r"adiciona|adicionar|adicione|acrescenta|acrescentar|acrescente|"
-    r"restaura|restaurar|restaure|recupera|recuperar|recupere|"
-    r"anda|ande|andar|avanca|avance|avancar|recua|recue|recuar|gira|gire|girar|vira|vire|virar|para|pare|parar)\b",
-    re.IGNORECASE,
-)
 
 
 _PERGUNTA_RECIPROCA_FINAL = re.compile(
@@ -1218,6 +1204,9 @@ def _classificar_ato_estrutural(
     B/B2/C: ownership na representação estrutural.
     Relevância nunca vira autoridade.
     """
+    # O conector liga este ato ao discurso, não muda sua modalidade. O caller
+    # conserva o trecho completo no segmento e no mapa de fontes originais.
+    texto_estrutural = remover_conector_discursivo_inicial(texto_estrutural)
     # Nenhum owner de domínio pode converter a consequência em pedido direto
     # ignorando a condição que o owner geral preservou no mesmo átomo.
     if (
@@ -1311,7 +1300,7 @@ def _evidencia_ato_operacional(
     """
     A2: evidência de fronteira pela cláusula inteira, nunca por verbo interno.
     """
-    t = _limpar_ato_semantico(texto)
+    t = remover_conector_discursivo_inicial(_limpar_ato_semantico(texto))
     if not t:
         return False, "vazio"
     if _consulta_significado_do_ato(t):
@@ -1342,6 +1331,51 @@ def _evidencia_ato_operacional(
     return False, "BASE:" + str(
         base.get("modalidade") or "conversa"
     )
+
+
+def proibicao_operacional_independente(
+    esquerda: str,
+    direita: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+) -> bool:
+    """Fronteira negativa, não autoridade positiva.
+
+    Exige pedido positivo à esquerda e proibição explícita à direita com
+    tipos nominais distintos. Mesmo tipo, alvo elíptico ou referência não
+    provam independência: podem revogar o pedido anterior e ficam fechados.
+    O núcleo contrafactual serve apenas à estrutura; nunca é publicado como
+    ato autorizado. A proibição original continua sob o veto P0 atômico.
+    """
+    protecao = analisar_protecao_operacional(direita, normalizar_texto=normalizar_texto)
+    if protecao.get("natureza_acao") != "cancelamento":
+        return False
+    negacao = re.match(
+        rf"^(?:nao|não|nunca|jamais)\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
+        rf"(?P<nucleo>(?:{_P0_VERBOS_PEDIDO_DIRETO}|{_P0_VERBOS_INFINITIVO_OPERACIONAL})\b.*)$",
+        direita, flags=re.IGNORECASE,
+    )
+    if not negacao:
+        return False
+    nucleo = negacao.group("nucleo")
+    for trecho in (esquerda, nucleo):
+        ato = _classificar_ato_estrutural(
+            trecho, normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=lambda _: False,
+            confirmacao_contextual_valida=False,
+        )
+        base = _classificar_modalidade_base(
+            trecho, normalizar_texto=normalizar_texto,
+            texto_tem_comando_explicito=lambda _: False,
+            confirmacao_contextual_valida=False,
+        )
+        if not autoriza_execucao_efetiva(ato) or base.get("depende_contexto"):
+            return False
+    tipo_esquerda = tipo_recurso_nucleo_operacional(
+        extrair_nucleo_pedido_operacional(esquerda) or esquerda,
+    )
+    tipo_direita = tipo_recurso_nucleo_operacional(nucleo)
+    return bool(tipo_esquerda and tipo_direita and tipo_esquerda != tipo_direita)
 
 
 def _evidencia_pergunta_independente(
@@ -1398,6 +1432,9 @@ def _separar_primeira_fronteira_forte(
     ):
         if any(inicio < m.start() < fim for inicio, fim in pares_aspas.items()):
             continue
+        if (m.group("sep") == ","
+                and not remover_conector_discursivo_inicial(bloco[:m.end()])):
+            continue  # A vírgula após o conector não cria um ato vazio anterior.
         if m.group("sep") == "," and _consulta_significado_do_ato(bloco):
             # A vírgula que liga expressão e predicado não torna a expressão
             # uma ordem autônoma: "pode A e B, significa o quê?".
@@ -1457,6 +1494,10 @@ def _separar_primeira_fronteira_forte(
             direita,
             normalizar_texto=normalizar_texto,
         )
+        if not inicia and proibicao_operacional_independente(
+            esquerda, direita, normalizar_texto=normalizar_texto,
+        ):
+            inicia, origem = True, "PROIBICAO_INDEPENDENTE"
         if not inicia and _evidencia_pergunta_independente(
             direita,
             normalizar_texto=normalizar_texto,
@@ -1469,6 +1510,48 @@ def _separar_primeira_fronteira_forte(
             return m, esquerda, direita, origem
 
     return None
+
+def fontes_textuais_dos_segmentos(texto: str, segmentos: list[dict]) -> tuple[SnapshotComandoIA, ...]:
+    """Vincula segmentos já decididos à fonte; não segmenta nem autoriza.
+
+    Só desfaz normalização de caixa/espaços com coordenadas demonstráveis.
+    Correções lexicais, fontes truncadas e texto ausente não recebem vínculo.
+    O índice é textual, nunca identidade de autorização ou de execução.
+    """
+    from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+    if not isinstance(texto, str) or not isinstance(segmentos, (list, tuple)) or not 1 <= len(segmentos) <= 8:
+        return ()
+    caracteres, coordenadas = [], []
+    anterior = 0
+    for token in re.finditer(r"\S+", texto):
+        if caracteres:
+            caracteres.append(" ")
+            coordenadas.append((anterior, token.start()))
+        for posicao, caractere in enumerate(token.group()):
+            for expandido in caractere.casefold():
+                caracteres.append(expandido)
+                coordenadas.append((token.start() + posicao, token.start() + posicao + 1))
+        anterior = token.end()
+    normalizado = "".join(caracteres)
+    fontes, cursor = [], 0
+    for indice, segmento in enumerate(segmentos):
+        if not isinstance(segmento, dict):
+            return ()
+        trecho = segmento.get("texto_estrutural") or segmento.get("texto")
+        if not isinstance(trecho, str) or not trecho.strip() or len(trecho) >= 300:
+            return ()
+        trecho_normalizado = re.sub(r"\s+", " ", trecho.casefold()).strip()
+        inicio = normalizado.find(trecho_normalizado, cursor)
+        if inicio < 0:
+            return ()
+        fim = inicio + len(trecho_normalizado)
+        bruto_inicio, bruto_fim = coordenadas[inicio][0], coordenadas[fim - 1][1]
+        fontes.append(SnapshotComandoIA({"indice_segmento": indice,
+            "texto_original": texto[bruto_inicio:bruto_fim], "intervalo": [bruto_inicio, bruto_fim],
+            "origem": "segmentacao_canonica", "autoriza_execucao": False, "comprova_efeito": False}))
+        cursor = fim
+    return tuple(fontes)
+
 
 def _segmento_estrutural(
     texto_estrutural: str,
@@ -1680,6 +1763,9 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
+                direita_proibicao = proibicao_operacional_independente(
+                    esquerda, direita, normalizar_texto=normalizar_texto,
+                )
                 direita_pergunta = _evidencia_pergunta_independente(
                     direita,
                     normalizar_texto=normalizar_texto,
@@ -1687,7 +1773,7 @@ def _segmentar_turno_misto(
                 if (
                     (esq_ok or tipo_transformacao_conversacional(esquerda)
                      or _consulta_significado_do_ato(esquerda)) and dir_ok
-                ) or direita_pergunta:
+                ) or direita_pergunta or direita_proibicao:
                     corte = (esquerda, direita)
                     break
 
@@ -1797,6 +1883,34 @@ def _classificar_modalidade_turno_composta_base(
             "motivo_decisao": "entrada vazia",
             "ts": time.time(),
         }
+
+    # Uma fronteira intermediária não prova que a proibição posterior deixou
+    # de revogar pedidos anteriores. Reusar o mesmo contrato de independência;
+    # tipo igual/ausente fica fechado, sem inferir aliases ou alvo por recência.
+    # Uma nova ordem posterior continua sendo uma fonte nova de autoridade.
+    for indice, segmento in enumerate(segmentos):
+        if (
+            segmento.get("natureza_acao") != "cancelamento"
+            or not _P0_NEGACAO_OPERACIONAL_INTERNA.match(
+                _normalizar_p0_ato_fala(segmento["texto"], normalizar_texto)
+            )
+        ):
+            continue
+        for anterior in range(indice):
+            pedido = segmentos[anterior]
+            if not autoriza_execucao_efetiva(pedido) or proibicao_operacional_independente(
+                pedido["texto"], segmento["texto"], normalizar_texto=normalizar_texto,
+            ):
+                continue
+            resultados[anterior] = aplicar_veto_canonico(
+                resultados[anterior], texto=pedido["texto"], modalidade="recusa",
+                natureza="cancelamento", requer_esclarecimento=True,
+                motivo="proibição posterior sem independência comprovada do pedido",
+                origem_veto="escopo_proibicao_posterior",
+            )
+            segmentos[anterior] = _segmento_estrutural(
+                pedido["texto_estrutural"], resultados[anterior], anterior,
+            )
 
     modalidades = {
         str(s.get("modalidade") or "")
@@ -1946,7 +2060,11 @@ _P0_GATILHOS_OPERACIONAIS = re.compile(
     r"recupera|recuperar|recupere|recuperaria|"
     r"executa|executar|execute|executaria|"
     r"repete|repetir|repita|refaz|refazer|refaca|"
-    r"tenta|tentar|tente"
+    r"tenta|tentar|tente|"
+    r"prepara|preparar|prepare|prepararia|redige|redigir|redija|"
+    r"responde|responder|responda|responderia|encaminha|encaminhar|encaminhe|"
+    r"envia|enviar|envie|enviaria|manda|mandar|mande|mandaria|arquiva|arquivar|arquive|"
+    r"edita|editar|edite|descarta|descartar|descarte|marca|marcar|marque|anexa|anexar|anexe"
     r")\b",
     re.IGNORECASE,
 )
@@ -1972,12 +2090,15 @@ def _normalizar_p0_ato_fala(
 _P0_VERBOS_PEDIDO_DIRETO = (
     r"(?:"
     r"abre|abra|fecha|feche|liga|ligue|desliga|desligue|"
-    r"toca|toque|coloca|coloque|bota|poe|cria|crie|"
+    r"toca|toque|coloca|coloque|deixa|deixe|bota|poe|põe|cria|crie|"
+    r"aumenta|aumente|sobe|suba|abaixa|abaixe|baixa|baixe|diminui|diminua|reduz|reduza|eleva|eleve|"
     r"apaga|apague|remove|remova|deleta|delete|move|mova|"
     r"renomeia|renomeie|maximiza|maximize|minimiza|minimize|"
     r"pausa|pause|despausa|despause|retoma|retome|continue|continua|organiza|organize|"
     r"pesquisa|pesquise|busca|busque|procura|procure|"
     r"encontra|encontre|escreve|escreva|grava|grave|"
+    r"prepara|prepare|redige|redija|responde|responda|encaminha|encaminhe|envia|envie|manda|mande|"
+    r"arquiva|arquive|edita|edite|descarta|descarte|marca|marque|troca|troque|le|lê|anexa|anexe|"
     r"adiciona|adicione|acrescenta|acrescente|"
     r"restaura|restaure|recupera|recupere|"
     r"altera|altere|muda|mude|ajusta|ajuste|"
@@ -1989,10 +2110,12 @@ _P0_VERBOS_PEDIDO_DIRETO = (
 
 _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"(?:"
-    r"abrir|fechar|ligar|desligar|tocar|colocar|criar|apagar|"
+    r"abrir|fechar|ligar|desligar|tocar|colocar|deixar|criar|apagar|"
+    r"aumentar|subir|abaixar|baixar|diminuir|reduzir|elevar|"
     r"remover|deletar|mover|renomear|maximizar|minimizar|"
     r"pausar|despausar|retomar|continuar|organizar|pesquisar|buscar|"
     r"procurar|encontrar|escrever|gravar|adicionar|acrescentar|"
+    r"preparar|redigir|responder|encaminhar|enviar|mandar|arquivar|editar|descartar|marcar|trocar|anexar|"
     r"restaurar|recuperar|"
     r"alterar|mudar|ajustar|"
     r"executar|repetir|refazer|tentar|"
@@ -2003,6 +2126,14 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
 
 _P0_PEDIDO_DIRETO_INICIAL = re.compile(
     rf"^(?:por\s+favor\s+)?{_P0_VERBOS_PEDIDO_DIRETO}\b",
+    re.IGNORECASE,
+)
+# O complemento lexical ainda depende do detector injetado e da ancoragem
+# no começo do ato. Infinitivo nesta projeção NÃO é pedido direto por si só.
+_VERBOS_COMANDO = re.compile(
+    rf"\b(?:{_P0_VERBOS_PEDIDO_DIRETO}|{_P0_VERBOS_INFINITIVO_OPERACIONAL}|"
+    r"agende|agendar|me lembra|me avisa|lê|le|pula|pule|"
+    r"captura|capture|trava|bloqueia)\b",
     re.IGNORECASE,
 )
 _MOLDURA_PEDIDO_OPERACIONAL = re.compile(
@@ -2047,7 +2178,16 @@ def extrair_nucleo_pedido_operacional(texto: str) -> str | None:
     o turno original. Entidades não são corrigidas; apenas ``abri`` no lugar
     do verbo, dentro de pedido explícito, é convertido em ``abrir``.
     """
-    t = re.sub(r"\s+", " ", str(texto or "")).strip()
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    t = remover_conector_discursivo_inicial(bruto)
+    if t != bruto and not _MOLDURA_PEDIDO_OPERACIONAL.match(t):
+        # Reusar a modalidade completa da oração, incluindo P0 e segmentação.
+        # Não retirar negação/condição nem fundir uma cadeia num comando único.
+        turno = classificar_modalidade_turno(t)
+        if (autoriza_execucao_efetiva(turno) and len(turno.get("segmentos") or ()) == 1
+                and not turno.get("requer_esclarecimento")):
+            return t
+        return None
     if _modalidade_moldura_pedido(t) != "comando" or _protecao_p0_ato_fala(t):
         return None
     moldura = _MOLDURA_PEDIDO_OPERACIONAL.match(t)

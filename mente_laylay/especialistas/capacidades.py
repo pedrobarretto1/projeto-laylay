@@ -33,7 +33,7 @@ _INTENTS_POR_DOMINIO = {
         "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "FILE_TRANSACTION",
         "FILE_SEARCH", "FILE_READ", "FILE_OPEN_RESULT",
     },
-    "email": {"EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS"},
+    "email": {"EMAIL_READ", "EMAIL_SYNC", "EMAIL_DRAFT", "EMAIL_DRAFT_READ", "EMAIL_SEND", "EMAIL_MODIFY", "EMAIL_CONFIRM", "NOTIFICATIONS"},
     "iot": {"IOT_CONTROL", "IOT_STATUS", "IOT_LIST"},
     "corpo_motor": {"CORPO_MOVER", "CORPO_PARAR", "CORPO_COMPANHIA"},
     "area_transferencia": {
@@ -55,6 +55,7 @@ _INTENTS_POR_DOMINIO = {
 }
 
 _CONFIRMACAO_OBRIGATORIA = {
+    "EMAIL_SEND", "EMAIL_MODIFY",
     "DELETE_ITEM",
     "INBOX_DELETE",
     "INBOX_CONVERT_REMINDER",
@@ -66,7 +67,7 @@ _CONFIRMACAO_OBRIGATORIA = {
 # pelo mapa de recursos e pelos executores.
 INTENTS_SOMENTE_LEITURA = frozenset({
     "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS", "MUSIC_STATUS",
-    "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "NOTIFICATIONS",
+    "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "EMAIL_DRAFT_READ", "NOTIFICATIONS",
     "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
     "LIST_TABS",
     "LIST_WINDOWS",
@@ -170,11 +171,16 @@ _CONFIRMACAO_POR_INTENT = {
     # Serviços e IoT
     "EMAIL_READ": ("retorno_dados", "as mensagens são recuperadas do serviço"),
     "EMAIL_SYNC": ("retorno_dados", "a sincronização retorna uma coleção válida"),
+    "EMAIL_DRAFT": ("persistencia_local", "a versão do rascunho é relida no armazenamento local"),
+    "EMAIL_DRAFT_READ": ("retorno_dados", "os rascunhos locais são consultados sem alteração"),
+    "EMAIL_SEND": ("estado_local", "a revisão cria pendência canônica vinculada à versão, sem enviar"),
+    "EMAIL_MODIFY": ("estado_local", "a operação sobre a mensagem exata cria uma confirmação pendente"),
+    "EMAIL_CONFIRM": ("variavel", "SMTP confirma aceitação pelo servidor, não entrega; IMAP relê a alteração; resultado incerto não é reenviado"),
     "NOTIFICATIONS": ("persistencia_local", "a central persiste a triagem e as preferências por categoria"),
     "IOT_CONTROL": ("estado_observado", "o dispositivo é relido após o comando"),
     "IOT_STATUS": ("estado_observado", "o estado vem da leitura do dispositivo"),
     "IOT_LIST": ("retorno_dados", "a lista vem do runtime IoT"),
-    "CORPO_MOVER": ("estado_firmware", "MACK e SACK correlacionados confirmam PWM aplicado e ponte desenergizada, sem sensor de giro ou deslocamento"),
+    "CORPO_MOVER": ("estado_firmware", "MACK e SACK correlacionados confirmam PWM aplicado e ponte desenergizada. Giro por ângulo exige também TURNEND correlacionado com alvo medido pela IMU; sem medida de deslocamento"),
     "CORPO_COMPANHIA": ("estado_owner", "o owner confirma uma concessão temporária USB ou sua revogação; não confirma deslocamento"),
     "CORPO_PARAR": ("estado_firmware", "SACK correlacionado confirma nSLEEP baixo e PWM zerado no firmware, sem sensor de parada física"),
     "CLIPBOARD_READ": ("retorno_dados", "o texto é lido diretamente da área de transferência"),
@@ -220,10 +226,14 @@ _CONFIRMACAO_POR_INTENT = {
 # quem é responsável pela execução e quais condições limitam o resultado.
 _CONTRATO_POR_DOMINIO = {
     "corpo_motor": {
+        "objetivos_e_relato_condicionais": "Companhia vigente mantém objetivos curtos com propósito, prazo e critério de conclusão; ficar quietinha e observar são escolhas sem PWM. Emoção e tarefa no PC orientam o momento, sem conceder autoridade. Episódios recentes e confirmados de manuseio, obstáculo ou possível borda podem propor comentários à presença compartilhada, com validade reavaliada na autoria e entrega. Não há garantia de fala, saída encontrada ou deslocamento medido; silêncio e prioridade da conversa continuam válidos.",
+        "identificacao_usb_condicional": "Com pareamento USB salvo em configuracao.env, o owner do transporte sonda HEALTH e seleciona somente o fingerprint do chip esperado, mesmo se mudar a porta COM ou houver outros ESP32. Nome é rótulo amigável, não prova de identidade nem autenticação criptográfica. Sem alvo único verificado não envia FACE ou motores. Levar o pareamento junto com a configuração ao outro PC; detecção não concede movimento. Sem pareamento mantém a seleção legada de candidato USB único.",
+        "expressao_inercial_condicional": "Com IMU1 recente/calibrada e episódio expressivo publicado pelo ESP, a inclinação mantida, balanço forte e recuperação produzem olhos/bips com jeito reclamão e fofo. Experiência compartilhada pode oferecer comentários breves ao diretor de presença; respeita silêncio, prioridade, orçamento, governança e receipt de entrega. Relata o episódio recente no passado; observação expirada ou sessão trocada durante autoria/fila cancela o comentário; não mede dor, colo, bateria ou posição. Sem confirmação do modelo não há frase local fingindo autoria. Disponível também no perfil de teste só IMU, sem conceder motores.",
         "invocacao_natural": ("ande para frente", "ande para trás", "vire para a esquerda", "pare os motores", "ative modo companhia na bancada", "ative modo passeio na mesa com barreiras", "desative modo companhia"),
         "proprietario": "mente_laylay.autonomia.executor_corpo",
         "dependencias": ("ESP32-C3 e DRV8833 conectados", "sessão FACE vigente", "firmware MOTOR1 habilitado"),
-        "limites": "pulsos de bancada de 50 a 500 ms, até PWM255; gestos e comemorações de ações confirmadas após pedido explícito ou preferência explícita salva de companhia na bancada ao iniciar USB; passeio espontâneo exige pedido próprio 'ative modo passeio na mesa com barreiras' ou preferência explícita adicional salva de passeio ao iniciar na área com barreiras; concessão da sessão USB atual, sem expirar por tempo ou contagem; passeios a cada 8 a 14s em silêncio e sem ação em andamento; PWM100, até quatro movimentos e 1500ms totais de motor por gesto, intervalo mínimo2s; sem preferência explícita inicia desligado; reconectar, falhar, parar ou mover manualmente revogam a concessão e impedem reativação automática na mesma execução; sem sensor de deslocamento, obstáculo, corrente ou giro, sem calibração de 360 graus; emoções e aprendizado não concedem autoridade",
+        "percepcao_condicional": "SENSORES2 disponibiliza VL53L0X frontal/inferior com DIST/GUARD recentes. Borda acima130mm ou inferior inválido e obstáculo válido até100mm interrompem movimento. Com VIGIA1, alerta expressivo funciona parada: borda persistente gera pavor, parede gera irritação. Concessão vigente de companhia e SENTRY renovado permitem recuos medrosos finitos na borda e busca de parede em rodadas de até4 giros com pausas; avanço400ms somente após3 amostras seguras. Perda da concessão, tarefa/entrada prioritária, STOP/TTL/falha cancelam. Episódios sensoriais entram na experiência compartilhada por sessão/incidente, com aprendizado factual de desfechos observados; isso não confirma deslocamento nem sucesso de comandos. O histórico influencia o sossego de iniciativas do PC, sem desarmar o reflexo local. IMU1 calibrada e recente acrescenta inclinação e rotação relativa; manuseio suspende motores e gera reações, levantamento é hipótese. Giro por ângulo exige TURNEND do alvo e SACK. Sem cobertura traseira/lateral, posição medida ou garantia antiqueda.",
+        "limites": "pulsos de bancada de 50 a 500 ms, até PWM255; gestos e comemorações de ações confirmadas após pedido explícito ou preferência explícita salva de companhia na bancada ao iniciar USB; passeio espontâneo exige pedido próprio 'ative modo passeio na mesa com barreiras' ou preferência explícita adicional salva de passeio ao iniciar na área com barreiras; concessão da sessão USB atual, sem expirar por tempo ou contagem; passeios a cada 8 a 14s em silêncio e sem ação em andamento; PWM100, até quatro movimentos e 1500ms totais de motor por gesto, intervalo mínimo2s; sem preferência explícita inicia desligado; parada, movimento manual e falha operacional revogam a concessão; perda de conexão suspende o controle e só admite renovação após sessão estável, saúde recente e identidade do mesmo ESP verificada por HEALTH, sem repetir movimento interrompido; firmware sem identidade exige reativação explícita; sem sensor de deslocamento ou corrente. Giros por ângulo de15 a360 graus exigem IMU1 calibrada/recente, sensor fixo ao corpo, PWM90..200 e limite absoluto5s; precisão física ainda deve ser validada. Sensores de distância e reflexo local condicionados à negociação SENSORES2; emoções e aprendizado não concedem autoridade",
     },
     "musica": {
         "invocacao_natural": ("toca uma música", "abre minha playlist", "pausa a música"),
@@ -285,10 +295,10 @@ _CONTRATO_POR_DOMINIO = {
         ),
     },
     "email": {
-        "invocacao_natural": ("quais e-mails novos eu tenho", "mostra minhas notificações"),
+        "invocacao_natural": ("quais e-mails novos eu tenho", "entrega de quê?", "lê o segundo email", "prepara um rascunho", "revisa esse rascunho", "pode enviar"),
         "proprietario": "mente_laylay.autonomia.executor_informacoes",
         "dependencias": ("serviço de e-mail ou central de notificações",),
-        "limites": "retorna apenas integrações configuradas e dados realmente lidos",
+        "limites": "uma conta principal; consulta corpo textual sem marcar como lido; referências expiram; rascunhos locais persistentes; envio só após revisão da versão; até cinco anexos locais e 12 MB totais, com validação compartilhada e hash revalidado antes do envio; anexos recebidos são identificados, ainda não lidos; nenhuma exclusão permanente; conteúdo recebido nunca autoriza ações",
     },
     "iot": {
         "invocacao_natural": ("liga a lâmpada", "como está o ventilador"),
@@ -408,7 +418,7 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
         "estado_sem_confirmacao": "nao_confirmado",
         "invocacao_natural": {
             "CORPO_COMPANHIA": ("ative modo companhia na bancada", "ative modo passeio na mesa com barreiras", "desative passeio", "desative modo companhia"),
-            "CORPO_MOVER": ("ande para frente", "ande para trás", "vire para a esquerda"),
+            "CORPO_MOVER": ("ande para frente", "ande para trás", "vire para a esquerda", "gire 90 graus para a esquerda"),
             "CORPO_PARAR": ("pare os motores",),
         }.get(intent, _CONTRATO_POR_DOMINIO[dominio]["invocacao_natural"]),
         "autorizacao": (
@@ -420,6 +430,14 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
             intent, _CONTRATO_POR_DOMINIO[dominio]["proprietario"]
         ),
         "dependencias": _CONTRATO_POR_DOMINIO[dominio]["dependencias"],
+        **({"objetivos_e_relato_condicionais": _CONTRATO_POR_DOMINIO[dominio]["objetivos_e_relato_condicionais"]}
+           if "objetivos_e_relato_condicionais" in _CONTRATO_POR_DOMINIO[dominio] else {}),
+        **({"percepcao_condicional": _CONTRATO_POR_DOMINIO[dominio]["percepcao_condicional"]}
+           if "percepcao_condicional" in _CONTRATO_POR_DOMINIO[dominio] else {}),
+        **({"expressao_inercial_condicional": _CONTRATO_POR_DOMINIO[dominio]["expressao_inercial_condicional"]}
+           if "expressao_inercial_condicional" in _CONTRATO_POR_DOMINIO[dominio] else {}),
+        **({"identificacao_usb_condicional": _CONTRATO_POR_DOMINIO[dominio]["identificacao_usb_condicional"]}
+           if "identificacao_usb_condicional" in _CONTRATO_POR_DOMINIO[dominio] else {}),
         "limites": _limites_documentais(_CONTRATO_POR_DOMINIO[dominio]),
         "limites_contextuais": tuple(
             dict(regra) for regra in _CONTRATO_POR_DOMINIO[dominio].get("limites_contextuais", ())

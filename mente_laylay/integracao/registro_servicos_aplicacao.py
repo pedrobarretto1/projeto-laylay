@@ -13,6 +13,7 @@ from mente_laylay.integracao.ambiente_navegacao import DEPENDENCIAS_AMBIENTE_NAV
 from mente_laylay.integracao.chrome_ws_contexto import ChromeWsContextoRuntime
 from mente_laylay.integracao.composicao_contextos_ia import (
     _DISPATCHER_GRUPOS,
+    _DISPATCHER_OPCIONAIS,
     _EXECUCAO,
     _FINALIZACAO_GRUPOS,
 )
@@ -48,6 +49,7 @@ DEPENDENCIAS_CONTEXTO_IA = (
     "_resumo_mente_integrada_para_prompt", "get_status_humor_prompt",
     "_executar_captura_tela_intent",
     *_EXECUCAO,
+    *_DISPATCHER_OPCIONAIS,
     *tuple(nome for grupo in _DISPATCHER_GRUPOS.values() for nome in grupo),
     *tuple(nome for grupo in _FINALIZACAO_GRUPOS.values() for nome in grupo),
 )

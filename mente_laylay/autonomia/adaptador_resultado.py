@@ -63,6 +63,7 @@ class AdaptadorResultadoOperacional:
     # mesma execução reutilizam esse ID. Chamadores legados ainda recebem UUID.
     id_solicitacao: str = ""
     _receipt_publicado: ResultadoAcao | None = field(default=None, init=False, repr=False)
+    _publicacao_tentada: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         resultado = self.resultado if isinstance(self.resultado, dict) else {}
@@ -152,6 +153,7 @@ class AdaptadorResultadoOperacional:
         # Uma tentativa nova não pode reutilizar a evidência da anterior,
         # mesmo quando a instância e o ID são os mesmos.
         self._receipt_publicado = None
+        self._publicacao_tentada = True
         if isinstance(self.resultado, dict):
             self.resultado.pop(CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, None)
             self.resultado.pop(CHAVE_TRATAMENTO_OPERACIONAL, None)
@@ -272,6 +274,41 @@ class AdaptadorResultadoOperacional:
             return deepcopy(receipt)
         except Exception:
             return None
+
+    def falar_texto_da_invocacao(
+        self, texto: str, emocao: str = "calma", nivel: Any = 1, **kwargs: Any,
+    ) -> bool:
+        """Liga a fala direta à publicação aceita desta chamada, não ao histórico.
+
+        Antes de tentar publicar, perguntas/avisos mantêm o canal comum. Depois,
+        nenhuma última ação global ou bool pode suprir um receipt recusado.
+        Acumulação, certeza e apresentação continuam nos owners existentes.
+        """
+        falar = self.ctx.get("falar_com_lipsync")
+        if not callable(falar):
+            return False
+        if not self._publicacao_tentada or kwargs.get("_proativa"):
+            return falar(texto, emocao, nivel, **kwargs) is not False
+        publicado = self._receipt_publicado
+        tratamento = interpretar_tratamento_operacional(self.resultado, False)
+        receipt = (self._receipt_da_fala(publicado.status, publicado.alvo,
+            executou=publicado.executou, confirmado=publicado.confirmado,
+            status_tratamento=tratamento.status) if publicado is not None else None)
+        if receipt is None:
+            return falar("Não consegui validar o resultado dessa ação com segurança.",
+                "calma", 1, **kwargs) is not False
+        acumular = self.ctx.get("_acumular_resultado_operacional")
+        if callable(acumular) and acumular(receipt, texto, emocao, nivel, contexto=self.contexto_fala()):
+            return True
+        falar_resultado = self.ctx.get("_falar_resultado_operacional")
+        if callable(falar_resultado):
+            return falar_resultado(receipt, texto, emocao, nivel) is not False
+        # Compatibilidade sem a porta tipada: validar só este receipt antes
+        # do canal antigo, sem alterar/publicar outra vez o resultado.
+        from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+        validacao = validar_alegacoes_da_fala(texto,
+            plano={"requer_execucao": True, "comandos": [receipt.como_dict()]}, origem="canal_voz")
+        return falar(str(validacao.get("fala") or texto), emocao, nivel, **kwargs) is not False
 
     def falar_por_status(
         self,

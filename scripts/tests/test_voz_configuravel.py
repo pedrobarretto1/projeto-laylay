@@ -35,10 +35,10 @@ def _runtime(
     )
 
 
-def test_vozes_padrao_restauram_francisca_com_reserva_nativa() -> None:
+def test_vozes_padrao_preservam_identidade_sem_reserva_implicita() -> None:
     assert resolver_vozes_tts({}) == (
         "pt-BR-FranciscaNeural",
-        "pt-BR-ThalitaMultilingualNeural",
+        "",
     )
 
 
@@ -125,6 +125,31 @@ def test_falha_da_voz_principal_tenta_a_voz_de_reserva(tmp_path) -> None:
     assert voz_usada == "reserva"
     assert chamadas == ["principal", "reserva"]
     assert any("tentando reserva" in mensagem for mensagem in logs)
+
+
+@pytest.mark.parametrize("segmentada", [False, True])
+def test_falha_de_audio_nao_autoriza_trocar_para_voz_local_implicita(segmentada):
+    chamadas, locais, logs, metricas, falhas = [], [], [], [], []
+    runtime = _runtime(None, fallback_voice="", logs=logs,
+        registrar_falha=lambda *a, **k: falhas.append((a, k)))
+    runtime.registrar_metrica_cb = lambda nome, valor, ok: metricas.append((nome, ok))
+    runtime.fallback_pyttsx = lambda texto, *_: locais.append(texto) or True
+    runtime._segmentar_fala_para_inicio_rapido = lambda _: (["Primeira parte.", "Segunda parte."]
+        if segmentada else ["Resposta textual preservada."])
+    def sintetizar(texto, *_a, **_k):
+        chamadas.append(texto)
+        if not segmentada or texto == "Segunda parte.":
+            raise RuntimeError("transporte temporariamente indisponível")
+    runtime._sintetizar_edge = sintetizar
+    runtime.sf = type("SF", (), {"read": staticmethod(lambda _: ([], 16000))})
+    runtime.sd = type("SD", (), {"play": staticmethod(lambda *_a, **_k: None),
+        "get_stream": staticmethod(lambda: type("Stream", (), {"active": False})())})
+    runtime._selecionar_saida_audio = lambda: 0
+    assert runtime.reproduzir_fala("Resposta textual preservada.", "calma", 1) is False
+    assert chamadas and locais == [], "falha de transporte não concede escolha de outro timbre"
+    assert "Resposta textual preservada." in logs
+    assert ("tts_total", False) in metricas
+    assert falhas and any("texto_preservado" in str(k.get("fallback", "")) for _, k in falhas)
 
 
 def test_sintese_neural_travada_respeita_timeout_total(tmp_path) -> None:

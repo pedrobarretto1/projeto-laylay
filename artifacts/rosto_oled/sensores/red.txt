@@ -1,0 +1,2 @@
+red_protocolo.cpp
+Assertion failed: Serial.saida.find("DIST 1 17 FRENTE") != std::string::npos, file artifacts\rosto_oled\sensores\red_protocolo.cpp, line 7

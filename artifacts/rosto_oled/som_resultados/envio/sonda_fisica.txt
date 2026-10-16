@@ -1,0 +1,4 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+{"receipt": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\artifacts\\rosto_oled\\som_resultados\\envio\\receipt_fisico.json", "falha": ""}

@@ -29,7 +29,7 @@ from mente_laylay.integracao.acoes_terminal import (
 )
 from mente_laylay.integracao.acoes_painel_runtime import ACOES_DIRETAS_PAINEL
 from mente_laylay.iot.contratos import ACOES_IOT
-from mente_laylay.integracao.dev_console_runtime import sanitizar_texto_dev
+from mente_laylay.integracao.dev_console_runtime import sanitizar_texto_dev, sanitizar_corpo_dev
 
 
 TIPOS_CLIENTE = frozenset({
@@ -218,6 +218,7 @@ def sanitizar_retrato_dev(retrato: Mapping[str, Any] | None) -> dict[str, Any]:
         "event_limit": limite,
         "events_dropped": descartados,
         "events": eventos,
+        "body": sanitizar_corpo_dev(bruto.get("body")) if isinstance(bruto.get("body"), Mapping) and bruto["body"] else {},
     }
 
 
@@ -1315,7 +1316,7 @@ def validar_mensagem_cliente(
             r"perf(?: (?:llm|memory|actions))?|"
             r"errors(?: [a-z0-9_.-]{1,64}:[a-z0-9_.:-]{1,80})?|"
             r"trace (?:last|errors|turn [0-9]{1,9}|[a-z0-9_.:-]{1,72})|"
-            r"inspect (?:context|pending|action last|receipt last|memory used|"
+            r"inspect (?:corpo|body|context|pending|action last|receipt last|memory used|"
             r"event dev-[0-9]{8})"
             r")",
             comando,
@@ -1782,6 +1783,7 @@ class DesktopBridgeRuntime:
         self._ultimo_estado = ""
         self._ultimo_dashboard = ""
         self._ultima_sequencia_dev = 0
+        self._ultimo_corpo_dev: dict[str, Any] = {}
         self._eventos_lock = threading.RLock()
         self._eventos: deque[dict[str, Any]] = deque(maxlen=120)
         self._eventos_descartados = 0
@@ -2882,17 +2884,19 @@ class DesktopBridgeRuntime:
                 item for item in retrato.get("events", [])
                 if int(item.get("sequence") or 0) > self._ultima_sequencia_dev
             ]
-            if not eventos:
+            corpo = retrato.get("body") or {}
+            if not eventos and corpo == self._ultimo_corpo_dev:
                 continue
             if self._publicar({
                 "type": "dev_events",
                 "events": eventos,
+                "body": corpo,
                 "sequence": int(retrato.get("sequence") or 0),
                 "timestamp": time.time(),
             }):
-                self._ultima_sequencia_dev = max(
-                    int(item.get("sequence") or 0) for item in eventos
-                )
+                self._ultimo_corpo_dev = dict(corpo)
+                if eventos:
+                    self._ultima_sequencia_dev = max(int(item.get("sequence") or 0) for item in eventos)
 
     def _publicar_dashboard(self) -> None:
         ultimo_envio = time.monotonic()

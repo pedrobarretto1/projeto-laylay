@@ -1,0 +1,4 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+{"amostras": 120, "erros": 0, "decisoes": 9, "fases": ["CURIOSA", "DESCONFIADA", "DESORIENTADA", "RECOMPONDO", "TRANQUILA"], "serial_fechada": true}

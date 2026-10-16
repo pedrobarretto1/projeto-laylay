@@ -34,6 +34,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_estado_compartilhado_runtime",
     "_especialista_neural_comandos_runtime",
     "_evidencia_habilidades_turno_mente",
+    "_recuperar_explicacao_ocorrencia_mente",
     "_extrair_correcao_duravel_mente",
     "_extrair_tema_fundamentacao_mente",
     "_interpretador_semantico_runtime",

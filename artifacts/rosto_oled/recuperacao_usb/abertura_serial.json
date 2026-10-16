@@ -1,0 +1,42 @@
+[
+  {
+    "modo": "sem_linhas",
+    "linhas": [
+      "HEALTH 1 1 70ba726e27ac 969c6f12 11 2162 280516 275340 0 NENHUMA 0"
+    ]
+  },
+  {
+    "modo": "sem_linhas",
+    "linhas": [
+      "HEALTH 1 2 70ba726e27ac 969c6f12 11 2630 280516 275340 0 NENHUMA 0"
+    ]
+  },
+  {
+    "modo": "padrao",
+    "linhas": [
+      "HEALTH 1 3 70ba726e27ac 969c6f12 11 3098 280516 275340 0 NENHUMA 0"
+    ]
+  },
+  {
+    "modo": "padrao",
+    "linhas": [
+      "BOOT 1 LAYLAY_ROSTO",
+      "HEALTH 1 4 70ba726e27ac b2e44485 11 345 280516 275340 0 NENHUMA 0",
+      "HEALTH 1 4 70ba726e27ac b2e44485 11 463 280516 275340 0 NENHUMA 0"
+    ]
+  },
+  {
+    "modo": "sem_linhas",
+    "linhas": [
+      "BOOT 1 LAYLAY_ROSTO",
+      "HEALTH 1 5 70ba726e27ac cb948317 11 362 280516 275340 0 NENHUMA 0",
+      "HEALTH 1 5 70ba726e27ac cb948317 11 480 280516 275340 0 NENHUMA 0"
+    ]
+  },
+  {
+    "modo": "sem_linhas",
+    "linhas": [
+      "HEALTH 1 6 70ba726e27ac cb948317 11 948 280516 275340 0 NENHUMA 0"
+    ]
+  }
+]

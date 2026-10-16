@@ -1,0 +1,27 @@
+.........F......................................................FF...... [ 49%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+================================== FAILURES ===================================
+_ test_descanso_escolhido_na_mente_e_respeitado_por_todos_os_perfis[rodas_suspensas] _
+scripts\tests\test_objetivos_curtos_corpo.py:64: in test_descanso_escolhido_na_mente_e_respeitado_por_todos_os_perfis
+    assert ativar(corpo)['ok']
+E   assert False
+___________ test_fala_gesticula_uma_vez_e_silencio_nao_concede_modo ___________
+scripts\tests\test_companhia_corporal.py:200: in test_fala_gesticula_uma_vez_e_silencio_nao_concede_modo
+    assert corpo.companhia.processar()["ok"] and len(motores(esp)) == 1
+E   assert (False)
+___ test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo ___
+scripts\tests\test_companhia_corporal.py:233: in test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+    assert receipt["intent"] == "CORPO_COMPANHIA" and receipt["confirmado"] is True
+           ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+⚠️ [FALA:AUTORIA] fallback local | motivo=modelo_sem_callback status=companhia_ativada
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_descanso_escolhido_na_mente_e_respeitado_por_todos_os_perfis[rodas_suspensas]
+FAILED scripts/tests/test_companhia_corporal.py::test_fala_gesticula_uma_vez_e_silencio_nao_concede_modo
+FAILED scripts/tests/test_companhia_corporal.py::test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+3 failed, 142 passed in 62.48s (0:01:02)

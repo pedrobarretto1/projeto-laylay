@@ -1,0 +1,41 @@
+FFF......                                                                [100%]
+================================== FAILURES ===================================
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-despausa a musica] _
+scripts\tests\test_som_corporal.py:331: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert owner.retrato().get(nome+"_id", 0) == antes.get(nome+"_id", 0) + 1
+E   AssertionError: assert 0 == (0 + 1)
+E    +  where 0 = <built-in method get of dict object at 0x0000016D3BFB8640>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3BFB8640> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19359.5994854, 'falha_id': 0, ...}.get
+E    +      where {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19359.5994854, 'falha_id': 0, ...} = retrato()
+E    +        where retrato = <mente_laylay.memoria_mental.atividade_operacional_runtime.AtividadeOperacionalRuntime object at 0x0000016D3BEBE660>.retrato
+E    +  and   0 = <built-in method get of dict object at 0x0000016D3BF3F100>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3BF3F100> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': None, 'falha_id': 0, ...}.get
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-retoma a m\xfasica] _
+scripts\tests\test_som_corporal.py:331: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert owner.retrato().get(nome+"_id", 0) == antes.get(nome+"_id", 0) + 1
+E   AssertionError: assert 0 == (0 + 1)
+E    +  where 0 = <built-in method get of dict object at 0x0000016D3BFBCC00>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3BFBCC00> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19360.4139416, 'falha_id': 0, ...}.get
+E    +      where {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19360.4139416, 'falha_id': 0, ...} = retrato()
+E    +        where retrato = <mente_laylay.memoria_mental.atividade_operacional_runtime.AtividadeOperacionalRuntime object at 0x0000016D3BEBE660>.retrato
+E    +  and   0 = <built-in method get of dict object at 0x0000016D3C105940>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3C105940> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19359.5994854, 'falha_id': 0, ...}.get
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-pausa a musica] _
+scripts\tests\test_som_corporal.py:331: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert owner.retrato().get(nome+"_id", 0) == antes.get(nome+"_id", 0) + 1
+E   AssertionError: assert 0 == (0 + 1)
+E    +  where 0 = <built-in method get of dict object at 0x0000016D3C106640>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3C106640> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19360.9746938, 'falha_id': 0, ...}.get
+E    +      where {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19360.9746938, 'falha_id': 0, ...} = retrato()
+E    +        where retrato = <mente_laylay.memoria_mental.atividade_operacional_runtime.AtividadeOperacionalRuntime object at 0x0000016D3BEBE660>.retrato
+E    +  and   0 = <built-in method get of dict object at 0x0000016D3C0F2C80>(('envio' + '_id'), 0)
+E    +    where <built-in method get of dict object at 0x0000016D3C0F2C80> = {'origem': 'atividade_operacional_observada', 'ativos': 0, 'ultimo_inicio_monotonic': 19360.4139416, 'falha_id': 0, ...}.get
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-despausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-retoma a m\xfasica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-pausa a musica]
+3 failed, 6 passed, 18 deselected in 7.25s

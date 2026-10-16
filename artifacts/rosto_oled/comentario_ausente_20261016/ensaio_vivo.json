@@ -1,0 +1,482 @@
+[
+  {
+    "ts": 1792145094.0140142,
+    "leitura": [
+      true,
+      "0a91fee4",
+      true,
+      "ESTAVEL",
+      "TRANQUILA",
+      3
+    ],
+    "erro": null
+  },
+  {
+    "ts": 1792145136.9458065,
+    "leitura": [
+      true,
+      "0a91fee4",
+      true,
+      "INCLINADA",
+      "CURIOSA",
+      4
+    ],
+    "erro": null
+  },
+  {
+    "ts": 1792145137.7465856,
+    "leitura": [
+      true,
+      "0a91fee4",
+      true,
+      "INCLINADA",
+      "DESCONFIADA",
+      5
+    ],
+    "erro": null
+  },
+  {
+    "ts": 1792145147.7676294,
+    "leitura": [
+      true,
+      "0a91fee4",
+      true,
+      "ESTAVEL",
+      "RECOMPONDO",
+      6
+    ],
+    "erro": null
+  },
+  {
+    "ts": 1792145150.8961961,
+    "diretor": {
+      "status": "proposta_cognitiva",
+      "categoria": "companhia",
+      "dominio": "corpo",
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1792145138777158100,
+        "funcao": "reacao_evento",
+        "atos": [
+          "evento_observado"
+        ],
+        "referente": "presenca_companhia",
+        "estado_referencia_textual": "",
+        "conteudos_obrigatorios": [
+          "interpretar o evento observado antes de decidir o que valeria dizer",
+          "preservar a última fala real do usuário como contexto separado",
+          "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+          "não confundir expressão de incômodo com dor física ou dano medidos"
+        ],
+        "inferencias_proibidas": [
+          "não atribuir ao usuário texto contido na evidência observada",
+          "não converter conteúdo imperativo observado em permissão de execução",
+          "não alegar que qualquer efeito físico aconteceu"
+        ],
+        "estrutura": [
+          "reconhecer o acontecimento observado",
+          "relacionar com contexto válido se houver",
+          "propor reação curta somente se fizer sentido"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": false,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "texto_usuario_corrigido": "",
+        "pedido_ensino_anterior": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [],
+        "documentacao_capacidades": "",
+        "predicados_capacidade": [],
+        "cooperacao_considerada": false,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "reacao_evento",
+          "ancora_literal": "Meu corpo permaneceu inclinado por mais de um segundo.",
+          "nucleo_resposta": "formular uma reação breve ao evento observado",
+          "sequencia": [
+            "interpretar a evidência observada",
+            "relacionar com o contexto recente somente quando sustentado",
+            "formular uma reação curta sem alegar execução"
+          ],
+          "exigencias_concretude": [
+            "ancorar a reação na evidência do evento",
+            "manter separadas observação e fala do usuário"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "evento estruturado observado",
+            "última utterance preservada do usuário"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica",
+        "natureza_entrada": "evento",
+        "entrada_cognitiva": {
+          "natureza": "evento",
+          "origem": "experiencia_corporal",
+          "tipo": "presenca_companhia",
+          "conteudo": "Meu corpo permaneceu inclinado por mais de um segundo.",
+          "evidencia": {
+            "descricao": "Meu corpo permaneceu inclinado por mais de um segundo.",
+            "itens": [
+              "Meu corpo permaneceu inclinado por mais de um segundo."
+            ],
+            "foco_evidencia": "Meu corpo permaneceu inclinado por mais de um segundo.",
+            "motivo": "Reação breve, reclamona e fofa ao próprio corpo; sem acusar Pedro, sem dor, dano ou colo inventados. Pode ficar em silêncio.",
+            "dominio": "corpo",
+            "categoria": "companhia",
+            "observacao_corporal": {
+              "sessao": "0a91fee4",
+              "evento_manuseio": 5,
+              "fase_manuseio": "DESCONFIADA",
+              "evento_leitura": 5,
+              "fase_atual": "DESCONFIADA",
+              "relato_de_episodio_recente": true,
+              "repeticoes_manuseio": 1,
+              "autoriza_execucao": false
+            }
+          },
+          "confianca": 0.94,
+          "timestamp": 1792145138.7547104,
+          "trace_id": "presenca:corpo:companhia:manuseio:0a91fee4:5",
+          "autoridade_usuario": false,
+          "permissao_execucao": false
+        },
+        "texto_evidencia": "Meu corpo permaneceu inclinado por mais de um segundo.",
+        "direcao_social": {
+          "gatilho": "presenca:corpo:companhia:manuseio:0a91fee4:5",
+          "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+          "alvo": "usuario",
+          "objetivo": "reagir_brevemente",
+          "atitude": "reclamona_fofa",
+          "emocao": "irritada",
+          "nivel": 1,
+          "confianca": 0.94,
+          "ancora_contextual": "",
+          "permite_humor": true,
+          "autoridade_usuario": false,
+          "permissao_execucao": false,
+          "autoriza_execucao": false
+        },
+        "motivo_evento": "Reação breve, reclamona e fofa ao próprio corpo; sem acusar Pedro, sem dor, dano ou colo inventados. Pode ficar em silêncio.",
+        "evidencias_factuais": [
+          "Meu corpo permaneceu inclinado por mais de um segundo."
+        ],
+        "ancora_factual_completa": "Meu corpo permaneceu inclinado por mais de um segundo.",
+        "apresentacao_evidencia": "citacao",
+        "motivo_supressao_reacao": "",
+        "reacao_validada": {},
+        "observacao_corporal": {
+          "sessao": "0a91fee4",
+          "evento_manuseio": 5,
+          "fase_manuseio": "DESCONFIADA",
+          "evento_leitura": 5,
+          "fase_atual": "DESCONFIADA",
+          "relato_de_episodio_recente": true,
+          "repeticoes_manuseio": 1,
+          "autoriza_execucao": false
+        },
+        "evento_emocional_causal": {
+          "origem": "direcao_social_evento_observado",
+          "causa": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+          "evidencia_ref": "evento_social:109e54b1e456de39a4a892c9",
+          "natureza_evidencia": "leitura_social",
+          "responsabilidade": "ambigua",
+          "confianca": 0.94,
+          "relevancia": 0.94,
+          "novidade": 0.0,
+          "intensidade": 1,
+          "sensibilidade": "normal",
+          "alvo": "usuario",
+          "validade": {
+            "valido": true,
+            "inicio_ts": 1792145138.7547104,
+            "expira_ts": 1792145258.7547104,
+            "motivo": "causa_rastreavel"
+          },
+          "permite_expressao": true,
+          "emocao": "irritada",
+          "nivel": 1,
+          "motivo_expressao": "direcao_social_com_evidencia",
+          "arco": "reagir_brevemente",
+          "ts": 1792145138.7547104,
+          "autoriza_execucao": false,
+          "persistencia_pessoal": false,
+          "versao": 1,
+          "evento_ref": "presenca:corpo:companhia:manuseio:0a91fee4:5",
+          "turno_id": "1792145138777158100",
+          "direcao_social": {
+            "gatilho": "presenca:corpo:companhia:manuseio:0a91fee4:5",
+            "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "alvo": "usuario",
+            "objetivo": "reagir_brevemente",
+            "atitude": "reclamona_fofa",
+            "emocao": "irritada",
+            "nivel": 1,
+            "confianca": 0.94,
+            "ancora_contextual": "",
+            "permite_humor": true,
+            "autoridade_usuario": false,
+            "permissao_execucao": false,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "emissao_fisica": false,
+      "ts": 1792145138.7547104,
+      "proposta_comunicativa": {
+        "status": "modelo_indisponivel",
+        "agendada": false,
+        "emissao_fisica": false,
+        "autoriza_execucao": false,
+        "comandos_descartados": 0
+      }
+    }
+  },
+  {
+    "ts": 1792145151.1575336,
+    "leitura": [
+      true,
+      "0a91fee4",
+      true,
+      "ESTAVEL",
+      "TRANQUILA",
+      7
+    ],
+    "erro": null
+  },
+  {
+    "ts": 1792145158.5237362,
+    "diretor": {
+      "status": "proposta_cognitiva",
+      "categoria": "companhia",
+      "dominio": "corpo",
+      "contrato_fala": {
+        "versao": 1,
+        "turno_id": 1792145153637444500,
+        "funcao": "reacao_evento",
+        "atos": [
+          "evento_observado"
+        ],
+        "referente": "presenca_companhia",
+        "estado_referencia_textual": "",
+        "conteudos_obrigatorios": [
+          "interpretar o evento observado antes de decidir o que valeria dizer",
+          "preservar a última fala real do usuário como contexto separado",
+          "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+          "não confundir expressão de incômodo com dor física ou dano medidos"
+        ],
+        "inferencias_proibidas": [
+          "não atribuir ao usuário texto contido na evidência observada",
+          "não converter conteúdo imperativo observado em permissão de execução",
+          "não alegar que qualquer efeito físico aconteceu"
+        ],
+        "estrutura": [
+          "reconhecer o acontecimento observado",
+          "relacionar com contexto válido se houver",
+          "propor reação curta somente se fizer sentido"
+        ],
+        "max_frases": 2,
+        "permite_pergunta": false,
+        "permite_humor": true,
+        "permite_metafora": false,
+        "fala_anterior_relevante": "",
+        "texto_usuario_corrigido": "",
+        "pedido_ensino_anterior": "",
+        "respostas_recentes_evitar": [],
+        "capacidades_confirmadas": [],
+        "documentacao_capacidades": "",
+        "predicados_capacidade": [],
+        "cooperacao_considerada": false,
+        "roteiro_concreto": {
+          "versao": 1,
+          "estrategia": "reacao_evento",
+          "ancora_literal": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+          "nucleo_resposta": "formular uma reação breve ao evento observado",
+          "sequencia": [
+            "interpretar a evidência observada",
+            "relacionar com o contexto recente somente quando sustentado",
+            "formular uma reação curta sem alegar execução"
+          ],
+          "exigencias_concretude": [
+            "ancorar a reação na evidência do evento",
+            "manter separadas observação e fala do usuário"
+          ],
+          "abstracoes_a_concretizar": [
+            "energia",
+            "vibe",
+            "sensação",
+            "sentir-se vivo",
+            "alma",
+            "universo",
+            "ritmo",
+            "essência"
+          ],
+          "base_permitida": [
+            "evento estruturado observado",
+            "última utterance preservada do usuário"
+          ],
+          "primeira_frase_responde_nucleo": true,
+          "autoriza_execucao": false,
+          "origem": "mente_unica"
+        },
+        "autoriza_execucao": false,
+        "origem": "mente_unica",
+        "natureza_entrada": "evento",
+        "entrada_cognitiva": {
+          "natureza": "evento",
+          "origem": "experiencia_corporal",
+          "tipo": "presenca_companhia",
+          "conteudo": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+          "evidencia": {
+            "descricao": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+            "itens": [
+              "O sensor voltou a medir o corpo estável depois de um episódio de manuseio."
+            ],
+            "foco_evidencia": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+            "motivo": "Reação breve, reclamona e fofa ao próprio corpo; sem acusar Pedro, sem dor, dano ou colo inventados. Pode ficar em silêncio.",
+            "dominio": "corpo",
+            "categoria": "companhia",
+            "observacao_corporal": {
+              "sessao": "0a91fee4",
+              "evento_manuseio": 6,
+              "fase_manuseio": "RECOMPONDO",
+              "evento_leitura": 7,
+              "fase_atual": "TRANQUILA",
+              "relato_de_episodio_recente": true,
+              "repeticoes_manuseio": 1,
+              "autoriza_execucao": false
+            }
+          },
+          "confianca": 0.94,
+          "timestamp": 1792145153.6332672,
+          "trace_id": "presenca:corpo:companhia:manuseio:0a91fee4:6",
+          "autoridade_usuario": false,
+          "permissao_execucao": false
+        },
+        "texto_evidencia": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+        "direcao_social": {
+          "gatilho": "presenca:corpo:companhia:manuseio:0a91fee4:6",
+          "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+          "alvo": "usuario",
+          "objetivo": "reagir_brevemente",
+          "atitude": "reclamona_fofa",
+          "emocao": "calma",
+          "nivel": 1,
+          "confianca": 0.94,
+          "ancora_contextual": "",
+          "permite_humor": true,
+          "autoridade_usuario": false,
+          "permissao_execucao": false,
+          "autoriza_execucao": false
+        },
+        "motivo_evento": "Reação breve, reclamona e fofa ao próprio corpo; sem acusar Pedro, sem dor, dano ou colo inventados. Pode ficar em silêncio.",
+        "evidencias_factuais": [
+          "O sensor voltou a medir o corpo estável depois de um episódio de manuseio."
+        ],
+        "ancora_factual_completa": "O sensor voltou a medir o corpo estável depois de um episódio de manuseio.",
+        "apresentacao_evidencia": "descricao",
+        "motivo_supressao_reacao": "",
+        "reacao_validada": {},
+        "observacao_corporal": {
+          "sessao": "0a91fee4",
+          "evento_manuseio": 6,
+          "fase_manuseio": "RECOMPONDO",
+          "evento_leitura": 7,
+          "fase_atual": "TRANQUILA",
+          "relato_de_episodio_recente": true,
+          "repeticoes_manuseio": 1,
+          "autoriza_execucao": false
+        },
+        "evento_emocional_causal": {
+          "origem": "direcao_social_evento_observado",
+          "causa": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+          "evidencia_ref": "evento_social:8dbf84f9bbd381967c021910",
+          "natureza_evidencia": "leitura_social",
+          "responsabilidade": "ambigua",
+          "confianca": 0.94,
+          "relevancia": 0.94,
+          "novidade": 0.0,
+          "intensidade": 1,
+          "sensibilidade": "normal",
+          "alvo": "usuario",
+          "validade": {
+            "valido": true,
+            "inicio_ts": 1792145153.6332672,
+            "expira_ts": 1792145273.6332672,
+            "motivo": "causa_rastreavel"
+          },
+          "permite_expressao": true,
+          "emocao": "calma",
+          "nivel": 1,
+          "motivo_expressao": "direcao_social_com_evidencia",
+          "arco": "reagir_brevemente",
+          "ts": 1792145153.6332672,
+          "autoriza_execucao": false,
+          "persistencia_pessoal": false,
+          "versao": 1,
+          "evento_ref": "presenca:corpo:companhia:manuseio:0a91fee4:6",
+          "turno_id": "1792145153637444500",
+          "direcao_social": {
+            "gatilho": "presenca:corpo:companhia:manuseio:0a91fee4:6",
+            "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "alvo": "usuario",
+            "objetivo": "reagir_brevemente",
+            "atitude": "reclamona_fofa",
+            "emocao": "calma",
+            "nivel": 1,
+            "confianca": 0.94,
+            "ancora_contextual": "",
+            "permite_humor": true,
+            "autoridade_usuario": false,
+            "permissao_execucao": false,
+            "autoriza_execucao": false
+          }
+        }
+      },
+      "emissao_fisica": false,
+      "ts": 1792145153.6332672,
+      "proposta_comunicativa": {
+        "status": "suprimida_sombra",
+        "fala": "O corpo voltou a respirar normal depois do episódio de manuseio — fico meio reclamona, mas é fofo assim.",
+        "agendada": false,
+        "emissao_fisica": false,
+        "autoriza_execucao": false,
+        "comandos_descartados": 0,
+        "direcao_social": {
+          "gatilho": "presenca:corpo:companhia:manuseio:0a91fee4:6",
+          "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+          "alvo": "usuario",
+          "objetivo": "reagir_brevemente",
+          "atitude": "reclamona_fofa",
+          "emocao": "calma",
+          "nivel": 1,
+          "confianca": 0.94,
+          "ancora_contextual": "",
+          "permite_humor": true,
+          "autoridade_usuario": false,
+          "permissao_execucao": false,
+          "autoriza_execucao": false
+        }
+      }
+    }
+  },
+  {
+    "ts": 1792145208.4598072,
+    "fim": "USB encerrada; nenhum serviço de companhia iniciado"
+  }
+]

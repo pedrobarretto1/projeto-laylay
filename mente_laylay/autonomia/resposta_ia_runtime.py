@@ -21,6 +21,9 @@ from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
 from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.emocoes.erro_proposta import evento_corresponde_erro_proposta
 from mente_laylay.memoria_mental.resultado_acao import identificar_solicitacao_execucao
+from mente_laylay.cognicao.escopo_autorizacao import AtoAguardandoMaterializacao
+from mente_laylay.cognicao.materializacao_contextual import MaterializacaoAtoContextual
+from mente_laylay.cognicao.roteiro_execucao_por_atos import RoteiroExecucaoPrincipal
 from mente_laylay.personalidade.proporcao_resposta import limite_tokens_resposta
 
 
@@ -543,10 +546,14 @@ class RespostaIARuntime:
             projetar_envio = getattr(prompt_runtime, "preparar_mensagens_modelo", None)
             projetar_pacote = getattr(prompt_runtime, "preparar_envio_modelo", None)
             contexto_fechado = False
+            reserva_saida_tokens = 0
+            contrato_saida = None
             if callable(projetar_pacote):
                 pacote_envio = projetar_pacote(mensagens_modelo, turno_id=turno_conversa_id)
                 mensagens_modelo = list(pacote_envio.mensagens)
                 contexto_fechado = pacote_envio.contexto_fechado
+                reserva_saida_tokens = pacote_envio.reserva_saida_tokens
+                contrato_saida = pacote_envio.contrato_saida
             elif callable(projetar_envio):
                 mensagens_modelo = projetar_envio(mensagens_modelo, turno_id=turno_conversa_id)
 
@@ -558,6 +565,7 @@ class RespostaIARuntime:
                 depende_contexto=depende_contexto,
                 envelope_estruturado=True,
             )
+            limite_tokens = max(limite_tokens, reserva_saida_tokens)
             classe_timeout = _classe_timeout_resposta(
                 mensagens_modelo,
                 modo_rapido=modo_rapido,
@@ -593,11 +601,15 @@ class RespostaIARuntime:
                         tipo_chamada="principal",
                         classe_timeout=classe_timeout,
                         contexto_fechado=contexto_fechado,
+                        contrato_saida=contrato_saida,
+                        reserva_saida_tokens=reserva_saida_tokens,
                     )
                     resultado_modelo = modelo_llm.executar(pedido_modelo)
                     bot_raw = resultado_modelo.texto
                     sucesso_llm = bool(getattr(resultado_modelo, "sucesso", True))
                 else:
+                    if contrato_saida is not None:
+                        raise RuntimeError("Saída negociada exige porta tipada do modelo.")
                     enviar_mensagem = _get(ctx, "enviar_mensagem")
                     if not callable(enviar_mensagem):
                         raise RuntimeError("modelo LLM ainda não foi inicializado.")
@@ -860,6 +872,7 @@ class RespostaIARuntime:
                 raise RuntimeError("Dispatcher de comandos ainda não foi inicializado.")
             inicio_execucao = time.perf_counter()
             sucesso_dispatch = False
+            roteiro_por_atos = None
             try:
                 contexto_dispatch = dispatcher_runtime.montar()
                 if not admitir_etapa_principal("admissao_dispatch"):
@@ -867,6 +880,23 @@ class RespostaIARuntime:
                 if "proposta_principal_vigente" in ctx:
                     contexto_dispatch = dict(contexto_dispatch)
                     contexto_dispatch["proposta_principal_vigente"] = lambda: admitir_etapa_principal("admissao_comando")
+                preparar_roteiro = getattr(validar_comandos, "preparar_execucao_por_atos", None)
+                portas_por_ato = ("materializar_ato_contextual", "admitir_ato_contextual",
+                                  "admissao_contextual_vigente", "etapa_independente_vigente")
+                if (callable(preparar_roteiro)
+                    and callable(contexto_dispatch.get("executar_intencao_observando"))
+                    and callable(contexto_dispatch.get("proposta_principal_vigente"))
+                    and all(callable(getattr(validar_comandos, nome, None)) for nome in portas_por_ato)):
+                    roteiro_por_atos = preparar_roteiro(comandos, proposta_principal)
+                    if type(roteiro_por_atos) is RoteiroExecucaoPrincipal:
+                        contexto_dispatch = dict(contexto_dispatch)
+                        contexto_dispatch.update({
+                            "roteiro_execucao_principal": roteiro_por_atos,
+                            "materializar_ato_contextual": lambda ato, obs: validar_comandos.materializar_ato_contextual(ato, proposta_principal, obs),
+                            "admitir_ato_contextual": lambda m, obs: validar_comandos.admitir_ato_contextual(m, proposta_principal, obs),
+                            "admissao_contextual_vigente": lambda a, m, obs: validar_comandos.admissao_contextual_vigente(a, m, proposta_principal, obs),
+                            "etapa_independente_vigente": lambda e: validar_comandos.etapa_independente_vigente(e, proposta_principal),
+                        })
                 dispatch = resultado_dispatch(
                     contexto_dispatch,
                     texto,
@@ -888,6 +918,50 @@ class RespostaIARuntime:
                     rota=rota_llm,
                 )
             erros_execucao = list(dispatch.get("erros", []) or [])
+            # A obrigação é da fala capturada, não um comando previsto pela
+            # LLM. Até haver materialização/admissão posterior, concluir o
+            # turno como completo apagaria uma parte explicitamente pedida.
+            etapas_contextuais = (validacao_comandos or {}).get("atos_aguardando_materializacao", ())
+            materializar_ato = getattr(validar_comandos, "materializar_ato_contextual", None)
+            etapas_materializadas = list(dispatch.get("atos_materializados", ()))
+            indices_tratados = ()
+            if type(roteiro_por_atos) is RoteiroExecucaoPrincipal:
+                indices_tratados = dispatch.get("indices_contextuais_tratados", ())
+                if isinstance(dispatch.get("comandos_admitidos"), list):
+                    comandos = list(dispatch["comandos_admitidos"])
+            if isinstance(etapas_contextuais, tuple):
+                for etapa in etapas_contextuais:
+                    if (isinstance(etapa, AtoAguardandoMaterializacao)
+                        and etapa.turno_id == proposta_principal.turno_id
+                        and etapa.fonte_textual == proposta_principal.texto_usuario):
+                        if type(indices_tratados) is tuple and etapa.indice in indices_tratados:
+                            continue
+                        dados_etapa = etapa.como_dict()
+                        materializacao = None
+                        if callable(materializar_ato):
+                            if not admitir_etapa_principal("materializacao_contextual"):
+                                return True
+                            try:
+                                materializacao = materializar_ato(etapa, proposta_principal,
+                                    dispatch.get("execucoes_observadas", ()))
+                            except Exception as erro:
+                                self._log(f"⚠️ [CONTEXTO] materialização recusada: {type(erro).__name__}")
+                        if (type(materializacao) is MaterializacaoAtoContextual
+                            and materializacao.ato == etapa):
+                            etapas_materializadas.append(materializacao)
+                            # Este candidato ainda não passou por admissão de
+                            # efeito. Não o enviar de volta à lista da LLM nem
+                            # remover a conclusão parcial por ter alvo resolvido.
+                            erros_execucao.append(
+                                f"etapa contextual materializada, mas ainda não admitida para execução: "
+                                f"{dados_etapa['indice'] + 1} — {dados_etapa['texto_original']}"
+                            )
+                            continue
+                        erros_execucao.append(
+                            f"etapa contextual não materializada: {dados_etapa['indice'] + 1} — "
+                            f"{dados_etapa['texto_original']}"
+                        )
+            dispatch["atos_materializados"] = tuple(etapas_materializadas)
             fala_ja_emitida = bool(dispatch.get("fala_ja_emitida", False))
             fala_emitida_por_acao = bool(dispatch.get("fala_emitida_por_acao", False))
             fala_salva_no_inicio = bool(dispatch.get("fala_salva_no_inicio", False))

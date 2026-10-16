@@ -55,6 +55,19 @@ def test_variantes_emocionais_preservam_estilo_sem_repeticao_imediata():
         assert all(50 <= ms <= 5000 and max(abs(e), abs(d)) <= 230 for e, d, ms in gesto.movimentos)
 
 
+def test_variantes_mudam_a_partitura_e_nao_apenas_escala_ou_espelho():
+    from mente_laylay.cognicao.decisao_corporal import decidir_intencao_corporal
+    from scripts.tests.test_rosto_oled import estado_emocional
+    _, _, _, corpo, _, _ = montar()
+    for nome, codigo in (("alegre", 1), ("envergonhada", 6), ("surpresa", 5), ("brava", 3)):
+        decisao = decidir_intencao_corporal(estado_emocional(nome), {},
+                                          permitir_passeio=False, nova_emocao=True)
+        bases = [corpo.companhia._gesto_suspenso(decisao, (codigo, 2, 0), variante=i) for i in (0, 2)]
+        assinaturas = [tuple((0 if e == d else 1, e * d > 0, e + d > 0) for e, d, _ in g.movimentos) for g in bases]
+        assert assinaturas[0] != assinaturas[1], nome
+        assert all(len(g.movimentos) <= 4 and sum(ms for _, _, ms in g.movimentos) <= 12000 for g in bases)
+
+
 def test_composicao_instalada_reusa_prioridade_da_entrada_e_da_percepcao(tmp_path):
     import subprocess, sys
     codigo=f'''

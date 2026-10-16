@@ -1,0 +1,9 @@
+{
+  "perfil": "USB_SENSORES_PROTECAO_5000MS",
+  "porta": "COM4",
+  "gravacao": "verificada",
+  "flash_bytes": 432726,
+  "globais_bytes": 19356,
+  "sha256_fonte": "91935ace056c98033ef7818643d172afa97a71dd4d4595e3da514b7072780a5b",
+  "sha256_bin": "a41f8b279276039d82cb1069e073c1a2c347a76f541dbf5ebe128269404d51fa"
+}

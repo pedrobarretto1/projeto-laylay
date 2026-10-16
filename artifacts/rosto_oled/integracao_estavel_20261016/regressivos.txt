@@ -1,0 +1,22 @@
+........................................................................ [ 28%]
+...................................F.................................... [ 56%]
+..............F......................................................... [ 84%]
+.......................................                                  [100%]
+================================== FAILURES ===================================
+__ test_reset_durante_gesto_cooperativo_preserva_falha_sem_replay_e_recupera __
+scripts\tests\test_recuperacao_corpo_usb.py:74: in test_reset_durante_gesto_cooperativo_preserva_falha_sem_replay_e_recupera
+    assert not r["ok"] and len(motores(esp))==1
+E   assert (not False and 0 == 1)
+E    +  where 0 = len([])
+E    +    where [] = motores(<scripts.tests.test_recuperacao_corpo_usb.EspSaude object at 0x0000024663942E90>)
+__________ test_perfil_e_preferencia_explicita_preserva_configuracao __________
+scripts\tests\test_decisao_corporal_v1.py:93: in test_perfil_e_preferencia_explicita_preserva_configuracao
+    assert c.perfil_corporal() == "bancada"
+E   AssertionError: assert 'rodas_suspensas' == 'bancada'
+E     
+E     - bancada
+E     + rodas_suspensas
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_recuperacao_corpo_usb.py::test_reset_durante_gesto_cooperativo_preserva_falha_sem_replay_e_recupera
+FAILED scripts/tests/test_decisao_corporal_v1.py::test_perfil_e_preferencia_explicita_preserva_configuracao
+2 failed, 253 passed in 76.10s (0:01:16)

@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Dict
 
+from mente_laylay.cognicao.referencias_linguagem import separar_alvo_e_repeticao
+
 def detectar_playlist_contextual_musica_atual(
     texto_sem_destino: str,
     *,
@@ -465,6 +467,11 @@ def detectar_playlist_usuario(
     if quer_tocar:
         m = re.search(r"playlist\s+(.+)$", t)
         nome_bruto = m.group(1) if m else ""
+        # A cópia normalizada perdeu as aspas. O operando literal deve vir
+        # da mesma moldura na fala original, não da cópia para busca de verbos.
+        m_bruto = re.search(r"\bplaylist\s+(.+)$", bruto, flags=re.IGNORECASE)
+        if m_bruto and m_bruto.group(1).strip().startswith(('"', "'", "“", "«")):
+            nome_bruto = m_bruto.group(1)
         modo_aleatorio = bool(re.search(
             r"\b(?:aleatorio|aleatório|aleatoria|aleatória|shuffle|"
             r"embaralha(?:da|do)?|mistura(?:da|do)?)\b",
@@ -479,6 +486,7 @@ def detectar_playlist_usuario(
                 nome_bruto,
                 flags=re.IGNORECASE,
             )
+        nome_bruto, _ = separar_alvo_e_repeticao(nome_bruto)
         pl = limpar_nome(nome_bruto)
         if pl:
             return {

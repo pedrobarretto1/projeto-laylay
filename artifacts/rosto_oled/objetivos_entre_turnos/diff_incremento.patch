@@ -1,0 +1,371 @@
+--- baseline/mente_laylay/cognicao/modelo_corporal.py
++++ mente_laylay/cognicao/modelo_corporal.py
+@@ -15,14 +15,39 @@
+ from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
+ 
+ INTENCOES_CORPORAIS = frozenset({"atenta", "interagir", "expressar", "comemorar", "reagir_falha", "explorar", "descansar"})
++VALIDADE_OBJETIVO_CORPORAL_S = 120
++MAX_TURNOS_OBJETIVO_CORPORAL = 8
++
++
++def continuacao_objetivo_valida(retrato: Mapping[str, Any], objetivo_id: str, *, agora: float) -> bool:
++    """Referência semântica da autoria atual a um objetivo observado pelo owner."""
++    i = retrato.get("objetivo_para_continuar") or retrato.get("intencao_em_curso") or {}
++    if not isinstance(i, Mapping) or type(agora) not in (int, float) or not math.isfinite(agora):
++        return False
++    try:
++        return bool(retrato.get("origem") == "owner_corpo_usb"
++            and retrato.get("companhia_ativa") is True
++            and i.get("origem") == "owner_companhia_corporal"
++            and i.get("sessao_vigente") is True and i.get("continuidade_disponivel") is True
++            and i.get("objetivo_id") == objetivo_id and i.get("objetivo_turno_origem")
++            and math.isfinite(float(i["objetivo_ate_monotonic"]))
++            and agora <= float(i["objetivo_ate_monotonic"])
++            and type(i.get("turnos_objetivo")) is int
++            and 1 <= i["turnos_objetivo"] < MAX_TURNOS_OBJETIVO_CORPORAL)
++    except (TypeError, ValueError, KeyError, OverflowError):
++        return False
+ 
+ 
+ def _validar_proposta(dados: dict[str, Any]) -> None:
+     intencao = dados.get("intencao_corporal")
+-    if not isinstance(intencao, dict) or set(intencao) != {"nome"}:
+-        raise ValueError("intenção corporal exige somente nome")
++    if not isinstance(intencao, dict) or "nome" not in intencao or set(intencao) - {"nome", "objetivo_id"}:
++        raise ValueError("intenção corporal exige nome e referência opcional ao objetivo")
+     if not isinstance(intencao["nome"], str) or intencao["nome"] not in INTENCOES_CORPORAIS:
+         raise ValueError("intenção corporal não registrada")
++    if "objetivo_id" in intencao:
++        ref = intencao["objetivo_id"]
++        if not isinstance(ref, str) or len(ref) != 12 or any(c not in "0123456789abcdef" for c in ref):
++            raise ValueError("referência de objetivo inválida")
+ 
+ 
+ _CODEC = ContratoSaidaEstruturada(nome="intencao_corporal_principal", marcador="CORPO", esquema={"type": "object"}, validar=_validar_proposta)
+@@ -41,10 +66,17 @@
+     except (ValueError, TypeError):
+         return {}
+     agora = time.monotonic() if agora is None else agora
++    referencia = dados["intencao_corporal"].get("objetivo_id")
++    if referencia and not continuacao_objetivo_valida(retrato, referencia, agora=agora):
++        return {}
++    fonte_objetivo = retrato.get("objetivo_para_continuar") or retrato.get("intencao_em_curso") or {}
++    continuidade = ({"objetivo_id": referencia,
++                     "objetivo_ate_monotonic": fonte_objetivo["objetivo_ate_monotonic"]}
++                    if referencia else {})
+     return {"id": secrets.token_hex(8), "turno_id": proposta.turno_id, "plano_id": str(plano["id"]),
+         "nome": dados["intencao_corporal"]["nome"], "estado": "proposta", "origem": "llm_principal",
+         "sessao": retrato["sessao"], "concessao_id": retrato["concessao_id"],
+-        "desde_monotonic": agora, "ate_monotonic": agora + 30, "autoriza_execucao": False}
++        "desde_monotonic": agora, "ate_monotonic": agora + 30, "autoriza_execucao": False, **continuidade}
+ 
+ 
+ def proposta_corporal_vigente(plano: Mapping[str, Any], concessao: Mapping[str, Any], *, agora: float) -> dict[str, Any]:
+@@ -56,6 +88,8 @@
+             and p.get("id") and p.get("turno_id") == str(plano.get("id")) == p.get("plano_id")
+             and p.get("sessao") == concessao.get("sessao") and p.get("concessao_id") == concessao.get("id")
+             and math.isfinite(desde) and math.isfinite(ate) and desde <= agora <= ate and 0 < ate - desde <= 30)
++        if p.get("objetivo_id"):
++            valida = valida and continuacao_objetivo_valida(plano.get("retrato_corporal") or {}, p["objetivo_id"], agora=agora)
+     except (KeyError, TypeError, ValueError, OverflowError):
+         valida = False
+     return dict(p) if valida else {}
+@@ -75,30 +109,49 @@
+         and c.get("confirmado") is False for c in comandos))
+ 
+ 
+-def formatar_realidade_corporal(modelo: Mapping[str, Any] | None) -> str:
++def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_historico: int = 3) -> str:
+     """Fatos e limites para qualquer autoria, sem outra proposta ou permissão."""
+     if not modelo or modelo.get("origem") != "owner_corpo_usb":
+         return ""
+-    fatos = {k: modelo.get(k) for k in ("turno_id", "conectada", "companhia_ativa", "passeio_ativo", "perfil", "olhos", "emocao_causal", "motor_em_andamento", "atencao_pc", "condicao", "percepcao_fisica", "experiencia", "ultima_experiencia", "intencao_em_curso")}
++    fatos = {k: modelo.get(k) for k in ("turno_id", "conectada", "companhia_ativa", "passeio_ativo", "perfil", "olhos", "emocao_causal", "motor_em_andamento", "atencao_pc", "condicao", "percepcao_fisica", "intencao_em_curso", "objetivo_para_continuar", "experiencia", "ultima_experiencia") if modelo.get(k) is not None}
++    # A mente recebe evidência necessária, sem duplicar a partitura técnica.
++    ultima = fatos.get("ultima_experiencia")
++    if isinstance(ultima, Mapping):
++        campos = ("id", "objetivo_id", "nome", "turno_id", "resultado", "confirmado", "parada_confirmada", "prova_deslocamento", "pertence_ao_turno_atual")
++        fatos["ultima_experiencia"] = {k: ultima[k] for k in campos if k in ultima}
++    experiencia = fatos.get("experiencia")
++    if isinstance(experiencia, Mapping):
++        campos = ("id", "nome", "turno_id", "resultado", "confirmado", "prova_deslocamento", "recuperada_da_memoria")
++        historico = list(experiencia.get("historico_recente", []))[-3:]
++        incluidos = historico[-limite_historico:] if limite_historico else []
++        fatos["experiencia"] = {"historico_recente": [
++            {k: e[k] for k in campos if k in e} for e in incluidos],
++            "historico_omitido": len(historico) - len(incluidos),
++            "aprendizado_conectado": experiencia.get("aprendizado_conectado", False),
++            "aprendizado": {k: v for k, v in (experiencia.get("aprendizado") or {}).items()
++                            if k in {"origem", "estado_hipotese", "confianca"}},
++            "feedback": {k: v for k, v in (experiencia.get("feedback") or {}).items()
++                         if k in {"tipo", "aceito", "experiencia_id", "turno_id"}}}
++    objetivo = fatos.get("objetivo_para_continuar")
++    if isinstance(objetivo, Mapping):
++        campos = ("objetivo_id", "nome", "motivo", "continuidade_disponivel", "objetivo_turno_origem", "turnos_objetivo", "objetivo_contexto")
++        fatos["objetivo_para_continuar"] = {k: objetivo[k] for k in campos if k in objetivo}
++    intencao = fatos.get("intencao_em_curso")
++    if isinstance(intencao, Mapping):
++        campos = ("id", "objetivo_id", "nome", "estado", "fase", "turno_id", "resultado", "pertence_ao_turno_atual", "sessao_vigente")
++        fatos["intencao_em_curso"] = {k: intencao[k] for k in campos if k in intencao}
+     return (
+         "--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n"
+         + json.dumps(fatos, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+         + ("\nSou a Laylay do PC e deste corpo robótico conectado, com OLED e motores. " if modelo.get("conectada") is True
+            else "\nO corpo robótico não está conectado neste retrato; não alegue acesso atual aos motores ou à tela. ")
+-        + "Sensações emocionais podem expressar meu estado funcional quando há emoção causal registrada; não precisam virar uma negação de sentimentos. "
+-        "Já sensações físicas exigem observação: não há sensores de toque, temperatura, esforço, posição, obstáculos ou bordas neste corpo. "
+-        "Não afirme dor, calor, contato, colisão ou percepção do ambiente como fatos medidos. Humor e metáfora podem ser reconhecíveis como expressão, sem virar evidência. "
+-        "ACK confirma PWM e parada elétrica, não distância, giro ou percepção sensorial. O resultado anterior conserva seu turno de origem. "
+-        "prova_deslocamento=false significa NÃO MEDIDO, nunca ausência de movimento. "
+-        "Diga 'não medi o deslocamento' ou 'não consigo verificar quanto me movi'; não diga 'não houve deslocamento' ou 'não me movi' sem medição. "
+-        "pertence_ao_turno_atual=false identifica uma experiência de outro turno; não atribua seu resultado ao pedido atual. "
+-        "Integro os movimentos pedidos, meus gestos espontâneos e as propostas do turno à mesma experiência. "
+-        "Considere minha condição corporal atual ao conversar e planejar: conexão perdida ou controle indisponível impede prometer ações físicas agora. "
+-        "Se há acionamento em andamento, coordene a intenção com a atividade atual; prioridade do usuário e do PC continua no executor. "
+-        "O histórico pode conter observações de sessões anteriores, sem restaurar permissões. "
+-        "Aprendo confirmação elétrica e feedback explícito sobre gestos; isso não prova que andei ou que senti contato. "
+-        "intencao_em_curso distingue objetivo, espera, antecipação, gesto e acomodação. Considere essa continuidade ao responder; "
+-        "estado=proposta ou fase=aguardando não significa ação executada. O resultado vale somente para sua ocorrência e turno, sem renovar autorização. "
++        + "Expresso emoções causais; sensações físicas exigem observação: não tenho sensores de toque, temperatura, esforço, posição, obstáculos ou bordas. "
++        "Não invente dor, contato ou percepção ambiental; humor/metáfora não são medição. "
++        "ACK confirma PWM/parada elétrica. prova_deslocamento=false significa NÃO MEDIDO, nunca ausência de movimento; diga 'não medi o deslocamento'. "
++        "pertence_ao_turno_atual=false mantém o resultado no turno original. Estado proposta ou fase aguardando não significa ação executada. "
++        "Pedidos, gestos e propostas usam a mesma experiência/aprendizado; o histórico traz observações de sessões anteriores, sem restaurar autorização. "
++        "Considere condição, intenção e atenção ao PC; conexão perdida ou controle indisponível impede prometer acesso. "
++        "Novo turno exige proposta atual, mesmo continuando objetivo; não retoma coreografia interrompida nem herda receipt. "
+     )
+ 
+ 
+@@ -106,19 +159,34 @@
+     realidade = formatar_realidade_corporal(modelo)
+     if not realidade:
+         return ""
+-    return (
+-        realidade
+-        + "\n"
+-        "FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON. Retorne somente o JSON da resposta, sem texto externo. "
+-        "O retrato corporal acima é contexto de entrada, não campos novos de saída. Não copie os objetos de condição, percepção, experiência ou histórico para o JSON da resposta. "
+-        "Explique os fatos relevantes em fala e preserve apenas os campos do contrato principal. Se companhia_ativa=false, omita intencao_corporal. "
+-        "Preserve os campos do contrato principal; se companhia_ativa=true, posso acrescentar intencao_corporal={\"nome\":\"expressar\"} no objeto externo, fora de fala. "
+-        "Os nomes das chaves são literais, sem traduzir nem acrescentar acentos. Exemplo de estrutura, preenchendo valores coerentes com o turno: "
+-        '{"fala":"resposta natural ao usuário","emocao":"calma","nivel_emocao":1,"comandos":[],"intencao_corporal":{"nome":"expressar"}}. '
+-        "O campo fala contém somente o que digo ao usuário, sem narrar nomes de intenção ou decisões técnicas. "
+-        "Escolha um nome: atenta (foco), interagir (acompanhar fala), expressar (emoção atual), comemorar (somente após sucesso confirmado do pedido), "
+-        "reagir_falha (somente após falha do pedido), explorar (somente passeio já ativo), descansar (sossego). "
+-        "Use uma intenção coerente com a conversa e minha emoção; posso descansar quando convém. "
+-        "Não escreva parâmetros de motor, permissões ou comandos técnicos nesse campo. A intenção é uma proposta; o executor valida a sessão e o momento. "
+-        "Não anuncie movimento como feito antes do retorno. Se desconectada, explique a indisponibilidade sem prometer gesto."
++    referencia = modelo.get("objetivo_para_continuar") or {}
++    ref = referencia.get("objetivo_id") if isinstance(referencia, Mapping) else None
++    exemplo = {"fala": "resposta natural ao usuário", "emocao": "calma", "nivel_emocao": 1,
++               "comandos": [], "intencao_corporal": {"nome": "interagir"}}
++    if ref and continuacao_objetivo_valida(modelo, ref, agora=time.monotonic()):
++        exemplo["intencao_corporal"]["objetivo_id"] = ref
++    exemplo_novo = {"intencao_corporal": {"nome": "atenta"}}
++    contrato = (
++        "\n"
++        "FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON. Retorne só JSON, preservando os campos do contrato principal. "
++        "Não copie o retrato para a saída. Fale naturalmente em fala, sem nomes técnicos. "
++        "Se companhia_ativa=false, omita intencao_corporal. Caso ativo, inclua a proposta no objeto externo, fora de fala. "
++        "Escolha nome: atenta (foco), interagir (conversa), expressar (emoção causal), comemorar (sucesso confirmado deste pedido), "
++        "reagir_falha (falha deste pedido), explorar (passeio ativo), descansar (sossego). "
++        "Compare o pedido atual ao objetivo_contexto observado; acompanhar uma conversa em geral não basta para herdar o assunto anterior. "
++        "Se o turno aprofunda esse mesmo assunto e objetivo_para_continuar.continuidade_disponivel=true, "
++        "inclua objetivo_id copiando objetivo_para_continuar.objetivo_id. Em mudança de assunto omita objetivo_id. "
++        "Nunca invente identificadores ou repita automaticamente o gesto anterior. "
++        "Estrutura para continuidade (use valores coerentes com o turno): "
++        + json.dumps(exemplo, ensure_ascii=False, separators=(",", ":"))
++        + ". Para assunto independente ou mudança de assunto explícita, a estrutura SEM objetivo_id é: "
++        + json.dumps(exemplo_novo, ensure_ascii=False, separators=(",", ":"))
++        + ". Sem PWM, permissões ou comandos técnicos na intenção. O executor revalida sessão/momento; não anuncie movimento como feito antes do retorno."
+     )
++    # Só o histórico opcional cede espaço. Estado corrente, referência, fonte e
++    # regras de saída permanecem inteiros no limite do transporte local atual.
++    for limite in (3, 2, 1, 0):
++        texto = formatar_realidade_corporal(modelo, limite_historico=limite) + contrato
++        if len(texto) <= 3800:
++            return texto
++    return texto
+--- baseline/mente_laylay/autonomia/companhia_corporal.py
++++ mente_laylay/autonomia/companhia_corporal.py
+@@ -11,7 +11,9 @@
+ from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
+ from mente_laylay.especialistas.rosto_oled_runtime import projetar_rosto
+ from mente_laylay.cognicao.decisao_corporal import decidir_intencao_corporal
+-from mente_laylay.cognicao.modelo_corporal import proposta_corporal_vigente
++from mente_laylay.cognicao.modelo_corporal import (
++    proposta_corporal_vigente, VALIDADE_OBJETIVO_CORPORAL_S, MAX_TURNOS_OBJETIVO_CORPORAL,
++)
+ from mente_laylay.cognicao.decisao_turno import motivo_incoerencia_contratos_turno
+ from mente_laylay.memoria_mental.atividade_operacional_runtime import (
+     projetar_sucesso_operacional, projetar_atividade_operacional, projetar_falha_operacional, projetar_execucao_operacional,
+@@ -128,7 +130,8 @@
+             self._ativacao_pendente = False
+             self._motivo = motivo
+             if self._intencao:
+-                self._intencao.update(estado="interrompida", fase="interrompida", motivo_termino=motivo)
++                self._intencao.update(estado="interrompida", fase="interrompida", motivo_termino=motivo,
++                                      objetivo_encerrado=True)
+         self._publicar()
+ 
+     def _publicar(self) -> None:
+@@ -154,6 +157,9 @@
+                     "perfil_corporal": self.perfil_corporal,
+                     "intencao": dict(self._intencao),
+                     "continuidade_intencao": True,
++                    "objetivos_entre_turnos": True, "planejamento_por_historico": True,
++                    "validade_objetivo_s": VALIDADE_OBJETIVO_CORPORAL_S,
++                    "turnos_objetivo_maximo": MAX_TURNOS_OBJETIVO_CORPORAL,
+                     "passeio_ativado": ativa and concessao.get("passeio") is True,
+                     "comemoracoes_emitidas": self._comemoracoes, "passeios_emitidos": self._passeios,
+                     "giro_360_calibrado": False,
+@@ -301,7 +307,32 @@
+         # Identidade do objetivo acompanha a ocorrência, nunca um timeout visual.
+         # Este retrato não concede autoridade: proposta/etapas mantêm seus prazos.
+         mesmo_objetivo = tuple(self._intencao.get("contexto", ())) == contexto
+-        objetivo = self._intencao.get("objetivo_id") if mesmo_objetivo else secrets.token_hex(6)
++        p = self._proposta_mente(c) if decisao.proposta_id else {}
++        referencia = self._intencao.get("referencia_objetivo") or {}
++        anterior = referencia if p.get("objetivo_id") == referencia.get("objetivo_id") else self._intencao
++        contexto_anterior = tuple(anterior.get("contexto", ()))
++        continuando = bool(p.get("id") == decisao.proposta_id and p.get("objetivo_id")
++            and p["objetivo_id"] == anterior.get("objetivo_id")
++            and contexto_anterior[:2] == contexto[:2]
++            and not anterior.get("objetivo_encerrado")
++            and agora <= anterior.get("objetivo_ate_monotonic", 0)
++            and anterior.get("turnos_objetivo", MAX_TURNOS_OBJETIVO_CORPORAL) < MAX_TURNOS_OBJETIVO_CORPORAL)
++        preservar = mesmo_objetivo or continuando
++        base_objetivo = anterior if continuando else self._intencao
++        objetivo = base_objetivo.get("objetivo_id") if preservar else secrets.token_hex(6)
++        origem_objetivo = base_objetivo.get("objetivo_turno_origem") if preservar else contexto[2]
++        tema_objetivo = base_objetivo.get("objetivo_contexto", "") if preservar else str(plano.get("texto_usuario") or turno.get("texto") or "")[:160]
++        prazo_objetivo = base_objetivo.get("objetivo_ate_monotonic") if preservar else agora + VALIDADE_OBJETIVO_CORPORAL_S
++        turnos_objetivo = base_objetivo.get("turnos_objetivo", 1) + int(continuando and contexto_anterior != contexto) if preservar else 1
++        # Uma referência anterior fica observável enquanto se espera a autoria.
++        # Não é herança de ação nem classificação privada de mudança de assunto.
++        if not mesmo_objetivo and decisao.nome == "atenta" and not decisao.proposta_id:
++            candidata = referencia or self._intencao
++            if (tuple(candidata.get("contexto", ()))[:2] == contexto[:2]
++                    and not candidata.get("objetivo_encerrado")
++                    and agora <= candidata.get("objetivo_ate_monotonic", 0)):
++                campos = ("objetivo_id", "objetivo_turno_origem", "objetivo_ate_monotonic", "turnos_objetivo", "contexto", "nome", "motivo", "objetivo_contexto")
++                referencia = {k: candidata[k] for k in campos if k in candidata}
+         evento = self._conversa().get("episodio_emocional") or {}
+         causa = (self._sucesso() if decisao.nome == "comemorar" else
+                  projetar_falha_operacional(self._atividade(), agora=agora) if decisao.nome == "reagir_falha" else
+@@ -312,6 +343,12 @@
+                 self._intencao = {"id": secrets.token_hex(6), "objetivo_id": objetivo,
+                     "contexto": contexto, "turno_id": contexto[2], "plano_id": contexto[3],
+                     "sessao": contexto[1], "nome": decisao.nome, "emocao": decisao.emocao,
++                    "objetivo_turno_origem": origem_objetivo, "objetivo_ate_monotonic": prazo_objetivo,
++                    "objetivo_contexto": tema_objetivo,
++                    "turnos_objetivo": turnos_objetivo,
++                    "objetivo_encerrado": bool((preservar and base_objetivo.get("objetivo_encerrado"))
++                        or (decisao.proposta_id and decisao.nome == "descansar")),
++                    "referencia_objetivo": referencia if decisao.nome == "atenta" and not decisao.proposta_id else {},
+                     "nivel": decisao.nivel, "desde_monotonic": agora, "chave": chave,
+                     "estado": "proposta", "fase": "aguardando" if not decisao.permite_movimento else "pronta"}
+             self._intencao.update(motivo=decisao.motivo, prioridade=decisao.prioridade,
+--- baseline/mente_laylay/especialistas/corpo_motor_runtime.py
++++ mente_laylay/especialistas/corpo_motor_runtime.py
+@@ -74,12 +74,27 @@
+         turno_atual_id = str((mental_atual.get("turno_atual") or {}).get("id") or "")
+         turno_leitura_id = str(turno_id) if turno_id is not None else turno_atual_id
+         intencao = self.companhia.diagnostico().get("intencao") or {}
+-        campos_intencao = ("id", "objetivo_id", "nome", "motivo", "estado", "fase", "turno_id", "plano_id", "resultado")
++        campos_intencao = ("id", "objetivo_id", "nome", "motivo", "estado", "fase", "turno_id", "plano_id", "resultado",
++                          "objetivo_turno_origem", "objetivo_ate_monotonic", "turnos_objetivo", "objetivo_contexto")
+         intencao_atual = {k: intencao[k] for k in campos_intencao if k in intencao}
+-        intencao_atual.update(autoriza_execucao=False,
++        intencao_atual.update(autoriza_execucao=False, origem="owner_companhia_corporal",
+             sessao_vigente=bool(conectada and ativa and intencao.get("sessao") == diag.get("sessao")),
+             pertence_ao_turno_atual=bool(turno_atual_id and turno_leitura_id == turno_atual_id
+                                        and intencao.get("turno_id") == turno_atual_id))
++        from mente_laylay.cognicao.modelo_corporal import MAX_TURNOS_OBJETIVO_CORPORAL
++        intencao_atual["continuidade_disponivel"] = bool(intencao_atual["sessao_vigente"]
++            and not intencao.get("objetivo_encerrado")
++            and self.companhia.monotonic() <= intencao.get("objetivo_ate_monotonic", 0)
++            and intencao.get("turnos_objetivo", MAX_TURNOS_OBJETIVO_CORPORAL) < MAX_TURNOS_OBJETIVO_CORPORAL)
++        referencia = intencao.get("referencia_objetivo") or {}
++        if referencia:
++            referencia = {**referencia, "origem": "owner_companhia_corporal",
++                "sessao_vigente": bool(intencao_atual["sessao_vigente"]
++                    and tuple(referencia.get("contexto", ()))[:2] == (c.get("id", ""), diag.get("sessao", ""))),
++                "continuidade_disponivel": bool(self.companhia.monotonic() <= referencia.get("objetivo_ate_monotonic", 0)
++                    and referencia.get("turnos_objetivo", MAX_TURNOS_OBJETIVO_CORPORAL) < MAX_TURNOS_OBJETIVO_CORPORAL),
++                "autoriza_execucao": False}
++            referencia.pop("contexto", None)
+         ultima_experiencia = dict(mental_atual.get("experiencia_corporal") or {})
+         if ultima_experiencia:
+             ultima_experiencia["pertence_ao_turno_atual"] = bool(turno_atual_id and turno_leitura_id == turno_atual_id
+@@ -94,6 +109,7 @@
+             "condicao": {"estado": condicao, "motivo_motor": str(motor.get("motivo") or ""), "origem": "diagnostico_firmware", "autoriza_execucao": False},
+             "experiencia": experiencia,
+             "intencao_em_curso": intencao_atual,
++            "objetivo_para_continuar": referencia or intencao_atual,
+             "percepcao_fisica": {"deslocamento": "nao_medido", "contato": "nao_medido", "obstaculos": "nao_medido"},
+             "olhos": list(diag.get("confirmado") or ()), "motor_em_andamento": motor.get("em_andamento") is True,
+             "emocao_causal": {"nome": EMOCOES_ROSTO[emocao], "nivel": nivel},
+--- baseline/mente_laylay/memoria_mental/experiencia_corporal_runtime.py
++++ mente_laylay/memoria_mental/experiencia_corporal_runtime.py
+@@ -138,8 +138,19 @@
+         return True
+ 
+     def selecionar_variante(self, nome: str, perfil: str, padrao: int) -> int | None:
++        historico = self.estado.obter_copia("mental", "historico_corporal", []) if self.estado is not None else []
++        sessao = str(self.diagnostico_getter().get("sessao") or "")
++        recentes = [e for e in historico[-6:] if e.get("familia") == nome and e.get("perfil") == perfil
++                    and e.get("sessao") == sessao and not e.get("recuperada_da_memoria")
++                    and (e.get("confirmado") is True or e.get("movimentos_confirmados", 0) > 0)]
++        ordem = [(padrao + i) % 3 for i in range(3)]
++        # Escolha sobre experiência factual da mesma sessão, sem estimar distância.
++        # Não muda a assinatura, os parâmetros ou a autoridade do executor.
++        contagens = {v: sum(e.get("variante") == v for e in recentes) for v in ordem}
++        ultima = recentes[-1].get("variante") if recentes else None
++        ordem.sort(key=lambda v: (v == ultima, contagens[v]))
+         if self.aprendizado is None:
+-            return padrao % 3
++            return ordem[0]
+         candidatas = []
+         evitadas = set()
+         try:
+@@ -154,13 +165,13 @@
+                     continue
+                 avaliacao = self.aprendizado.avaliar_hipotese(chave)
+                 if avaliacao.get("aplicavel"):
+-                    candidatas.append((h.get("confianca", 0), variante))
++                    candidatas.append((h.get("confianca", 0), -ordem.index(variante), variante))
+             if candidatas:
+-                return max(candidatas)[1]
+-            return next((v for v in ((padrao + i) % 3 for i in range(3)) if v not in evitadas), None)
++                return max(candidatas)[2]
++            return next((v for v in ordem if v not in evitadas), None)
+         except Exception as erro:
+             self._falha("falha_selecao_variante", erro)
+-            return padrao % 3
++            return ordem[0]
+ 
+     def retrato(self) -> dict[str, Any]:
+         historico = self.estado.obter_copia("mental", "historico_corporal", []) if self.estado is not None else []
+--- baseline/mente_laylay/especialistas/mapa_habilidades.py
++++ mente_laylay/especialistas/mapa_habilidades.py
+@@ -215,7 +215,7 @@
+ }
+ 
+ _TERMOS_DOMINIO = {
+-    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha"),
++    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha", "objetivo corporal"),
+     "rosto_oled": ("oled", "esp32", "rostinho", "rosto fisico", "corpo fisico", "animacao de hack", "mini terminal", "bip", "bips", "olhos expressivos"),
+     "musica": ("musica", "som", "faixa", "playlist", "tocar", "pausar", "youtube", "spotify"),
+     "sistema": (
+@@ -950,6 +950,10 @@
+             estado_modo = " O modo companhia está ativo nesta sessão." if modo.get("ativa") is True else " O modo companhia está desativado agora."
+             if modo.get("continuidade_intencao") is True:
+                 estado_modo += " Acompanho o objetivo corporal entre espera, gesto e acomodação; um novo turno ou tarefa pode interrompê-lo, sem renovar permissão de movimento."
++            if modo.get("objetivos_entre_turnos") is True:
++                estado_modo += " Posso propor continuar o mesmo objetivo entre turnos por até dois minutos e oito turnos, validando a referência atual sem retomar comandos antigos."
++            if modo.get("planejamento_por_historico") is True:
++                estado_modo += " Escolho variantes com meu histórico recente e preferências aprendidas para reduzir repetição."
+             if modo.get("perfil_corporal") == "rodas_suspensas":
+                 estado_modo += " O perfil atual é rodas suspensas; a intenção corporal usa minha atividade no PC e emoção causal."
+             estado_modo += " O passeio espontâneo está ativo." if modo.get("passeio_ativado") is True else " O passeio espontâneo está desativado agora."

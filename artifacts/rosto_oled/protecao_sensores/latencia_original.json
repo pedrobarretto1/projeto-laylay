@@ -1,0 +1,82 @@
+[
+  {
+    "acordada": false,
+    "t": 0.0,
+    "linha": "PERF 1 LOOP_US 44993 SENSOR_US 5153 RENDER_US 34966 BORDA_INTERVALO_MS 85"
+  },
+  {
+    "acordada": false,
+    "t": 0.035,
+    "linha": "DIST 1 1 FRENTE 48 INVALIDA -1 76 4 BORDA 49 INVALIDA -1 36 4"
+  },
+  {
+    "acordada": false,
+    "t": 1.019,
+    "linha": "PERF 1 LOOP_US 41008 SENSOR_US 4022 RENDER_US 34953 BORDA_INTERVALO_MS 81"
+  },
+  {
+    "acordada": false,
+    "t": 1.036,
+    "linha": "DIST 1 1 FRENTE 48 INVALIDA -1 36 4 BORDA 49 INVALIDA -1 76 4"
+  },
+  {
+    "acordada": false,
+    "t": 2.025,
+    "linha": "PERF 1 LOOP_US 44991 SENSOR_US 5155 RENDER_US 34960 BORDA_INTERVALO_MS 85"
+  },
+  {
+    "acordada": false,
+    "t": 2.043,
+    "linha": "DIST 1 1 FRENTE 48 INVALIDA -1 76 4 BORDA 49 INVALIDA -1 36 4"
+  },
+  {
+    "acordada": false,
+    "t": 3.034,
+    "linha": "PERF 1 LOOP_US 42006 SENSOR_US 5165 RENDER_US 34965 BORDA_INTERVALO_MS 82"
+  },
+  {
+    "acordada": false,
+    "t": 3.044,
+    "linha": "DIST 1 1 FRENTE 48 INVALIDA -1 36 4 BORDA 49 INVALIDA -1 76 4"
+  },
+  {
+    "acordada": true,
+    "t": 0.035,
+    "linha": "PERF 1 LOOP_US 44991 SENSOR_US 4022 RENDER_US 34973 BORDA_INTERVALO_MS 85"
+  },
+  {
+    "acordada": true,
+    "t": 0.036,
+    "linha": "DIST 1 2 FRENTE 48 INVALIDA -1 33 4 BORDA 49 INVALIDA -1 69 4"
+  },
+  {
+    "acordada": true,
+    "t": 1.055,
+    "linha": "PERF 1 LOOP_US 38004 SENSOR_US 4032 RENDER_US 32682 BORDA_INTERVALO_MS 76"
+  },
+  {
+    "acordada": true,
+    "t": 1.072,
+    "linha": "DIST 1 3 FRENTE 48 INVALIDA -1 34 4 BORDA 49 INVALIDA -1 72 4"
+  },
+  {
+    "acordada": true,
+    "t": 2.06,
+    "linha": "PERF 1 LOOP_US 40002 SENSOR_US 4035 RENDER_US 34187 BORDA_INTERVALO_MS 79"
+  },
+  {
+    "acordada": true,
+    "t": 2.071,
+    "linha": "DIST 1 5 FRENTE 48 INVALIDA -1 30 4 BORDA 49 INVALIDA -1 64 4"
+  },
+  {
+    "acordada": true,
+    "t": 3.085,
+    "linha": "PERF 1 LOOP_US 35006 SENSOR_US 4032 RENDER_US 29020 BORDA_INTERVALO_MS 70"
+  },
+  {
+    "acordada": true,
+    "t": 3.094,
+    "linha": "DIST 1 7 FRENTE 48 INVALIDA -1 31 4 BORDA 49 INVALIDA -1 66 4"
+  }
+]

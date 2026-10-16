@@ -1,0 +1,19 @@
+.....FF..F                                                               [100%]
+================================== FAILURES ===================================
+_ test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Recuei e escapei da borda.] _
+scripts\tests\test_relato_sensorial_corpo.py:81: in test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida
+    assert not r['agendada'] and not fila
+E   assert (not True)
+_ test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Encontrei uma sa\xedda, agora est\xe1 seguro.] _
+scripts\tests\test_relato_sensorial_corpo.py:81: in test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida
+    assert not r['agendada'] and not fila
+E   assert (not True)
+_ test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Voc\xea me derrubou!] _
+scripts\tests\test_relato_sensorial_corpo.py:81: in test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida
+    assert not r['agendada'] and not fila
+E   assert (not True)
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Recuei e escapei da borda.]
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Encontrei uma sa\xedda, agora est\xe1 seguro.]
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_observacao_sensorial_nao_publica_conclusao_fisica_sem_medida[Voc\xea me derrubou!]
+3 failed, 7 passed in 7.00s

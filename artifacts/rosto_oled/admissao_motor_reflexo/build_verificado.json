@@ -1,0 +1,21 @@
+{
+  "head": "d850b8c90cc5ce40bd4832e759ed991ba88cd5cc",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "flash_bytes": 432800,
+  "globals_bytes": 19356,
+  "upload": "COM4, hash verificado pelo esptool",
+  "flags": [
+    "LAYLAY_WIFI=0",
+    "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+    "LAYLAY_SOM_PONTE=0",
+    "LAYLAY_LIMITE_MOTOR_TESTE_MS=5000",
+    "LAYLAY_SENSORES_DISTANCIA=1",
+    "LAYLAY_PROTECAO_CORPORAL=1"
+  ],
+  "sha256": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "bffb8176f99486840b8b592888d50c689badccfc13a584ad76ebaf694f8ca93b",
+    "firmware/rosto_laylay/protecao_corporal.h": "e7ce3267d40165692b6d99a8d78b4134f46be5c2e70c177c9dcdc6f9e1b74367",
+    "artifacts/rosto_oled/admissao_motor_reflexo/build/rosto_laylay.ino.bin": "94865af27542773065869cff3e2fc046ed9f7e5c575309d2d9b7f98ff66ebc70"
+  }
+}

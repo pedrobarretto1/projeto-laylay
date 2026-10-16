@@ -1,0 +1,1137 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "fase": "tarefa_real_interrompeu",
+      "intencao": {
+        "id": "0c23a40aefd4",
+        "objetivo_id": "f8dc193c0d1c",
+        "contexto": [
+          "acff3ef55de2a9d3",
+          "02a5769e",
+          "continuidade-a",
+          "continuidade-a"
+        ],
+        "turno_id": "continuidade-a",
+        "plano_id": "continuidade-a",
+        "sessao": "02a5769e",
+        "nome": "expressar",
+        "emocao": 2,
+        "nivel": 2,
+        "desde_monotonic": 5285.0546276,
+        "chave": [
+          "expressar",
+          2,
+          2,
+          "mudanca_emocional_causal",
+          "",
+          [
+            null,
+            1791914339.9963484,
+            "diagnostico:continuidade_corporal"
+          ]
+        ],
+        "estado": "interrompida",
+        "fase": "interrompida",
+        "motivo": "mudanca_emocional_causal",
+        "prioridade": 70,
+        "candidata_a_movimento": true,
+        "resultado": {
+          "experiencia_id": "452b641d4dd140a89c69d915b7a79af8",
+          "ok": false,
+          "parada_confirmada": true,
+          "prova_deslocamento": false
+        },
+        "origem": "owner_companhia_corporal",
+        "perfil": "rodas_suspensas",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false
+      },
+      "experiencia": {
+        "id": "452b641d4dd140a89c69d915b7a79af8",
+        "origem": "executor_corpo",
+        "nome": "recolhimento_suspenso_v1",
+        "familia": "expressar:2",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "0c23a40aefd4",
+        "turno_id": "continuidade-a",
+        "sessao": "02a5769e",
+        "iniciada_em": 1791914340.22571,
+        "variante": 0,
+        "movimentos": [
+          [
+            -110,
+            -110,
+            1800
+          ]
+        ],
+        "objetivo_id": "f8dc193c0d1c",
+        "ts": 1791914342.1366763,
+        "confirmado": false,
+        "resultado": "interrompida",
+        "motivo": "falha_execucao",
+        "movimentos_confirmados": 1,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "fase": "novo_objetivo_concluido",
+      "modelo": {
+        "origem": "owner_corpo_usb",
+        "ts": 1791914352.4740305,
+        "turno_id": "continuidade-b",
+        "sessao": "02a5769e",
+        "concessao_id": "acff3ef55de2a9d3",
+        "conectada": true,
+        "companhia_ativa": true,
+        "passeio_ativo": false,
+        "perfil": "rodas_suspensas",
+        "condicao": {
+          "estado": "pronta",
+          "motivo_motor": "",
+          "origem": "diagnostico_firmware",
+          "autoriza_execucao": false
+        },
+        "experiencia": {
+          "origem": "experiencia_corporal_observada",
+          "historico_recente": [
+            {
+              "id": "452b641d4dd140a89c69d915b7a79af8",
+              "nome": "recolhimento_suspenso_v1",
+              "turno_id": "continuidade-a",
+              "origem_intencao": "mente_causal",
+              "perfil": "rodas_suspensas",
+              "variante": 0,
+              "resultado": "interrompida",
+              "confirmado": false,
+              "ts": 1791914342.1366763,
+              "prova_deslocamento": false
+            },
+            {
+              "id": "0a57f66b59d7427cb0fdcee4cd152e07",
+              "nome": "hesitacao_suspensa_v1",
+              "turno_id": "continuidade-b",
+              "origem_intencao": "mente_causal",
+              "perfil": "rodas_suspensas",
+              "variante": 0,
+              "resultado": "pwm_e_parada_confirmados",
+              "confirmado": true,
+              "ts": 1791914352.458044,
+              "prova_deslocamento": false
+            }
+          ],
+          "aprendizado": {
+            "origem": "aprendizado_compartilhado",
+            "chave": "corpo_execucao:rodas_suspensas:hesitacao_suspensa_v1:0",
+            "estado_hipotese": "candidata",
+            "confianca": 0.577,
+            "limite_evidencia": "confirmacao_eletrica_sem_deslocamento",
+            "autoriza_execucao": false
+          },
+          "feedback": {},
+          "aprendizado_conectado": true,
+          "autoriza_execucao": false,
+          "sensores_fisicos": false,
+          "ultimo_erro": ""
+        },
+        "intencao_em_curso": {
+          "id": "5a644ea28edf",
+          "objetivo_id": "2ae3130797be",
+          "nome": "expressar",
+          "motivo": "mudanca_emocional_causal",
+          "estado": "concluida",
+          "fase": "acomodando",
+          "turno_id": "continuidade-b",
+          "plano_id": "continuidade-b",
+          "resultado": {
+            "experiencia_id": "0a57f66b59d7427cb0fdcee4cd152e07",
+            "ok": true,
+            "parada_confirmada": true,
+            "prova_deslocamento": false
+          },
+          "autoriza_execucao": false,
+          "sessao_vigente": true,
+          "pertence_ao_turno_atual": true
+        },
+        "percepcao_fisica": {
+          "deslocamento": "nao_medido",
+          "contato": "nao_medido",
+          "obstaculos": "nao_medido"
+        },
+        "olhos": [
+          6,
+          2,
+          0
+        ],
+        "motor_em_andamento": false,
+        "emocao_causal": {
+          "nome": "envergonhada",
+          "nivel": 2
+        },
+        "atencao_pc": false,
+        "autoriza_execucao": false,
+        "ultima_experiencia": {
+          "id": "0a57f66b59d7427cb0fdcee4cd152e07",
+          "origem": "executor_corpo",
+          "nome": "hesitacao_suspensa_v1",
+          "familia": "expressar:6",
+          "origem_intencao": "mente_causal",
+          "perfil": "rodas_suspensas",
+          "intencao_id": "5a644ea28edf",
+          "turno_id": "continuidade-b",
+          "sessao": "02a5769e",
+          "iniciada_em": 1791914345.9335356,
+          "variante": 0,
+          "movimentos": [
+            [
+              -115,
+              115,
+              900
+            ],
+            [
+              115,
+              -115,
+              700
+            ],
+            [
+              -110,
+              -110,
+              1000
+            ]
+          ],
+          "objetivo_id": "2ae3130797be",
+          "ts": 1791914352.458044,
+          "confirmado": true,
+          "resultado": "pwm_e_parada_confirmados",
+          "motivo": "plano_confirmado",
+          "movimentos_confirmados": 3,
+          "parada_confirmada": true,
+          "prova_deslocamento": false,
+          "autoriza_execucao": false,
+          "pertence_ao_turno_atual": true
+        }
+      }
+    }
+  ],
+  "fases": [
+    {
+      "autoriza_execucao": false,
+      "sessao_vigente": false,
+      "pertence_ao_turno_atual": false,
+      "tempo": 5285.0541958
+    },
+    {
+      "id": "0c23a40aefd4",
+      "objetivo_id": "f8dc193c0d1c",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "executando",
+      "fase": "antecipando",
+      "turno_id": "continuidade-a",
+      "plano_id": "continuidade-a",
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5285.3961208
+    },
+    {
+      "id": "0c23a40aefd4",
+      "objetivo_id": "f8dc193c0d1c",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "executando",
+      "fase": "gesticulando",
+      "turno_id": "continuidade-a",
+      "plano_id": "continuidade-a",
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5286.0943362
+    },
+    {
+      "id": "0c23a40aefd4",
+      "objetivo_id": "f8dc193c0d1c",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "interrompida",
+      "fase": "interrompida",
+      "turno_id": "continuidade-a",
+      "plano_id": "continuidade-a",
+      "resultado": {
+        "experiencia_id": "452b641d4dd140a89c69d915b7a79af8",
+        "ok": false,
+        "parada_confirmada": true,
+        "prova_deslocamento": false
+      },
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5287.2264835
+    },
+    {
+      "id": "5a644ea28edf",
+      "objetivo_id": "2ae3130797be",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "proposta",
+      "fase": "pronta",
+      "turno_id": "continuidade-b",
+      "plano_id": "continuidade-b",
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5290.7630967
+    },
+    {
+      "id": "5a644ea28edf",
+      "objetivo_id": "2ae3130797be",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "executando",
+      "fase": "antecipando",
+      "turno_id": "continuidade-b",
+      "plano_id": "continuidade-b",
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5290.8847341
+    },
+    {
+      "id": "5a644ea28edf",
+      "objetivo_id": "2ae3130797be",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "executando",
+      "fase": "gesticulando",
+      "turno_id": "continuidade-b",
+      "plano_id": "continuidade-b",
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5291.4611153
+    },
+    {
+      "id": "5a644ea28edf",
+      "objetivo_id": "2ae3130797be",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "concluida",
+      "fase": "acomodando",
+      "turno_id": "continuidade-b",
+      "plano_id": "continuidade-b",
+      "resultado": {
+        "experiencia_id": "0a57f66b59d7427cb0fdcee4cd152e07",
+        "ok": true,
+        "parada_confirmada": true,
+        "prova_deslocamento": false
+      },
+      "autoriza_execucao": false,
+      "sessao_vigente": true,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5297.3284376
+    },
+    {
+      "id": "5a644ea28edf",
+      "objetivo_id": "2ae3130797be",
+      "nome": "expressar",
+      "motivo": "mudanca_emocional_causal",
+      "estado": "interrompida",
+      "fase": "interrompida",
+      "turno_id": "continuidade-b",
+      "plano_id": "continuidade-b",
+      "resultado": {
+        "experiencia_id": "0a57f66b59d7427cb0fdcee4cd152e07",
+        "ok": true,
+        "parada_confirmada": true,
+        "prova_deslocamento": false
+      },
+      "autoriza_execucao": false,
+      "sessao_vigente": false,
+      "pertence_ao_turno_atual": true,
+      "tempo": 5302.3524845
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 02a5769e",
+      "tempo": 5280.182097
+    },
+    {
+      "tx": "CAPS 1 02a5769e",
+      "tempo": 5280.2911889
+    },
+    {
+      "tx": "GCAPS 1 02a5769e",
+      "tempo": 5280.3995403
+    },
+    {
+      "tx": "MCAPS 1 02a5769e",
+      "tempo": 5280.5092089
+    },
+    {
+      "tx": "LCAPS 1 02a5769e",
+      "tempo": 5280.6183101
+    },
+    {
+      "tx": "SCAPS 1 02a5769e",
+      "tempo": 5280.7288211
+    },
+    {
+      "tx": "SENCAPS 1 02a5769e",
+      "tempo": 5280.8382661
+    },
+    {
+      "tx": "ECAPS 1 02a5769e",
+      "tempo": 5280.9476535
+    },
+    {
+      "tx": "RCAPS 1 02a5769e",
+      "tempo": 5281.0568743
+    },
+    {
+      "tx": "FACE 1 02a5769e 1 0 1 0 3500",
+      "tempo": 5281.1652407
+    },
+    {
+      "rx": "ACK 1 02a5769e 1 0 1 0",
+      "tempo": 5281.2743819
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 1 0 1200",
+      "tempo": 5281.2744543
+    },
+    {
+      "tx": "SOUND 1 02a5769e 1 0",
+      "tempo": 5281.3831344
+    },
+    {
+      "tx": "FACE 1 02a5769e 2 0 1 0 3500",
+      "tempo": 5281.7440706
+    },
+    {
+      "rx": "ACK 1 02a5769e 2 0 1 0",
+      "tempo": 5281.8534412
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 2 0 1200",
+      "tempo": 5281.8535069
+    },
+    {
+      "tx": "FACE 1 02a5769e 3 0 1 0 3500",
+      "tempo": 5282.2262976
+    },
+    {
+      "rx": "ACK 1 02a5769e 3 0 1 0",
+      "tempo": 5282.3352236
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 3 0 1200",
+      "tempo": 5282.3352954
+    },
+    {
+      "tx": "FACE 1 02a5769e 4 0 1 0 3500",
+      "tempo": 5282.7075432
+    },
+    {
+      "rx": "ACK 1 02a5769e 4 0 1 0",
+      "tempo": 5282.8170464
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 4 0 1200",
+      "tempo": 5282.8171274
+    },
+    {
+      "tx": "FACE 1 02a5769e 5 0 1 0 3500",
+      "tempo": 5283.1890977
+    },
+    {
+      "rx": "ACK 1 02a5769e 5 0 1 0",
+      "tempo": 5283.2982878
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 5 0 1200",
+      "tempo": 5283.2983494
+    },
+    {
+      "tx": "FACE 1 02a5769e 6 0 1 0 3500",
+      "tempo": 5283.6705868
+    },
+    {
+      "rx": "ACK 1 02a5769e 6 0 1 0",
+      "tempo": 5283.7805318
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 6 0 1200",
+      "tempo": 5283.7806221
+    },
+    {
+      "tx": "FACE 1 02a5769e 7 0 1 0 3500",
+      "tempo": 5284.1518742
+    },
+    {
+      "rx": "ACK 1 02a5769e 7 0 1 0",
+      "tempo": 5284.2605673
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 7 0 1200",
+      "tempo": 5284.2606605
+    },
+    {
+      "tx": "FACE 1 02a5769e 8 0 1 0 3500",
+      "tempo": 5284.6186886
+    },
+    {
+      "rx": "ACK 1 02a5769e 8 0 1 0",
+      "tempo": 5284.7269337
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 8 0 1200",
+      "tempo": 5284.7269863
+    },
+    {
+      "tx": "FACE 1 02a5769e 9 2 2 0 3500",
+      "tempo": 5284.8359238
+    },
+    {
+      "rx": "ACK 1 02a5769e 9 2 2 0",
+      "tempo": 5284.9439209
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 9 0 1200",
+      "tempo": 5284.943981
+    },
+    {
+      "tx": "EXPR 1 02a5769e 1 2 0 0 580",
+      "tempo": 5285.0661914
+    },
+    {
+      "rx": "EACK 1 02a5769e 1 2 0 0 580",
+      "tempo": 5285.1779581
+    },
+    {
+      "tx": "FACE 1 02a5769e 10 2 2 0 3500",
+      "tempo": 5285.1784407
+    },
+    {
+      "rx": "ACK 1 02a5769e 10 2 2 0",
+      "tempo": 5285.2862519
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 10 0 1200",
+      "tempo": 5285.2863054
+    },
+    {
+      "tx": "FACE 1 02a5769e 11 2 2 0 3500",
+      "tempo": 5285.6607876
+    },
+    {
+      "rx": "ACK 1 02a5769e 11 2 2 0",
+      "tempo": 5285.7679992
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 11 0 1200",
+      "tempo": 5285.7680732
+    },
+    {
+      "tx": "EXPR 1 02a5769e 2 2 1 0 2050",
+      "tempo": 5285.8778827
+    },
+    {
+      "rx": "EACK 1 02a5769e 2 2 1 0 2050",
+      "tempo": 5285.985365
+    },
+    {
+      "tx": "SOUND 1 02a5769e 2 4",
+      "tempo": 5285.985441
+    },
+    {
+      "tx": "FACE 1 02a5769e 12 2 2 0 3500",
+      "tempo": 5286.0944187
+    },
+    {
+      "rx": "ACK 1 02a5769e 12 2 2 0",
+      "tempo": 5286.2013418
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 12 0 1200",
+      "tempo": 5286.2014462
+    },
+    {
+      "tx": "MOTOR 2 02a5769e 1 -110 -110 1800",
+      "tempo": 5286.3089466
+    },
+    {
+      "rx": "MACK 2 02a5769e 1 -110 -110 1800",
+      "tempo": 5286.5265002
+    },
+    {
+      "tx": "FACE 1 02a5769e 13 2 2 0 3500",
+      "tempo": 5286.5271012
+    },
+    {
+      "rx": "ACK 1 02a5769e 13 2 2 0",
+      "tempo": 5286.6361634
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 13 1 1200",
+      "tempo": 5286.6362457
+    },
+    {
+      "tx": "STOP 1 02a5769e 1",
+      "tempo": 5286.7451198
+    },
+    {
+      "rx": "SACK 1 02a5769e 1",
+      "tempo": 5286.8522588
+    },
+    {
+      "tx": "STOP 1 02a5769e 2",
+      "tempo": 5286.8656959
+    },
+    {
+      "rx": "SACK 1 02a5769e 2",
+      "tempo": 5286.9759527
+    },
+    {
+      "tx": "FACE 1 02a5769e 14 2 2 0 3500",
+      "tempo": 5287.0075836
+    },
+    {
+      "rx": "ACK 1 02a5769e 14 2 2 0",
+      "tempo": 5287.1162074
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 14 1 1200",
+      "tempo": 5287.1162717
+    },
+    {
+      "tx": "FACE 1 02a5769e 15 2 2 0 3500",
+      "tempo": 5287.4891419
+    },
+    {
+      "rx": "ACK 1 02a5769e 15 2 2 0",
+      "tempo": 5287.5984944
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 15 0 1200",
+      "tempo": 5287.5985722
+    },
+    {
+      "tx": "FACE 1 02a5769e 16 2 2 0 3500",
+      "tempo": 5287.9705188
+    },
+    {
+      "rx": "ACK 1 02a5769e 16 2 2 0",
+      "tempo": 5288.0803835
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 16 0 1200",
+      "tempo": 5288.0804654
+    },
+    {
+      "tx": "SOUND 1 02a5769e 3 1",
+      "tempo": 5288.1904201
+    },
+    {
+      "tx": "FACE 1 02a5769e 17 2 2 0 3500",
+      "tempo": 5288.5622015
+    },
+    {
+      "rx": "ACK 1 02a5769e 17 2 2 0",
+      "tempo": 5288.6704435
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 17 0 1200",
+      "tempo": 5288.6705105
+    },
+    {
+      "tx": "FACE 1 02a5769e 18 2 2 0 3500",
+      "tempo": 5289.03164
+    },
+    {
+      "rx": "ACK 1 02a5769e 18 2 2 0",
+      "tempo": 5289.1420859
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 18 0 1200",
+      "tempo": 5289.1421698
+    },
+    {
+      "tx": "FACE 1 02a5769e 19 2 2 0 3500",
+      "tempo": 5289.5141665
+    },
+    {
+      "rx": "ACK 1 02a5769e 19 2 2 0",
+      "tempo": 5289.6238779
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 19 0 1200",
+      "tempo": 5289.6239541
+    },
+    {
+      "tx": "FACE 1 02a5769e 20 2 2 0 3500",
+      "tempo": 5289.9961761
+    },
+    {
+      "rx": "ACK 1 02a5769e 20 2 2 0",
+      "tempo": 5290.1053244
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 20 0 1200",
+      "tempo": 5290.1053954
+    },
+    {
+      "tx": "FACE 1 02a5769e 21 6 2 0 3500",
+      "tempo": 5290.3323776
+    },
+    {
+      "rx": "ACK 1 02a5769e 21 6 2 0",
+      "tempo": 5290.4335734
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 21 0 1200",
+      "tempo": 5290.4336369
+    },
+    {
+      "tx": "FACE 1 02a5769e 22 6 2 0 3500",
+      "tempo": 5290.5433962
+    },
+    {
+      "rx": "ACK 1 02a5769e 22 6 2 0",
+      "tempo": 5290.6509636
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 22 0 1200",
+      "tempo": 5290.6510534
+    },
+    {
+      "tx": "EXPR 1 02a5769e 3 6 0 -1 520",
+      "tempo": 5290.7741623
+    },
+    {
+      "rx": "EACK 1 02a5769e 3 6 0 -1 520",
+      "tempo": 5290.8839086
+    },
+    {
+      "tx": "FACE 1 02a5769e 23 6 2 0 3500",
+      "tempo": 5291.0242642
+    },
+    {
+      "rx": "ACK 1 02a5769e 23 6 2 0",
+      "tempo": 5291.1328753
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 23 0 1200",
+      "tempo": 5291.1329496
+    },
+    {
+      "tx": "EXPR 1 02a5769e 4 6 1 -1 1150",
+      "tempo": 5291.2428484
+    },
+    {
+      "rx": "EACK 1 02a5769e 4 6 1 -1 1150",
+      "tempo": 5291.3507211
+    },
+    {
+      "tx": "SOUND 1 02a5769e 4 6",
+      "tempo": 5291.3508191
+    },
+    {
+      "tx": "FACE 1 02a5769e 24 6 2 0 3500",
+      "tempo": 5291.461239
+    },
+    {
+      "rx": "ACK 1 02a5769e 24 6 2 0",
+      "tempo": 5291.5694731
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 24 0 1200",
+      "tempo": 5291.5695433
+    },
+    {
+      "tx": "MOTOR 2 02a5769e 2 -115 115 900",
+      "tempo": 5291.6786674
+    },
+    {
+      "rx": "MACK 2 02a5769e 2 -115 115 900",
+      "tempo": 5291.8940846
+    },
+    {
+      "tx": "FACE 1 02a5769e 25 6 2 0 3500",
+      "tempo": 5291.8948207
+    },
+    {
+      "rx": "ACK 1 02a5769e 25 6 2 0",
+      "tempo": 5292.0026413
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 25 0 1200",
+      "tempo": 5292.0027062
+    },
+    {
+      "tx": "FACE 1 02a5769e 26 6 2 0 3500",
+      "tempo": 5292.3742096
+    },
+    {
+      "rx": "ACK 1 02a5769e 26 6 2 0",
+      "tempo": 5292.4830491
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 26 0 1200",
+      "tempo": 5292.4831345
+    },
+    {
+      "tx": "STOP 1 02a5769e 3",
+      "tempo": 5292.8273463
+    },
+    {
+      "rx": "SACK 1 02a5769e 3",
+      "tempo": 5292.9352043
+    },
+    {
+      "tx": "FACE 1 02a5769e 27 6 2 0 3500",
+      "tempo": 5292.936071
+    },
+    {
+      "rx": "ACK 1 02a5769e 27 6 2 0",
+      "tempo": 5293.0450774
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 27 0 1200",
+      "tempo": 5293.0451753
+    },
+    {
+      "tx": "FACE 1 02a5769e 28 6 2 0 3500",
+      "tempo": 5293.418598
+    },
+    {
+      "rx": "ACK 1 02a5769e 28 6 2 0",
+      "tempo": 5293.5271613
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 28 0 1200",
+      "tempo": 5293.5272329
+    },
+    {
+      "tx": "EXPR 1 02a5769e 5 6 1 1 950",
+      "tempo": 5293.6373018
+    },
+    {
+      "rx": "EACK 1 02a5769e 5 6 1 1 950",
+      "tempo": 5293.7453213
+    },
+    {
+      "tx": "FACE 1 02a5769e 29 6 2 0 3500",
+      "tempo": 5293.746185
+    },
+    {
+      "rx": "ACK 1 02a5769e 29 6 2 0",
+      "tempo": 5293.8540206
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 29 0 1200",
+      "tempo": 5293.854101
+    },
+    {
+      "tx": "MOTOR 2 02a5769e 3 115 -115 700",
+      "tempo": 5293.963851
+    },
+    {
+      "rx": "MACK 2 02a5769e 3 115 -115 700",
+      "tempo": 5294.1817796
+    },
+    {
+      "tx": "FACE 1 02a5769e 30 6 2 0 3500",
+      "tempo": 5294.1824643
+    },
+    {
+      "rx": "ACK 1 02a5769e 30 6 2 0",
+      "tempo": 5294.2904008
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 30 0 1200",
+      "tempo": 5294.2904837
+    },
+    {
+      "tx": "FACE 1 02a5769e 31 6 2 0 3500",
+      "tempo": 5294.6641803
+    },
+    {
+      "rx": "ACK 1 02a5769e 31 6 2 0",
+      "tempo": 5294.7730547
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 31 0 1200",
+      "tempo": 5294.7731464
+    },
+    {
+      "tx": "STOP 1 02a5769e 4",
+      "tempo": 5294.912476
+    },
+    {
+      "rx": "SACK 1 02a5769e 4",
+      "tempo": 5295.0210437
+    },
+    {
+      "tx": "FACE 1 02a5769e 32 6 2 0 3500",
+      "tempo": 5295.1316241
+    },
+    {
+      "rx": "ACK 1 02a5769e 32 6 2 0",
+      "tempo": 5295.2416095
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 32 0 1200",
+      "tempo": 5295.2416883
+    },
+    {
+      "tx": "EXPR 1 02a5769e 6 6 1 0 1250",
+      "tempo": 5295.3514984
+    },
+    {
+      "rx": "EACK 1 02a5769e 6 6 1 0 1250",
+      "tempo": 5295.4583695
+    },
+    {
+      "tx": "FACE 1 02a5769e 33 6 2 0 3500",
+      "tempo": 5295.4592891
+    },
+    {
+      "rx": "ACK 1 02a5769e 33 6 2 0",
+      "tempo": 5295.5673209
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 33 0 1200",
+      "tempo": 5295.5674203
+    },
+    {
+      "tx": "MOTOR 2 02a5769e 4 -110 -110 1000",
+      "tempo": 5295.677692
+    },
+    {
+      "rx": "MACK 2 02a5769e 4 -110 -110 1000",
+      "tempo": 5295.8951155
+    },
+    {
+      "tx": "FACE 1 02a5769e 34 6 2 0 3500",
+      "tempo": 5295.895973
+    },
+    {
+      "rx": "ACK 1 02a5769e 34 6 2 0",
+      "tempo": 5296.0038208
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 34 0 1200",
+      "tempo": 5296.0039071
+    },
+    {
+      "tx": "FACE 1 02a5769e 35 6 2 0 3500",
+      "tempo": 5296.3787669
+    },
+    {
+      "rx": "ACK 1 02a5769e 35 6 2 0",
+      "tempo": 5296.4873006
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 35 0 1200",
+      "tempo": 5296.4873546
+    },
+    {
+      "tx": "FACE 1 02a5769e 36 6 2 0 3500",
+      "tempo": 5296.8620976
+    },
+    {
+      "rx": "ACK 1 02a5769e 36 6 2 0",
+      "tempo": 5296.9707296
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 36 0 1200",
+      "tempo": 5296.9708328
+    },
+    {
+      "tx": "STOP 1 02a5769e 5",
+      "tempo": 5297.0811679
+    },
+    {
+      "rx": "SACK 1 02a5769e 5",
+      "tempo": 5297.188365
+    },
+    {
+      "tx": "EXPR 1 02a5769e 7 6 2 0 1800",
+      "tempo": 5297.1894827
+    },
+    {
+      "rx": "EACK 1 02a5769e 7 6 2 0 1800",
+      "tempo": 5297.2964105
+    },
+    {
+      "tx": "FACE 1 02a5769e 37 6 2 0 3500",
+      "tempo": 5297.3439504
+    },
+    {
+      "rx": "ACK 1 02a5769e 37 6 2 0",
+      "tempo": 5297.4506905
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 37 0 1200",
+      "tempo": 5297.4508003
+    },
+    {
+      "tx": "FACE 1 02a5769e 38 6 2 0 3500",
+      "tempo": 5297.8211732
+    },
+    {
+      "rx": "ACK 1 02a5769e 38 6 2 0",
+      "tempo": 5297.9304034
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 38 0 1200",
+      "tempo": 5297.9304919
+    },
+    {
+      "tx": "FACE 1 02a5769e 39 6 2 0 3500",
+      "tempo": 5298.3054744
+    },
+    {
+      "rx": "ACK 1 02a5769e 39 6 2 0",
+      "tempo": 5298.4147498
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 39 0 1200",
+      "tempo": 5298.4148515
+    },
+    {
+      "tx": "FACE 1 02a5769e 40 6 2 0 3500",
+      "tempo": 5298.789725
+    },
+    {
+      "rx": "ACK 1 02a5769e 40 6 2 0",
+      "tempo": 5298.8984795
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 40 0 1200",
+      "tempo": 5298.898548
+    },
+    {
+      "tx": "FACE 1 02a5769e 41 6 2 0 3500",
+      "tempo": 5299.2711463
+    },
+    {
+      "rx": "ACK 1 02a5769e 41 6 2 0",
+      "tempo": 5299.3790828
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 41 0 1200",
+      "tempo": 5299.3791584
+    },
+    {
+      "tx": "FACE 1 02a5769e 42 6 2 0 3500",
+      "tempo": 5299.7390953
+    },
+    {
+      "rx": "ACK 1 02a5769e 42 6 2 0",
+      "tempo": 5299.847388
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 42 0 1200",
+      "tempo": 5299.8474714
+    },
+    {
+      "tx": "FACE 1 02a5769e 43 6 2 0 3500",
+      "tempo": 5300.2189637
+    },
+    {
+      "rx": "ACK 1 02a5769e 43 6 2 0",
+      "tempo": 5300.3273801
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 43 0 1200",
+      "tempo": 5300.3274463
+    },
+    {
+      "tx": "FACE 1 02a5769e 44 6 2 0 3500",
+      "tempo": 5300.7022196
+    },
+    {
+      "rx": "ACK 1 02a5769e 44 6 2 0",
+      "tempo": 5300.8091385
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 44 0 1200",
+      "tempo": 5300.809224
+    },
+    {
+      "tx": "FACE 1 02a5769e 45 6 2 0 3500",
+      "tempo": 5301.1834182
+    },
+    {
+      "rx": "ACK 1 02a5769e 45 6 2 0",
+      "tempo": 5301.2929343
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 45 0 1200",
+      "tempo": 5301.2930278
+    },
+    {
+      "tx": "FACE 1 02a5769e 46 6 2 0 3500",
+      "tempo": 5301.6651701
+    },
+    {
+      "rx": "ACK 1 02a5769e 46 6 2 0",
+      "tempo": 5301.7736766
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 46 0 1200",
+      "tempo": 5301.7737805
+    },
+    {
+      "tx": "FACE 1 02a5769e 47 6 2 0 3500",
+      "tempo": 5302.1336658
+    },
+    {
+      "rx": "ACK 1 02a5769e 47 6 2 0",
+      "tempo": 5302.2427724
+    },
+    {
+      "tx": "ACTIVITY 1 02a5769e 47 0 1200",
+      "tempo": 5302.242848
+    },
+    {
+      "tx": "STOP 1 02a5769e 6",
+      "tempo": 5302.3525213
+    },
+    {
+      "rx": "SACK 1 02a5769e 6",
+      "tempo": 5302.4606203
+    },
+    {
+      "tx": "STOP 1 02a5769e 7",
+      "tempo": 5302.4620205
+    },
+    {
+      "rx": "SACK 1 02a5769e 7",
+      "tempo": 5302.5721498
+    },
+    {
+      "tx": "GOODNIGHT 1 02a5769e 8",
+      "tempo": 5302.5721812
+    },
+    {
+      "rx": "NACK 1 02a5769e 8",
+      "tempo": 5302.679185
+    }
+  ],
+  "consulta_modelo": {
+    "pergunta": "O que você estava fazendo com o corpo, como terminou e o que não foi medido?",
+    "resposta": "{\"fala\":\"Estava expressando uma hesitação suave, com movimentos lentos e paradas confirmadas pelo PWM. O corpo não mediou deslocamento, apenas registrou a ação elétrica. Não consigo verificar quanto me movi. O resultado foi confirmado sem prova de deslocamento.\", \"emocao\":\"envergonhada\", \"nivel_emocao\":2, \"intencao_corporal\":{\"nome\":\"expressar\"}}",
+    "executou_proposta": false,
+    "json_valido": true
+  },
+  "prova_deslocamento": false,
+  "emocao_diagnostica": true,
+  "feedback_usuario_real": false
+}

@@ -7,6 +7,16 @@ import unicodedata
 from typing import Any
 
 
+def remover_conector_discursivo_inicial(texto: str) -> str:
+    """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
+
+    Somente o token isolado fora de aspas: não tocar em nomes, 'é', e-mail,
+    negação, condição ou conjunções internas. A fonte original fica no turno.
+    """
+    bruto = str(texto or "").strip()
+    return re.sub(r"^e(?:\s*,\s*|\s+)", "", bruto, count=1, flags=re.IGNORECASE)
+
+
 _MOLDURA_METALINGUISTICA_RE = re.compile(
     r"^(?:"
     r"como\s+(?:eu|voce|você)\s+"

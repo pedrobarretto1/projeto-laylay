@@ -1,0 +1,75 @@
+--- protecao_antes.h
++++ protecao_corporal.h
+@@ -54,6 +54,14 @@
+   vigiaProtecao = false;
+   if (reflexoProtecaoAtivo() || !strcmp(faseProtecao,"ESPERA_BUSCA")) terminarProtecao("CANCELADA", millis());
+ }
++void suspenderVigiaProtecao(uint32_t agora) {
++  if (!origemVigiaProtecao) return;
++  // SENTRY0/lease vencida retiram iniciativa temporariamente. Não são STOP.
++  // Só a busca da parede pode esperar nova concessão; borda continua finita.
++  if (!strcmp(causaProtecao,"OBSTACULO")) {
++    if (reflexoProtecaoAtivo()) terminarProtecao("ESPERA_BUSCA",agora);
++  } else if (reflexoProtecaoAtivo()) terminarProtecao("CANCELADA",agora);
++}
+ int expressaoProtecaoCorporal(uint32_t agora) {
+   if (!conectado || uint32_t(agora - ultimoPacote) >= ttl) return 0;
+   return reacaoAlertaProtecao;
+@@ -148,10 +156,16 @@
+     // A trava pertence ao episódio: não exigir frente livre para reconhecer
+     // uma parede nova após a borda desaparecer. Isto não libera avanço.
+     bool trocarParaParede=travaProtecao && !strcmp(faseProtecao,"BLOQUEADA")
+-        && strcmp(causaProtecao,"OBSTACULO") && vigiaProtecao && conectado
++        && strcmp(causaProtecao,"OBSTACULO");
++    bool repetirBusca=!strcmp(faseProtecao,"ESPERA_BUSCA")
++        && uint32_t(agora-inicioFaseProtecao)>=4000;
++    bool admitirBusca=(trocarParaParede || repetirBusca) && vigiaProtecao && conectado
+         && uint32_t(agora-ultimoPacote)<ttl && motoresProntos && telaInicializada
+         && !strcmp(riscoProtecao(agora),"OBSTACULO") && distancias[1].mm<=120;
+-    if (!trocarParaParede) amostrasTrocaRiscoProtecao=0;
++    if (!admitirBusca) {
++      amostrasTrocaRiscoProtecao=0;
++      ultimaTrocaRiscoProtecao=distancias[1].medidaEm;
++    }
+     else if (ultimaTrocaRiscoProtecao!=distancias[1].medidaEm) {
+       ultimaTrocaRiscoProtecao=distancias[1].medidaEm;
+       if (++amostrasTrocaRiscoProtecao>=3) { iniciarProtecao("OBSTACULO",0,agora); return true; }
+@@ -159,14 +173,8 @@
+     if (travaProtecao && contarSeguraProtecao(agora, true)) {
+       travaProtecao = false; faseProtecao = "PRONTA";
+     }
+-    // A busca esgotada descansa. Só a concessão renovada permite outra busca;
+-    // STOP/falha/borda não entram neste recomeço nem são apagados pelo relógio.
+-    if (!strcmp(faseProtecao,"ESPERA_BUSCA") && vigiaProtecao && conectado
+-        && uint32_t(agora-ultimoPacote)<ttl && motoresProntos && telaInicializada
+-        && uint32_t(agora-inicioFaseProtecao)>=4000
+-        && !strcmp(riscoProtecao(agora),"OBSTACULO")) {
+-      iniciarProtecao("OBSTACULO",0,agora); return true;
+-    }
++    // Busca esgotada/suspensa só recomeça pela admissão acima: concessão,
++    // descanso e três leituras inferiores novas. STOP/falha não são apagados.
+     if (motorEmUso() && conectado && uint32_t(agora - ultimoPacote) < ttl
+         && uint32_t(agora - inicioMotor) < duracaoMotor) {
+       const char *risco = riscoProtecao(agora);
+@@ -180,9 +188,11 @@
+     return false;
+   }
+   if (!conectado || !sessao[0] || uint32_t(agora - ultimoPacote) >= ttl
+-      || (origemVigiaProtecao && !vigiaProtecao)
+       || uint32_t(agora - inicioProtecao) >= 3000 || !motoresProntos || !telaInicializada || !telaPresente()) {
+     terminarProtecao("CANCELADA", millis()); return true;
++  }
++  if (origemVigiaProtecao && !vigiaProtecao) {
++    suspenderVigiaProtecao(agora); return true;
+   }
+   agora = millis();
+   if (uint32_t(agora - ultimoPacote) >= ttl || uint32_t(agora - inicioProtecao) >= 3000) {
+@@ -299,7 +309,7 @@
+     tentativasBuscaProtecao=recuosMedrososProtecao=0;
+     novaConcessaoVigiaPendente=false;
+   }
+-  if (!vigiaProtecao && origemVigiaProtecao && (reflexoProtecaoAtivo() || !strcmp(faseProtecao,"ESPERA_BUSCA"))) terminarProtecao("CANCELADA",millis());
++  if (!vigiaProtecao) suspenderVigiaProtecao(millis());
+   responder("SENTRYACK 1 %s %lu %lu\n",sessao,(unsigned long)seq,(unsigned long)ativo);
+ #else
+   responderLinha("ERROR 1 VIGIA_DESABILITADA");

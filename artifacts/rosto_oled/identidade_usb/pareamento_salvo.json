@@ -1,0 +1,12 @@
+{
+  "resultado": {
+    "saved": true,
+    "restart_required": true
+  },
+  "pareamento": {
+    "dispositivo": "03d017988fdecda9",
+    "nome": "Corpo da Laylay"
+  },
+  "outros_campos_preservados": true,
+  "backup_privado": "configuracao.env.identidade-usb.bak"
+}

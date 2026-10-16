@@ -74,6 +74,8 @@ _DISPATCHER_GRUPOS = {
     ),
 }
 
+_DISPATCHER_OPCIONAIS = ("executar_intencao_observando", "executar_ato_observando", "_email_executar")
+
 _FINALIZACAO_GRUPOS = {
     "ia": ("limpar_resposta_da_ia",),
     "voz_memoria": (
@@ -179,6 +181,9 @@ class ComposicaoContextosIARuntime:
             nome: self._grupo(chaves)
             for nome, chaves in _DISPATCHER_GRUPOS.items()
         }
+        for nome in _DISPATCHER_OPCIONAIS:
+            if callable(self._servicos.get(nome)):
+                grupos["execucao"][nome] = self._servicos[nome]
         agrupar = self._servicos.get("_agrupar_resultados_operacionais")
         if callable(agrupar):
             grupos["execucao"]["_agrupar_resultados_operacionais"] = agrupar
@@ -215,6 +220,7 @@ class ComposicaoContextosIARuntime:
             "_agrupar_resultados_operacionais",
         }
         usados.update(_EXECUCAO)
+        usados.update(_DISPATCHER_OPCIONAIS)
         for grupo in (*_DISPATCHER_GRUPOS.values(), *_FINALIZACAO_GRUPOS.values()):
             usados.update(grupo)
         self._servicos = {
@@ -240,6 +246,13 @@ class ComposicaoContextosIARuntime:
             "aba_url_atual": url,
             "turno_atual": dict(mente.get("turno_atual") or {}),
             "contrato_fala_atual": dict(mente.get("contrato_fala_atual") or {}),
+            # Mesma fonte histórica do prompt normal, sem expor a memória
+            # inteira ou usar o último receipt como prova da fala anterior.
+            "registro_semantico": {"falas_observadas": list(
+                dict(mente.get("registro_semantico") or {}).get("falas_observadas") or []
+            )},
+            "ultima_resposta": str(mente.get("ultima_resposta") or ""),
+            "continuidade_fala_ts": mente.get("continuidade_fala_ts"),
             "fundamentacao_factual_turno": dict(
                 mente.get("fundamentacao_factual_turno") or {}
             ),

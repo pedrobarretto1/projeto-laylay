@@ -1183,10 +1183,13 @@ def personalizar_confirmacao_composta_llm(
                     return _com_motivo_fallback(fallback, "identidade_composta_divergente")
                 identidade = identidade_host
             trecho = re.sub(r"\s+", " ", str(campo.get("trecho") or "")).strip()
-            inicio = fala.find(trecho) if trecho else -1
+            # Receipt e ocorrência textual têm a mesma ordem congelada pelo
+            # host. Texto igual em outro ato não reutiliza o primeiro intervalo.
+            inicio = fala.find(trecho, intervalos[-1][1] if intervalos else 0) if trecho else -1
             fim = inicio + len(trecho)
             if (
-                identidade not in por_id or identidade in cobertos or inicio < 0
+                identidade not in por_id or identidade != itens[posicao].id_solicitacao
+                or identidade in cobertos or inicio < 0
                 or any(inicio < b and fim > a for a, b in intervalos)
             ):
                 return _com_motivo_fallback(fallback, "vinculo_composto_invalido")

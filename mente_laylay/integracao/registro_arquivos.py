@@ -98,6 +98,12 @@ class RegistroArquivosLeitura:
         bruto = dict(self.servico.diagnostico() or {})
         return {chave: bruto[chave] for chave in _CAMPOS_DIAGNOSTICO if chave in bruto}
 
+    def ler_anexo(self, caminho: str) -> dict[str, Any]:
+        ler = getattr(self.servico, "ler_anexo", None)
+        if not callable(ler):
+            return {"ok": False, "status": "leitura_anexo_indisponivel", "confirmado": False}
+        return dict(ler(caminho) or {})
+
 
 def registrar_arquivos_leitura(servico: Any) -> RegistroArquivosLeitura:
     if isinstance(servico, RegistroArquivosLeitura):

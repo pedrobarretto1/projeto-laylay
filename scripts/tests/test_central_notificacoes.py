@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import threading
+import pytest
 
 from mente_laylay.autonomia.central_notificacoes import CentralNotificacoesRuntime
 from mente_laylay.autonomia.porteiro_proatividade import PorteiroProatividadeRuntime
@@ -204,6 +205,94 @@ def test_email_adiado_atravessa_central_porteiro_e_voz_ate_entrega(tmp_path: Pat
     assert falas
     assert voz.proativa_buffer == []
     assert central.diagnostico()["pendentes"] == 0
+
+
+def _consulta_entregue(central, itens, fala, *, origem="executor", confirmado=True):
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    receipt = ResultadoAcao(intent="EMAIL_READ", status="emails_lidos", origem=origem,
+        confirmado=confirmado, executou=True, id_solicitacao="consulta-1",
+        contexto={"itens_apresentados": itens})
+    central.registrar_apresentacao_resultados(resultados=(receipt,), fala=fala,
+        id_entrega="turno:1", canal_entrega="texto_publicado")
+
+
+@pytest.mark.parametrize("origem_evento", ["email", "sistema"])
+def test_receipt_manual_evitar_reanuncio_sem_apagar_evento_guardado(tmp_path, origem_evento):
+    falas = []
+    central = _runtime(tmp_path, agendar_fala_cb=lambda *a, **k: falas.append((a,k)) or True)
+    _consulta_entregue(central, [{"origem": origem_evento, "uid": "evento:1", "texto": "Mensagem nova"}], "Mensagem nova")
+    assert central.ingerir([{"origem": origem_evento, "uid": "evento:1", "titulo": "Mensagem nova"}]) == {"evento:1"}
+    assert falas == []
+    assert central.diagnostico()["eventos"] == 1 and central.diagnostico()["pendentes"] == 0
+    assert "Mensagem nova" in central.resumo()
+
+
+@pytest.mark.parametrize("falha", ["nao_confirmado", "llm", "nao_mostrado", "canal_invalido"])
+def test_consulta_sem_receipt_de_apresentacao_nao_suprime_aviso(tmp_path, falha):
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    falas=[]
+    central=_runtime(tmp_path, agendar_fala_cb=lambda *a, **k: falas.append((a,k)) or True)
+    receipt=ResultadoAcao(intent="EMAIL_READ",status="emails_lidos",id_solicitacao="consulta-1",
+        executou=True,confirmado=falha != "nao_confirmado",origem="llm" if falha=="llm" else "executor",
+        contexto={"itens_apresentados":[{"origem":"email","uid":"evento:1","texto":"Mensagem nova"}]})
+    central.registrar_apresentacao_resultados(resultados=(receipt,),fala="Outra coisa" if falha=="nao_mostrado" else "Mensagem nova",
+        id_entrega="turno:1",canal_entrega="fila" if falha=="canal_invalido" else "texto_publicado")
+    central.ingerir_emails([{"uid":"evento:1","assunto":"Mensagem nova"}])
+    assert len(falas)==1 and central.diagnostico()["pendentes"]==1
+
+
+def test_lote_ja_enfileirado_recomposto_somente_com_itens_ainda_nao_apresentados(tmp_path):
+    falas=[]
+    central=_runtime(tmp_path, agendar_fala_cb=lambda *a, **k: falas.append((a,k)) or True)
+    central.ingerir_emails([{"uid":"a","assunto":"Mensagem A"},{"uid":"b","assunto":"Mensagem B"}])
+    _consulta_entregue(central,[{"origem":"email","uid":"a","texto":"Mensagem A"}],"Mensagem A")
+    preparado=falas[0][1]["preparar_entrega_cb"]()
+    assert "Mensagem B" in preparado["texto"] and "Mensagem A" not in preparado["texto"]
+    falas[0][1]["ao_concluir"](True,"entregue")
+    estado=json.loads((tmp_path/"central.json").read_text(encoding="utf-8"))
+    assert estado["eventos"][0]["anunciado"] is False
+    assert estado["eventos"][1]["anunciado"] is True
+
+
+def test_lote_totalmente_apresentado_nao_produz_nova_fala(tmp_path):
+    falas=[]
+    central=_runtime(tmp_path, agendar_fala_cb=lambda *a, **k: falas.append((a,k)) or True)
+    central.ingerir_emails([{"uid":"a","assunto":"Mensagem A"}])
+    _consulta_entregue(central,[{"origem":"email","uid":"a","texto":"Mensagem A"}],"Mensagem A")
+    assert falas[0][1]["preparar_entrega_cb"]() is None
+    assert central.diagnostico()["pendentes"]==0
+
+
+def test_receipt_manual_persiste_mas_nao_satisfaz_outro_id(tmp_path):
+    central=_runtime(tmp_path)
+    _consulta_entregue(central,[{"uid":"a","origem":"email","texto":"Mesmo assunto"}],"Mesmo assunto")
+    falas=[]
+    reaberta=_runtime(tmp_path,agendar_fala_cb=lambda *a,**k:falas.append((a,k)) or True)
+    reaberta.ingerir_emails([{"uid":"a","assunto":"Mesmo assunto"},{"uid":"b","assunto":"Mesmo assunto"}])
+    assert len(falas)==1
+    preparado=falas[0][1]["preparar_entrega_cb"]()
+    assert preparado["texto"].count("Mesmo assunto")==1
+    assert reaberta.diagnostico()["eventos"]==2 and reaberta.diagnostico()["pendentes"]==1
+
+
+def test_voz_revalida_apresentacao_sem_publicar_ou_falar_lote_satisfeito(tmp_path):
+    voz=VozRuntime(fallback_fala="fallback",voice="voz",edge_tts_mod=None,sounddevice_mod=None,
+        soundfile_mod=None,pyttsx3_mod=None,limpar_para_voz_cb=lambda t:t,formatar_mensagem_cb=lambda t,**k:t,
+        ducking_volume_cb=lambda *_:None,modular_audio_params_cb=lambda *_:("","",""),
+        compor_fala_proativa_cb=lambda itens:(itens[0]["texto"],"calma",1),ajustar_estado_fala_cb=lambda *_:None,
+        proativa_permitida_cb=lambda:True,timer_factory=_TimerControlado,interrupt_event=threading.Event())
+    falas=[]
+    textos=[]
+    voz.falar=lambda *a,**k:falas.append(a) or True
+    voz.publicar_texto_proativo_cb=lambda *a,**k:textos.append(a) or True
+    central=_runtime(tmp_path,agendar_fala_cb=voz.agendar_fala_proativa)
+    central.ingerir_emails([{"uid":"a","assunto":"Mensagem A"}])
+    assert voz.proativa_buffer and central.diagnostico()["pendentes"]==1
+    _consulta_entregue(central,[{"uid":"a","origem":"email","texto":"Mensagem A"}],"Mensagem A")
+    for item in voz.proativa_buffer: item["nao_antes_ts"]=0
+    voz.flush_fala_proativa()
+    assert textos==falas==[] and voz.proativa_buffer==[]
+    assert central.diagnostico()["pendentes"]==0
 
 
 def test_preferencia_explicita_persiste(tmp_path: Path) -> None:

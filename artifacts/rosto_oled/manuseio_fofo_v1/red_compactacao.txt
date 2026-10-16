@@ -1,0 +1,54 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_ test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry[corpo] _
+
+dominio = 'corpo'
+
+    @pytest.mark.parametrize("dominio",["corpo","cotidiano"])
+    def test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry(dominio):
+        from mente_laylay.integracao.llm_http import compactar_payload_llm_local
+        from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
+        atual={"role":"system","content":"EVENTO COGNITIVO ESTRUTURADO. "+"contexto anterior "*120+
+            json.dumps({"dominio":dominio,"fato":"corpo permaneceu inclinado","autoriza_execucao":False})+
+            " RECLAMONA_FOFA_NO_PASSADO_SEM_INVENTAR_COLO"}
+        p={"messages":[{"role":"system","content":BASE_SYSTEM_PROMPT},
+            {"role":"user","content":"última fala real independente"},atual],"max_tokens":180}
+        for _ in range(2):
+            p=compactar_payload_llm_local(p)
+>           assert p["messages"][-1]==atual
+E           assert {'role': 'use...independente'} == {'role': 'sys...NVENTAR_COLO'}
+E             
+E             Differing items:
+E             {'content': 'última fala real independente'} != {'content': 'EVENTO COGNITIVO ESTRUTURADO. contexto anterior contexto anterior contexto anterior contexto anterior con...corpo", "fato": "corpo permaneceu inclinado", "autoriza_execucao": false} RECLAMONA_FOFA_NO_PASSADO_SEM_INVENTAR_COLO'}
+E             {'role': 'user'} != {'role': 'system'}
+E             Use -v to get more diff
+
+scripts\tests\test_manuseio_fofo.py:234: AssertionError
+_ test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry[cotidiano] _
+
+dominio = 'cotidiano'
+
+    @pytest.mark.parametrize("dominio",["corpo","cotidiano"])
+    def test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry(dominio):
+        from mente_laylay.integracao.llm_http import compactar_payload_llm_local
+        from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
+        atual={"role":"system","content":"EVENTO COGNITIVO ESTRUTURADO. "+"contexto anterior "*120+
+            json.dumps({"dominio":dominio,"fato":"corpo permaneceu inclinado","autoriza_execucao":False})+
+            " RECLAMONA_FOFA_NO_PASSADO_SEM_INVENTAR_COLO"}
+        p={"messages":[{"role":"system","content":BASE_SYSTEM_PROMPT},
+            {"role":"user","content":"última fala real independente"},atual],"max_tokens":180}
+        for _ in range(2):
+            p=compactar_payload_llm_local(p)
+>           assert p["messages"][-1]==atual
+E           assert {'role': 'use...independente'} == {'role': 'sys...NVENTAR_COLO'}
+E             
+E             Differing items:
+E             {'content': 'última fala real independente'} != {'content': 'EVENTO COGNITIVO ESTRUTURADO. contexto anterior contexto anterior contexto anterior contexto anterior con...diano", "fato": "corpo permaneceu inclinado", "autoriza_execucao": false} RECLAMONA_FOFA_NO_PASSADO_SEM_INVENTAR_COLO'}
+E             {'role': 'user'} != {'role': 'system'}
+E             Use -v to get more diff
+
+scripts\tests\test_manuseio_fofo.py:234: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_manuseio_fofo.py::test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry[corpo]
+FAILED scripts/tests/test_manuseio_fofo.py::test_instrucao_final_de_evento_preserva_fatos_e_limites_em_compactacao_e_retry[cotidiano]
+2 failed, 17 deselected in 0.86s

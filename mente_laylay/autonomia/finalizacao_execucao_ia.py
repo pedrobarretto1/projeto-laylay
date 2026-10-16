@@ -281,6 +281,8 @@ def finalizar_execucao_resposta_ia(
                 "fala": fala_limpa_original,
                 "registrar_no_historico": True,
                 "tipo": "conversa",
-                "audio_entregue": bool(fala_entregue),
+                "entrega_aceita": bool(fala_entregue),
+                # Aceitação também cobre texto e fila; não prova reprodução.
+                "audio_entregue": None,
             }
     return resultado_final

@@ -1,0 +1,28 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+__________ test_dev_publica_resumo_e_transicoes_sem_flood_ou_mutacao __________
+scripts\tests\test_dev_corpo.py:20: in test_dev_publica_resumo_e_transicoes_sem_flood_ou_mutacao
+    dev.configurar_corpo_getter(lambda: dados)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'DevConsoleRuntime' object has no attribute 'configurar_corpo_getter'. Did you mean: 'configurar_estado_getter'?
+______ test_bridge_preserva_body_allowlist_sem_credenciais_ou_autoridade ______
+scripts\tests\test_dev_corpo.py:40: in test_bridge_preserva_body_allowlist_sem_credenciais_ou_autoridade
+    dev.configurar_corpo_getter(lambda: dados)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'DevConsoleRuntime' object has no attribute 'configurar_corpo_getter'. Did you mean: 'configurar_estado_getter'?
+__________ test_getter_falhou_invalida_estado_sem_anunciar_movimento __________
+scripts\tests\test_dev_corpo.py:51: in test_getter_falhou_invalida_estado_sem_anunciar_movimento
+    dev.configurar_corpo_getter(lambda: dados_corpo("gesticulando"))
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'DevConsoleRuntime' object has no attribute 'configurar_corpo_getter'. Did you mean: 'configurar_estado_getter'?
+____ test_terminal_recebe_body_antes_de_abrir_aba_e_invalida_na_desconexao ____
+scripts\tests\test_dev_corpo.py:63: in test_terminal_recebe_body_antes_de_abrir_aba_e_invalida_na_desconexao
+    dev.configurar_corpo_getter(lambda: dados_corpo())
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'DevConsoleRuntime' object has no attribute 'configurar_corpo_getter'. Did you mean: 'configurar_estado_getter'?
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_dev_corpo.py::test_dev_publica_resumo_e_transicoes_sem_flood_ou_mutacao
+FAILED scripts/tests/test_dev_corpo.py::test_bridge_preserva_body_allowlist_sem_credenciais_ou_autoridade
+FAILED scripts/tests/test_dev_corpo.py::test_getter_falhou_invalida_estado_sem_anunciar_movimento
+FAILED scripts/tests/test_dev_corpo.py::test_terminal_recebe_body_antes_de_abrir_aba_e_invalida_na_desconexao
+4 failed in 0.98s

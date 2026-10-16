@@ -99,11 +99,16 @@ def test_modo_explicito_gesto_cooperativo_cooldown_sem_replay_da_emocao_antiga()
     emocao(estado, rosto, "brava")
     assert not corpo.companhia.processar()["ok"]
     agora[0] += 21
-    assert not corpo.companhia.processar()["ok"], "gesto descartado não aguarda no cooldown"
+    # Continuidade autorizada: reavaliar a emoção ainda vigente, sem fila de
+    # pacotes antigos. A ocorrência só se consome quando chega ao executor.
+    assert corpo.companhia.processar()["ok"]
+    quantidade = len(motores(esp))
+    agora[0] += 3
+    assert not corpo.companhia.processar()["ok"], "emoção já expressa não autoriza replay"
     emocao(estado, rosto, "alegre")
     # Tristeza usa um movimento; alegria agora tem resposta e acomodação.
-    assert corpo.companhia.processar()["ok"] and len(motores(esp)) == 3
-    assert corpo.companhia.diagnostico()["gestos_emitidos"] == 2
+    assert corpo.companhia.processar()["ok"] and len(motores(esp)) == quantidade + 2
+    assert corpo.companhia.diagnostico()["gestos_emitidos"] == 3
 
 
 @pytest.mark.parametrize("invalidar", ["sessao", "ack", "stop", "manual"])
@@ -184,13 +189,15 @@ def test_erro_motor_alimenta_observador_visual_real_sem_transformar_stop_em_falh
 
 def test_fala_gesticula_uma_vez_e_silencio_nao_concede_modo():
     estado, esp, rosto, corpo, _, agora = montar()
-    estado.atualizar_campos("conversacional", is_speaking=True)
+    # is_speaking sem audio_playing é preparação de fala no contrato visual;
+    # o gesto acompanha reprodução efetiva, não síntese em andamento.
+    estado.atualizar_campos("conversacional", is_speaking=True, audio_playing=True)
     assert rosto.sincronizar()
     assert not corpo.companhia.processar()["ok"] and not motores(esp)
-    estado.atualizar_campos("conversacional", is_speaking=False)
+    estado.atualizar_campos("conversacional", is_speaking=False, audio_playing=False)
     assert rosto.sincronizar()
     assert ativar(corpo)["ok"]
-    estado.atualizar_campos("conversacional", is_speaking=True)
+    estado.atualizar_campos("conversacional", is_speaking=True, audio_playing=True)
     assert rosto.sincronizar()
     assert corpo.companhia.processar()["ok"] and len(motores(esp)) == 1
     for _ in range(3):

@@ -1,0 +1,49 @@
+--- baseline/firmware/rosto_laylay/protecao_corporal.h
++++ firmware/rosto_laylay/protecao_corporal.h
+@@ -141,10 +141,12 @@
+ }
+ bool admitirMovimentoProtegido(uint32_t seq) {
+   const char *risco = riscoProtecao(millis());
+-  if (reflexoProtecaoAtivo()) return false;
+-  if (!strcmp(risco, "NENHUM") && !travaProtecao) return true;
+-  if (!travaProtecao) iniciarProtecao(risco, seq, millis());
++  bool reflexoAtivo = reflexoProtecaoAtivo();
++  if (!reflexoAtivo && !strcmp(risco, "NENHUM") && !travaProtecao) return true;
++  if (!reflexoAtivo && !travaProtecao) iniciarProtecao(risco, seq, millis());
+   else {
++    // A proteção já possui os PWM. Recusa correlacionada distingue essa
++    // disputa normal de um MOTOR perdido; não reinicia o episódio local.
+     sequenciaMotor = seq;
+     responder("HAZARD 1 %s %lu %lu %s\n", sessao, (unsigned long)seq,
+       (unsigned long)incidenteProtecao, strcmp(risco, "NENHUM") ? risco : "AGUARDANDO_ESTABILIDADE");
+@@ -280,6 +282,7 @@
+   return true;
+ }
+ #else
++bool reflexoProtecaoAtivo() { return false; }
+ bool atualizarProtecaoCorporal(uint32_t) { return false; }
+ bool admitirMovimentoProtegido(uint32_t) { return true; }
+ void cancelarProtecaoCorporal() {}
+--- baseline/firmware/rosto_laylay/rosto_laylay.ino
++++ firmware/rosto_laylay/rosto_laylay.ino
+@@ -77,6 +77,7 @@
+ bool ackMotorEmitido = false;
+ bool atualizarProtecaoCorporal(uint32_t agora);
+ bool admitirMovimentoProtegido(uint32_t seq);
++bool reflexoProtecaoAtivo();
+ void cancelarProtecaoCorporal();
+ bool medoProtecaoCorporal(uint32_t agora);
+ int expressaoProtecaoCorporal(uint32_t agora);
+@@ -318,7 +319,11 @@
+       || agora - ultimoPacote >= ttl || !telaInicializada || !motoresProntos) {
+     responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
+   }
+-  if (!parada && (motorPendente || motorAtivo)) { responderLinha("ERROR 1 MOTOR_OCUPADO"); return; }
++  if (!parada && (motorPendente || motorAtivo)) {
++    if (reflexoProtecaoAtivo()) admitirMovimentoProtegido(seq);
++    else responderLinha("ERROR 1 MOTOR_OCUPADO");
++    return;
++  }
+   bool oledPresente = telaPresente();
+   agora = millis(); // A consulta I2C pode ter consumido a vigência da FACE.
+   if (!oledPresente || agora - ultimoPacote >= ttl) {

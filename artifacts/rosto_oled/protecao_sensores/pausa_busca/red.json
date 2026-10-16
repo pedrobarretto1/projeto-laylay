@@ -1,0 +1,37 @@
+[
+  {
+    "caso": "pausa_ativa",
+    "exit": -1073740791,
+    "resultado": "Assertion failed: incidenteProtecao>=2 && girouDepois, file firmware\\rosto_laylay\\validacao_host\\validar_linguagem_sensores.cpp, line 43"
+  },
+  {
+    "caso": "pausa_descanso",
+    "exit": -1073740791,
+    "resultado": "Assertion failed: incidenteProtecao>=2 && girouDepois, file firmware\\rosto_laylay\\validacao_host\\validar_linguagem_sensores.cpp, line 43"
+  },
+  {
+    "caso": "pausa_lease",
+    "exit": -1073740791,
+    "resultado": "Assertion failed: incidenteProtecao>=2 && girouDepois, file firmware\\rosto_laylay\\validacao_host\\validar_linguagem_sensores.cpp, line 43"
+  },
+  {
+    "caso": "pausa_stop",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_borda",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "parede",
+    "exit": 0,
+    "resultado": "PAREDE_GREEN: busca, descanso e nova tentativa autorizada"
+  },
+  {
+    "caso": "transicao",
+    "exit": 0,
+    "resultado": "TRANSICAO_GREEN: borda resolvida admite busca de parede com tres amostras novas"
+  }
+]

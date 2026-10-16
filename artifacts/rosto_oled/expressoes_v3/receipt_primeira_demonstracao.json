@@ -1,0 +1,2327 @@
+{
+  "falha": "",
+  "passos": [
+    {
+      "emocao": "alegre",
+      "retorno": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      },
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "15d53a85",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          1,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": true,
+          "motivo": "",
+          "fase": [
+            1,
+            2,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": true,
+          "parada_confirmada": true,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "envergonhada",
+      "retorno": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      },
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "15d53a85",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          6,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": true,
+          "motivo": "",
+          "fase": [
+            6,
+            2,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": true,
+          "parada_confirmada": true,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "surpresa",
+      "retorno": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      },
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "15d53a85",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          5,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": true,
+          "motivo": "",
+          "fase": [
+            5,
+            2,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": true,
+          "parada_confirmada": true,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "emocao": "brava",
+      "retorno": {
+        "ok": true,
+        "estado": "confirmado",
+        "status": "plano_confirmado",
+        "falhas": []
+      },
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "15d53a85",
+        "transporte": "serial",
+        "modo_conexao": "manual",
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          3,
+          2,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "expressao": {
+          "suportado": true,
+          "confirmada": true,
+          "motivo": "",
+          "fase": [
+            3,
+            2,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": true,
+          "parada_confirmada": true,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "direcao": "tx",
+      "pacote": "HELLO 1 15d53a85",
+      "tempo": 16207.4399806
+    },
+    {
+      "direcao": "tx",
+      "pacote": "CAPS 1 15d53a85",
+      "tempo": 16207.5402869
+    },
+    {
+      "direcao": "tx",
+      "pacote": "GCAPS 1 15d53a85",
+      "tempo": 16207.648607
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MCAPS 1 15d53a85",
+      "tempo": 16207.7581799
+    },
+    {
+      "direcao": "tx",
+      "pacote": "LCAPS 1 15d53a85",
+      "tempo": 16207.866124
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SCAPS 1 15d53a85",
+      "tempo": 16207.9752012
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ECAPS 1 15d53a85",
+      "tempo": 16208.0844586
+    },
+    {
+      "direcao": "tx",
+      "pacote": "RCAPS 1 15d53a85",
+      "tempo": 16208.1944958
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 1 0 1 0 3500",
+      "tempo": 16208.3054763
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 1 0 1 0",
+      "tempo": 16208.4144877
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 1 0 1200",
+      "tempo": 16208.4145705
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 15d53a85 1 0",
+      "tempo": 16208.5248696
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 15d53a85 1 0",
+      "tempo": 16208.6342502
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 2 0 1 0 3500",
+      "tempo": 16208.8850561
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 2 0 1 0",
+      "tempo": 16208.9946856
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 2 0 1200",
+      "tempo": 16208.9947527
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 3 0 1 0 3500",
+      "tempo": 16209.3679641
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 3 0 1 0",
+      "tempo": 16209.4763652
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 3 0 1200",
+      "tempo": 16209.4764357
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 4 0 1 0 3500",
+      "tempo": 16209.8515701
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 4 0 1 0",
+      "tempo": 16209.9618491
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 4 0 1200",
+      "tempo": 16209.9619136
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 5 0 1 0 3500",
+      "tempo": 16210.3352882
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 5 0 1 0",
+      "tempo": 16210.4444307
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 5 0 1200",
+      "tempo": 16210.4444984
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 6 0 1 0 3500",
+      "tempo": 16210.8027513
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 6 0 1 0",
+      "tempo": 16210.9129222
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 6 0 1200",
+      "tempo": 16210.9129887
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 7 0 1 0 3500",
+      "tempo": 16211.2866667
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 7 0 1 0",
+      "tempo": 16211.3967114
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 7 0 1200",
+      "tempo": 16211.3967639
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 8 0 1 0 3500",
+      "tempo": 16211.757328
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 8 0 1 0",
+      "tempo": 16211.8658771
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 8 0 1200",
+      "tempo": 16211.8659604
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 9 0 1 0 3500",
+      "tempo": 16212.2390172
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 9 0 1 0",
+      "tempo": 16212.3484984
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 9 0 1200",
+      "tempo": 16212.3485667
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 10 0 1 0 3500",
+      "tempo": 16212.7091976
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 10 0 1 0",
+      "tempo": 16212.8180071
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 10 0 1200",
+      "tempo": 16212.818084
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 11 0 1 0 3500",
+      "tempo": 16213.1786336
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 11 0 1 0",
+      "tempo": 16213.2878537
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 11 0 1200",
+      "tempo": 16213.2879226
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 12 0 1 0 3500",
+      "tempo": 16213.6612026
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 12 0 1 0",
+      "tempo": 16213.7706875
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 12 0 1200",
+      "tempo": 16213.7707514
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 13 1 2 0 3500",
+      "tempo": 16214.0757836
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 13 1 2 0",
+      "tempo": 16214.1769552
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 13 0 1200",
+      "tempo": 16214.1770353
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 14 1 2 0 3500",
+      "tempo": 16214.28787
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 14 1 2 0",
+      "tempo": 16214.3981129
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 14 0 1200",
+      "tempo": 16214.3981835
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 1 1 0 0 412",
+      "tempo": 16214.5089839
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 1 1 0 0 412",
+      "tempo": 16214.6172089
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 2 1 1 0 754",
+      "tempo": 16214.7417265
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 2 1 1 0 754",
+      "tempo": 16214.8503125
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 15d53a85 2 3",
+      "tempo": 16214.8504094
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 15d53a85 2 3",
+      "tempo": 16214.959458
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 15 1 2 0 3500",
+      "tempo": 16214.9596181
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 15 1 2 0",
+      "tempo": 16215.0692713
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 15 0 1200",
+      "tempo": 16215.0693526
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 16 1 2 0 3500",
+      "tempo": 16215.1783705
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 16 1 2 0",
+      "tempo": 16215.2869631
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 16 0 1200",
+      "tempo": 16215.2870464
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 1 -120 -120 504",
+      "tempo": 16215.3980626
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 1 -120 -120 504",
+      "tempo": 16215.6161575
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 17 1 2 0 3500",
+      "tempo": 16215.6163036
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 17 1 2 0",
+      "tempo": 16215.7253995
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 17 0 1200",
+      "tempo": 16215.725486
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 18 1 2 0 3500",
+      "tempo": 16216.0839425
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 18 1 2 0",
+      "tempo": 16216.1935875
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 18 0 1200",
+      "tempo": 16216.1936599
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 1",
+      "tempo": 16216.304313
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 1",
+      "tempo": 16216.4116866
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 3 1 1 1 1314",
+      "tempo": 16216.5374083
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 3 1 1 1 1314",
+      "tempo": 16216.6476098
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 19 1 2 0 3500",
+      "tempo": 16216.6478549
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 19 1 2 0",
+      "tempo": 16216.7560904
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 19 0 1200",
+      "tempo": 16216.7561497
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 20 1 2 0 3500",
+      "tempo": 16216.8641871
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 20 1 2 0",
+      "tempo": 16216.9729036
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 20 0 1200",
+      "tempo": 16216.972981
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 2 180 -180 1064",
+      "tempo": 16217.0821943
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 2 180 -180 1064",
+      "tempo": 16217.2992448
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 21 1 2 0 3500",
+      "tempo": 16217.2993996
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 21 1 2 0",
+      "tempo": 16217.4087932
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 21 0 1200",
+      "tempo": 16217.4088341
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 22 1 2 0 3500",
+      "tempo": 16217.7699235
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 22 1 2 0",
+      "tempo": 16217.8781093
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 22 0 1200",
+      "tempo": 16217.8781619
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 23 1 2 0 3500",
+      "tempo": 16218.239672
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 23 1 2 0",
+      "tempo": 16218.3488738
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 23 0 1200",
+      "tempo": 16218.3489341
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 2",
+      "tempo": 16218.4577975
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 2",
+      "tempo": 16218.5690753
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 4 1 1 -1 2378",
+      "tempo": 16218.6940572
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 4 1 1 -1 2378",
+      "tempo": 16218.8021504
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 24 1 2 0 3500",
+      "tempo": 16218.8023189
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 24 1 2 0",
+      "tempo": 16218.9118666
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 24 0 1200",
+      "tempo": 16218.9119154
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 25 1 2 0 3500",
+      "tempo": 16219.0213775
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 25 1 2 0",
+      "tempo": 16219.1281671
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 25 0 1200",
+      "tempo": 16219.12822
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 3 -180 180 2128",
+      "tempo": 16219.2384627
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 3 -180 180 2128",
+      "tempo": 16219.4564337
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 26 1 2 0 3500",
+      "tempo": 16219.4565591
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 26 1 2 0",
+      "tempo": 16219.5654448
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 26 0 1200",
+      "tempo": 16219.565502
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 27 1 2 0 3500",
+      "tempo": 16219.9409365
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 27 1 2 0",
+      "tempo": 16220.04985
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 27 0 1200",
+      "tempo": 16220.0499045
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 28 1 2 0 3500",
+      "tempo": 16220.4123741
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 28 1 2 0",
+      "tempo": 16220.5233147
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 28 0 1200",
+      "tempo": 16220.5233794
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 29 1 2 0 3500",
+      "tempo": 16220.8846915
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 29 1 2 0",
+      "tempo": 16220.9948706
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 29 0 1200",
+      "tempo": 16220.9949191
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 30 1 2 0 3500",
+      "tempo": 16221.368728
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 30 1 2 0",
+      "tempo": 16221.4764359
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 30 0 1200",
+      "tempo": 16221.4764877
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 3",
+      "tempo": 16221.6191101
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 3",
+      "tempo": 16221.7280195
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 5 1 1 0 922",
+      "tempo": 16221.8536704
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 5 1 1 0 922",
+      "tempo": 16221.9616336
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 31 1 2 0 3500",
+      "tempo": 16221.9618205
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 31 1 2 0",
+      "tempo": 16222.0708795
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 31 0 1200",
+      "tempo": 16222.0709306
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 32 1 2 0 3500",
+      "tempo": 16222.1810859
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 32 1 2 0",
+      "tempo": 16222.2887952
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 32 0 1200",
+      "tempo": 16222.288849
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 4 180 180 672",
+      "tempo": 16222.3976358
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 4 180 180 672",
+      "tempo": 16222.616784
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 33 1 2 0 3500",
+      "tempo": 16222.6169132
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 33 1 2 0",
+      "tempo": 16222.7267164
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 33 0 1200",
+      "tempo": 16222.7267797
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 34 1 2 0 3500",
+      "tempo": 16223.1010706
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 34 1 2 0",
+      "tempo": 16223.2116528
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 34 0 1200",
+      "tempo": 16223.211712
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 4",
+      "tempo": 16223.3204889
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 4",
+      "tempo": 16223.4293377
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 6 1 2 0 1800",
+      "tempo": 16223.4297021
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 6 1 2 0 1800",
+      "tempo": 16223.5399454
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 35 1 2 0 3500",
+      "tempo": 16223.5719529
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 35 1 2 0",
+      "tempo": 16223.6818158
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 35 0 1200",
+      "tempo": 16223.6818701
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 36 1 2 0 3500",
+      "tempo": 16224.0430256
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 36 1 2 0",
+      "tempo": 16224.1525461
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 36 0 1200",
+      "tempo": 16224.1525978
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 37 1 2 0 3500",
+      "tempo": 16224.5239585
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 37 1 2 0",
+      "tempo": 16224.6324291
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 37 0 1200",
+      "tempo": 16224.6324864
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 38 1 2 0 3500",
+      "tempo": 16225.0071297
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 38 1 2 0",
+      "tempo": 16225.1148484
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 38 0 1200",
+      "tempo": 16225.1149119
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 39 1 2 0 3500",
+      "tempo": 16225.4890875
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 39 1 2 0",
+      "tempo": 16225.5987403
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 39 0 1200",
+      "tempo": 16225.5987943
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 40 6 2 0 3500",
+      "tempo": 16225.708486
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 40 6 2 0",
+      "tempo": 16225.8179978
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 40 0 1200",
+      "tempo": 16225.8180652
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 7 6 0 0 502",
+      "tempo": 16225.9289362
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 7 6 0 0 502",
+      "tempo": 16226.0362201
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 41 6 2 0 3500",
+      "tempo": 16226.0366995
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 41 6 2 0",
+      "tempo": 16226.1470069
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 41 0 1200",
+      "tempo": 16226.1470623
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 8 6 1 0 810",
+      "tempo": 16226.4585147
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 8 6 1 0 810",
+      "tempo": 16226.5668638
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 15d53a85 3 6",
+      "tempo": 16226.5669379
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 15d53a85 3 6",
+      "tempo": 16226.6756933
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 42 6 2 0 3500",
+      "tempo": 16226.6758719
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 42 6 2 0",
+      "tempo": 16226.7835415
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 42 0 1200",
+      "tempo": 16226.7836016
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 43 6 2 0 3500",
+      "tempo": 16226.8942879
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 43 6 2 0",
+      "tempo": 16227.0020613
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 43 0 1200",
+      "tempo": 16227.0021113
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 5 -110 -110 560",
+      "tempo": 16227.1119141
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 5 -110 -110 560",
+      "tempo": 16227.330892
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 44 6 2 0 3500",
+      "tempo": 16227.3310417
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 44 6 2 0",
+      "tempo": 16227.4417514
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 44 0 1200",
+      "tempo": 16227.4418134
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 45 6 2 0 3500",
+      "tempo": 16227.8149422
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 45 6 2 0",
+      "tempo": 16227.9245349
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 45 0 1200",
+      "tempo": 16227.9245928
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 5",
+      "tempo": 16228.0346712
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 5",
+      "tempo": 16228.1435477
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 46 6 2 0 3500",
+      "tempo": 16228.2863049
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 46 6 2 0",
+      "tempo": 16228.3953862
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 46 0 1200",
+      "tempo": 16228.39546
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 9 6 1 -1 1034",
+      "tempo": 16228.504353
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 9 6 1 -1 1034",
+      "tempo": 16228.6127382
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 47 6 2 0 3500",
+      "tempo": 16228.6129129
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 47 6 2 0",
+      "tempo": 16228.7229709
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 47 0 1200",
+      "tempo": 16228.7230211
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 6 -115 115 784",
+      "tempo": 16228.8338874
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 6 -115 115 784",
+      "tempo": 16229.0531549
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 48 6 2 0 3500",
+      "tempo": 16229.0534173
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 48 6 2 0",
+      "tempo": 16229.1601533
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 48 0 1200",
+      "tempo": 16229.1602072
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 49 6 2 0 3500",
+      "tempo": 16229.5188699
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 49 6 2 0",
+      "tempo": 16229.6275571
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 49 0 1200",
+      "tempo": 16229.6276102
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 6",
+      "tempo": 16229.8624544
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 6",
+      "tempo": 16229.9720247
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 50 6 2 0 3500",
+      "tempo": 16230.0032202
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 50 6 2 0",
+      "tempo": 16230.111259
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 50 0 1200",
+      "tempo": 16230.1113144
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 10 6 1 1 1482",
+      "tempo": 16230.2221637
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 10 6 1 1 1482",
+      "tempo": 16230.3308377
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 51 6 2 0 3500",
+      "tempo": 16230.3309652
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 51 6 2 0",
+      "tempo": 16230.441399
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 51 0 1200",
+      "tempo": 16230.4414611
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 7 115 -115 1232",
+      "tempo": 16230.5504409
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 7 115 -115 1232",
+      "tempo": 16230.7701013
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 52 6 2 0 3500",
+      "tempo": 16230.7702265
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 52 6 2 0",
+      "tempo": 16230.8794764
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 52 0 1200",
+      "tempo": 16230.8795414
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 53 6 2 0 3500",
+      "tempo": 16231.2401918
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 53 6 2 0",
+      "tempo": 16231.3501529
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 53 0 1200",
+      "tempo": 16231.3502033
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 54 6 2 0 3500",
+      "tempo": 16231.725307
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 54 6 2 0",
+      "tempo": 16231.8329146
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 54 0 1200",
+      "tempo": 16231.8329747
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 7",
+      "tempo": 16232.0349483
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 7",
+      "tempo": 16232.145032
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 11 6 2 0 1800",
+      "tempo": 16232.1454622
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 11 6 2 0 1800",
+      "tempo": 16232.2533384
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 55 6 2 0 3500",
+      "tempo": 16232.2550373
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 55 6 2 0",
+      "tempo": 16232.3627688
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 55 0 1200",
+      "tempo": 16232.362844
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 56 6 2 0 3500",
+      "tempo": 16232.723143
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 56 6 2 0",
+      "tempo": 16232.8308938
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 56 0 1200",
+      "tempo": 16232.8309553
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 57 6 2 0 3500",
+      "tempo": 16233.1906793
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 57 6 2 0",
+      "tempo": 16233.3027412
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 57 0 1200",
+      "tempo": 16233.3028209
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 58 6 2 0 3500",
+      "tempo": 16233.6636834
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 58 6 2 0",
+      "tempo": 16233.7741301
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 58 0 1200",
+      "tempo": 16233.7741906
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 59 6 2 0 3500",
+      "tempo": 16234.1481714
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 59 6 2 0",
+      "tempo": 16234.2577244
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 59 0 1200",
+      "tempo": 16234.2577742
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 60 5 2 0 3500",
+      "tempo": 16234.5732001
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 60 5 2 0",
+      "tempo": 16234.6791794
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 60 0 1200",
+      "tempo": 16234.6792419
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 61 5 2 0 3500",
+      "tempo": 16234.7882719
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 61 5 2 0",
+      "tempo": 16234.8982791
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 61 0 1200",
+      "tempo": 16234.8983643
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 12 5 0 0 412",
+      "tempo": 16235.0074501
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 12 5 0 0 412",
+      "tempo": 16235.1143411
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 13 5 1 0 1090",
+      "tempo": 16235.2388396
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 13 5 1 0 1090",
+      "tempo": 16235.3477048
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 15d53a85 4 7",
+      "tempo": 16235.3477688
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 15d53a85 4 7",
+      "tempo": 16235.4579623
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 62 5 2 0 3500",
+      "tempo": 16235.4581075
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 62 5 2 0",
+      "tempo": 16235.5667894
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 62 0 1200",
+      "tempo": 16235.5668446
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 63 5 2 0 3500",
+      "tempo": 16235.6773414
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 63 5 2 0",
+      "tempo": 16235.7873753
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 63 0 1200",
+      "tempo": 16235.787435
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 8 -150 -150 840",
+      "tempo": 16235.89839
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 8 -150 -150 840",
+      "tempo": 16236.1177728
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 64 5 2 0 3500",
+      "tempo": 16236.1179365
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 64 5 2 0",
+      "tempo": 16236.2286082
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 64 0 1200",
+      "tempo": 16236.2286951
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 65 5 2 0 3500",
+      "tempo": 16236.6020371
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 65 5 2 0",
+      "tempo": 16236.7107787
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 65 0 1200",
+      "tempo": 16236.7108413
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 8",
+      "tempo": 16236.9906348
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 8",
+      "tempo": 16237.0986477
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 66 5 2 0 3500",
+      "tempo": 16237.0989233
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 66 5 2 0",
+      "tempo": 16237.2085175
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 66 0 1200",
+      "tempo": 16237.2085793
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 14 5 1 1 810",
+      "tempo": 16237.4434988
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 14 5 1 1 810",
+      "tempo": 16237.5512955
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 67 5 2 0 3500",
+      "tempo": 16237.55144
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 67 5 2 0",
+      "tempo": 16237.6607513
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 67 0 1200",
+      "tempo": 16237.6608015
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 9 120 -120 560",
+      "tempo": 16237.7732533
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 9 120 -120 560",
+      "tempo": 16237.9940647
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 68 5 2 0 3500",
+      "tempo": 16237.994212
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 68 5 2 0",
+      "tempo": 16238.1029952
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 68 0 1200",
+      "tempo": 16238.1030546
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 69 5 2 0 3500",
+      "tempo": 16238.4642682
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 69 5 2 0",
+      "tempo": 16238.5731506
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 69 0 1200",
+      "tempo": 16238.5732153
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 9",
+      "tempo": 16238.6835313
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 9",
+      "tempo": 16238.7926844
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 15 5 1 0 586",
+      "tempo": 16238.9179159
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 15 5 1 0 586",
+      "tempo": 16239.0268503
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 70 5 2 0 3500",
+      "tempo": 16239.027056
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 70 5 2 0",
+      "tempo": 16239.1373957
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 70 0 1200",
+      "tempo": 16239.137452
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 71 5 2 0 3500",
+      "tempo": 16239.2468502
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 71 5 2 0",
+      "tempo": 16239.3567798
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 71 0 1200",
+      "tempo": 16239.3568378
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 10 120 120 336",
+      "tempo": 16239.4668952
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 10 120 120 336",
+      "tempo": 16239.5756663
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 72 5 2 0 3500",
+      "tempo": 16239.5757935
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 72 5 2 0",
+      "tempo": 16239.6850928
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 72 0 1200",
+      "tempo": 16239.6851491
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 10",
+      "tempo": 16239.936352
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 10",
+      "tempo": 16240.0463716
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 16 5 2 0 1800",
+      "tempo": 16240.0468439
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 16 5 2 0 1800",
+      "tempo": 16240.1559545
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 73 5 2 0 3500",
+      "tempo": 16240.1568702
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 73 5 2 0",
+      "tempo": 16240.2654536
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 73 0 1200",
+      "tempo": 16240.2655098
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 74 5 2 0 3500",
+      "tempo": 16240.6375119
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 74 5 2 0",
+      "tempo": 16240.7471559
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 74 0 1200",
+      "tempo": 16240.7472314
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 75 5 2 0 3500",
+      "tempo": 16241.1070581
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 75 5 2 0",
+      "tempo": 16241.2149848
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 75 0 1200",
+      "tempo": 16241.2150414
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 76 5 2 0 3500",
+      "tempo": 16241.574248
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 76 5 2 0",
+      "tempo": 16241.6829363
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 76 0 1200",
+      "tempo": 16241.6830785
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 77 5 2 0 3500",
+      "tempo": 16242.0572417
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 77 5 2 0",
+      "tempo": 16242.1674251
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 77 0 1200",
+      "tempo": 16242.1674834
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 78 3 2 0 3500",
+      "tempo": 16242.4762241
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 78 3 2 0",
+      "tempo": 16242.5764634
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 78 0 1200",
+      "tempo": 16242.5765244
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 79 3 2 0 3500",
+      "tempo": 16242.6858738
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 79 3 2 0",
+      "tempo": 16242.7938395
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 79 0 1200",
+      "tempo": 16242.7939085
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 17 3 0 1 412",
+      "tempo": 16242.9057301
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 17 3 0 1 412",
+      "tempo": 16243.0141886
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 18 3 1 1 1482",
+      "tempo": 16243.139214
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 18 3 1 1 1482",
+      "tempo": 16243.2494435
+    },
+    {
+      "direcao": "tx",
+      "pacote": "SOUND 1 15d53a85 5 5",
+      "tempo": 16243.249528
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SOUNDACK 1 15d53a85 5 5",
+      "tempo": 16243.3572032
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 80 3 2 0 3500",
+      "tempo": 16243.3573817
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 80 3 2 0",
+      "tempo": 16243.4676345
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 80 0 1200",
+      "tempo": 16243.4676905
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 81 3 2 0 3500",
+      "tempo": 16243.5762608
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 81 3 2 0",
+      "tempo": 16243.6840732
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 81 0 1200",
+      "tempo": 16243.6841305
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 11 180 -180 1232",
+      "tempo": 16243.7931774
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 11 180 -180 1232",
+      "tempo": 16244.0125273
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 82 3 2 0 3500",
+      "tempo": 16244.0126626
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 82 3 2 0",
+      "tempo": 16244.1222544
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 82 0 1200",
+      "tempo": 16244.1223114
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 83 3 2 0 3500",
+      "tempo": 16244.4829995
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 83 3 2 0",
+      "tempo": 16244.5943652
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 83 0 1200",
+      "tempo": 16244.5944268
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 84 3 2 0 3500",
+      "tempo": 16244.9561085
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 84 3 2 0",
+      "tempo": 16245.065884
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 84 0 1200",
+      "tempo": 16245.0659437
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 11",
+      "tempo": 16245.2685893
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 11",
+      "tempo": 16245.3781582
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 85 3 2 0 3500",
+      "tempo": 16245.4253634
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 85 3 2 0",
+      "tempo": 16245.5355058
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 85 0 1200",
+      "tempo": 16245.5355786
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 19 3 1 -1 1482",
+      "tempo": 16245.645778
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 19 3 1 -1 1482",
+      "tempo": 16245.7551702
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 86 3 2 0 3500",
+      "tempo": 16245.7553513
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 86 3 2 0",
+      "tempo": 16245.8657989
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 86 0 1200",
+      "tempo": 16245.8658459
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 12 -180 180 1232",
+      "tempo": 16245.9766074
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 12 -180 180 1232",
+      "tempo": 16246.1933307
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 87 3 2 0 3500",
+      "tempo": 16246.1935275
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 87 3 2 0",
+      "tempo": 16246.3022305
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 87 0 1200",
+      "tempo": 16246.3022901
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 88 3 2 0 3500",
+      "tempo": 16246.6777602
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 88 3 2 0",
+      "tempo": 16246.788217
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 88 0 1200",
+      "tempo": 16246.7882799
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 89 3 2 0 3500",
+      "tempo": 16247.1490867
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 89 3 2 0",
+      "tempo": 16247.2605704
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 89 0 1200",
+      "tempo": 16247.2606217
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 12",
+      "tempo": 16247.4467908
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 12",
+      "tempo": 16247.5562094
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 90 3 2 0 3500",
+      "tempo": 16247.6322691
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 90 3 2 0",
+      "tempo": 16247.7412349
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 90 0 1200",
+      "tempo": 16247.7413175
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 20 3 1 0 978",
+      "tempo": 16247.8492233
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 20 3 1 0 978",
+      "tempo": 16247.9577866
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 91 3 2 0 3500",
+      "tempo": 16247.9579832
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 91 3 2 0",
+      "tempo": 16248.0665263
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 91 0 1200",
+      "tempo": 16248.0665787
+    },
+    {
+      "direcao": "tx",
+      "pacote": "MOTOR 2 15d53a85 13 -130 -130 728",
+      "tempo": 16248.1767917
+    },
+    {
+      "direcao": "rx",
+      "pacote": "MACK 2 15d53a85 13 -130 -130 728",
+      "tempo": 16248.3933067
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 92 3 2 0 3500",
+      "tempo": 16248.3934423
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 92 3 2 0",
+      "tempo": 16248.5025921
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 92 0 1200",
+      "tempo": 16248.502657
+    },
+    {
+      "direcao": "tx",
+      "pacote": "FACE 1 15d53a85 93 3 2 0 3500",
+      "tempo": 16248.8776647
+    },
+    {
+      "direcao": "rx",
+      "pacote": "ACK 1 15d53a85 93 3 2 0",
+      "tempo": 16248.9861217
+    },
+    {
+      "direcao": "tx",
+      "pacote": "ACTIVITY 1 15d53a85 93 0 1200",
+      "tempo": 16248.9861694
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 13",
+      "tempo": 16249.1428068
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 13",
+      "tempo": 16249.2501766
+    },
+    {
+      "direcao": "tx",
+      "pacote": "EXPR 1 15d53a85 21 3 2 0 1800",
+      "tempo": 16249.2506607
+    },
+    {
+      "direcao": "rx",
+      "pacote": "EACK 1 15d53a85 21 3 2 0 1800",
+      "tempo": 16249.3591675
+    },
+    {
+      "direcao": "tx",
+      "pacote": "STOP 1 15d53a85 14",
+      "tempo": 16249.3603341
+    },
+    {
+      "direcao": "rx",
+      "pacote": "SACK 1 15d53a85 14",
+      "tempo": 16249.4687475
+    },
+    {
+      "direcao": "tx",
+      "pacote": "GOODNIGHT 1 15d53a85 22",
+      "tempo": 16249.4687723
+    },
+    {
+      "direcao": "rx",
+      "pacote": "NACK 1 15d53a85 22",
+      "tempo": 16249.5774199
+    }
+  ],
+  "estimulos": "emoções diagnósticas e seleção da terceira variação; composição instalada",
+  "observacao_humana": "pendente",
+  "interface_aberta": false,
+  "prova_deslocamento": false,
+  "parada_recebida": true
+}

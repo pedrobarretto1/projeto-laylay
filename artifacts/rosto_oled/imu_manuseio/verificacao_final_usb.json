@@ -1,0 +1,10 @@
+{
+  "linhas": [
+    "STOPPED 1",
+    "IMU 1 901 104 PRONTA 8 1 150 -537 -92 3 1022 ESTAVEL 152",
+    "ERROR 1 DIST_DESABILITADA",
+    "HEALTH 1 903 70ba726e27ac 51e209ba 11 205353 282404 277172 0 NENHUMA 0"
+  ],
+  "serial_fechada": true,
+  "comandos_movimento": 0
+}

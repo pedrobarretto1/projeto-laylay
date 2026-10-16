@@ -1,0 +1,22 @@
+........................................................................ [ 38%]
+...............................................F........................ [ 76%]
+.......................................F.....                            [100%]
+================================== FAILURES ===================================
+___ test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo ___
+scripts\tests\test_companhia_corporal.py:241: in test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+    assert not root._composicao_ciclo_comandos_runtime.contexto.montar()["_resolver_repeticao_ultima_acao"]("de novo")
+E   AssertionError: assert not {'intent': 'VOLUME', 'params': {'nivel_volume': 42}}
+E    +  where {'intent': 'VOLUME', 'params': {'nivel_volume': 42}} = resolver_repeticao_ultima_acao('de novo')
+---------------------------- Captured stdout call -----------------------------
+⚠️ [FALA:AUTORIA] fallback local | motivo=modelo_sem_callback status=companhia_ativada
+__________ test_perfil_e_preferencia_explicita_preserva_configuracao __________
+scripts\tests\test_decisao_corporal_v1.py:93: in test_perfil_e_preferencia_explicita_preserva_configuracao
+    assert c.perfil_corporal() == "bancada"
+E   AssertionError: assert 'rodas_suspensas' == 'bancada'
+E     
+E     - bancada
+E     + rodas_suspensas
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_companhia_corporal.py::test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+FAILED scripts/tests/test_decisao_corporal_v1.py::test_perfil_e_preferencia_explicita_preserva_configuracao
+2 failed, 187 passed in 36.97s

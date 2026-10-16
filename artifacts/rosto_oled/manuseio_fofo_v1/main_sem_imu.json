@@ -1,0 +1,4640 @@
+{
+  "main_real": true,
+  "leituras": [
+    {
+      "ts": 1792111319.36536,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111323.1240191,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111323.3322494,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111323.5377507,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111323.741758,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111323.944244,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111324.1479697,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111324.3504174,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111324.5655289,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111324.7660737,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111324.968154,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111325.1740499,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111325.3771155,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111325.5777688,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111325.7836561,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111325.985188,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111329.1943517,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111329.4034894,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111329.6074598,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111329.811538,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111330.0166948,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111330.22147,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111330.4354036,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111330.6372917,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111330.8391767,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111331.0429976,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111331.24864,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111331.452372,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111331.656238,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111331.8608072,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111332.0655708,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111335.262718,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111335.4737124,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111335.676057,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111335.8800383,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111336.0828495,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111336.286445,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111336.4907787,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111336.6959817,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111336.9023814,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111337.1170566,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111337.3215883,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111337.5300438,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111337.729842,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111337.9335778,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111338.1376207,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111341.332344,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111341.5434432,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111341.7470262,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111341.9538746,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111342.1537747,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111342.3576436,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111342.5606527,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111342.7612934,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111342.9707072,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111343.1851194,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111343.3860667,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111343.5916724,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111343.806492,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111344.008444,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111344.2118387,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111347.406649,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111347.6174617,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111347.82283,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111348.0278797,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111348.2341483,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111348.4361231,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111348.6398728,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111348.842843,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111349.0464542,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111349.2500165,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111349.456039,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111349.6700408,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111349.8748088,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111350.0752633,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111350.2789364,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111353.4863284,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111353.6969397,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111353.8992097,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111354.1038964,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111354.305245,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111354.5073454,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111354.7119372,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111354.9139528,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111355.1171412,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111355.3210638,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111355.5251517,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111355.7290936,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111355.9308555,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111356.1331644,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111356.337299,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111359.5645337,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111359.7759624,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111359.9768841,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111360.1787386,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111360.3822408,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111360.5840225,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111360.7879887,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111360.9922757,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111361.1939096,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111361.3951714,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111361.599034,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111361.8013713,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111362.0050583,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111362.208367,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111362.4135282,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111365.637266,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111365.8462756,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111366.0468128,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111366.2517555,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111366.4522393,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111366.6536956,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111366.8574986,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111367.0641444,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111367.278232,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111367.483014,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111367.6896644,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111367.9020512,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111368.1027384,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111368.3062532,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111368.5202155,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111371.719416,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111371.929921,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111372.134908,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111372.337195,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111372.540815,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111372.746567,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111372.9486358,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111373.150147,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111373.3538904,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111373.557648,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111373.7616954,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111373.9633827,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111374.1673126,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111374.3763978,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111374.5913675,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111377.7909222,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111378.0018268,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111378.2058735,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111378.409532,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111378.6148732,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111378.8197532,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111379.0219991,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111379.2264,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111379.4336543,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111379.6493819,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111379.8524575,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111380.060175,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111380.2609138,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111380.4620965,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111380.666931,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111383.87495,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111384.084875,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111384.2915606,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111384.4933794,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111384.6954608,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111384.9024491,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111385.1160908,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111385.3213644,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111385.5247347,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111385.7288268,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111385.9313471,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111386.135015,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111386.3363228,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111386.545529,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111386.7619398,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111389.9481862,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111390.1597714,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111390.3639507,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111390.5649798,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111390.7669618,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111390.97555,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111391.1879334,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111391.3899908,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111391.5932472,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111391.7953517,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111392.0044398,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111392.2170782,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111392.4223688,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111392.626158,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111392.8407688,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111396.0160758,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111396.2234411,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111396.4244084,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111396.629108,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111396.832037,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111397.0392,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111397.2535887,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111397.4572446,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111397.6646879,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111397.8650339,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111398.0678031,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111398.2721398,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111398.475178,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111398.6805937,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111398.8813899,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111402.1034367,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111402.314911,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111402.518065,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111402.7233446,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111402.9252467,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111403.1313968,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111403.3463392,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111403.5486703,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111403.7588956,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111403.9706252,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111404.1739156,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111404.3787048,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111404.5819798,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111404.786223,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111404.9915335,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111408.172271,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111408.3821092,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111408.5852153,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111408.7885194,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111408.9891987,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111409.1921868,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111409.3979356,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111409.6004133,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111409.8051465,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111410.0075486,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111410.2123,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111410.41233,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111410.6149933,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111410.819338,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111411.0231156,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111414.252198,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111414.4633033,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111414.6675096,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111414.8723536,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111415.0751693,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111415.2781062,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111415.4825394,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111415.6871455,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111415.8896458,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111416.0925634,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111416.2930596,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111416.4970067,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111416.7003245,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111416.9051008,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111417.1093452,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111420.3228974,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111420.5335877,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111420.737177,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111420.9391272,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111421.143462,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111421.3475106,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111421.5520928,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111421.753123,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111421.956364,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111422.1589177,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111422.3619752,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111422.56501,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111422.7661555,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111422.9693003,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111423.1723073,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111426.39902,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111426.609407,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111426.8126545,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111427.016854,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111427.2171786,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111427.4227273,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111427.6233602,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111427.8263507,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111428.03033,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111428.2333152,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111428.4364116,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111428.6370678,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111428.8392582,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111429.0450377,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111429.2490861,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111432.4839218,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111432.6924078,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111432.895211,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111433.0964,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111433.2986126,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111433.502508,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111433.705097,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111433.908915,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111434.1115167,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111434.3170133,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111434.5182326,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111434.721005,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111434.9273021,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111435.1275868,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111435.3326173,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111438.5670662,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111438.7750707,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111438.9753337,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111439.1760805,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111439.3809536,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111439.5890305,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111439.7912924,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111439.9967508,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111440.202389,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    },
+    {
+      "ts": 1792111440.4071248,
+      "imu": {
+        "consulta_id": 0,
+        "suportado": false,
+        "recente": false,
+        "idade_host_ms": 4294967295,
+        "autoriza_execucao": false,
+        "bloqueio_manuseio": false
+      },
+      "retorno": {
+        "ok": false,
+        "motivo": "companhia_requer_sessao_usb_pronta"
+      }
+    }
+  ],
+  "autorias": [],
+  "trilha": [
+    "HELLO 1 980a9409",
+    "HELLO 1 980a9409",
+    "HELLO 1 980a9409",
+    "HELLO 1 980a9409",
+    "HELLO 1 980a9409",
+    "HELLO 1 980a9409",
+    "HELLO 1 348e19b8",
+    "HELLO 1 348e19b8",
+    "HELLO 1 348e19b8",
+    "HELLO 1 348e19b8",
+    "HELLO 1 348e19b8",
+    "HELLO 1 348e19b8",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 1da2a87c",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 8f39fa0d",
+    "HELLO 1 c88e8506",
+    "HELLO 1 c88e8506",
+    "HELLO 1 c88e8506",
+    "HELLO 1 c88e8506",
+    "HELLO 1 c88e8506",
+    "HELLO 1 c88e8506",
+    "HELLO 1 08d484dd",
+    "HELLO 1 08d484dd",
+    "HELLO 1 08d484dd",
+    "HELLO 1 08d484dd",
+    "HELLO 1 08d484dd",
+    "HELLO 1 08d484dd",
+    "HELLO 1 09bc0168",
+    "HELLO 1 09bc0168",
+    "HELLO 1 09bc0168",
+    "HELLO 1 09bc0168",
+    "HELLO 1 09bc0168",
+    "HELLO 1 09bc0168",
+    "HELLO 1 83477959",
+    "HELLO 1 83477959",
+    "HELLO 1 83477959",
+    "HELLO 1 83477959",
+    "HELLO 1 83477959",
+    "HELLO 1 83477959",
+    "HELLO 1 b10225fa",
+    "HELLO 1 b10225fa",
+    "HELLO 1 b10225fa",
+    "HELLO 1 b10225fa",
+    "HELLO 1 b10225fa",
+    "HELLO 1 b10225fa",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 5aa6e982",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 a9f917c1",
+    "HELLO 1 479a8178",
+    "HELLO 1 479a8178",
+    "HELLO 1 479a8178",
+    "HELLO 1 479a8178",
+    "HELLO 1 479a8178",
+    "HELLO 1 479a8178",
+    "HELLO 1 987bddf7",
+    "HELLO 1 987bddf7",
+    "HELLO 1 987bddf7",
+    "HELLO 1 987bddf7",
+    "HELLO 1 987bddf7",
+    "HELLO 1 987bddf7",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 ed2cf6b8",
+    "HELLO 1 e10be49f",
+    "HELLO 1 e10be49f",
+    "HELLO 1 e10be49f",
+    "HELLO 1 e10be49f",
+    "HELLO 1 e10be49f",
+    "HELLO 1 e10be49f",
+    "HELLO 1 f7343b25",
+    "HELLO 1 f7343b25",
+    "HELLO 1 f7343b25",
+    "HELLO 1 f7343b25",
+    "HELLO 1 f7343b25",
+    "HELLO 1 f7343b25",
+    "HELLO 1 7f23a762",
+    "HELLO 1 7f23a762",
+    "HELLO 1 7f23a762",
+    "HELLO 1 7f23a762",
+    "HELLO 1 7f23a762",
+    "HELLO 1 7f23a762",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 ab7932f7",
+    "HELLO 1 3f77d240",
+    "HELLO 1 3f77d240",
+    "HELLO 1 3f77d240",
+    "HELLO 1 3f77d240",
+    "HELLO 1 3f77d240",
+    "HELLO 1 3f77d240",
+    "HELLO 1 1e670294",
+    "HELLO 1 1e670294",
+    "HELLO 1 1e670294",
+    "HELLO 1 1e670294",
+    "HELLO 1 1e670294",
+    "HELLO 1 1e670294"
+  ],
+  "presenca": {
+    "versao": 1,
+    "configuracao": {
+      "ativo": true,
+      "perfil": "adaptativo",
+      "motivo_perfil": "contexto_neutro",
+      "atualizado_ts": 1792111396.0111842
+    },
+    "aprendizado": {
+      "categorias": {}
+    },
+    "historico": [
+      {
+        "id_entrega": "notificacao:d2c2908fac110798fccf9e82",
+        "entregue": true,
+        "ts": 1792111371.357299,
+        "proposta_ts": 0.0,
+        "dominio": "notificacoes",
+        "categoria": "seguranca",
+        "chave": "29ae38d865d368d9a381e46b|cee11e095b0be885048866c4|780b3db596c0ca12e97e57ba|d06a6c675a31c5f563ac1d42|3e3c16d7ce638c520a882788|a1615e673febc4eeb3fbf93a|b3ad78b34836fd89f39b3676|047022d1a2bdec3521e00125|6422fc5f5046311884f99029|744640992437d6fab446ea6c|d567b56699afa48fb8be97e1|d404792c2c5740a0ce30b1fa|ab8250984fc6028af7ae9517|046ebd9c086f408aa2c0ac64|0868b65360df0b3e9bc33b6c|75e01f034a2b674655fd2f26",
+        "origem": "central_notificacoes",
+        "fala": "Atenção: chegaram 16 e-mails novos, com 2 avisos de segurança. Destaques: Canva: Tem professor que merece um post especial; CGTrader Team: Here's the smarter way to use CGTrader. 🚀; Netflix: Dragon Ball Super: Beerus estreia sábado, 17 de outubro.",
+        "contexto_humor": "conversa",
+        "canal_entrega": "audio_reproducao_confirmada",
+        "autoriza_execucao": false,
+        "solicitacao_feedback_humor": false
+      }
+    ],
+    "ultima_emissao": {
+      "id_entrega": "notificacao:d2c2908fac110798fccf9e82",
+      "entregue": true,
+      "ts": 1792111371.357299,
+      "proposta_ts": 0.0,
+      "dominio": "notificacoes",
+      "categoria": "seguranca",
+      "chave": "29ae38d865d368d9a381e46b|cee11e095b0be885048866c4|780b3db596c0ca12e97e57ba|d06a6c675a31c5f563ac1d42|3e3c16d7ce638c520a882788|a1615e673febc4eeb3fbf93a|b3ad78b34836fd89f39b3676|047022d1a2bdec3521e00125|6422fc5f5046311884f99029|744640992437d6fab446ea6c|d567b56699afa48fb8be97e1|d404792c2c5740a0ce30b1fa|ab8250984fc6028af7ae9517|046ebd9c086f408aa2c0ac64|0868b65360df0b3e9bc33b6c|75e01f034a2b674655fd2f26",
+      "origem": "central_notificacoes",
+      "fala": "Atenção: chegaram 16 e-mails novos, com 2 avisos de segurança. Destaques: Canva: Tem professor que merece um post especial; CGTrader Team: Here's the smarter way to use CGTrader. 🚀; Netflix: Dragon Ball Super: Beerus estreia sábado, 17 de outubro.",
+      "contexto_humor": "conversa",
+      "canal_entrega": "audio_reproducao_confirmada",
+      "autoriza_execucao": false,
+      "solicitacao_feedback_humor": false,
+      "feedback_registrado": false
+    },
+    "ultima_proposta_cognitiva": {},
+    "atividade": {
+      "chave": "1876_o_final_alternativo_de_cyberpunk_edgerunners_era_pior_que_a_morte_do_david_-_youtube_-_brav",
+      "assunto": "",
+      "inicio_ts": 1792111411.023856
+    },
+    "contadores": {
+      "recebidas": 0,
+      "emitidas": 1,
+      "propostas_cognitivas": 0,
+      "bloqueadas_contexto": 0,
+      "bloqueadas_orcamento": 0,
+      "bloqueadas_qualidade": 0,
+      "bloqueadas_variedade": 0,
+      "feedbacks": 0
+    }
+  },
+  "governanca": {
+    "modo": "autorizado",
+    "dominios": {
+      "conforto": "acao_reversivel",
+      "iot": "acao_reversivel",
+      "jogo": "sugestao",
+      "musica": "acao_reversivel"
+    }
+  },
+  "serial_fechada": true,
+  "motores_enviados": 0
+}

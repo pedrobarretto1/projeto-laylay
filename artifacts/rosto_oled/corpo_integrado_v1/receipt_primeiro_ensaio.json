@@ -1,0 +1,1288 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "fase": "pedido_manual_real",
+      "experiencia": {
+        "id": "401f55fc47c0494fa0421224a4b10018",
+        "origem": "executor_corpo",
+        "nome": "mover_frente",
+        "familia": "mover_frente",
+        "origem_intencao": "pedido_usuario",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "turno_id": "sonda-manual",
+        "sessao": "6788a2f2",
+        "iniciada_em": 1791836815.2188332,
+        "variante": 0,
+        "movimentos": [
+          [
+            255,
+            255,
+            250
+          ]
+        ],
+        "ts": 1791836815.9261744,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "sucesso",
+        "movimentos_confirmados": 1,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "fase": "gesto_causal_estimulacao_diagnostica",
+      "experiencia": {
+        "id": "c8e85d4bcecc4c99b5e2855cc2128401",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "2ce6706eaf00",
+        "turno_id": "sonda-companhia",
+        "sessao": "6788a2f2",
+        "iniciada_em": 1791836818.3593242,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836827.345551,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "fase": "feedback_simulado_sqlite_temporario",
+      "feedback": {
+        "dominio": "corpo_motor",
+        "experiencia_id": "c8e85d4bcecc4c99b5e2855cc2128401",
+        "turno_id": "sonda-feedback",
+        "perfil": "rodas_suspensas",
+        "nome": "alegria_suspensa_v1",
+        "variante": 0,
+        "autoriza_execucao": false,
+        "tipo": "aceitacao",
+        "aceito": true
+      }
+    }
+  ],
+  "modelos": [
+    {
+      "origem": "owner_corpo_usb",
+      "ts": 1791836827.564679,
+      "turno_id": "sonda-feedback",
+      "sessao": "6788a2f2",
+      "concessao_id": "e117fd05266b4891",
+      "conectada": true,
+      "companhia_ativa": true,
+      "passeio_ativo": false,
+      "perfil": "rodas_suspensas",
+      "condicao": {
+        "estado": "pronta",
+        "motivo_motor": "",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "401f55fc47c0494fa0421224a4b10018",
+            "nome": "mover_frente",
+            "turno_id": "sonda-manual",
+            "origem_intencao": "pedido_usuario",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836815.9261744,
+            "prova_deslocamento": false
+          },
+          {
+            "id": "c8e85d4bcecc4c99b5e2855cc2128401",
+            "nome": "alegria_suspensa_v1",
+            "turno_id": "sonda-companhia",
+            "origem_intencao": "mente_causal",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836827.345551,
+            "prova_deslocamento": false
+          }
+        ],
+        "aprendizado": {
+          "origem": "aprendizado_compartilhado",
+          "chave": "corpo_execucao:rodas_suspensas:alegria_suspensa_v1:0",
+          "estado_hipotese": "candidata",
+          "confianca": 0.577,
+          "limite_evidencia": "confirmacao_eletrica_sem_deslocamento",
+          "autoriza_execucao": false
+        },
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": false,
+        "ultimo_erro": ""
+      },
+      "olhos": [
+        1,
+        2,
+        0
+      ],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "alegre",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {
+        "id": "c8e85d4bcecc4c99b5e2855cc2128401",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "2ce6706eaf00",
+        "turno_id": "sonda-companhia",
+        "sessao": "6788a2f2",
+        "iniciada_em": 1791836818.3593242,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836827.345551,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "origem": "owner_corpo_usb",
+      "ts": 1791836840.8868473,
+      "turno_id": "",
+      "sessao": "",
+      "concessao_id": "",
+      "conectada": false,
+      "companhia_ativa": false,
+      "passeio_ativo": false,
+      "perfil": "rodas_suspensas",
+      "condicao": {
+        "estado": "desconectada",
+        "motivo_motor": "desconectado",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "401f55fc47c0494fa0421224a4b10018",
+            "nome": "mover_frente",
+            "turno_id": "sonda-manual",
+            "origem_intencao": "pedido_usuario",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836815.9261744,
+            "prova_deslocamento": false
+          },
+          {
+            "id": "c8e85d4bcecc4c99b5e2855cc2128401",
+            "nome": "alegria_suspensa_v1",
+            "turno_id": "sonda-companhia",
+            "origem_intencao": "mente_causal",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836827.345551,
+            "prova_deslocamento": false
+          }
+        ],
+        "aprendizado": {
+          "origem": "aprendizado_compartilhado",
+          "chave": "corpo_execucao:rodas_suspensas:alegria_suspensa_v1:0",
+          "estado_hipotese": "candidata",
+          "confianca": 0.577,
+          "limite_evidencia": "confirmacao_eletrica_sem_deslocamento",
+          "autoriza_execucao": false
+        },
+        "feedback": {
+          "dominio": "corpo_motor",
+          "experiencia_id": "c8e85d4bcecc4c99b5e2855cc2128401",
+          "turno_id": "sonda-feedback",
+          "perfil": "rodas_suspensas",
+          "nome": "alegria_suspensa_v1",
+          "variante": 0,
+          "autoriza_execucao": false,
+          "tipo": "aceitacao",
+          "aceito": true
+        },
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": false,
+        "ultimo_erro": ""
+      },
+      "olhos": [],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "alegre",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {
+        "id": "c8e85d4bcecc4c99b5e2855cc2128401",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "2ce6706eaf00",
+        "turno_id": "sonda-companhia",
+        "sessao": "6788a2f2",
+        "iniciada_em": 1791836818.3593242,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836827.345551,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 6788a2f2",
+      "tempo": 21004.3957885
+    },
+    {
+      "tx": "CAPS 1 6788a2f2",
+      "tempo": 21004.5115802
+    },
+    {
+      "tx": "GCAPS 1 6788a2f2",
+      "tempo": 21004.6201053
+    },
+    {
+      "tx": "MCAPS 1 6788a2f2",
+      "tempo": 21004.7291809
+    },
+    {
+      "tx": "LCAPS 1 6788a2f2",
+      "tempo": 21004.8379919
+    },
+    {
+      "tx": "SCAPS 1 6788a2f2",
+      "tempo": 21004.9476516
+    },
+    {
+      "tx": "SENCAPS 1 6788a2f2",
+      "tempo": 21005.0579843
+    },
+    {
+      "tx": "ECAPS 1 6788a2f2",
+      "tempo": 21005.1684001
+    },
+    {
+      "tx": "RCAPS 1 6788a2f2",
+      "tempo": 21005.278157
+    },
+    {
+      "tx": "FACE 1 6788a2f2 1 0 1 0 3500",
+      "tempo": 21005.3870073
+    },
+    {
+      "rx": "ACK 1 6788a2f2 1 0 1 0",
+      "tempo": 21005.496009
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 1 0 1200",
+      "tempo": 21005.4960779
+    },
+    {
+      "tx": "SOUND 1 6788a2f2 1 0",
+      "tempo": 21005.6044336
+    },
+    {
+      "tx": "FACE 1 6788a2f2 2 0 1 0 3500",
+      "tempo": 21005.977937
+    },
+    {
+      "rx": "ACK 1 6788a2f2 2 0 1 0",
+      "tempo": 21006.0873053
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 2 0 1200",
+      "tempo": 21006.0873683
+    },
+    {
+      "tx": "FACE 1 6788a2f2 3 0 1 0 3500",
+      "tempo": 21006.4492468
+    },
+    {
+      "rx": "ACK 1 6788a2f2 3 0 1 0",
+      "tempo": 21006.557661
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 3 0 1200",
+      "tempo": 21006.5577236
+    },
+    {
+      "tx": "FACE 1 6788a2f2 4 0 1 0 3500",
+      "tempo": 21006.9325116
+    },
+    {
+      "rx": "ACK 1 6788a2f2 4 0 1 0",
+      "tempo": 21007.0420896
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 4 0 1200",
+      "tempo": 21007.0421476
+    },
+    {
+      "tx": "FACE 1 6788a2f2 5 0 1 0 3500",
+      "tempo": 21007.4021863
+    },
+    {
+      "rx": "ACK 1 6788a2f2 5 0 1 0",
+      "tempo": 21007.5128694
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 5 0 1200",
+      "tempo": 21007.5129258
+    },
+    {
+      "tx": "FACE 1 6788a2f2 6 0 1 0 3500",
+      "tempo": 21007.8741974
+    },
+    {
+      "rx": "ACK 1 6788a2f2 6 0 1 0",
+      "tempo": 21007.983442
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 6 0 1200",
+      "tempo": 21007.9835534
+    },
+    {
+      "tx": "FACE 1 6788a2f2 7 0 1 0 3500",
+      "tempo": 21008.345872
+    },
+    {
+      "rx": "ACK 1 6788a2f2 7 0 1 0",
+      "tempo": 21008.4560303
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 7 0 1200",
+      "tempo": 21008.4560792
+    },
+    {
+      "tx": "FACE 1 6788a2f2 8 0 1 0 3500",
+      "tempo": 21008.8285604
+    },
+    {
+      "rx": "ACK 1 6788a2f2 8 0 1 0",
+      "tempo": 21008.938828
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 8 0 1200",
+      "tempo": 21008.9388744
+    },
+    {
+      "tx": "FACE 1 6788a2f2 9 0 1 0 3500",
+      "tempo": 21009.057595
+    },
+    {
+      "rx": "ACK 1 6788a2f2 9 0 1 0",
+      "tempo": 21009.1587369
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 9 1 1200",
+      "tempo": 21009.1587951
+    },
+    {
+      "tx": "MOTOR 1 6788a2f2 1 255 255 250",
+      "tempo": 21009.2675432
+    },
+    {
+      "rx": "MACK 1 6788a2f2 1 255 255 250",
+      "tempo": 21009.376528
+    },
+    {
+      "tx": "FACE 1 6788a2f2 10 0 1 0 3500",
+      "tempo": 21009.3766431
+    },
+    {
+      "rx": "ACK 1 6788a2f2 10 0 1 0",
+      "tempo": 21009.4867224
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 10 1 1200",
+      "tempo": 21009.4867746
+    },
+    {
+      "tx": "STOP 1 6788a2f2 1",
+      "tempo": 21009.6557801
+    },
+    {
+      "rx": "SACK 1 6788a2f2 1",
+      "tempo": 21009.7645259
+    },
+    {
+      "tx": "FACE 1 6788a2f2 11 0 1 0 3500",
+      "tempo": 21009.8576862
+    },
+    {
+      "rx": "ACK 1 6788a2f2 11 0 1 0",
+      "tempo": 21009.9668185
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 11 1 1200",
+      "tempo": 21009.9668788
+    },
+    {
+      "tx": "FACE 1 6788a2f2 12 0 1 0 3500",
+      "tempo": 21010.3270212
+    },
+    {
+      "rx": "ACK 1 6788a2f2 12 0 1 0",
+      "tempo": 21010.4381238
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 12 1 1200",
+      "tempo": 21010.4381813
+    },
+    {
+      "tx": "FACE 1 6788a2f2 13 0 1 0 3500",
+      "tempo": 21010.812567
+    },
+    {
+      "rx": "ACK 1 6788a2f2 13 0 1 0",
+      "tempo": 21010.9224548
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 13 0 1200",
+      "tempo": 21010.9225195
+    },
+    {
+      "tx": "FACE 1 6788a2f2 14 0 1 0 3500",
+      "tempo": 21011.2836936
+    },
+    {
+      "rx": "ACK 1 6788a2f2 14 0 1 0",
+      "tempo": 21011.3927757
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 14 0 1200",
+      "tempo": 21011.3928312
+    },
+    {
+      "tx": "FACE 1 6788a2f2 15 0 1 0 3500",
+      "tempo": 21011.7546977
+    },
+    {
+      "rx": "ACK 1 6788a2f2 15 0 1 0",
+      "tempo": 21011.8643805
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 15 0 1200",
+      "tempo": 21011.864449
+    },
+    {
+      "tx": "FACE 1 6788a2f2 16 1 2 0 3500",
+      "tempo": 21011.9743996
+    },
+    {
+      "rx": "ACK 1 6788a2f2 16 1 2 0",
+      "tempo": 21012.082456
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 16 0 1200",
+      "tempo": 21012.082511
+    },
+    {
+      "tx": "EXPR 1 6788a2f2 1 1 0 1 400",
+      "tempo": 21012.1990631
+    },
+    {
+      "rx": "EACK 1 6788a2f2 1 1 0 1 400",
+      "tempo": 21012.2991569
+    },
+    {
+      "tx": "FACE 1 6788a2f2 17 1 2 0 3500",
+      "tempo": 21012.2994887
+    },
+    {
+      "rx": "ACK 1 6788a2f2 17 1 2 0",
+      "tempo": 21012.4080942
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 17 0 1200",
+      "tempo": 21012.4081464
+    },
+    {
+      "tx": "EXPR 1 6788a2f2 2 1 1 1 2050",
+      "tempo": 21012.6274547
+    },
+    {
+      "rx": "EACK 1 6788a2f2 2 1 1 1 2050",
+      "tempo": 21012.7346554
+    },
+    {
+      "tx": "SOUND 1 6788a2f2 2 3",
+      "tempo": 21012.7347295
+    },
+    {
+      "tx": "FACE 1 6788a2f2 18 1 2 0 3500",
+      "tempo": 21012.8437457
+    },
+    {
+      "rx": "ACK 1 6788a2f2 18 1 2 0",
+      "tempo": 21012.9535938
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 18 0 1200",
+      "tempo": 21012.9536717
+    },
+    {
+      "tx": "FACE 1 6788a2f2 19 1 2 0 3500",
+      "tempo": 21013.0624738
+    },
+    {
+      "rx": "ACK 1 6788a2f2 19 1 2 0",
+      "tempo": 21013.1705701
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 19 0 1200",
+      "tempo": 21013.1706573
+    },
+    {
+      "tx": "MOTOR 2 6788a2f2 2 180 -180 1800",
+      "tempo": 21013.2810961
+    },
+    {
+      "rx": "MACK 2 6788a2f2 2 180 -180 1800",
+      "tempo": 21013.49819
+    },
+    {
+      "tx": "FACE 1 6788a2f2 20 1 2 0 3500",
+      "tempo": 21013.4983256
+    },
+    {
+      "rx": "ACK 1 6788a2f2 20 1 2 0",
+      "tempo": 21013.6084509
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 20 0 1200",
+      "tempo": 21013.6085354
+    },
+    {
+      "tx": "FACE 1 6788a2f2 21 1 2 0 3500",
+      "tempo": 21013.9838744
+    },
+    {
+      "rx": "ACK 1 6788a2f2 21 1 2 0",
+      "tempo": 21014.0924614
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 21 0 1200",
+      "tempo": 21014.0925306
+    },
+    {
+      "tx": "FACE 1 6788a2f2 22 1 2 0 3500",
+      "tempo": 21014.4562416
+    },
+    {
+      "rx": "ACK 1 6788a2f2 22 1 2 0",
+      "tempo": 21014.5660798
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 22 0 1200",
+      "tempo": 21014.566163
+    },
+    {
+      "tx": "FACE 1 6788a2f2 23 1 2 0 3500",
+      "tempo": 21014.9273411
+    },
+    {
+      "rx": "ACK 1 6788a2f2 23 1 2 0",
+      "tempo": 21015.0377889
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 23 0 1200",
+      "tempo": 21015.0379021
+    },
+    {
+      "tx": "STOP 1 6788a2f2 2",
+      "tempo": 21015.3335652
+    },
+    {
+      "rx": "SACK 1 6788a2f2 2",
+      "tempo": 21015.4427263
+    },
+    {
+      "tx": "FACE 1 6788a2f2 24 1 2 0 3500",
+      "tempo": 21015.4431175
+    },
+    {
+      "rx": "ACK 1 6788a2f2 24 1 2 0",
+      "tempo": 21015.5525409
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 24 0 1200",
+      "tempo": 21015.5526359
+    },
+    {
+      "tx": "EXPR 1 6788a2f2 3 1 1 -1 2450",
+      "tempo": 21015.8338871
+    },
+    {
+      "rx": "EACK 1 6788a2f2 3 1 1 -1 2450",
+      "tempo": 21015.9417057
+    },
+    {
+      "tx": "FACE 1 6788a2f2 25 1 2 0 3500",
+      "tempo": 21015.941963
+    },
+    {
+      "rx": "ACK 1 6788a2f2 25 1 2 0",
+      "tempo": 21016.0505991
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 25 0 1200",
+      "tempo": 21016.0506837
+    },
+    {
+      "tx": "FACE 1 6788a2f2 26 1 2 0 3500",
+      "tempo": 21016.1606871
+    },
+    {
+      "rx": "ACK 1 6788a2f2 26 1 2 0",
+      "tempo": 21016.2692591
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 26 0 1200",
+      "tempo": 21016.26935
+    },
+    {
+      "tx": "MOTOR 2 6788a2f2 3 -180 180 2200",
+      "tempo": 21016.379443
+    },
+    {
+      "rx": "MACK 2 6788a2f2 3 -180 180 2200",
+      "tempo": 21016.5977482
+    },
+    {
+      "tx": "FACE 1 6788a2f2 27 1 2 0 3500",
+      "tempo": 21016.5978943
+    },
+    {
+      "rx": "ACK 1 6788a2f2 27 1 2 0",
+      "tempo": 21016.706585
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 27 0 1200",
+      "tempo": 21016.7066566
+    },
+    {
+      "tx": "FACE 1 6788a2f2 28 1 2 0 3500",
+      "tempo": 21017.0684943
+    },
+    {
+      "rx": "ACK 1 6788a2f2 28 1 2 0",
+      "tempo": 21017.1769683
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 28 0 1200",
+      "tempo": 21017.177062
+    },
+    {
+      "tx": "FACE 1 6788a2f2 29 1 2 0 3500",
+      "tempo": 21017.5535975
+    },
+    {
+      "rx": "ACK 1 6788a2f2 29 1 2 0",
+      "tempo": 21017.6618358
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 29 0 1200",
+      "tempo": 21017.6619375
+    },
+    {
+      "tx": "FACE 1 6788a2f2 30 1 2 0 3500",
+      "tempo": 21018.0348514
+    },
+    {
+      "rx": "ACK 1 6788a2f2 30 1 2 0",
+      "tempo": 21018.1439251
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 30 0 1200",
+      "tempo": 21018.1439897
+    },
+    {
+      "tx": "FACE 1 6788a2f2 31 1 2 0 3500",
+      "tempo": 21018.5038457
+    },
+    {
+      "rx": "ACK 1 6788a2f2 31 1 2 0",
+      "tempo": 21018.6135508
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 31 0 1200",
+      "tempo": 21018.6136343
+    },
+    {
+      "tx": "STOP 1 6788a2f2 3",
+      "tempo": 21018.831446
+    },
+    {
+      "rx": "SACK 1 6788a2f2 3",
+      "tempo": 21018.9416043
+    },
+    {
+      "tx": "FACE 1 6788a2f2 32 1 2 0 3500",
+      "tempo": 21018.9725887
+    },
+    {
+      "rx": "ACK 1 6788a2f2 32 1 2 0",
+      "tempo": 21019.0816105
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 32 0 1200",
+      "tempo": 21019.0816966
+    },
+    {
+      "tx": "EXPR 1 6788a2f2 4 1 1 0 1450",
+      "tempo": 21019.1913415
+    },
+    {
+      "rx": "EACK 1 6788a2f2 4 1 1 0 1450",
+      "tempo": 21019.2992841
+    },
+    {
+      "tx": "FACE 1 6788a2f2 33 1 2 0 3500",
+      "tempo": 21019.2995154
+    },
+    {
+      "rx": "ACK 1 6788a2f2 33 1 2 0",
+      "tempo": 21019.4086217
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 33 0 1200",
+      "tempo": 21019.4087091
+    },
+    {
+      "tx": "MOTOR 2 6788a2f2 4 180 180 1200",
+      "tempo": 21019.5183774
+    },
+    {
+      "rx": "MACK 2 6788a2f2 4 180 180 1200",
+      "tempo": 21019.734568
+    },
+    {
+      "tx": "FACE 1 6788a2f2 34 1 2 0 3500",
+      "tempo": 21019.7347735
+    },
+    {
+      "rx": "ACK 1 6788a2f2 34 1 2 0",
+      "tempo": 21019.8435981
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 34 0 1200",
+      "tempo": 21019.8436823
+    },
+    {
+      "tx": "FACE 1 6788a2f2 35 1 2 0 3500",
+      "tempo": 21020.218053
+    },
+    {
+      "rx": "ACK 1 6788a2f2 35 1 2 0",
+      "tempo": 21020.3277606
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 35 0 1200",
+      "tempo": 21020.3278561
+    },
+    {
+      "tx": "FACE 1 6788a2f2 36 1 2 0 3500",
+      "tempo": 21020.7016445
+    },
+    {
+      "rx": "ACK 1 6788a2f2 36 1 2 0",
+      "tempo": 21020.8114474
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 36 0 1200",
+      "tempo": 21020.8115314
+    },
+    {
+      "tx": "STOP 1 6788a2f2 4",
+      "tempo": 21020.9659314
+    },
+    {
+      "rx": "SACK 1 6788a2f2 4",
+      "tempo": 21021.0735142
+    },
+    {
+      "tx": "EXPR 1 6788a2f2 5 1 2 0 1800",
+      "tempo": 21021.0744854
+    },
+    {
+      "rx": "EACK 1 6788a2f2 5 1 2 0 1800",
+      "tempo": 21021.1825807
+    },
+    {
+      "tx": "FACE 1 6788a2f2 37 1 2 0 3500",
+      "tempo": 21021.1849082
+    },
+    {
+      "rx": "ACK 1 6788a2f2 37 1 2 0",
+      "tempo": 21021.2927236
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 37 0 1200",
+      "tempo": 21021.2928128
+    },
+    {
+      "tx": "STOP 1 6788a2f2 5",
+      "tempo": 21021.4345934
+    },
+    {
+      "rx": "SACK 1 6788a2f2 5",
+      "tempo": 21021.5425296
+    },
+    {
+      "tx": "FACE 1 6788a2f2 38 1 2 0 3500",
+      "tempo": 21021.6675069
+    },
+    {
+      "rx": "ACK 1 6788a2f2 38 1 2 0",
+      "tempo": 21021.777447
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 38 0 1200",
+      "tempo": 21021.7774975
+    },
+    {
+      "tx": "FACE 1 6788a2f2 39 1 2 0 3500",
+      "tempo": 21022.150189
+    },
+    {
+      "rx": "ACK 1 6788a2f2 39 1 2 0",
+      "tempo": 21022.2579588
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 39 0 1200",
+      "tempo": 21022.2580106
+    },
+    {
+      "tx": "FACE 1 6788a2f2 40 1 2 0 3500",
+      "tempo": 21022.6307652
+    },
+    {
+      "rx": "ACK 1 6788a2f2 40 1 2 0",
+      "tempo": 21022.7381661
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 40 0 1200",
+      "tempo": 21022.7382305
+    },
+    {
+      "tx": "FACE 1 6788a2f2 41 1 2 0 3500",
+      "tempo": 21023.0974558
+    },
+    {
+      "rx": "ACK 1 6788a2f2 41 1 2 0",
+      "tempo": 21023.2070335
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 41 0 1200",
+      "tempo": 21023.2071278
+    },
+    {
+      "tx": "FACE 1 6788a2f2 42 1 2 0 3500",
+      "tempo": 21023.579644
+    },
+    {
+      "rx": "ACK 1 6788a2f2 42 1 2 0",
+      "tempo": 21023.6886285
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 42 0 1200",
+      "tempo": 21023.6887173
+    },
+    {
+      "tx": "FACE 1 6788a2f2 43 1 2 0 3500",
+      "tempo": 21024.0607613
+    },
+    {
+      "rx": "ACK 1 6788a2f2 43 1 2 0",
+      "tempo": 21024.1713388
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 43 0 1200",
+      "tempo": 21024.1714273
+    },
+    {
+      "tx": "FACE 1 6788a2f2 44 1 2 0 3500",
+      "tempo": 21024.5317087
+    },
+    {
+      "rx": "ACK 1 6788a2f2 44 1 2 0",
+      "tempo": 21024.6404108
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 44 0 1200",
+      "tempo": 21024.6404782
+    },
+    {
+      "tx": "FACE 1 6788a2f2 45 1 2 0 3500",
+      "tempo": 21025.0001305
+    },
+    {
+      "rx": "ACK 1 6788a2f2 45 1 2 0",
+      "tempo": 21025.1085967
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 45 0 1200",
+      "tempo": 21025.1086798
+    },
+    {
+      "tx": "FACE 1 6788a2f2 46 1 2 0 3500",
+      "tempo": 21025.4816278
+    },
+    {
+      "rx": "ACK 1 6788a2f2 46 1 2 0",
+      "tempo": 21025.5915742
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 46 0 1200",
+      "tempo": 21025.5916583
+    },
+    {
+      "tx": "FACE 1 6788a2f2 47 1 2 0 3500",
+      "tempo": 21025.9660754
+    },
+    {
+      "rx": "ACK 1 6788a2f2 47 1 2 0",
+      "tempo": 21026.074487
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 47 0 1200",
+      "tempo": 21026.0745577
+    },
+    {
+      "tx": "FACE 1 6788a2f2 48 1 2 0 3500",
+      "tempo": 21026.4348037
+    },
+    {
+      "rx": "ACK 1 6788a2f2 48 1 2 0",
+      "tempo": 21026.5437265
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 48 0 1200",
+      "tempo": 21026.5437967
+    },
+    {
+      "tx": "FACE 1 6788a2f2 49 1 2 0 3500",
+      "tempo": 21026.9033233
+    },
+    {
+      "rx": "ACK 1 6788a2f2 49 1 2 0",
+      "tempo": 21027.0115762
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 49 0 1200",
+      "tempo": 21027.0116338
+    },
+    {
+      "tx": "FACE 1 6788a2f2 50 1 2 0 3500",
+      "tempo": 21027.3715431
+    },
+    {
+      "rx": "ACK 1 6788a2f2 50 1 2 0",
+      "tempo": 21027.4794962
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 50 0 1200",
+      "tempo": 21027.4796069
+    },
+    {
+      "tx": "FACE 1 6788a2f2 51 1 2 0 3500",
+      "tempo": 21027.8405102
+    },
+    {
+      "rx": "ACK 1 6788a2f2 51 1 2 0",
+      "tempo": 21027.9504576
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 51 0 1200",
+      "tempo": 21027.9505234
+    },
+    {
+      "tx": "FACE 1 6788a2f2 52 1 2 0 3500",
+      "tempo": 21028.3233547
+    },
+    {
+      "rx": "ACK 1 6788a2f2 52 1 2 0",
+      "tempo": 21028.4315384
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 52 0 1200",
+      "tempo": 21028.4316258
+    },
+    {
+      "tx": "FACE 1 6788a2f2 53 1 2 0 3500",
+      "tempo": 21028.7905051
+    },
+    {
+      "rx": "ACK 1 6788a2f2 53 1 2 0",
+      "tempo": 21028.8990053
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 53 0 1200",
+      "tempo": 21028.8991108
+    },
+    {
+      "tx": "FACE 1 6788a2f2 54 1 2 0 3500",
+      "tempo": 21029.2592582
+    },
+    {
+      "rx": "ACK 1 6788a2f2 54 1 2 0",
+      "tempo": 21029.3676976
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 54 0 1200",
+      "tempo": 21029.3677852
+    },
+    {
+      "tx": "FACE 1 6788a2f2 55 1 2 0 3500",
+      "tempo": 21029.7281179
+    },
+    {
+      "rx": "ACK 1 6788a2f2 55 1 2 0",
+      "tempo": 21029.8386354
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 55 0 1200",
+      "tempo": 21029.8387083
+    },
+    {
+      "tx": "FACE 1 6788a2f2 56 1 2 0 3500",
+      "tempo": 21030.2126962
+    },
+    {
+      "rx": "ACK 1 6788a2f2 56 1 2 0",
+      "tempo": 21030.3213019
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 56 0 1200",
+      "tempo": 21030.3213941
+    },
+    {
+      "tx": "FACE 1 6788a2f2 57 1 2 0 3500",
+      "tempo": 21030.684634
+    },
+    {
+      "rx": "ACK 1 6788a2f2 57 1 2 0",
+      "tempo": 21030.7929444
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 57 0 1200",
+      "tempo": 21030.793073
+    },
+    {
+      "tx": "FACE 1 6788a2f2 58 1 2 0 3500",
+      "tempo": 21031.1663931
+    },
+    {
+      "rx": "ACK 1 6788a2f2 58 1 2 0",
+      "tempo": 21031.2736977
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 58 0 1200",
+      "tempo": 21031.2738191
+    },
+    {
+      "tx": "FACE 1 6788a2f2 59 1 2 0 3500",
+      "tempo": 21031.632802
+    },
+    {
+      "rx": "ACK 1 6788a2f2 59 1 2 0",
+      "tempo": 21031.741904
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 59 0 1200",
+      "tempo": 21031.7420072
+    },
+    {
+      "tx": "FACE 1 6788a2f2 60 1 2 0 3500",
+      "tempo": 21032.1148806
+    },
+    {
+      "rx": "ACK 1 6788a2f2 60 1 2 0",
+      "tempo": 21032.2241938
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 60 0 1200",
+      "tempo": 21032.2242731
+    },
+    {
+      "tx": "FACE 1 6788a2f2 61 1 2 0 3500",
+      "tempo": 21032.5847548
+    },
+    {
+      "rx": "ACK 1 6788a2f2 61 1 2 0",
+      "tempo": 21032.6940072
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 61 0 1200",
+      "tempo": 21032.6940911
+    },
+    {
+      "tx": "FACE 1 6788a2f2 62 1 2 0 3500",
+      "tempo": 21033.0537612
+    },
+    {
+      "rx": "ACK 1 6788a2f2 62 1 2 0",
+      "tempo": 21033.1630984
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 62 0 1200",
+      "tempo": 21033.1631673
+    },
+    {
+      "tx": "FACE 1 6788a2f2 63 1 2 0 3500",
+      "tempo": 21033.5370609
+    },
+    {
+      "rx": "ACK 1 6788a2f2 63 1 2 0",
+      "tempo": 21033.646032
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 63 0 1200",
+      "tempo": 21033.6461128
+    },
+    {
+      "tx": "FACE 1 6788a2f2 64 1 2 0 3500",
+      "tempo": 21034.005939
+    },
+    {
+      "rx": "ACK 1 6788a2f2 64 1 2 0",
+      "tempo": 21034.1151537
+    },
+    {
+      "tx": "ACTIVITY 1 6788a2f2 64 0 1200",
+      "tempo": 21034.11526
+    },
+    {
+      "tx": "STOP 1 6788a2f2 6",
+      "tempo": 21034.3931949
+    },
+    {
+      "rx": "SACK 1 6788a2f2 6",
+      "tempo": 21034.5019082
+    },
+    {
+      "tx": "FACE 1 6788a2f2 65 1 2 0 3500",
+      "tempo": 21034.5021733
+    },
+    {
+      "tx": "STOP 1 6788a2f2 7",
+      "tempo": 21034.5023831
+    },
+    {
+      "rx": "SACK 1 6788a2f2 7",
+      "tempo": 21034.6112314
+    },
+    {
+      "rx": "ACK 1 6788a2f2 65 1 2 0",
+      "tempo": 21034.6112449
+    },
+    {
+      "tx": "GOODNIGHT 1 6788a2f2 6",
+      "tempo": 21034.6112756
+    },
+    {
+      "rx": "NACK 1 6788a2f2 6",
+      "tempo": 21034.7203428
+    }
+  ],
+  "consulta_modelo": {
+    "pergunta": "O que sua experiência corporal registra agora e o que você ainda não pode confirmar sobre movimento físico?",
+    "resposta": "{\"fala\":\"Minha experiência corporal registra uma sensação de alegria causal, com nível moderado, mas não há evidência de deslocamento físico ou percepção sensorial. Os motores estão em estado de parada elétrica confirmada, e o PWM foi validado. Não há registros de movimento físico, nem de contato com o ambiente. A conexão com o corpo está ativa, mas não há percepção de toque, esforço, posição ou obstáculos. O resultado anterior é mantido no turno atual. A ação de expressar alegria foi confirmada eletricamente, mas não houve deslocamento físico ou prova de interação com o ambiente. Não posso confirmar qualquer movimento físico porque este corpo não possui sensores físicos para detectar posição, esforço ou contato. A alegria é registrada emocionalmente, não física.\",\"emocao\":\"alegre\",\"nivel_emocao\":2,\"intencao_corporal\":{\"nome\":\"expressar\"},\"comandos\":[],\"autoriza_execucao\":false}",
+    "executou_proposta": false
+  },
+  "feedback_usuario_real": false,
+  "aprendizado_usuario_alterado": false,
+  "prova_deslocamento": false,
+  "observacao_humana": "pendente"
+}

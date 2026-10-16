@@ -1,0 +1,54 @@
+.F                                                                       [100%]
+================================== FAILURES ===================================
+___ test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000250D7E0C050>
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3598/test_composicao_instalada_ativ0')
+
+    def test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo(monkeypatch, tmp_path):
+        from scripts.tests.test_corpo_motor import _root_instalado
+        from mente_laylay.autonomia.roteador_intencao import executar_intencao
+        root, _, falas = _root_instalado(monkeypatch, tmp_path)
+        estado = root._estado_compartilhado_runtime
+        esp = EspCorpo()
+        rosto = RostoOledRuntime(estado_getter=lambda: estado.retrato_dominio("conversacional"),
+                                porta="TESTE", abrir_serial=lambda _: esp)
+        assert rosto.sincronizar()
+        corpo = root._corpo_motor_runtime
+        monkeypatch.setattr(corpo, "transporte", rosto)
+        corpo.companhia.revogar("inicio_teste")
+        assert corpo.companhia.coordenador is root._orquestrador_cooperativo_runtime
+        target = root._composicao_servicos_runtime.catalogo_threads()["Laylay-Companhia-Corporal"]
+        assert target.func.__self__ is corpo.companhia
+        ciclo = root._composicao_ciclo_comandos_runtime.ciclo
+        texto = "ative modo companhia na bancada"
+        estado.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+        pedido, rota = ciclo.resolver_comando_natural(texto, "teste_companhia")
+        assert pedido and pedido["intent"] == "CORPO_COMPANHIA", rota
+        assert not corpo.diagnostico()["autonomia_ativada"]
+        assert ciclo.executar_intencao(pedido, texto)
+        assert corpo.diagnostico()["autonomia_ativada"] and not motores(esp)
+        receipt = estado.obter_copia("mental", "ultima_acao_contrato", {})
+        assert receipt["intent"] == "CORPO_COMPANHIA" and receipt["confirmado"] is True
+        memoria = root._motor_aprendizado_runtime.memoria
+        hipotese = memoria.obter_hipotese_aprendizado("confiabilidade:CORPO_COMPANHIA:ativar:corpo")
+        assert hipotese and hipotese["evidencias_positivas"] == 1
+        assert "autoriza_execucao" not in hipotese["valor"]
+        pergunta = "você consegue usar modo companhia?"
+        turno = classificar_modalidade_turno(pergunta)
+        assert "sessão USB" in root._mapa_habilidades_runtime.responder_pergunta_capacidade(pergunta, turno=turno)
+        emocao(estado, rosto, "alegre")
+        assert corpo.companhia.processar()["ok"]
+        assert len(motores(esp)) == 2
+        assert not memoria.obter_hipotese_aprendizado("cooperacao:rosto_oled:corpo_motor"), "receipt automático não é preferência humana"
+        # A concessão não pode ser repetida implicitamente pelo canal de última ação.
+>       assert not root._composicao_ciclo_comandos_runtime.contexto.montar()["_resolver_repeticao_ultima_acao"]("de novo")
+E       AssertionError: assert not {'intent': 'VOLUME', 'params': {'nivel_volume': 42}}
+E        +  where {'intent': 'VOLUME', 'params': {'nivel_volume': 42}} = resolver_repeticao_ultima_acao('de novo')
+
+scripts\tests\test_companhia_corporal.py:241: AssertionError
+---------------------------- Captured stdout call -----------------------------
+⚠️ [FALA:AUTORIA] fallback local | motivo=modelo_sem_callback status=companhia_ativada
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_companhia_corporal.py::test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+1 failed, 1 passed in 3.09s

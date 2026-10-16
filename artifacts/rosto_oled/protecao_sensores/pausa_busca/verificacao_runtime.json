@@ -1,0 +1,12 @@
+{
+  "prioridade_inicio_s": 37.908,
+  "prioridade_fim_s": 42.449,
+  "nova_busca_s": 44.444,
+  "incidente_anterior": 1,
+  "incidente_novo": 2,
+  "mesma_sessao": true,
+  "mesmo_boot": true,
+  "companhia_ativa": true,
+  "sem_motor_stop_hello_pc_no_trecho": true,
+  "encerrada": true
+}

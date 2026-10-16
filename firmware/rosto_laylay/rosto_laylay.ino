@@ -10,6 +10,12 @@
 #include <math.h>
 #include "fonte_terminal.h"
 #include "transporte_wifi.h"
+#ifndef LAYLAY_TESTE_SOMENTE_IMU
+#define LAYLAY_TESTE_SOMENTE_IMU 0
+#endif
+#ifndef LAYLAY_IMU
+#define LAYLAY_IMU 0
+#endif
 
 // A atualização do rosto mantém tração desativada. Bancada é opt-in no build.
 #ifndef LAYLAY_HABILITAR_MOTORES_BANCADA
@@ -26,7 +32,7 @@
 #error "Janela estendida exige perfil de motores de bancada"
 #endif
 
-Adafruit_SSD1306 tela(128, 64, &Wire, -1);
+Adafruit_SSD1306 tela(128, 64, &Wire, -1, 400000, 400000);
 constexpr int PINO_SDA = 8, PINO_SCL = 9;
 // Teste em ponte opt-in: GPIO6 -> 220Ohm -> falante8Ohm -> GPIO5.
 // Sem capacitor polarizado ou conexão do falante ao GND neste perfil.
@@ -41,12 +47,14 @@ bool bipInicioAtivo = false, bipInicioTentado = false;
 bool pinosSomProntos[2] = {};
 uint32_t inicioBip = 0;
 uint8_t endereco = 0;
+uint8_t resultadoSondaTela = 0;
 char sessao[9] = "";
 uint32_t sequencia = 0, ultimoPacote = 0, ttl = 3500, ultimoFrame = 0;
 uint32_t proximaPiscada = 2500, inicioPiscada = 0, proximoOlhar = 1200;
 int emocao = 0, nivel = 1, olharAlvo = 0;
 bool falando = false, conectado = false, demonstracao = false, ackPendente = false;
 bool telaInicializada = false;
+bool falhaFrameI2c = false;
 // Saída visual apenas. Estes campos nunca autorizam/renovam os motores.
 bool atividade = false, ackAtividadePendente = false, demoHack = false;
 uint32_t sequenciaAtividade = 0, ultimoPacoteAtividade = 0, ttlAtividade = 1000;
@@ -74,7 +82,28 @@ uint32_t inicioWakeMicros = 0;
 int pwmEsquerdo = 0, pwmDireito = 0;
 int versaoMotor = 1;
 bool ackMotorEmitido = false;
+void cancelarGiroMedido();
+void confirmarPwmGiro();
+bool atualizarGiroMedido(uint32_t agora);
+bool manuseioBloqueiaMotor(uint32_t agora);
+bool admitirMotorManuseio(uint32_t seq);
+void interromperMotorPorManuseio();
+void atualizarImuCorporal(uint32_t agora);
+void atualizarReacaoManuseio(uint32_t agora);
+float olharManuseio();
+float olharVerticalManuseio();
+float pesoOlharManuseio();
+int expressaoManuseio();
+bool atualizarProtecaoCorporal(uint32_t agora);
+bool admitirMovimentoProtegido(uint32_t seq);
+bool reflexoProtecaoAtivo();
+void cancelarProtecaoCorporal();
+bool medoProtecaoCorporal(uint32_t agora);
+int expressaoProtecaoCorporal(uint32_t agora);
+void atualizarSensoresDistancia(uint32_t agora);
 void invalidarSessao();
+void invalidarSessaoPor(const char *motivo);
+void registrarPerdaSessao(const char *motivo);
 void limparExpressao();
 void pararSomExpressivo();
 bool motorEmUso() { return motorPendente || motorAtivo; }
@@ -87,10 +116,16 @@ bool sessaoTcpExpirada() {
 bool telaPresente() {
   if (!endereco) return false;
   Wire.beginTransmission(endereco);
-  return Wire.endTransmission() == 0;
+  resultadoSondaTela=Wire.endTransmission();
+  if (resultadoSondaTela) falhaFrameI2c=true;
+  return resultadoSondaTela == 0;
+}
+const char *motivoFalhaTela() {
+  return resultadoSondaTela==5 ? "TIMEOUT_OLED" : resultadoSondaTela==2 || resultadoSondaTela==3 ? "NACK_OLED" : "OLED";
 }
 
 void pararMotor() {
+  cancelarGiroMedido();
   // Primeiro corta a ponte; falha de PWM nunca impede desligar nSLEEP.
   digitalWrite(PINO_NSLEEP, LOW);
   for (int i = 0; i < 4; ++i) {
@@ -122,13 +157,16 @@ bool decimalPwm(const char *texto, int &valor) {
 }
 
 void atualizarMotor(uint32_t agora) {
+  if (manuseioBloqueiaMotor(agora)) { interromperMotorPorManuseio(); return; }
+  if (atualizarGiroMedido(agora)) return;
+  if (atualizarProtecaoCorporal(agora)) return;
   if (!motorPendente && !motorAtivo) return;
   // FACE mantém rosto apenas. Nunca renova o prazo absoluto do motor.
   if (!conectado || agora - ultimoPacote >= ttl || agora - inicioMotor >= duracaoMotor) {
     pararMotor(); return;
   }
   if (!telaInicializada || !telaPresente()) {
-    invalidarSessao(); return;
+    invalidarSessaoPor(motivoFalhaTela()); return;
   }
   agora = millis(); // Sondagem I2C também pode consumir a janela do pulso.
   if (agora - ultimoPacote >= ttl || agora - inicioMotor >= duracaoMotor) { pararMotor(); return; }
@@ -156,6 +194,7 @@ void atualizarMotor(uint32_t agora) {
       ackMotorEmitido = true; // Confirma o alvo somente quando aplicado nos GPIOs.
       responder("MACK %d %s %lu %d %d %lu\n", versaoMotor, sessao, (unsigned long)sequenciaMotor,
                   pwmEsquerdo, pwmDireito, (unsigned long)duracaoMotor);
+      confirmarPwmGiro();
     }
   }
 }
@@ -185,6 +224,11 @@ void atualizarGlitch(uint32_t agora) {
 }
 
 void invalidarSessao() {
+  invalidarSessaoPor("TRANSPORTE");
+}
+void invalidarSessaoPor(const char *motivo) {
+  registrarPerdaSessao(motivo);
+  cancelarProtecaoCorporal();
   limparExpressao();
   pararSomExpressivo();
   pararMotor(); limparAtividade(); painelHack = 0; limparGlitch();
@@ -208,6 +252,8 @@ bool separarCampos(const char *entrada, char *pacote, size_t capacidade, char **
   return !*cursor;
 }
 
+#include "saude_corporal.h"
+
 void processarAtividade(const char *entrada) {
   char pacote[128]; char *campos[6]; uint32_t seq, ativo, tempo;
   if (!separarCampos(entrada, pacote, sizeof(pacote), campos, 6)
@@ -224,7 +270,7 @@ void processarAtividade(const char *entrada) {
   }
   bool oledPresente = telaPresente(); agora = millis();
   if (!oledPresente || agora - ultimoPacote >= ttl) {
-    invalidarSessao();
+    invalidarSessaoPor(!oledPresente ? motivoFalhaTela() : "TTL");
     responderLinha("ERROR 1 ACTIVITY_SEM_SESSAO"); return;
   }
   if (ativo && !atividade) inicioHack = agora;
@@ -247,7 +293,7 @@ void processarGlitch(const char *entrada) {
   }
   bool oledPresente = telaPresente(); agora = millis();
   if (!oledPresente || agora - ultimoPacote >= ttl) {
-    invalidarSessao();
+    invalidarSessaoPor(!oledPresente ? motivoFalhaTela() : "TTL");
     responderLinha("ERROR 1 GLITCH_SEM_SESSAO"); return;
   }
   sequenciaGlitch = seq; inicioGlitch = agora; ttlGlitch = tempo;
@@ -291,19 +337,25 @@ void processarMotor(const char *entrada) {
   }
   // Zero é desenergização, inclusive quando a correlação será rejeitada abaixo.
   bool parada = esquerdo == 0 && direito == 0;
-  if (parada) pararMotor();
+  if (parada) { cancelarProtecaoCorporal(); pararMotor(); }
   uint32_t agora = millis();
   if (!conectado || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaMotor
       || agora - ultimoPacote >= ttl || !telaInicializada || !motoresProntos) {
     responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
   }
-  if (!parada && (motorPendente || motorAtivo)) { responderLinha("ERROR 1 MOTOR_OCUPADO"); return; }
+  if (!parada && (motorPendente || motorAtivo)) {
+    if (reflexoProtecaoAtivo()) admitirMovimentoProtegido(seq);
+    else responderLinha("ERROR 1 MOTOR_OCUPADO");
+    return;
+  }
   bool oledPresente = telaPresente();
   agora = millis(); // A consulta I2C pode ter consumido a vigência da FACE.
   if (!oledPresente || agora - ultimoPacote >= ttl) {
-    invalidarSessao();
+    invalidarSessaoPor(!oledPresente ? motivoFalhaTela() : "TTL");
     responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
   }
+  if (!parada && !admitirMotorManuseio(seq)) return;
+  if (!parada && !admitirMovimentoProtegido(seq)) return;
   sequenciaMotor = seq; inicioMotor = agora; duracaoMotor = tempo;
   versaoMotor = campos[1][0] == '2' ? 2 : 1; ackMotorEmitido = false;
   pwmEsquerdo = esquerdo; pwmDireito = direito;
@@ -317,6 +369,7 @@ void processarMotor(const char *entrada) {
 
 void processarParada(const char *entrada) {
   // A desenergização nunca depende da validade/correlação do pedido.
+  cancelarProtecaoCorporal();
   pararMotor();
   if (!strcmp(entrada, "STOP")) { responderLinha("STOPPED 1"); return; }
   char pacote[128]; char *campos[4]; uint32_t seq;
@@ -343,6 +396,7 @@ float repousoInicial = 1;
 uint32_t inicioTransicaoSono = 0;
 float rubor = 0, sobrancelhasTristes = 0, lagrima = 0;
 float brilhoOlhos = 0;
+float olharVertical = 0, enfaseOlhos = 0;
 float velocidadeBalanco = 1.35f, amplitudeBalanco = 1.5f, amplitudeTremor = 0;
 float faseBalanco = 0, faseTremor = 0, faseLagrima = 0;
 uint32_t tempoAnimacao = 0;
@@ -365,6 +419,8 @@ void desenharBrilhoOlhos(int x, int y, float intensidade) {
     tela.drawPixel(x + 1, y + 1, SSD1306_WHITE);
   }
 }
+
+#include "sono_vivo.h"
 
 void desenharTerminal(uint32_t agora) {
   if (painelHack <= 0) return;
@@ -439,6 +495,33 @@ void desenharGlitch(uint32_t idade, uint32_t tempo) {
   }
 }
 
+void enviarFrameComProtecao() {
+#if LAYLAY_PROTECAO_CORPORAL || LAYLAY_IMU
+  if (!LAYLAY_IMU && !motorEmUso() && !medoProtecaoCorporal(millis())) {
+    tela.display(); return; // Repouso conserva a cadência/fluidez já aprovada.
+  }
+  Wire.setClock(400000);
+  Wire.beginTransmission(endereco); Wire.write(uint8_t(0));
+  const uint8_t comandos[] = {0x22,0,7,0x21,0,127};
+  Wire.write(comandos,sizeof(comandos));
+  if (Wire.endTransmission()) { falhaFrameI2c=true; invalidarSessaoPor("I2C"); return; }
+  auto *buffer = tela.getBuffer();
+  // Um bloco leva menos de 1ms em I2C 400kHz. Entre blocos, a segurança
+  // pode cortar os motores; não precisa esperar o frame de 1024 bytes.
+  for (int inicio=0;inicio<1024;inicio+=32) {
+    atualizarImuCorporal(millis()); atualizarReacaoManuseio(millis());
+    atualizarSensoresDistancia(millis()); atualizarMotor(millis());
+    Wire.beginTransmission(endereco); Wire.write(uint8_t(0x40));
+    Wire.write(buffer+inicio,32);
+    if (Wire.endTransmission()) { falhaFrameI2c=true; invalidarSessaoPor("I2C"); return; }
+    atualizarMotor(millis());
+  }
+  falhaFrameI2c=false;
+#else
+  tela.display();
+#endif
+}
+
 void renderizar(uint32_t agora) {
   // Relógio relativo conserva a fase ao trocar emoção e atravessa millis wrap.
   float dt = animacaoIniciada ? min(uint32_t(50), uint32_t(agora - tempoAnimacao)) / 1000.0f : 0;
@@ -463,16 +546,52 @@ void renderizar(uint32_t agora) {
   float faseSono = min(1.0f, uint32_t(agora - inicioTransicaoSono) / (dormindo ? 3000.0f : 3200.0f));
   float curvaSono = faseSono * faseSono * faseSono * (faseSono * (6 * faseSono - 15) + 10);
   repouso = misturar(repousoInicial, dormindo ? 1 : 0, curvaSono);
+  atualizarSonoVivo(dormindo, agora, dt);
   float ativo = 1 - repouso;
   misturaExpressao = aproximar(misturaExpressao, expressaoAtiva && !dormindo ? 1 : 0, dt, 0.18f);
   float detalhe = misturaExpressao * ativo;
+  // A partitura recebida detalha a emoção causal; não infere um novo estado.
+  // Entrada/saída finitas, com ênfases diferentes em cada frase de gesto.
+  float frase = expressaoAtiva ? min(1.0f, uint32_t(agora - inicioExpressao) / float(ttlExpressao)) : 1;
+  float envelope = expressaoAtiva ? min(1.0f, (1 - frase) * 5) : 0;
+  detalhe *= envelope;
+  float pulso = sinf(frase * 6.283185f) * detalhe;
+  float alturaDetalhe = 0, larguraDetalhe = 0, inclinacaoDetalhe = 0;
+  float alegriaDetalhe = 0, assimetriaDetalhe = 0, ruborDetalhe = 0;
+  float tristezaDetalhe = 0, brilhoDetalhe = 0, verticalDetalhe = 0;
+  bool medoLocal = medoProtecaoCorporal(agora) && !dormindo;
+  int reacaoLocal = dormindo ? 0 : expressaoProtecaoCorporal(agora);
+  bool pavorLocal = reacaoLocal==2, irritacaoLocal = reacaoLocal==3;
+  if (faseExpressao == 1 || faseExpressao == 3) {
+    switch (estiloExpressao) {
+      case 1: alegriaDetalhe = 1; ruborDetalhe = .8f; brilhoDetalhe = 1;
+              larguraDetalhe = 2 * pulso; verticalDetalhe = -1.5f * fabsf(pulso); break;
+      case 2: alturaDetalhe = -6; inclinacaoDetalhe = -5;
+              tristezaDetalhe = 1; verticalDetalhe = 2.5f; break;
+      case 3: inclinacaoDetalhe = 10; alturaDetalhe = -2; verticalDetalhe = -.8f; break;
+      case 4: alturaDetalhe = -5; inclinacaoDetalhe = 6; assimetriaDetalhe = -2.5f; break;
+      case 5: alturaDetalhe = 8; larguraDetalhe = -5; brilhoDetalhe = 1;
+              verticalDetalhe = -2; break;
+      case 6: alturaDetalhe = -7; larguraDetalhe = -4; ruborDetalhe = 1;
+              assimetriaDetalhe = 2.5f; verticalDetalhe = 2; break;
+      case 7: alturaDetalhe = -4; assimetriaDetalhe = -5; inclinacaoDetalhe = 2; break;
+      case 9: alturaDetalhe = 3; larguraDetalhe = -2; verticalDetalhe = -1; break;
+      case 10: alturaDetalhe = 2; assimetriaDetalhe = 4;
+               verticalDetalhe = -1.5f; break;
+      default: alturaDetalhe = 1.5f * pulso; verticalDetalhe = -pulso; break;
+    }
+  }
+  olharVertical = aproximar(olharVertical, verticalDetalhe * detalhe + olharVerticalManuseio(), dt, pesoOlharManuseio()>.5f?.12f:.22f);
+  enfaseOlhos = aproximar(enfaseOlhos, pulso * .8f, dt, .18f);
   if (int32_t(agora - proximoOlhar) >= 0) {
     olharAlvo = random(-4, 5);
     proximoOlhar = agora + random(1800, 4200);
   }
   float alvoOlhar = dormindo ? 0 : emocao == 6 ? -2.5f : olharAlvo;
-  if (expressaoAtiva && !dormindo) alvoOlhar = faseExpressao == 3 ? 0 : ladoExpressao * 5;
-  olhar = aproximar(olhar, alvoOlhar, dt, 0.24f);
+  if (expressaoAtiva && !dormindo) alvoOlhar = faseExpressao == 3 ? 0
+      : ladoExpressao * (estiloExpressao == 6 ? 3.5f : 5.5f);
+  if (!dormindo) alvoOlhar = misturar(alvoOlhar,olharManuseio(),pesoOlharManuseio());
+  olhar = aproximar(olhar, alvoOlhar, dt, pesoOlharManuseio()>.5f?.12f:.24f);
   if (!dormindo && ativo > .98f && int32_t(agora - proximaPiscada) >= 0 && inicioPiscada == 0) {
     inicioPiscada = agora;
     proximaPiscada = agora + random(2600, 5400);
@@ -490,35 +609,57 @@ void renderizar(uint32_t agora) {
   // permanece até fechar: evita abrir olhos neutros no meio do adormecer.
   if (!dormindo) {
   float alturaAlvo = emocao == 5 ? 30 : emocao == 2 ? 19 : emocao == 6 ? 18 : emocao == 7 ? 19 : 26;
+  int reacaoManuseio=expressaoManuseio();
+  if (reacaoManuseio) {
+    alturaAlvo=reacaoManuseio==3?20:reacaoManuseio==4?23:35;
+    larguraDetalhe=reacaoManuseio==3?1:reacaoManuseio==4?0:-7;
+    if(reacaoManuseio==3) {inclinacaoDetalhe=4;assimetriaDetalhe=-4;ruborDetalhe=.45f;}
+    if(reacaoManuseio==4) {inclinacaoDetalhe=2;assimetriaDetalhe=-2;}
+    detalhe=1;brilhoDetalhe=.8f;
+  }
+  if (medoLocal) { alturaAlvo = 32; larguraDetalhe = -6; detalhe = 1; tristezaDetalhe = .7f; }
+  if (pavorLocal) { alturaAlvo=34; larguraDetalhe=-8; detalhe=1; tristezaDetalhe=1; }
+  if (irritacaoLocal) { alturaAlvo=22; larguraDetalhe=1; detalhe=1; }
   alturaAlvo += detalhe * (faseExpressao == 0 ? -3 : faseExpressao == 3 ? 2 : faseExpressao == 2 ? -1.5f : 0);
+  alturaAlvo += alturaDetalhe * detalhe;
   alturaOlho = aproximar(alturaOlho, alturaAlvo, dt, 0.24f);
-  larguraOlho = aproximar(larguraOlho, emocao == 5 ? 28 : emocao == 6 ? 27 : 32, dt, 0.24f);
-  inclinacaoPalpebra = aproximar(inclinacaoPalpebra, emocao == 3 ? 7 + nivel * 1.5f : emocao == 4 ? 4 + nivel : emocao == 2 ? -5 : 0, dt, 0.24f);
-  float alegriaAlvo = emocao == 1 ? 1 : estiloExpressao == 1 && faseExpressao == 1 ? detalhe : 0;
+  larguraOlho = aproximar(larguraOlho, (emocao == 5 ? 28 : emocao == 6 ? 27 : 32) + larguraDetalhe * detalhe, dt, 0.24f);
+  float inclinacaoBase = emocao == 3 ? 7 + nivel * 1.5f : emocao == 4 ? 4 + nivel : emocao == 2 ? -5 : 0;
+  if (medoLocal) inclinacaoBase=-4;
+  if (irritacaoLocal) inclinacaoBase=8;
+  float palpebraAlvo = medoLocal ? -4 : irritacaoLocal ? 8 : misturar(inclinacaoBase,
+      inclinacaoDetalhe, detalhe * ((faseExpressao == 1 || faseExpressao == 3)
+      && estiloExpressao >= 2 && estiloExpressao <= 7));
+  if(reacaoManuseio==3 || reacaoManuseio==4) palpebraAlvo=inclinacaoDetalhe;
+  inclinacaoPalpebra = aproximar(inclinacaoPalpebra,palpebraAlvo,dt,0.24f);
+  float alegriaAlvo = medoLocal || irritacaoLocal ? 0 : max(emocao == 1 ? 1.0f : 0.0f, alegriaDetalhe * detalhe);
   olhosAlegres = aproximar(olhosAlegres, alegriaAlvo, dt, 0.24f);
-  assimetriaOlhos = aproximar(assimetriaOlhos, emocao == 7 ? -5 : 0, dt, 0.24f);
-  sobrancelhasTristes = aproximar(sobrancelhasTristes, emocao == 2 ? 1 : 0, dt, 0.24f);
-  rubor = aproximar(rubor, emocao == 6 ? 1 : emocao == 1 ? 0.7f : 0, dt, 0.28f);
-  brilhoOlhos = aproximar(brilhoOlhos, !dormindo && (emocao == 1 || emocao == 5) ? 1 : 0, dt, 0.3f);
+  assimetriaOlhos = aproximar(assimetriaOlhos, misturar(emocao == 7 ? -5 : 0, assimetriaDetalhe, detalhe), dt, 0.24f);
+  sobrancelhasTristes = aproximar(sobrancelhasTristes, max(emocao == 2 ? 1.0f : 0.0f, tristezaDetalhe * detalhe), dt, 0.24f);
+  rubor = aproximar(rubor, max(emocao == 6 ? 1.0f : emocao == 1 ? 0.7f : 0.0f, ruborDetalhe * detalhe), dt, 0.28f);
+  brilhoOlhos = aproximar(brilhoOlhos, max((emocao == 1 || emocao == 5) ? 1.0f : 0.0f, brilhoDetalhe * detalhe), dt, 0.3f);
   lagrima = aproximar(lagrima, emocao == 2 ? 1 : 0, dt, 0.32f);
   }
-  velocidadeBalanco = aproximar(velocidadeBalanco, dormindo ? 1.35f : emocao == 1 ? 3.3f : 1.65f, dt, 0.35f);
-  amplitudeBalanco = aproximar(amplitudeBalanco, dormindo ? 1.5f : emocao == 1 ? 2.6f : 1.1f + nivel * 0.18f, dt, 0.35f);
-  amplitudeTremor = aproximar(amplitudeTremor, !dormindo && (emocao == 3 || emocao == 4) ? (nivel - 1) * 0.35f : 0, dt, 0.3f);
+  velocidadeBalanco = aproximar(velocidadeBalanco, dormindo ? velocidadeSono : emocao == 1 ? 3.3f : 1.65f, dt, dormindo ? 1.6f : .35f);
+  amplitudeBalanco = aproximar(amplitudeBalanco, dormindo ? amplitudeSono : emocao == 1 ? 2.6f : 1.1f + nivel * 0.18f, dt, dormindo ? 1.6f : .35f);
+  amplitudeTremor = aproximar(amplitudeTremor, pavorLocal ? 1.5f : medoLocal ? .65f : irritacaoLocal ? .25f : !dormindo && (emocao == 3 || emocao == 4) ? (nivel - 1) * 0.35f : 0, dt, 0.3f);
   faseBalanco = fmodf(faseBalanco + dt * velocidadeBalanco, 6.283185f);
   faseTremor = fmodf(faseTremor + dt * 18, 6.283185f);
   faseLagrima = fmodf(faseLagrima + dt * 0.45f, 1.0f);
   float balanco = sinf(faseBalanco) * amplitudeBalanco;
   float tremor = sinf(faseTremor) * amplitudeTremor;
-  float cy = 27 + balanco + 6 * repouso;
+  float cy = 27 + balanco + 6 * repouso + olharVertical * ativo;
   tela.clearDisplay();
+  float sonho = pesoSonho * repouso;
   for (int lado = 0; lado < 2; ++lado) {
     float cx = (lado ? 90 : 38) + olhar * ativo + tremor;
-    float olhoY = cy + (lado ? assimetriaOlhos * ativo : 0);
-    float meioW = misturar(larguraOlho / 2, 13, repouso);
+    float olhoY = cy + (lado ? assimetriaOlhos * ativo : 0) + (lado ? -enfaseOlhos : enfaseOlhos) * ativo;
+    if (estiloSonho == 2) cx += sonho * derivaSonho * sinf(faseSonho * 9.424778f) * 2;
+    if (estiloSonho == 1) olhoY += (lado ? 1 : -1) * sonho * 1.5f;
+    float meioW = misturar(larguraOlho / 2, 13, repouso) + sonho * (estiloSonho == 0 ? 2 : -1);
     float h = alturaOlho, raio = min(meioW, h / 2); // Contorno macio, quase oval.
     for (int dx = -int(meioW); dx <= int(meioW); ++dx) {
-      float r = dx / meioW;
+      float r = misturar(dx / meioW, (lroundf(cx) + dx - cx) / meioW, repouso);
       float borda = max(0.0f, fabsf(float(dx)) - (meioW - raio));
       float canto = raio - sqrtf(max(0.0f, raio * raio - borda * borda));
       float topo = -h / 2 + canto, fundo = h / 2 - canto;
@@ -531,10 +672,16 @@ void renderizar(uint32_t agora) {
       fundo = misturar(fundo, arcoAlegre + 4, olhosAlegres);
       topo *= abertura; fundo = misturar(2, fundo, abertura);
       float arcoSono = 4 - 4 * r * r;
+      if (estiloSonho == 0) arcoSono = misturar(arcoSono, -3 + 5 * r * r, sonho);
+      if (estiloSonho == 1) arcoSono += (lado ? -1 : 1) * r * sonho * 2;
+      if (estiloSonho == 2) arcoSono += sinf(faseSonho * 12.566371f + lado * 1.4f) * sonho * (1 - r * r);
       topo = misturar(topo, arcoSono, repouso);
       fundo = misturar(fundo, arcoSono + 2, repouso);
       int y0 = lroundf(olhoY + topo), y1 = lroundf(olhoY + fundo);
-      tela.drawFastVLine(lroundf(cx + dx), y0, max(2, y1 - y0 + 1), SSD1306_WHITE);
+      if (repouso > .65f)
+        desenharPalpebraSono(lroundf(cx + dx), olhoY + topo, olhoY + fundo,
+                            (repouso - .65f) / .35f);
+      else tela.drawFastVLine(lroundf(cx + dx), y0, max(2, y1 - y0 + 1), SSD1306_WHITE);
     }
     float sobrancelha = sobrancelhasTristes * ativo;
     if (sobrancelha > 0.08f) {
@@ -544,7 +691,7 @@ void renderizar(uint32_t agora) {
       tela.drawLine(lroundf(cx) - largura, topo + (lado ? -subida : subida),
                     lroundf(cx) + largura, topo + (lado ? subida : -subida), SSD1306_WHITE);
     }
-    float intensidadeRubor = rubor * ativo;
+    float intensidadeRubor = max(rubor * ativo, estiloSonho == 0 ? sonho * .65f : 0.f);
     // Duas bochechinhas compactas: o rosto permanece somente com olhos.
     int raioRubor = lroundf(2 * intensidadeRubor);
     if (raioRubor > 0) {
@@ -565,12 +712,7 @@ void renderizar(uint32_t agora) {
     int y = lroundf(40 + faseLagrima * 17);
     tela.fillCircle(lroundf(104 + olhar * ativo), y, raio, SSD1306_WHITE);
   }
-  if (repouso > 0.65f) {
-    float forcaZ = (repouso - .65f) / .35f;
-    int fase = (agora / 130) % 24;
-    desenharZ(101 + fase / 8, 22 - fase / 2, lroundf(4 * forcaZ));
-    desenharZ(113, 12 - fase / 4, lroundf(6 * forcaZ));
-  }
+  if (repouso > 0.65f) desenharSonoVivo(agora, balanco);
   if (conectado) tela.drawPixel(125, 61, SSD1306_WHITE);
   if (demonstracao) {
     tela.setTextSize(1); tela.setTextColor(SSD1306_WHITE);
@@ -579,7 +721,7 @@ void renderizar(uint32_t agora) {
   if (!glitchAlvo) desenharTerminal(agora);
   if (glitchAlvo) desenharGlitch(demonstrandoGlitch ? idadeDemo % 3600 - 900 : agora - inicioGlitch,
                                demonstrandoGlitch ? 900 : ttlGlitch);
-  tela.display();
+  enviarFrameComProtecao();
   publicarAckExpressao(); // Receipt depois do frame, distinto de observação humana.
 }
 
@@ -590,6 +732,11 @@ bool sessaoValida(const char *s) {
 }
 
 #include "som_expressivo.h"
+#include "sensores_distancia.h"
+#include "protecao_corporal.h"
+#include "imu_corporal.h"
+#include "giro_medido.h"
+#include "recuperacao_perifericos.h"
 
 void processarLinha(const char *entrada, OrigemControle origem) {
   EscopoOrigem escopo(origem);
@@ -603,6 +750,29 @@ void processarLinha(const char *entrada, OrigemControle origem) {
     responderLinha("ERROR 1 OUTRO_CONTROLADOR"); return;
   }
   if (!strncmp(entrada, "STOP", 4)) { processarParada(entrada); return; }
+  if (!strncmp(entrada, "HEALTH ", 7)) { processarSaudeCorporal(entrada); return; }
+  if (!strncmp(entrada, "DIST ", 5)) { processarConsultaDistancia(entrada); return; }
+  if (!strncmp(entrada, "IMU ", 4)) { processarConsultaImu(entrada); return; }
+  if (!strncmp(entrada, "IPROBE ", 7)) { processarSondaImu(entrada); return; }
+  if (!strncmp(entrada, "TURN ", 5)) { processarGiroMedido(entrada); return; }
+  if (!strncmp(entrada, "ICAPS ", 6)) {
+    processarCapacidade(entrada,"ICAPS",LAYLAY_IMU ? "IMU1" : "IMU0");return;
+  }
+  if (!strcmp(entrada, "PERF")) {
+    responder("PERF 1 LOOP_US %lu SENSOR_US %lu RENDER_US %lu BORDA_INTERVALO_MS %lu\n",
+      (unsigned long)maxLoopProtecaoUs, (unsigned long)maxSensorProtecaoUs,
+      (unsigned long)maxRenderProtecaoUs, (unsigned long)maxIntervaloBordaMs);
+    maxLoopProtecaoUs = maxSensorProtecaoUs = maxRenderProtecaoUs = maxIntervaloBordaMs = 0;
+    return;
+  }
+  if (!strncmp(entrada, "GUARD ", 6)) { processarConsultaProtecao(entrada); return; }
+  if (!strncmp(entrada, "SENTRY ", 7)) { processarVigiaProtecao(entrada); return; }
+  if (!strncmp(entrada, "PCAPS ", 6)) {
+    processarCapacidade(entrada,"PCAPS",LAYLAY_PROTECAO_CORPORAL ? "VIGIA1" : "VIGIA0"); return;
+  }
+  if (!strncmp(entrada, "DCAPS ", 6)) {
+    processarCapacidade(entrada, "DCAPS", LAYLAY_PROTECAO_CORPORAL ? "SENSORES2" : "SENSORES0"); return;
+  }
   if (!strncmp(entrada, "GOODNIGHT", 9)) { processarBoaNoite(entrada); return; }
   if (!strncmp(entrada, "EXPR", 4)) { processarExpressao(entrada); return; }
   if (!strncmp(entrada, "ECAPS", 5)) {
@@ -614,6 +784,9 @@ void processarLinha(const char *entrada, OrigemControle origem) {
   if (!strncmp(entrada, "SOUND", 5)) { processarSomExpressivo(entrada); return; }
   if (!strncmp(entrada, "SCAPS", 5)) {
     processarCapacidade(entrada, "SCAPS", "SOM1"); return;
+  }
+  if (!strncmp(entrada, "SENCAPS", 7)) {
+    processarCapacidade(entrada, "SENCAPS", "ENVIO1"); return;
   }
   if (!strncmp(entrada, "MOTOR", 5)) { processarMotor(entrada); return; }
   if (!strncmp(entrada, "ACTIVITY", 8)) { processarAtividade(entrada); return; }
@@ -639,6 +812,7 @@ void processarLinha(const char *entrada, OrigemControle origem) {
   }
   char token[9], extra;
   if (sscanf(entrada, "HELLO 1 %8s %c", token, &extra) == 1 && sessaoValida(token)) {
+    cancelarProtecaoCorporal(); // Nunca continuar reflexo da sessão anterior.
     limparExpressao();
     pararSomExpressivo();
     pararMotor();
@@ -757,6 +931,7 @@ void setup() {
   }
   pararMotor();
   Serial.begin(115200);
+  iniciarSaudeCorporal();
 #if defined(LAYLAY_BIP_TESTE_INICIO) && LAYLAY_BIP_TESTE_INICIO
   iniciarBipTeste(); // Perfil histórico de diagnóstico, excluído da versão diária.
 #else
@@ -764,7 +939,15 @@ void setup() {
 #endif
   iniciarWifi();
   Wire.begin(PINO_SDA, PINO_SCL);
-  Wire.setTimeOut(30);
+  Wire.setClock(400000);
+  Wire.setTimeOut(5); // Uma falha do barramento não segura a tração por 30ms.
+  iniciarSensoresDistancia();
+#if LAYLAY_TESTE_SOMENTE_IMU
+  static_assert(LAYLAY_HABILITAR_MOTORES_BANCADA==0 && LAYLAY_SENSORES_DISTANCIA==0
+      && LAYLAY_PROTECAO_CORPORAL==0,"Teste IMU isolado exige tracao desarmada");
+  for(int p : {0,10}) {digitalWrite(p,LOW);pinMode(p,OUTPUT);} // XSHUT dos VL53L0X.
+#endif
+  iniciarImuCorporal();
   for (uint8_t candidato : {uint8_t(0x3C), uint8_t(0x3D)}) {
     Wire.beginTransmission(candidato);
     if (Wire.endTransmission() == 0) { endereco = candidato; break; }
@@ -777,6 +960,9 @@ void setup() {
 }
 
 void loop() {
+  uint32_t inicioLoopUs = micros();
+  if (ultimoLoopProtecaoUs) maxLoopProtecaoUs = max(maxLoopProtecaoUs, uint32_t(inicioLoopUs - ultimoLoopProtecaoUs));
+  ultimoLoopProtecaoUs = inicioLoopUs;
   atualizarSomExpressivo(millis());
   atualizarBipInicio(millis());
   // Corte antes de ler uma avalanche de comandos ou iniciar I2C/render.
@@ -798,9 +984,15 @@ void loop() {
   }
   // Ler depois dos handlers: ultimoPacote pode ter sido atualizado neste loop.
   uint32_t agora = millis();
+  atualizarRecuperacaoPerifericos(agora);
+  agora=millis(); // A revalidação I2C pode ter consumido tempo.
   atualizarMotor(agora);
+  atualizarImuCorporal(millis());
+  atualizarReacaoManuseio(millis());
+  atualizarSensoresDistancia(millis());
+  atualizarMotor(millis()); // Amostra nova corta tração antes do próximo frame.
   if (conectado && agora - ultimoPacote >= ttl) {
-    invalidarSessao();
+    invalidarSessaoPor("TTL");
   }
   atualizarAtividade(millis());
   atualizarGlitch(millis());
@@ -809,16 +1001,20 @@ void loop() {
     if (demoGlitch) { emocao = 0; falando = false; }
     if (demoFala) { emocao = ((agora - inicioDemoVisual) / 3600) % 9; falando = (agora - inicioDemoVisual) % 3600 >= 600; }
   }
-  if (telaInicializada && agora - ultimoFrame >= 33) {
+  // Repouso recebe mais amostras; a cadência diurna existente permanece em 33 ms.
+  uint32_t intervaloFrame = !conectado && !demonstracao ? 20 : 33;
+  if (telaInicializada && agora - ultimoFrame >= intervaloFrame) {
     ultimoFrame = agora;
     if (!telaPresente()) {
       if (ackPendente || ackGlitchPendente) responderLinha("ERROR 1 OLED_AUSENTE");
-      invalidarSessao();
+      invalidarSessaoPor(motivoFalhaTela());
     } else {
       atualizarMotor(millis());
       atualizarAtividade(millis());
       atualizarGlitch(millis());
+      uint32_t inicioRenderUs = micros();
       renderizar(millis());
+      maxRenderProtecaoUs = max(maxRenderProtecaoUs, uint32_t(micros() - inicioRenderUs));
       atualizarMotor(millis());
       if (ackPendente || ackAtividadePendente || ackGlitchPendente) {
         bool oledPresente = telaPresente(); uint32_t instante = millis();
@@ -826,7 +1022,7 @@ void loop() {
         // Um único dono confirma o frame. I2C/display podem consumir a vigência.
         if (!oledPresente || !conectado || instante - ultimoPacote >= ttl) {
           if (!oledPresente) responderLinha("ERROR 1 OLED_AUSENTE");
-          invalidarSessao();
+          invalidarSessaoPor(!oledPresente ? motivoFalhaTela() : "TTL");
         } else {
           if (ackPendente) {
             responder("ACK 1 %s %lu %d %d %d\n", sessao, (unsigned long)sequencia, emocao, nivel, falando);

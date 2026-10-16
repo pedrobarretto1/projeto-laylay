@@ -1,0 +1,11 @@
+..............F......................................................... [ 88%]
+.........                                                                [100%]
+================================== FAILURES ===================================
+__ test_retrato_povoado_cabe_inteiro_no_transporte_local_sem_perder_contrato __
+scripts\tests\test_objetivo_corporal_entre_turnos.py:180: in test_retrato_povoado_cabe_inteiro_no_transporte_local_sem_perder_contrato
+    assert instrucao in compacto["messages"][-2]["content"], "a projeção deve caber sem perder o fim do contrato"
+E   AssertionError: a projeção deve caber sem perder o fim do contrato
+E   assert '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":"b","conectada":true,"companhia_ativa":true... comandos técnicos na intenção. O executor revalida sessão/momento; não anuncie movimento como feito antes do retorno.' in '--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n{"turno_id":"b","conectada":true,"companhia_ativa":true...a049a6"}}. Para assunto independente ou mudança de assunto explícita, a estrutura SEM objetivo_id é: {"fala":"resposta'
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_objetivo_corporal_entre_turnos.py::test_retrato_povoado_cabe_inteiro_no_transporte_local_sem_perder_contrato
+1 failed, 80 passed in 20.08s

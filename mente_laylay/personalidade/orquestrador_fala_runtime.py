@@ -21,6 +21,7 @@ from mente_laylay.personalidade.retrato_entrega import (
     criar_retrato_entrega_fala,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+from mente_laylay.memoria_mental.registro_semantico import registrar_fala_observada
 from mente_laylay.personalidade.confirmacao_llm import (
     INTENTS_INFORMATIVOS, personalizar_confirmacao_composta_llm,
 )
@@ -79,10 +80,11 @@ class OrquestradorFalaRuntime:
             "tentativas": 0,
             "emitidas": 0,
             "duplicadas_suprimidas": 0,
-            "rejeitadas_voz": 0,
+            "rejeitadas_entrega": 0,
         }
         self._observadores_fala_final: list[Callable[..., Any]] = []
         self._observadores_texto_final: list[Callable[..., Any]] = []
+        self._observadores_entrega_resultados: list[Callable[..., Any]] = []
         self._textos_publicados_turno: dict[str, list[str]] = {}
         self._lote_resultados: ContextVar[_LoteResultadosOperacionais | None] = ContextVar(
             "lote_resultados_operacionais", default=None,
@@ -195,7 +197,7 @@ class OrquestradorFalaRuntime:
             return False
         if not fala:
             return False
-        aceita = self.falar(fala, emocao, nivel)
+        aceita = self.falar(fala, emocao, nivel, _resultados_entrega=tuple(lote.resultados))
         lote.resposta_publicada = bool(aceita or fala in self.textos_publicados_turno(lote.turno_id))
         lote.fala_publicada = fala if lote.resposta_publicada else ""
         return aceita
@@ -225,6 +227,13 @@ class OrquestradorFalaRuntime:
             raise TypeError("observador de fala final deve ser chamável")
         if observador not in self._observadores_fala_final:
             self._observadores_fala_final.append(observador)
+
+    def registrar_observador_entrega_resultados(self, observador: Callable[..., Any]) -> None:
+        """Receipts da invocação acompanham entrega textual ou áudio confirmado."""
+        if not callable(observador):
+            raise TypeError("observador de entrega deve ser chamável")
+        if observador not in self._observadores_entrega_resultados:
+            self._observadores_entrega_resultados.append(observador)
 
     def publicar_texto_proativo(
         self,
@@ -401,9 +410,12 @@ class OrquestradorFalaRuntime:
         # Falha de leitura não pode virar licença para a fala original nem
         # reservar uma confirmação usando atributos de um objeto corrompido.
         dados_resultado: dict[str, Any] = {}
+        resultado_entrega = None
         try:
-            como_dict = getattr(resultado, "como_dict", None)
-            bruto = como_dict() if callable(como_dict) else resultado
+            resultado_entrega = deepcopy(resultado) if isinstance(resultado, ResultadoAcao) else None
+            retrato = resultado_entrega if resultado_entrega is not None else resultado
+            como_dict = getattr(retrato, "como_dict", None)
+            bruto = como_dict() if callable(como_dict) else retrato
             if isinstance(bruto, Mapping):
                 dados_resultado = dict(bruto)
         except Exception:
@@ -464,6 +476,7 @@ class OrquestradorFalaRuntime:
                 emocao,
                 nivel,
                 _avaliacao_evento=avaliacao_evento,
+                _resultados_entrega=(resultado_entrega,) if resultado_entrega is not None else (),
             )
         except Exception:
             if chave is not None:
@@ -479,7 +492,7 @@ class OrquestradorFalaRuntime:
                         "status": "emitida", "ts": time.monotonic(),
                     }
             else:
-                self._metricas_confirmacoes["rejeitadas_voz"] += 1
+                self._metricas_confirmacoes["rejeitadas_entrega"] += 1
                 if chave is not None:
                     self._confirmacoes_operacionais.pop(chave, None)
         return bool(aceita)
@@ -488,6 +501,9 @@ class OrquestradorFalaRuntime:
         with self._lock_confirmacoes:
             return {
                 **dict(self._metricas_confirmacoes),
+                # Alias histórico: conta rejeição comunicativa, não é
+                # telemetria de rejeições do canal de áudio.
+                "rejeitadas_voz": self._metricas_confirmacoes["rejeitadas_entrega"],
                 "reservadas": sum(
                     1 for registro in self._confirmacoes_operacionais.values()
                     if str(registro.get("status") or "") == "reservada"
@@ -532,7 +548,14 @@ class OrquestradorFalaRuntime:
         wait: bool = False,
         _proativa: bool = False,
         _avaliacao_evento: Mapping[str, Any] | None = None,
+        _resultados_entrega: tuple[ResultadoAcao, ...] = (),
     ) -> bool:
+        """Aceita comunicação por texto publicado ou pela porta de voz.
+
+        O bool permite concluir o tratamento do pedido. Aceitação na fila não
+        comprova reprodução; callbacks de áudio e receipts mantêm esse papel.
+        ``wait`` espera a tentativa de voz, sem invalidar texto já publicado.
+        """
         lote = self._lote_resultados.get()
         if lote is not None and not _proativa:
             fala_pendente = str(texto or "").strip()
@@ -617,6 +640,7 @@ class OrquestradorFalaRuntime:
         direcao["emocao"] = emocao
         direcao["nivel"] = nivel
         mensagem_id = retrato_entrega.mensagem_id
+        resultados_entrega = deepcopy(tuple(_resultados_entrega))
         contexto_humor = contexto_humor_turno(
             operacional=bool(plano_antes.get("requer_execucao")),
             modo_jogo_ativo=bool(mental_antes.get("modo_jogo_ativo")),
@@ -646,18 +670,48 @@ class OrquestradorFalaRuntime:
                 while len(self._textos_publicados_turno) > 64:
                     self._textos_publicados_turno.pop(next(iter(self._textos_publicados_turno)))
         registrar_entrega = ns.get("_registrar_entrega_comunicativa")
+        ocorrencia_fala_id = f"{mensagem_id}:{time.time_ns()}"
+        sessao_fala = mental_antes.get("sessao_conversa_ts")
         def concluir_entrega(entregue: bool, texto_entregue: str, canal: str) -> None:
-            if _proativa or not callable(registrar_entrega) or not mensagem_id:
+            if _proativa or not mensagem_id:
                 return
-            try:
-                registrar_entrega(id_entrega=mensagem_id, fala=texto_entregue,
-                    entregue=entregue, contexto_humor=contexto_humor, canal_entrega=canal)
-            except Exception as erro:
-                ns["print"](f"⚠️ [ENTREGA:FEEDBACK] registro indisponível: {type(erro).__name__}")
+            if entregue is True and texto_entregue != fala:
+                ns["print"]("⚠️ [FALA:EVIDÊNCIA] conteúdo entregue difere da ocorrência capturada")
+            if (entregue is True and texto_entregue == fala
+                    and callable(getattr(estado, "atualizar", None))):
+                try:
+                    def registrar_vinculo(mental):
+                        # Entrega atrasada mantém o turno original, mas nunca
+                        # contamina uma sessão/chat aberto depois da emissão.
+                        if mental.get("sessao_conversa_ts") != sessao_fala:
+                            return mental
+                        registro = registrar_fala_observada(
+                            mental.get("registro_semantico"),
+                            ocorrencia_id=ocorrencia_fala_id, turno_id=turno_id,
+                            fala=texto_entregue, resultados=resultados_entrega,
+                            canal=canal,
+                        )
+                        return {**mental, "registro_semantico": registro}
+                    estado.atualizar("mental", registrar_vinculo)
+                except (ValueError, TypeError) as erro:
+                    ns["print"](f"⚠️ [FALA:EVIDÊNCIA] vínculo recusado: {type(erro).__name__}")
+            if callable(registrar_entrega):
+                try:
+                    registrar_entrega(id_entrega=mensagem_id, fala=texto_entregue,
+                        entregue=entregue, contexto_humor=contexto_humor, canal_entrega=canal)
+                except Exception as erro:
+                    ns["print"](f"⚠️ [ENTREGA:FEEDBACK] registro indisponível: {type(erro).__name__}")
+            if entregue is True and resultados_entrega:
+                for observador in tuple(self._observadores_entrega_resultados):
+                    try:
+                        observador(resultados=deepcopy(resultados_entrega), fala=texto_entregue,
+                            id_entrega=mensagem_id, canal_entrega=canal)
+                    except Exception as erro:
+                        ns["print"](f"⚠️ [ENTREGA:RESULTADOS] observador isolado: {type(erro).__name__}")
         if texto_publicado:
             concluir_entrega(True, fala, "texto_publicado")
         parametros_entrega = {}
-        if not texto_publicado and not _proativa and callable(registrar_entrega):
+        if not texto_publicado and not _proativa and (callable(registrar_entrega) or resultados_entrega):
             parametros_entrega["_ao_concluir_entrega"] = lambda entregue, texto: concluir_entrega(
                 entregue, texto, "audio_reproducao_confirmada")
         aceita = ns["_voz_runtime"].falar(
@@ -717,7 +771,7 @@ class OrquestradorFalaRuntime:
                 registrar_metrica(
                     "tts_texto_visivel", duracao_ms, texto_publicado,
                 )
-        if aceita is not False and not _proativa:
+        if (texto_publicado or aceita is not False) and not _proativa:
             mental = dict(estado.mental)
             plano = dict(mental.get("plano_turno_atual") or {})
             assunto = str(
@@ -738,7 +792,7 @@ class OrquestradorFalaRuntime:
             )
             estado.substituir("mental", mental)
             self.finalizar_encerramento_assunto()
-        return bool(aceita)
+        return texto_publicado or bool(aceita)
 
     def entregar_fala_inicial_confirmada(
         self, tipo, texto, emocao="calma", nivel=1, *,

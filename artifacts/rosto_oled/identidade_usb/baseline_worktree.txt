@@ -1,0 +1,271 @@
+ M cliente/terminal_2/desenvolvedor.py
+ M cliente/terminal_2/theme/developer.py
+ M cliente/terminal_laylay_2.py
+ M firmware/rosto_laylay/SOM_OLHOS.md
+ M firmware/rosto_laylay/rosto_laylay.ino
+ M firmware/rosto_laylay/som_expressivo.h
+ M firmware/rosto_laylay/validacao_host/Adafruit_SSD1306.h
+ M firmware/rosto_laylay/validacao_host/Arduino.h
+ M firmware/rosto_laylay/validacao_host/Wire.h
+ M firmware/rosto_laylay/validacao_host/validar_som_olhos.cpp
+ M laylay.py
+ M "melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md"
+ M "melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md"
+ M mente_laylay/arquivos/pesquisa_semantica.py
+ M mente_laylay/autonomia/adaptador_resultado.py
+ M mente_laylay/autonomia/central_notificacoes.py
+ M mente_laylay/autonomia/classificacao_habilidade.py
+ M mente_laylay/autonomia/comandos_imediatos.py
+ M mente_laylay/autonomia/companhia_corporal.py
+ M mente_laylay/autonomia/composicao_ciclo_comandos.py
+ M mente_laylay/autonomia/contexto_resposta_ia.py
+ M mente_laylay/autonomia/coordenador_intencao.py
+ M mente_laylay/autonomia/detectores_playlist.py
+ M mente_laylay/autonomia/diretor_presenca.py
+ M mente_laylay/autonomia/dispatcher_comandos_json.py
+ M mente_laylay/autonomia/executor_audio.py
+ M mente_laylay/autonomia/executor_corpo.py
+ M mente_laylay/autonomia/executor_informacoes.py
+ M mente_laylay/autonomia/executor_musical.py
+ M mente_laylay/autonomia/finalizacao_execucao_ia.py
+ M mente_laylay/autonomia/orquestracao_cooperativa.py
+ M mente_laylay/autonomia/orquestrador_deterministico.py
+ M mente_laylay/autonomia/porteiro_proatividade.py
+ M mente_laylay/autonomia/processamento_resposta_ia.py
+ M mente_laylay/autonomia/resposta_evento_runtime.py
+ M mente_laylay/autonomia/resposta_ia_runtime.py
+ M mente_laylay/autonomia/roteador_deterministico.py
+ M mente_laylay/autonomia/roteador_intencao.py
+ M mente_laylay/cognicao/arbitro_turno.py
+ M mente_laylay/cognicao/composicao_turno.py
+ M mente_laylay/cognicao/contrato_fala.py
+ M mente_laylay/cognicao/contratos_turno.py
+ M mente_laylay/cognicao/decisao_corporal.py
+ M mente_laylay/cognicao/decisao_turno.py
+ M mente_laylay/cognicao/escopo_autorizacao.py
+ M mente_laylay/cognicao/gramatica_corpo.py
+ M mente_laylay/cognicao/gramatica_musical.py
+ M mente_laylay/cognicao/gramatica_operacional.py
+ M mente_laylay/cognicao/guardiao_alegacoes.py
+ M mente_laylay/cognicao/interpretacao_intencao.py
+ M mente_laylay/cognicao/interpretador_continuidade.py
+ M mente_laylay/cognicao/leitura_semantica_turno.py
+ M mente_laylay/cognicao/modalidade_turno.py
+ M mente_laylay/cognicao/modelo_corporal.py
+ M mente_laylay/cognicao/normalizacao_linguagem.py
+ M mente_laylay/cognicao/orquestrador_turno_runtime.py
+ M mente_laylay/cognicao/qualidade_comunicacao.py
+ M mente_laylay/cognicao/referencias_linguagem.py
+ M mente_laylay/cognicao/resumo_conteudo.py
+ M mente_laylay/cognicao/retrato_turno.py
+ M mente_laylay/cognicao/revisao_turno.py
+ M mente_laylay/cognicao/validacao_contrato_fala.py
+ M mente_laylay/especialistas/capacidades.py
+ M mente_laylay/especialistas/corpo_motor_runtime.py
+ M mente_laylay/especialistas/mapa_habilidades.py
+ M mente_laylay/especialistas/rosto_oled_runtime.py
+ M mente_laylay/integracao/adaptadores_aplicacao_runtime.py
+ M mente_laylay/integracao/cliente_llm_runtime.py
+ M mente_laylay/integracao/composicao_contextos_ia.py
+ M mente_laylay/integracao/composicao_entrada_interacao.py
+ M mente_laylay/integracao/composicao_estado_aplicacao.py
+ M mente_laylay/integracao/composicao_gmail.py
+ M mente_laylay/integracao/composicao_inteligencia_externa.py
+ M mente_laylay/integracao/contexto_execucao_ia.py
+ M mente_laylay/integracao/contrato_saida_estruturada.py
+ M mente_laylay/integracao/conversa_jogo_remota.py
+ M mente_laylay/integracao/desktop_bridge.py
+ M mente_laylay/integracao/dev_console_runtime.py
+ M mente_laylay/integracao/estado_contexto_runtime.py
+ M mente_laylay/integracao/gmail_mental.py
+ M mente_laylay/integracao/llm_http.py
+ M mente_laylay/integracao/preparador_requisicao_llm.py
+ M mente_laylay/integracao/registro_arquivos.py
+ M mente_laylay/integracao/registro_conversa_llm.py
+ M mente_laylay/integracao/registro_servicos_aplicacao.py
+ M mente_laylay/integracao/runtime_llm_portatil.py
+ M mente_laylay/iot/runtime.py
+ M mente_laylay/memoria_mental/atividade_operacional_runtime.py
+ M mente_laylay/memoria_mental/ciclo_vida_contexto.py
+ M mente_laylay/memoria_mental/contexto_imediato.py
+ M mente_laylay/memoria_mental/contexto_integrado.py
+ M mente_laylay/memoria_mental/continuidade_geral.py
+ M mente_laylay/memoria_mental/conversas_runtime.py
+ M mente_laylay/memoria_mental/disponibilidade_operacional.py
+ M mente_laylay/memoria_mental/registro_semantico.py
+ M mente_laylay/memoria_mental/sessao_conversa.py
+ M mente_laylay/personalidade/composicao_resposta_conversacional.py
+ M mente_laylay/personalidade/confirmacao_llm.py
+ M mente_laylay/personalidade/orquestrador_fala_runtime.py
+ M mente_laylay/personalidade/resposta_conversacional_runtime.py
+ M mente_laylay/personalidade/voz_runtime.py
+ M scripts/analises/sonda_continuacao_operacional.py
+ M scripts/analises/sonda_escopo_propostas_mistas.py
+ M scripts/tests/test_admissao_proposta_vigente.py
+ M scripts/tests/test_atividade_operacional.py
+ M scripts/tests/test_central_notificacoes.py
+ M scripts/tests/test_companhia_corporal.py
+ M scripts/tests/test_composicao_estado_aplicacao.py
+ M scripts/tests/test_contrato_execucao_none_v1.py
+ M scripts/tests/test_corpo_transporte_oled.py
+ M scripts/tests/test_decisao_corporal_v1.py
+ M scripts/tests/test_escopo_autorizacao_composicao.py
+ M scripts/tests/test_escopo_autorizacao_por_ato.py
+ M scripts/tests/test_falha_operacional_narrada.py
+ M scripts/tests/test_gmail_notificacoes.py
+ M scripts/tests/test_guardiao_fala_tts.py
+ M scripts/tests/test_modo_jogo.py
+ M scripts/tests/test_neural_linguagem_comandos.py
+ M scripts/tests/test_orquestrador_fala_registro.py
+ M scripts/tests/test_p17_publicacao_adiamento.py
+ M scripts/tests/test_p20_entrega_feedback.py
+ M scripts/tests/test_presenca_corporal_v2.py
+ M scripts/tests/test_publicacao_resultado_prioritario_v1.py
+ M scripts/tests/test_receipt_ocorrencia_execucao.py
+ M scripts/tests/test_registro_conversa_llm.py
+ M scripts/tests/test_regressao_retry_midia_anterior.py
+ M scripts/tests/test_regressao_turno227_aplicativos_janelas.py
+ M scripts/tests/test_regressoes_contexto_operacional.py
+ M scripts/tests/test_resposta_operacional_composta.py
+ M scripts/tests/test_resposta_operacional_composta_composicao.py
+ M scripts/tests/test_rosto_oled.py
+ M scripts/tests/test_som_corporal.py
+ M scripts/tests/test_sonda_escopo_propostas_mistas.py
+ M scripts/tests/test_voz_configuravel.py
+?? artifacts/rosto_oled/admissao_motor_reflexo/
+?? artifacts/rosto_oled/companhia_interrompida/
+?? artifacts/rosto_oled/continuidade_corporal/
+?? artifacts/rosto_oled/corpo_integrado_v1/
+?? artifacts/rosto_oled/dev_corpo/
+?? artifacts/rosto_oled/equilibrio_contextual/
+?? artifacts/rosto_oled/experiencia_sensores/
+?? artifacts/rosto_oled/expressoes_v3/
+?? artifacts/rosto_oled/identidade_usb/
+?? artifacts/rosto_oled/imu_manuseio/
+?? artifacts/rosto_oled/manuseio_fofo_v1/
+?? artifacts/rosto_oled/objetivos_entre_turnos/
+?? artifacts/rosto_oled/protecao_sensores/
+?? artifacts/rosto_oled/recuperacao_usb/
+?? artifacts/rosto_oled/reinicio_integrado_20261016/
+?? artifacts/rosto_oled/repouso_corporal/
+?? artifacts/rosto_oled/sensores/
+?? artifacts/rosto_oled/som_resultados/
+?? artifacts/rosto_oled/sono_vivo/
+?? firmware/rosto_laylay/IMU.md
+?? firmware/rosto_laylay/PROTECAO.md
+?? firmware/rosto_laylay/RECUPERACAO_USB.md
+?? firmware/rosto_laylay/SENSORES.md
+?? firmware/rosto_laylay/giro_medido.h
+?? firmware/rosto_laylay/imu_corporal.h
+?? firmware/rosto_laylay/protecao_corporal.h
+?? firmware/rosto_laylay/saude_corporal.h
+?? firmware/rosto_laylay/sensores_distancia.h
+?? firmware/rosto_laylay/sono_vivo.h
+?? firmware/rosto_laylay/validacao_host/Adafruit_VL53L0X.h
+?? firmware/rosto_laylay/validacao_host/validar_admissao_reflexo.cpp
+?? firmware/rosto_laylay/validacao_host/validar_expressoes_v3.cpp
+?? firmware/rosto_laylay/validacao_host/validar_imu.cpp
+?? firmware/rosto_laylay/validacao_host/validar_imu_isolada.cpp
+?? firmware/rosto_laylay/validacao_host/validar_linguagem_sensores.cpp
+?? firmware/rosto_laylay/validacao_host/validar_manuseio_fofo.cpp
+?? firmware/rosto_laylay/validacao_host/validar_presenca_sensores.cpp
+?? firmware/rosto_laylay/validacao_host/validar_protecao.cpp
+?? firmware/rosto_laylay/validacao_host/validar_reconexao_protecao.cpp
+?? firmware/rosto_laylay/validacao_host/validar_saude.cpp
+?? firmware/rosto_laylay/validacao_host/validar_sensores.cpp
+?? firmware/rosto_laylay/validacao_host/validar_sono_vivo.cpp
+?? "melhorias e planos/ideias/CORPO_COMO_PARTE_DA_LAYLAY.md"
+?? "melhorias e planos/planos/ESTUDO_E_PLANO_INTERPRETACAO_NATURAL_20261014.md"
+?? "melhorias e planos/planos/PLANO_COMPREENSAO_FALA_E_ACOES_20261015.md"
+?? "melhorias e planos/raiz/EMAIL_V1.md"
+?? mente_laylay/cognicao/explicacao_fala_historica.py
+?? mente_laylay/cognicao/linguagem_email.py
+?? mente_laylay/cognicao/materializacao_contextual.py
+?? mente_laylay/cognicao/roteiro_execucao_por_atos.py
+?? mente_laylay/cognicao/saida_interpretacao_principal.py
+?? mente_laylay/especialistas/email_runtime.py
+?? mente_laylay/especialistas/percepcao_distancia.py
+?? mente_laylay/especialistas/percepcao_inercial.py
+?? mente_laylay/especialistas/saude_corporal.py
+?? mente_laylay/integracao/caixa_gmail.py
+?? mente_laylay/memoria_mental/decisao_observada.py
+?? mente_laylay/memoria_mental/experiencia_corporal_runtime.py
+?? mente_laylay/memoria_mental/observacao_execucao.py
+?? mente_laylay/memoria_mental/rascunhos_email.py
+?? scripts/analises/RUNNER_DIAGNOSTICO_LAYLAY.md
+?? scripts/analises/avaliacao_interpretacao_natural.py
+?? scripts/analises/runner_diagnostico_laylay.py
+?? scripts/analises/sonda_email_v1.py
+?? scripts/analises/sonda_execucao_contextual_windows.py
+?? scripts/analises/sonda_latencia_autoria_local.py
+?? scripts/analises/sonda_ordem_interpretacao.py
+?? scripts/analises/sonda_produtor_interpretacao_por_ato.py
+?? scripts/analises/sonda_vinculos_fala_acao.py
+?? scripts/diagnosticar_companhia_interrompida.py
+?? scripts/diagnosticar_imu_usb.py
+?? scripts/diagnosticar_protecao_usb.py
+?? scripts/diagnosticar_sensores_usb.py
+?? scripts/roteiros/dados/
+?? scripts/tests/test_aceitacao_entrega_compartilhada.py
+?? scripts/tests/test_argumento_modificador_repeticao.py
+?? scripts/tests/test_atividade_transporte_local.py
+?? scripts/tests/test_avaliacao_interpretacao_natural.py
+?? scripts/tests/test_coerencia_revisao_bloqueada.py
+?? scripts/tests/test_comparacao_interpretacao_instrumento.py
+?? scripts/tests/test_conector_discursivo_operacional.py
+?? scripts/tests/test_consulta_musical_resolvida.py
+?? scripts/tests/test_contexto_extremos_volume.py
+?? scripts/tests/test_contexto_interpretacao_transporte.py
+?? scripts/tests/test_continuidade_intencao_corporal.py
+?? scripts/tests/test_decisao_observada.py
+?? scripts/tests/test_dev_corpo.py
+?? scripts/tests/test_diagnostico_sensores_usb.py
+?? scripts/tests/test_dominio_video_explicito.py
+?? scripts/tests/test_email_composicao.py
+?? scripts/tests/test_email_conteudo_operacoes.py
+?? scripts/tests/test_episodios_sensores_corpo.py
+?? scripts/tests/test_equilibrio_corporal.py
+?? scripts/tests/test_escopo_ato_unico.py
+?? scripts/tests/test_escopo_negacao_conjunta.py
+?? scripts/tests/test_execucao_contextual_ordenada.py
+?? scripts/tests/test_experiencia_corporal_continua.py
+?? scripts/tests/test_explicacao_decisao_composicao.py
+?? scripts/tests/test_explicacao_fala_historica.py
+?? scripts/tests/test_explicacao_ocorrencia.py
+?? scripts/tests/test_identidade_corpo_usb.py
+?? scripts/tests/test_imu_corporal.py
+?? scripts/tests/test_interpretacao_operacional_por_ato.py
+?? scripts/tests/test_interrupcao_companhia_corporal.py
+?? scripts/tests/test_manuseio_fofo.py
+?? scripts/tests/test_materializacao_contextual.py
+?? scripts/tests/test_moldura_operando_musical.py
+?? scripts/tests/test_motivo_decisao_composicao.py
+?? scripts/tests/test_objetivo_corporal_entre_turnos.py
+?? scripts/tests/test_obrigacao_explicativa.py
+?? scripts/tests/test_observacao_execucao.py
+?? scripts/tests/test_papel_valor_ajuste.py
+?? scripts/tests/test_protecao_sensores_corpo.py
+?? scripts/tests/test_protocolo_corporal_aplicavel.py
+?? scripts/tests/test_recuperacao_corpo_usb.py
+?? scripts/tests/test_recuperacao_evidencia_fala_composicao.py
+?? scripts/tests/test_referencia_no_operando.py
+?? scripts/tests/test_relevancia_lexical_capacidades.py
+?? scripts/tests/test_repouso_corporal.py
+?? scripts/tests/test_runner_diagnostico_laylay.py
+?? scripts/tests/test_saida_tipificada_principal.py
+?? scripts/tests/test_selecao_tipo_recurso.py
+?? scripts/tests/test_sonda_execucao_contextual_windows.py
+?? scripts/tests/test_sonda_latencia_autoria_local.py
+?? scripts/tests/test_sonda_ordem_interpretacao.py
+?? scripts/tests/test_vinculo_fala_resultado.py
+?? scripts/tests/test_vocabulario_ato_operacional.py
+?? scripts/tests/test_volume_delta_executor.py
+?? scripts/validar_admissao_motor_reflexo_usb.py
+?? scripts/validar_companhia_main_limitada.py
+?? scripts/validar_continuidade_corporal_fisica.py
+?? scripts/validar_episodios_sensoriais_usb.py
+?? scripts/validar_experiencia_corporal_fisica.py
+?? scripts/validar_expressoes_v3_fisico.py
+?? scripts/validar_manuseio_fofo_usb.py
+?? scripts/validar_objetivo_corporal_sem_motor.py
+?? scripts/validar_som_resultados_fisico.py

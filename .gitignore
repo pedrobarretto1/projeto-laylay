@@ -12,6 +12,23 @@ resultados_testes/
 build/
 _backup_*/
 build_portatil/
+# Saídas geradas dos ensaios de firmware; preservar fontes e relatórios.
+/artifacts/**/build*/
+/artifacts/**/*.exe
+/artifacts/**/*.dll
+/artifacts/**/*.bin
+/artifacts/**/*.elf
+/artifacts/**/*.map
+/artifacts/**/*.o
+/artifacts/**/*.obj
+/artifacts/**/*.d
+/artifacts/**/*.a
+/artifacts/**/*.lib
+/artifacts/**/*.pdb
+/artifacts/**/*.ilk
+/artifacts/**/*.exp
+/artifacts/**/*.idb
+/artifacts/**/*.cache
 cliente/gamebar_laylay/artifacts/
 cliente/gamebar_laylay/bin/
 cliente/gamebar_laylay/obj/
@@ -22,6 +39,15 @@ ABRIR_ARENA_NEURAL.bat
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 *.pid
 *.log
 
@@ -79,6 +105,7 @@ Thumbs.db
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
 __pycache__/
@@ -91,7 +118,8 @@ memoria/
 contexto.txt
 contexto-*.txt
 teste.md
-**/playlists.json
+# O playlists.json principal é versionado; este é um resíduo local de testes.
+/scripts/tests/playlists.json
 
 # Áudios pessoais, datasets e modelos locais
 *.wav

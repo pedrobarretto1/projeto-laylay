@@ -227,13 +227,17 @@ class DisponibilidadeOperacionalRuntime:
                 "disponivel" if corpo_disponivel else "indisponivel",
                 motivo=str(corpo_bruto.get("motivo") or "requer_firmware_motor_habilitado_e_sessao_vigente"),
                 evidencia_recente=corpo_disponivel,
-            ), "companhia": dict(corpo_bruto.get("companhia") or {}),
-                "rampa_suportada": corpo_bruto.get("rampa_suportada") is True},
+            ), "companhia": dict(corpo_bruto.get("companhia") or {}), "experiencia": dict(corpo_bruto.get("experiencia") or {}),
+                "rampa_suportada": corpo_bruto.get("rampa_suportada") is True,
+                "sensores": dict(corpo_bruto.get("sensores") or {}),
+                "imu": dict(corpo_bruto.get("imu") or {}),
+                "saude":dict(corpo_bruto.get("saude") or {})},
             "rosto_oled": {**self._registro(
                 "disponivel" if rosto_confirmado else "indisponivel",
                 motivo=str(rosto_bruto.get("motivo") or "requer_porta_serial_e_ack_recente_do_firmware"),
                 evidencia_recente=rosto_confirmado,
             ), "som": dict(rosto_bruto.get("som") or {}),
+                "identidade_usb": dict(rosto_bruto.get("identidade_usb") or {}),
                 "expressao": dict(rosto_bruto.get("expressao") or {})},
             "navegador": navegador,
             "conversa": conversa,
@@ -245,6 +249,14 @@ class DisponibilidadeOperacionalRuntime:
             "avatar": avatar,
         }
         capacidades = {
+            "EMAIL_DRAFT": self._registro(
+                "disponivel" if gmail.get("rascunhos_locais") and gmail.get("modelo_disponivel") else "indisponivel",
+                motivo="rascunhos_locais_com_modelo" if gmail.get("modelo_disponivel") else "modelo_email_indisponivel",
+            ),
+            "EMAIL_DRAFT_READ": self._registro(
+                "disponivel" if gmail.get("rascunhos_locais") else "indisponivel",
+                motivo="armazenamento_local_rascunhos",
+            ),
             "CORPO_COMPANHIA": self._registro(
                 "disponivel" if corpo_disponivel and (corpo_bruto.get("companhia") or {}).get("transporte_exigido") == "serial"
                 and rosto_bruto.get("transporte") == "serial" else "indisponivel",

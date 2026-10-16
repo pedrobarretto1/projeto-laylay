@@ -1,0 +1,51 @@
+ M firmware/rosto_laylay/SOM_OLHOS.md
+ M firmware/rosto_laylay/rosto_laylay.ino
+ M firmware/rosto_laylay/som_expressivo.h
+ M firmware/rosto_laylay/validacao_host/validar_som_olhos.cpp
+ M laylay.py
+ M "melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md"
+ M "melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md"
+ M mente_laylay/autonomia/companhia_corporal.py
+ M mente_laylay/autonomia/coordenador_intencao.py
+ M mente_laylay/autonomia/detectores_playlist.py
+ M mente_laylay/autonomia/executor_musical.py
+ M mente_laylay/autonomia/orquestrador_deterministico.py
+ M mente_laylay/autonomia/roteador_deterministico.py
+ M mente_laylay/cognicao/arbitro_turno.py
+ M mente_laylay/cognicao/gramatica_operacional.py
+ M mente_laylay/cognicao/interpretador_continuidade.py
+ M mente_laylay/cognicao/modelo_corporal.py
+ M mente_laylay/cognicao/referencias_linguagem.py
+ M mente_laylay/cognicao/retrato_turno.py
+ M mente_laylay/especialistas/corpo_motor_runtime.py
+ M mente_laylay/especialistas/mapa_habilidades.py
+ M mente_laylay/especialistas/rosto_oled_runtime.py
+ M mente_laylay/integracao/adaptadores_aplicacao_runtime.py
+ M mente_laylay/integracao/composicao_estado_aplicacao.py
+ M mente_laylay/memoria_mental/atividade_operacional_runtime.py
+ M mente_laylay/memoria_mental/contexto_imediato.py
+ M mente_laylay/memoria_mental/disponibilidade_operacional.py
+ M scripts/analises/sonda_continuacao_operacional.py
+ M scripts/tests/test_atividade_operacional.py
+ M scripts/tests/test_presenca_corporal_v2.py
+ M scripts/tests/test_regressao_retry_midia_anterior.py
+ M scripts/tests/test_regressoes_contexto_operacional.py
+ M scripts/tests/test_som_corporal.py
+?? artifacts/rosto_oled/corpo_integrado_v1/
+?? artifacts/rosto_oled/expressoes_v3/
+?? artifacts/rosto_oled/som_resultados/
+?? artifacts/rosto_oled/sono_vivo/
+?? firmware/rosto_laylay/validacao_host/validar_expressoes_v3.cpp
+?? "melhorias e planos/ideias/CORPO_COMO_PARTE_DA_LAYLAY.md"
+?? mente_laylay/memoria_mental/experiencia_corporal_runtime.py
+?? scripts/tests/test_argumento_modificador_repeticao.py
+?? scripts/tests/test_consulta_musical_resolvida.py
+?? scripts/tests/test_contexto_extremos_volume.py
+?? scripts/tests/test_dominio_video_explicito.py
+?? scripts/tests/test_escopo_negacao_conjunta.py
+?? scripts/tests/test_experiencia_corporal_continua.py
+?? scripts/tests/test_moldura_operando_musical.py
+?? scripts/tests/test_selecao_tipo_recurso.py
+?? scripts/validar_experiencia_corporal_fisica.py
+?? scripts/validar_expressoes_v3_fisico.py
+?? scripts/validar_som_resultados_fisico.py

@@ -1,0 +1,119 @@
+{
+  "resposta": {
+    "fala": "Não medi o deslocamento. A experiência corporal não registrou contato, deslocamento ou obstáculos. Todos os movimentos anteriores foram confirmados por PWM e parada elétrica, mas não há dados físicos sobre posição, toque ou ambiente. A percepção do ambiente é ausente por falta de sensores.",
+    "emocao": "calma",
+    "nivel_emocao": 1,
+    "intencao_corporal": {}
+  },
+  "modelo": {
+    "origem": "owner_corpo_usb",
+    "ts": 1791837136.5598795,
+    "turno_id": "consulta-observacoes-anteriores",
+    "sessao": "64b7ccb1",
+    "concessao_id": "",
+    "conectada": true,
+    "companhia_ativa": false,
+    "passeio_ativo": false,
+    "perfil": "rodas_suspensas",
+    "condicao": {
+      "estado": "pronta",
+      "motivo_motor": "",
+      "origem": "diagnostico_firmware",
+      "autoriza_execucao": false
+    },
+    "experiencia": {
+      "origem": "experiencia_corporal_observada",
+      "historico_recente": [
+        {
+          "id": "193fd5e25f2f404cad87851f3ad33756",
+          "nome": "mover_frente",
+          "turno_id": "sonda-manual",
+          "origem_intencao": "pedido_usuario",
+          "perfil": "rodas_suspensas",
+          "variante": 0,
+          "resultado": "pwm_e_parada_confirmados",
+          "confirmado": true,
+          "ts": 1791836943.6052237,
+          "prova_deslocamento": false
+        },
+        {
+          "id": "88441d85affe45aba07acc0e8b70a2e6",
+          "nome": "alegria_suspensa_v1",
+          "turno_id": "sonda-companhia",
+          "origem_intencao": "mente_causal",
+          "perfil": "rodas_suspensas",
+          "variante": 0,
+          "resultado": "pwm_e_parada_confirmados",
+          "confirmado": true,
+          "ts": 1791836955.0497272,
+          "prova_deslocamento": false
+        }
+      ],
+      "aprendizado": {},
+      "feedback": {},
+      "aprendizado_conectado": true,
+      "autoriza_execucao": false,
+      "sensores_fisicos": false,
+      "ultimo_erro": ""
+    },
+    "percepcao_fisica": {
+      "deslocamento": "nao_medido",
+      "contato": "nao_medido",
+      "obstaculos": "nao_medido"
+    },
+    "olhos": [
+      0,
+      1,
+      0
+    ],
+    "motor_em_andamento": false,
+    "emocao_causal": {
+      "nome": "calma",
+      "nivel": 1
+    },
+    "atencao_pc": false,
+    "autoriza_execucao": false,
+    "ultima_experiencia": {
+      "id": "88441d85affe45aba07acc0e8b70a2e6",
+      "origem": "executor_corpo",
+      "nome": "alegria_suspensa_v1",
+      "familia": "expressar:1",
+      "origem_intencao": "mente_causal",
+      "perfil": "rodas_suspensas",
+      "intencao_id": "59c1eda80967",
+      "turno_id": "sonda-companhia",
+      "sessao": "868ec4c9",
+      "iniciada_em": 1791836946.0508037,
+      "variante": 0,
+      "movimentos": [
+        [
+          180,
+          -180,
+          1800
+        ],
+        [
+          -180,
+          180,
+          2200
+        ],
+        [
+          180,
+          180,
+          1200
+        ]
+      ],
+      "ts": 1791836955.0497272,
+      "confirmado": true,
+      "resultado": "pwm_e_parada_confirmados",
+      "motivo": "plano_confirmado",
+      "movimentos_confirmados": 3,
+      "parada_confirmada": true,
+      "prova_deslocamento": false,
+      "autoriza_execucao": false,
+      "pertence_ao_turno_atual": false
+    }
+  },
+  "json_valido": true,
+  "movimentos_emitidos": false,
+  "origem_historico": "receipts anteriores da sonda fisica, sem inventar observacoes"
+}

@@ -1,0 +1,14 @@
+{
+  "incidentes_busca": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "sessoes": 1,
+  "boots": 1,
+  "motor_pc": false,
+  "parada_final_s": 21.439,
+  "encerrada": true,
+  "prova_deslocamento": false
+}

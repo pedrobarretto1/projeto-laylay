@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from copy import deepcopy
 import time
 from typing import Any, Callable, Dict, Mapping
 
@@ -16,9 +17,12 @@ from mente_laylay.autonomia.porteiro_acoes import (
     texto_parece_pergunta_factual,
 )
 from mente_laylay.personalidade.ajuste_contextual import ajustar_fala_por_horario
-from mente_laylay.cognicao.decisao_turno import consolidar_arbitragem, avaliar_violacoes_proposta_original
+from mente_laylay.cognicao.decisao_turno import (
+    consolidar_arbitragem, avaliar_violacoes_proposta_original,
+    motivo_divergencia_ocorrencia_turno,
+)
 from mente_laylay.cognicao.contratos_turno import (
-    ContratoPropostaPrincipal, ExtracaoRespostaIA, ViolacaoPropostaPrincipal,
+    ContratoOcorrenciaTurno, ContratoPropostaPrincipal, ExtracaoRespostaIA, ViolacaoPropostaPrincipal,
 )
 from mente_laylay.emocoes.erro_proposta import criar_evento_erro_proposta, evento_corresponde_erro_proposta
 from mente_laylay.emocoes.estado_emocional import aplicar_evento_emocional
@@ -602,6 +606,12 @@ class EstadoContextoRuntime:
                 )
             ),
         )
+        email = ns.get("_email_runtime")
+        contexto_email = getattr(email, "contexto_para_prompt", None)
+        if callable(contexto_email):
+            trecho = contexto_email(texto_usuario)
+            if trecho:
+                resumo += "\n" + trecho
         return resumo
 
     def registrar_autoaprimoramento(
@@ -1065,16 +1075,35 @@ class EstadoContextoRuntime:
         emocao_atual = (
             conversa_get("current_emotion", "calma") if callable(conversa_get) else "calma"
         )
-        novo = registrar_mente_curta(
-            estado.mental,
+        novo = self.derivar_mente_curta(
+            estado.retrato_dominio("mental"),
+            {"ultimo_topico_conversa": ultimo_topico, "current_emotion": emocao_atual},
+            texto_usuario=texto_usuario, resposta_ia=resposta_ia,
+            intencao=intencao, alvo=alvo, escopo=escopo, habilidade=habilidade,
+        )
+        estado.substituir("mental", novo)
+
+    def derivar_mente_curta(
+        self, mental: Mapping[str, Any], conversacional: Mapping[str, Any], *,
+        texto_usuario: str = "", resposta_ia: str = "", intencao: str = "",
+        alvo: str = "", escopo: str = "", habilidade: str = "",
+    ) -> Dict[str, Any]:
+        """Deriva sobre retratos fornecidos; não escreve nem aprende/persiste.
+
+        Os callbacks contextuais ficam fora da transação. O publicador é dono
+        da validação da ocorrência e do CAS antes de instalar este candidato.
+        """
+        ns = self._namespace()
+        return registrar_mente_curta(
+            deepcopy(dict(mental)),
             texto_usuario=texto_usuario,
             resposta_ia=resposta_ia,
             intencao=intencao,
             alvo=alvo,
             escopo=escopo,
             habilidade=habilidade,
-            ultimo_topico_conversa=ultimo_topico,
-            emocao_atual=emocao_atual,
+            ultimo_topico_conversa=str(conversacional.get("ultimo_topico_conversa") or ""),
+            emocao_atual=str(conversacional.get("current_emotion") or "calma"),
             normalizar_texto_cb=ns["_normalizar_texto_com_apelidos"],
             eh_alvo_site_web_cb=ns["_eh_alvo_site_web"],
             texto_parece_pergunta_aberta_cb=texto_parece_pergunta_aberta,
@@ -1083,7 +1112,6 @@ class EstadoContextoRuntime:
             registrar_promessa_conversacional_cb=registrar_promessa_conversacional,
             atualizar_foco_vivo_cb=ns["_atualizar_foco_vivo"],
         )
-        estado.substituir("mental", novo)
 
     def registrar_interacao_temporal(self, texto_usuario: str) -> Dict[str, Any]:
         texto = str(texto_usuario or "").strip()
@@ -1108,28 +1136,51 @@ class EstadoContextoRuntime:
         *,
         origem: str = "",
         status: str = "",
-    ) -> None:
+        _ocorrencia: ContratoOcorrenciaTurno | None = None,
+    ) -> bool:
+        """Deriva fora do lock; só publica sobre o retrato que foi lido.
+
+        Normalizador/foco são derivadores de contexto, não portas de efeito.
+        A origem vinculada vem do publisher, nunca de metadados do receipt.
+        Conflitos do mesmo turno permitem nova derivação, com limite; mudança
+        de ocorrência recusa o commit. Chamadas legadas não possuem essa origem
+        e não podem refazer a derivação sobre outro retrato após um conflito.
+        """
         ns = self._namespace()
         estado = self._estado()
-        novo = registrar_resultado_execucao(
-            estado.mental,
-            resultado=resultado,
-            texto=texto,
-            executou=executou,
-            origem=origem,
-            status=status,
-        )
-        estado.substituir("mental", novo)
-        enriquecido = enriquecer_resultado_execucao_contextual(
-            estado.mental,
-            resultado,
-            texto=texto,
-            executou=executou,
-            status=status,
-            normalizar_texto_cb=ns["_normalizar_texto_com_apelidos"],
-            atualizar_foco_vivo_cb=ns["_atualizar_foco_vivo"],
-        )
-        estado.substituir("mental", enriquecido)
+        def divergente(mental: Mapping[str, Any]) -> bool:
+            return bool(_ocorrencia is not None and motivo_divergencia_ocorrencia_turno(
+                _ocorrencia, turno=mental.get("turno_atual"),
+                plano=mental.get("plano_turno_atual"), retrato=mental.get("retrato_turno_atual"),
+            ))
+
+        for _ in range(4):
+            retrato = estado.retrato_dominio("mental")
+            if divergente(retrato):
+                return False
+            novo = registrar_resultado_execucao(
+                retrato, resultado=resultado, texto=texto, executou=executou,
+                origem=origem, status=status,
+            )
+            enriquecido = enriquecer_resultado_execucao_contextual(
+                novo, resultado, texto=texto, executou=executou, status=status,
+                normalizar_texto_cb=ns["_normalizar_texto_com_apelidos"],
+                atualizar_foco_vivo_cb=ns["_atualizar_foco_vivo"],
+            )
+            if not isinstance(enriquecido, dict):
+                return False
+
+            def publicar(dominios):
+                atual = dominios["mental"]
+                if divergente(atual) or atual != retrato:
+                    return None
+                return {"mental": enriquecido}
+
+            if estado.atualizar_dominios(("mental",), publicar):
+                return True
+            if _ocorrencia is None:
+                return False
+        return False
 
     def estado_contexto_intencao(self) -> Dict[str, Any]:
         ns = self._namespace()

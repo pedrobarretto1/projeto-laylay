@@ -1,0 +1,1142 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "fase": "pedido_manual_real",
+      "experiencia": {
+        "id": "193fd5e25f2f404cad87851f3ad33756",
+        "origem": "executor_corpo",
+        "nome": "mover_frente",
+        "familia": "mover_frente",
+        "origem_intencao": "pedido_usuario",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "",
+        "turno_id": "sonda-manual",
+        "sessao": "868ec4c9",
+        "iniciada_em": 1791836942.8962495,
+        "variante": 0,
+        "movimentos": [
+          [
+            255,
+            255,
+            250
+          ]
+        ],
+        "ts": 1791836943.6052237,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "sucesso",
+        "movimentos_confirmados": 1,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "fase": "gesto_causal_estimulacao_diagnostica",
+      "experiencia": {
+        "id": "88441d85affe45aba07acc0e8b70a2e6",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "59c1eda80967",
+        "turno_id": "sonda-companhia",
+        "sessao": "868ec4c9",
+        "iniciada_em": 1791836946.0508037,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836955.0497272,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": true
+      }
+    },
+    {
+      "fase": "feedback_simulado_sqlite_temporario",
+      "feedback": {
+        "dominio": "corpo_motor",
+        "experiencia_id": "88441d85affe45aba07acc0e8b70a2e6",
+        "turno_id": "sonda-feedback",
+        "perfil": "rodas_suspensas",
+        "nome": "alegria_suspensa_v1",
+        "variante": 0,
+        "autoriza_execucao": false,
+        "tipo": "aceitacao",
+        "aceito": true
+      }
+    }
+  ],
+  "modelos": [
+    {
+      "origem": "owner_corpo_usb",
+      "ts": 1791836955.2682633,
+      "turno_id": "sonda-feedback",
+      "sessao": "868ec4c9",
+      "concessao_id": "545125a5ca76dabb",
+      "conectada": true,
+      "companhia_ativa": true,
+      "passeio_ativo": false,
+      "perfil": "rodas_suspensas",
+      "condicao": {
+        "estado": "pronta",
+        "motivo_motor": "",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "193fd5e25f2f404cad87851f3ad33756",
+            "nome": "mover_frente",
+            "turno_id": "sonda-manual",
+            "origem_intencao": "pedido_usuario",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836943.6052237,
+            "prova_deslocamento": false
+          },
+          {
+            "id": "88441d85affe45aba07acc0e8b70a2e6",
+            "nome": "alegria_suspensa_v1",
+            "turno_id": "sonda-companhia",
+            "origem_intencao": "mente_causal",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836955.0497272,
+            "prova_deslocamento": false
+          }
+        ],
+        "aprendizado": {
+          "origem": "aprendizado_compartilhado",
+          "chave": "corpo_execucao:rodas_suspensas:alegria_suspensa_v1:0",
+          "estado_hipotese": "candidata",
+          "confianca": 0.577,
+          "limite_evidencia": "confirmacao_eletrica_sem_deslocamento",
+          "autoriza_execucao": false
+        },
+        "feedback": {},
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": false,
+        "ultimo_erro": ""
+      },
+      "percepcao_fisica": {
+        "deslocamento": "nao_medido",
+        "contato": "nao_medido",
+        "obstaculos": "nao_medido"
+      },
+      "olhos": [
+        1,
+        2,
+        0
+      ],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "alegre",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {
+        "id": "88441d85affe45aba07acc0e8b70a2e6",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "59c1eda80967",
+        "turno_id": "sonda-companhia",
+        "sessao": "868ec4c9",
+        "iniciada_em": 1791836946.0508037,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836955.0497272,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": false
+      }
+    },
+    {
+      "origem": "owner_corpo_usb",
+      "ts": 1791836962.502365,
+      "turno_id": "sonda-feedback",
+      "sessao": "",
+      "concessao_id": "",
+      "conectada": false,
+      "companhia_ativa": false,
+      "passeio_ativo": false,
+      "perfil": "rodas_suspensas",
+      "condicao": {
+        "estado": "desconectada",
+        "motivo_motor": "desconectado",
+        "origem": "diagnostico_firmware",
+        "autoriza_execucao": false
+      },
+      "experiencia": {
+        "origem": "experiencia_corporal_observada",
+        "historico_recente": [
+          {
+            "id": "193fd5e25f2f404cad87851f3ad33756",
+            "nome": "mover_frente",
+            "turno_id": "sonda-manual",
+            "origem_intencao": "pedido_usuario",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836943.6052237,
+            "prova_deslocamento": false
+          },
+          {
+            "id": "88441d85affe45aba07acc0e8b70a2e6",
+            "nome": "alegria_suspensa_v1",
+            "turno_id": "sonda-companhia",
+            "origem_intencao": "mente_causal",
+            "perfil": "rodas_suspensas",
+            "variante": 0,
+            "resultado": "pwm_e_parada_confirmados",
+            "confirmado": true,
+            "ts": 1791836955.0497272,
+            "prova_deslocamento": false
+          }
+        ],
+        "aprendizado": {
+          "origem": "aprendizado_compartilhado",
+          "chave": "corpo_execucao:rodas_suspensas:alegria_suspensa_v1:0",
+          "estado_hipotese": "candidata",
+          "confianca": 0.577,
+          "limite_evidencia": "confirmacao_eletrica_sem_deslocamento",
+          "autoriza_execucao": false
+        },
+        "feedback": {
+          "dominio": "corpo_motor",
+          "experiencia_id": "88441d85affe45aba07acc0e8b70a2e6",
+          "turno_id": "sonda-feedback",
+          "perfil": "rodas_suspensas",
+          "nome": "alegria_suspensa_v1",
+          "variante": 0,
+          "autoriza_execucao": false,
+          "tipo": "aceitacao",
+          "aceito": true
+        },
+        "aprendizado_conectado": true,
+        "autoriza_execucao": false,
+        "sensores_fisicos": false,
+        "ultimo_erro": ""
+      },
+      "percepcao_fisica": {
+        "deslocamento": "nao_medido",
+        "contato": "nao_medido",
+        "obstaculos": "nao_medido"
+      },
+      "olhos": [],
+      "motor_em_andamento": false,
+      "emocao_causal": {
+        "nome": "alegre",
+        "nivel": 2
+      },
+      "atencao_pc": false,
+      "autoriza_execucao": false,
+      "ultima_experiencia": {
+        "id": "88441d85affe45aba07acc0e8b70a2e6",
+        "origem": "executor_corpo",
+        "nome": "alegria_suspensa_v1",
+        "familia": "expressar:1",
+        "origem_intencao": "mente_causal",
+        "perfil": "rodas_suspensas",
+        "intencao_id": "59c1eda80967",
+        "turno_id": "sonda-companhia",
+        "sessao": "868ec4c9",
+        "iniciada_em": 1791836946.0508037,
+        "variante": 0,
+        "movimentos": [
+          [
+            180,
+            -180,
+            1800
+          ],
+          [
+            -180,
+            180,
+            2200
+          ],
+          [
+            180,
+            180,
+            1200
+          ]
+        ],
+        "ts": 1791836955.0497272,
+        "confirmado": true,
+        "resultado": "pwm_e_parada_confirmados",
+        "motivo": "plano_confirmado",
+        "movimentos_confirmados": 3,
+        "parada_confirmada": true,
+        "prova_deslocamento": false,
+        "autoriza_execucao": false,
+        "pertence_ao_turno_atual": false
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 868ec4c9",
+      "tempo": 21132.0917751
+    },
+    {
+      "tx": "CAPS 1 868ec4c9",
+      "tempo": 21132.1922911
+    },
+    {
+      "tx": "GCAPS 1 868ec4c9",
+      "tempo": 21132.3013834
+    },
+    {
+      "tx": "MCAPS 1 868ec4c9",
+      "tempo": 21132.410285
+    },
+    {
+      "tx": "LCAPS 1 868ec4c9",
+      "tempo": 21132.519043
+    },
+    {
+      "tx": "SCAPS 1 868ec4c9",
+      "tempo": 21132.6264372
+    },
+    {
+      "tx": "SENCAPS 1 868ec4c9",
+      "tempo": 21132.7359006
+    },
+    {
+      "tx": "ECAPS 1 868ec4c9",
+      "tempo": 21132.8442415
+    },
+    {
+      "tx": "RCAPS 1 868ec4c9",
+      "tempo": 21132.9524067
+    },
+    {
+      "tx": "FACE 1 868ec4c9 1 0 1 0 3500",
+      "tempo": 21133.0606935
+    },
+    {
+      "rx": "ACK 1 868ec4c9 1 0 1 0",
+      "tempo": 21133.1701959
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 1 0 1200",
+      "tempo": 21133.1702885
+    },
+    {
+      "tx": "SOUND 1 868ec4c9 1 0",
+      "tempo": 21133.278288
+    },
+    {
+      "tx": "FACE 1 868ec4c9 2 0 1 0 3500",
+      "tempo": 21133.651555
+    },
+    {
+      "rx": "ACK 1 868ec4c9 2 0 1 0",
+      "tempo": 21133.7602892
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 2 0 1200",
+      "tempo": 21133.7603787
+    },
+    {
+      "tx": "FACE 1 868ec4c9 3 0 1 0 3500",
+      "tempo": 21134.1201577
+    },
+    {
+      "rx": "ACK 1 868ec4c9 3 0 1 0",
+      "tempo": 21134.2281408
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 3 0 1200",
+      "tempo": 21134.2282213
+    },
+    {
+      "tx": "FACE 1 868ec4c9 4 0 1 0 3500",
+      "tempo": 21134.6024145
+    },
+    {
+      "rx": "ACK 1 868ec4c9 4 0 1 0",
+      "tempo": 21134.7114367
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 4 0 1200",
+      "tempo": 21134.7115045
+    },
+    {
+      "tx": "FACE 1 868ec4c9 5 0 1 0 3500",
+      "tempo": 21135.0866134
+    },
+    {
+      "rx": "ACK 1 868ec4c9 5 0 1 0",
+      "tempo": 21135.1962947
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 5 0 1200",
+      "tempo": 21135.1963755
+    },
+    {
+      "tx": "FACE 1 868ec4c9 6 0 1 0 3500",
+      "tempo": 21135.5544819
+    },
+    {
+      "rx": "ACK 1 868ec4c9 6 0 1 0",
+      "tempo": 21135.6634541
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 6 0 1200",
+      "tempo": 21135.6635183
+    },
+    {
+      "tx": "FACE 1 868ec4c9 7 0 1 0 3500",
+      "tempo": 21136.0368003
+    },
+    {
+      "rx": "ACK 1 868ec4c9 7 0 1 0",
+      "tempo": 21136.1456984
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 7 0 1200",
+      "tempo": 21136.1458131
+    },
+    {
+      "tx": "FACE 1 868ec4c9 8 0 1 0 3500",
+      "tempo": 21136.5076095
+    },
+    {
+      "rx": "ACK 1 868ec4c9 8 0 1 0",
+      "tempo": 21136.6177301
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 8 0 1200",
+      "tempo": 21136.6178121
+    },
+    {
+      "tx": "FACE 1 868ec4c9 9 0 1 0 3500",
+      "tempo": 21136.7350052
+    },
+    {
+      "rx": "ACK 1 868ec4c9 9 0 1 0",
+      "tempo": 21136.8370915
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 9 1 1200",
+      "tempo": 21136.8371778
+    },
+    {
+      "tx": "MOTOR 1 868ec4c9 1 255 255 250",
+      "tempo": 21136.9471259
+    },
+    {
+      "rx": "MACK 1 868ec4c9 1 255 255 250",
+      "tempo": 21137.0555502
+    },
+    {
+      "tx": "FACE 1 868ec4c9 10 0 1 0 3500",
+      "tempo": 21137.0557379
+    },
+    {
+      "rx": "ACK 1 868ec4c9 10 0 1 0",
+      "tempo": 21137.1631146
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 10 1 1200",
+      "tempo": 21137.163184
+    },
+    {
+      "tx": "STOP 1 868ec4c9 1",
+      "tempo": 21137.333762
+    },
+    {
+      "rx": "SACK 1 868ec4c9 1",
+      "tempo": 21137.4435788
+    },
+    {
+      "tx": "FACE 1 868ec4c9 11 0 1 0 3500",
+      "tempo": 21137.5225105
+    },
+    {
+      "rx": "ACK 1 868ec4c9 11 0 1 0",
+      "tempo": 21137.6323484
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 11 1 1200",
+      "tempo": 21137.6324389
+    },
+    {
+      "tx": "FACE 1 868ec4c9 12 0 1 0 3500",
+      "tempo": 21138.0067458
+    },
+    {
+      "rx": "ACK 1 868ec4c9 12 0 1 0",
+      "tempo": 21138.1185225
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 12 1 1200",
+      "tempo": 21138.1186174
+    },
+    {
+      "tx": "FACE 1 868ec4c9 13 0 1 0 3500",
+      "tempo": 21138.4924619
+    },
+    {
+      "rx": "ACK 1 868ec4c9 13 0 1 0",
+      "tempo": 21138.6012425
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 13 0 1200",
+      "tempo": 21138.6013271
+    },
+    {
+      "tx": "FACE 1 868ec4c9 14 0 1 0 3500",
+      "tempo": 21138.9618075
+    },
+    {
+      "rx": "ACK 1 868ec4c9 14 0 1 0",
+      "tempo": 21139.0704733
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 14 0 1200",
+      "tempo": 21139.0705661
+    },
+    {
+      "tx": "FACE 1 868ec4c9 15 0 1 0 3500",
+      "tempo": 21139.4424883
+    },
+    {
+      "rx": "ACK 1 868ec4c9 15 0 1 0",
+      "tempo": 21139.5517007
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 15 0 1200",
+      "tempo": 21139.551787
+    },
+    {
+      "tx": "FACE 1 868ec4c9 16 1 2 0 3500",
+      "tempo": 21139.660916
+    },
+    {
+      "rx": "ACK 1 868ec4c9 16 1 2 0",
+      "tempo": 21139.7701645
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 16 0 1200",
+      "tempo": 21139.7702466
+    },
+    {
+      "tx": "EXPR 1 868ec4c9 1 1 0 1 400",
+      "tempo": 21139.8907114
+    },
+    {
+      "rx": "EACK 1 868ec4c9 1 1 0 1 400",
+      "tempo": 21140.004573
+    },
+    {
+      "tx": "FACE 1 868ec4c9 17 1 2 0 3500",
+      "tempo": 21140.0051375
+    },
+    {
+      "rx": "ACK 1 868ec4c9 17 1 2 0",
+      "tempo": 21140.113414
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 17 0 1200",
+      "tempo": 21140.1135
+    },
+    {
+      "tx": "EXPR 1 868ec4c9 2 1 1 1 2050",
+      "tempo": 21140.3362025
+    },
+    {
+      "rx": "EACK 1 868ec4c9 2 1 1 1 2050",
+      "tempo": 21140.4441908
+    },
+    {
+      "tx": "SOUND 1 868ec4c9 2 3",
+      "tempo": 21140.4443202
+    },
+    {
+      "tx": "FACE 1 868ec4c9 18 1 2 0 3500",
+      "tempo": 21140.5527285
+    },
+    {
+      "rx": "ACK 1 868ec4c9 18 1 2 0",
+      "tempo": 21140.6620274
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 18 0 1200",
+      "tempo": 21140.6621193
+    },
+    {
+      "tx": "FACE 1 868ec4c9 19 1 2 0 3500",
+      "tempo": 21140.7718052
+    },
+    {
+      "rx": "ACK 1 868ec4c9 19 1 2 0",
+      "tempo": 21140.8802784
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 19 0 1200",
+      "tempo": 21140.8803984
+    },
+    {
+      "tx": "MOTOR 2 868ec4c9 2 180 -180 1800",
+      "tempo": 21140.9894914
+    },
+    {
+      "rx": "MACK 2 868ec4c9 2 180 -180 1800",
+      "tempo": 21141.2067898
+    },
+    {
+      "tx": "FACE 1 868ec4c9 20 1 2 0 3500",
+      "tempo": 21141.2070098
+    },
+    {
+      "rx": "ACK 1 868ec4c9 20 1 2 0",
+      "tempo": 21141.3153998
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 20 0 1200",
+      "tempo": 21141.3155163
+    },
+    {
+      "tx": "FACE 1 868ec4c9 21 1 2 0 3500",
+      "tempo": 21141.686526
+    },
+    {
+      "rx": "ACK 1 868ec4c9 21 1 2 0",
+      "tempo": 21141.7957606
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 21 0 1200",
+      "tempo": 21141.795841
+    },
+    {
+      "tx": "FACE 1 868ec4c9 22 1 2 0 3500",
+      "tempo": 21142.1704116
+    },
+    {
+      "rx": "ACK 1 868ec4c9 22 1 2 0",
+      "tempo": 21142.2780385
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 22 0 1200",
+      "tempo": 21142.2781289
+    },
+    {
+      "tx": "FACE 1 868ec4c9 23 1 2 0 3500",
+      "tempo": 21142.6404479
+    },
+    {
+      "rx": "ACK 1 868ec4c9 23 1 2 0",
+      "tempo": 21142.7485662
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 23 0 1200",
+      "tempo": 21142.7486588
+    },
+    {
+      "tx": "STOP 1 868ec4c9 2",
+      "tempo": 21143.0302089
+    },
+    {
+      "rx": "SACK 1 868ec4c9 2",
+      "tempo": 21143.1387191
+    },
+    {
+      "tx": "FACE 1 868ec4c9 24 1 2 0 3500",
+      "tempo": 21143.1391826
+    },
+    {
+      "rx": "ACK 1 868ec4c9 24 1 2 0",
+      "tempo": 21143.2494651
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 24 0 1200",
+      "tempo": 21143.2495528
+    },
+    {
+      "tx": "EXPR 1 868ec4c9 3 1 1 -1 2450",
+      "tempo": 21143.531984
+    },
+    {
+      "rx": "EACK 1 868ec4c9 3 1 1 -1 2450",
+      "tempo": 21143.640429
+    },
+    {
+      "tx": "FACE 1 868ec4c9 25 1 2 0 3500",
+      "tempo": 21143.6407465
+    },
+    {
+      "rx": "ACK 1 868ec4c9 25 1 2 0",
+      "tempo": 21143.7495851
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 25 0 1200",
+      "tempo": 21143.749709
+    },
+    {
+      "tx": "FACE 1 868ec4c9 26 1 2 0 3500",
+      "tempo": 21143.8590672
+    },
+    {
+      "rx": "ACK 1 868ec4c9 26 1 2 0",
+      "tempo": 21143.9666925
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 26 0 1200",
+      "tempo": 21143.9667765
+    },
+    {
+      "tx": "MOTOR 2 868ec4c9 3 -180 180 2200",
+      "tempo": 21144.0781581
+    },
+    {
+      "rx": "MACK 2 868ec4c9 3 -180 180 2200",
+      "tempo": 21144.2949096
+    },
+    {
+      "tx": "FACE 1 868ec4c9 27 1 2 0 3500",
+      "tempo": 21144.2951049
+    },
+    {
+      "rx": "ACK 1 868ec4c9 27 1 2 0",
+      "tempo": 21144.4034173
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 27 0 1200",
+      "tempo": 21144.4035077
+    },
+    {
+      "tx": "FACE 1 868ec4c9 28 1 2 0 3500",
+      "tempo": 21144.7636651
+    },
+    {
+      "rx": "ACK 1 868ec4c9 28 1 2 0",
+      "tempo": 21144.8734333
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 28 0 1200",
+      "tempo": 21144.8735234
+    },
+    {
+      "tx": "FACE 1 868ec4c9 29 1 2 0 3500",
+      "tempo": 21145.233828
+    },
+    {
+      "rx": "ACK 1 868ec4c9 29 1 2 0",
+      "tempo": 21145.3422031
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 29 0 1200",
+      "tempo": 21145.3423165
+    },
+    {
+      "tx": "FACE 1 868ec4c9 30 1 2 0 3500",
+      "tempo": 21145.7167495
+    },
+    {
+      "rx": "ACK 1 868ec4c9 30 1 2 0",
+      "tempo": 21145.8262754
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 30 0 1200",
+      "tempo": 21145.8263621
+    },
+    {
+      "tx": "FACE 1 868ec4c9 31 1 2 0 3500",
+      "tempo": 21146.1995
+    },
+    {
+      "rx": "ACK 1 868ec4c9 31 1 2 0",
+      "tempo": 21146.3095797
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 31 0 1200",
+      "tempo": 21146.3096705
+    },
+    {
+      "tx": "STOP 1 868ec4c9 3",
+      "tempo": 21146.5268286
+    },
+    {
+      "rx": "SACK 1 868ec4c9 3",
+      "tempo": 21146.6358322
+    },
+    {
+      "tx": "FACE 1 868ec4c9 32 1 2 0 3500",
+      "tempo": 21146.6677288
+    },
+    {
+      "rx": "ACK 1 868ec4c9 32 1 2 0",
+      "tempo": 21146.7760629
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 32 0 1200",
+      "tempo": 21146.7761877
+    },
+    {
+      "tx": "EXPR 1 868ec4c9 4 1 1 0 1450",
+      "tempo": 21146.8874783
+    },
+    {
+      "rx": "EACK 1 868ec4c9 4 1 1 0 1450",
+      "tempo": 21146.9956906
+    },
+    {
+      "tx": "FACE 1 868ec4c9 33 1 2 0 3500",
+      "tempo": 21146.9959033
+    },
+    {
+      "rx": "ACK 1 868ec4c9 33 1 2 0",
+      "tempo": 21147.1054225
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 33 0 1200",
+      "tempo": 21147.1055266
+    },
+    {
+      "tx": "MOTOR 2 868ec4c9 4 180 180 1200",
+      "tempo": 21147.2144999
+    },
+    {
+      "rx": "MACK 2 868ec4c9 4 180 180 1200",
+      "tempo": 21147.4334574
+    },
+    {
+      "tx": "FACE 1 868ec4c9 34 1 2 0 3500",
+      "tempo": 21147.433661
+    },
+    {
+      "rx": "ACK 1 868ec4c9 34 1 2 0",
+      "tempo": 21147.5437886
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 34 0 1200",
+      "tempo": 21147.5438798
+    },
+    {
+      "tx": "FACE 1 868ec4c9 35 1 2 0 3500",
+      "tempo": 21147.9059889
+    },
+    {
+      "rx": "ACK 1 868ec4c9 35 1 2 0",
+      "tempo": 21148.0143321
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 35 0 1200",
+      "tempo": 21148.0144185
+    },
+    {
+      "tx": "FACE 1 868ec4c9 36 1 2 0 3500",
+      "tempo": 21148.3878069
+    },
+    {
+      "rx": "ACK 1 868ec4c9 36 1 2 0",
+      "tempo": 21148.4974428
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 36 0 1200",
+      "tempo": 21148.4975572
+    },
+    {
+      "tx": "STOP 1 868ec4c9 4",
+      "tempo": 21148.6679288
+    },
+    {
+      "rx": "SACK 1 868ec4c9 4",
+      "tempo": 21148.7774551
+    },
+    {
+      "tx": "EXPR 1 868ec4c9 5 1 2 0 1800",
+      "tempo": 21148.7781019
+    },
+    {
+      "rx": "EACK 1 868ec4c9 5 1 2 0 1800",
+      "tempo": 21148.8868774
+    },
+    {
+      "tx": "FACE 1 868ec4c9 37 1 2 0 3500",
+      "tempo": 21148.8888215
+    },
+    {
+      "rx": "ACK 1 868ec4c9 37 1 2 0",
+      "tempo": 21148.996429
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 37 0 1200",
+      "tempo": 21148.9965149
+    },
+    {
+      "tx": "STOP 1 868ec4c9 5",
+      "tempo": 21149.1386522
+    },
+    {
+      "rx": "SACK 1 868ec4c9 5",
+      "tempo": 21149.2463026
+    },
+    {
+      "tx": "FACE 1 868ec4c9 38 1 2 0 3500",
+      "tempo": 21149.3705408
+    },
+    {
+      "rx": "ACK 1 868ec4c9 38 1 2 0",
+      "tempo": 21149.480296
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 38 0 1200",
+      "tempo": 21149.4803863
+    },
+    {
+      "tx": "FACE 1 868ec4c9 39 1 2 0 3500",
+      "tempo": 21149.8412286
+    },
+    {
+      "rx": "ACK 1 868ec4c9 39 1 2 0",
+      "tempo": 21149.9513298
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 39 0 1200",
+      "tempo": 21149.9514181
+    },
+    {
+      "tx": "FACE 1 868ec4c9 40 1 2 0 3500",
+      "tempo": 21150.3217391
+    },
+    {
+      "rx": "ACK 1 868ec4c9 40 1 2 0",
+      "tempo": 21150.4325237
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 40 0 1200",
+      "tempo": 21150.432635
+    },
+    {
+      "tx": "FACE 1 868ec4c9 41 1 2 0 3500",
+      "tempo": 21150.792
+    },
+    {
+      "rx": "ACK 1 868ec4c9 41 1 2 0",
+      "tempo": 21150.901677
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 41 0 1200",
+      "tempo": 21150.9017498
+    },
+    {
+      "tx": "FACE 1 868ec4c9 42 1 2 0 3500",
+      "tempo": 21151.2745642
+    },
+    {
+      "rx": "ACK 1 868ec4c9 42 1 2 0",
+      "tempo": 21151.3826696
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 42 0 1200",
+      "tempo": 21151.3827445
+    },
+    {
+      "tx": "FACE 1 868ec4c9 43 1 2 0 3500",
+      "tempo": 21151.7568756
+    },
+    {
+      "rx": "ACK 1 868ec4c9 43 1 2 0",
+      "tempo": 21151.8661929
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 43 0 1200",
+      "tempo": 21151.8662624
+    },
+    {
+      "tx": "FACE 1 868ec4c9 44 1 2 0 3500",
+      "tempo": 21152.2396471
+    },
+    {
+      "rx": "ACK 1 868ec4c9 44 1 2 0",
+      "tempo": 21152.3501797
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 44 0 1200",
+      "tempo": 21152.3502593
+    },
+    {
+      "tx": "FACE 1 868ec4c9 45 1 2 0 3500",
+      "tempo": 21152.7103315
+    },
+    {
+      "rx": "ACK 1 868ec4c9 45 1 2 0",
+      "tempo": 21152.8202659
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 45 0 1200",
+      "tempo": 21152.8203598
+    },
+    {
+      "tx": "FACE 1 868ec4c9 46 1 2 0 3500",
+      "tempo": 21153.1916794
+    },
+    {
+      "rx": "ACK 1 868ec4c9 46 1 2 0",
+      "tempo": 21153.300522
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 46 0 1200",
+      "tempo": 21153.300615
+    },
+    {
+      "tx": "FACE 1 868ec4c9 47 1 2 0 3500",
+      "tempo": 21153.6733588
+    },
+    {
+      "rx": "ACK 1 868ec4c9 47 1 2 0",
+      "tempo": 21153.7822479
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 47 0 1200",
+      "tempo": 21153.7823527
+    },
+    {
+      "tx": "FACE 1 868ec4c9 48 1 2 0 3500",
+      "tempo": 21154.1535839
+    },
+    {
+      "rx": "ACK 1 868ec4c9 48 1 2 0",
+      "tempo": 21154.2617225
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 48 0 1200",
+      "tempo": 21154.2618199
+    },
+    {
+      "tx": "FACE 1 868ec4c9 49 1 2 0 3500",
+      "tempo": 21154.6218287
+    },
+    {
+      "rx": "ACK 1 868ec4c9 49 1 2 0",
+      "tempo": 21154.72905
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 49 0 1200",
+      "tempo": 21154.7291376
+    },
+    {
+      "tx": "FACE 1 868ec4c9 50 1 2 0 3500",
+      "tempo": 21155.1034546
+    },
+    {
+      "rx": "ACK 1 868ec4c9 50 1 2 0",
+      "tempo": 21155.2122943
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 50 0 1200",
+      "tempo": 21155.2124351
+    },
+    {
+      "tx": "FACE 1 868ec4c9 51 1 2 0 3500",
+      "tempo": 21155.5856208
+    },
+    {
+      "rx": "ACK 1 868ec4c9 51 1 2 0",
+      "tempo": 21155.6959089
+    },
+    {
+      "tx": "ACTIVITY 1 868ec4c9 51 0 1200",
+      "tempo": 21155.6959886
+    },
+    {
+      "tx": "STOP 1 868ec4c9 6",
+      "tempo": 21156.008968
+    },
+    {
+      "rx": "SACK 1 868ec4c9 6",
+      "tempo": 21156.1156162
+    },
+    {
+      "tx": "FACE 1 868ec4c9 52 1 2 0 3500",
+      "tempo": 21156.1160332
+    },
+    {
+      "tx": "STOP 1 868ec4c9 7",
+      "tempo": 21156.1162548
+    },
+    {
+      "rx": "SACK 1 868ec4c9 7",
+      "tempo": 21156.2253907
+    },
+    {
+      "rx": "ACK 1 868ec4c9 52 1 2 0",
+      "tempo": 21156.2253942
+    },
+    {
+      "tx": "GOODNIGHT 1 868ec4c9 6",
+      "tempo": 21156.2254116
+    },
+    {
+      "rx": "NACK 1 868ec4c9 6",
+      "tempo": 21156.3346063
+    }
+  ],
+  "consulta_modelo": {
+    "pergunta": "O que sua experiência corporal registra agora e o que você ainda não pode confirmar sobre movimento físico?",
+    "resposta": "{\"fala\":\"Meu sistema registra um estado emocional alegre, mas não há medição de deslocamento físico. Não consigo verificar quanto me movi. A última experiência de expressão emocional foi registrada como 'alegria suspensa v1', com confirmação elétrica de PWM e parada, mas sem prova de deslocamento. A condição corporal atual não permite validação de contato, posição ou obstáculos. Não medi o deslocamento.\",\"emocao\":\"alegre\",\"nivel_emocao\":2,\"intencao_corporal\":{\"nome\":\"expressar\"},\"condicao\":{\"estado\":\"pronta\",\"motivo_motor\":\"\",\"origem\":\"diagnostico_firmware\",\"autoriza_execucao\":false},\"percepcao_fisica\":{\"deslocamento\":\"nao_medido\",\"contato\":\"nao_medido\",\"obstaculos\":\"nao_medido\"},\"experiencia\":{\"origem\":\"experiencia_corporal_observada\",\"historico_recente\":[{\"id\":\"193fd5e25f2f404cad87851f3ad33756\",\"nome\":\"mover_frente\",\"turno",
+    "executou_proposta": false
+  },
+  "feedback_usuario_real": false,
+  "aprendizado_usuario_alterado": false,
+  "prova_deslocamento": false,
+  "observacao_humana": "pendente"
+}

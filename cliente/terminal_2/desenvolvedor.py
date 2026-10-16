@@ -186,6 +186,7 @@ class PaginaDesenvolvedor(QWidget):
         "PRESENCE",
         "EVENTS",
         "AUTONOMY",
+        "CORPO",
         "ERRORS",
         "TRACE",
     )
@@ -217,6 +218,17 @@ class PaginaDesenvolvedor(QWidget):
         principal.setSpacing(9)
 
         principal.addWidget(self._criar_barra_controles())
+        self.corpo_compacto = QFrame()
+        self.corpo_compacto.setObjectName("devToolbar")
+        compacto_layout = QVBoxLayout(self.corpo_compacto)
+        compacto_layout.setContentsMargins(13, 9, 13, 9)
+        self.corpo_resumo = QLabel("Corpo: aguardando diagnóstico · deslocamento não medido.")
+        self.corpo_resumo.setObjectName("devBodySummary")
+        self.corpo_resumo.setTextFormat(Qt.PlainText)
+        self.corpo_resumo.setWordWrap(True)
+        compacto_layout.addWidget(self.corpo_resumo)
+        principal.addWidget(self.corpo_compacto)
+        self.corpo_compacto.hide()
         principal.addWidget(self._criar_console(), 1)
         principal.addWidget(self._criar_telemetria())
         raiz.addLayout(principal, 1)
@@ -376,6 +388,21 @@ class PaginaDesenvolvedor(QWidget):
         layout = QVBoxLayout(conteudo)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        card_corpo = self.card_corpo = QFrame()
+        card_corpo.setObjectName("devMaintenanceCard")
+        corpo_layout = QVBoxLayout(card_corpo)
+        corpo_layout.setContentsMargins(13, 11, 13, 11)
+        titulo_corpo = QLabel("CORPO DA LAYLAY")
+        titulo_corpo.setObjectName("devMaintenanceTitle")
+        corpo_layout.addWidget(titulo_corpo)
+        self.corpo_detalhes = QLabel("Aguardando diagnóstico corporal.\nDeslocamento: não medido.")
+        self.corpo_detalhes.setObjectName("devBodySummary")
+        self.corpo_detalhes.setTextFormat(Qt.PlainText)
+        self.corpo_detalhes.setWordWrap(True)
+        self.corpo_detalhes.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        corpo_layout.addWidget(self.corpo_detalhes)
+        layout.addWidget(card_corpo)
+        card_corpo.hide()
         for icone, titulo in (
             ("⌁", "Sensor Health"),
             ("♙", "Presence State"),
@@ -457,6 +484,49 @@ class PaginaDesenvolvedor(QWidget):
         self.estado_fonte.setProperty("connected", conectada)
         self.estado_fonte.style().unpolish(self.estado_fonte)
         self.estado_fonte.style().polish(self.estado_fonte)
+        if not conectada:
+            self.corpo_detalhes.setText("Ponte desconectada.\nEstado do corpo indisponível.\nDeslocamento: não medido.")
+            self.corpo_resumo.setText("Corpo: ponte desconectada · estado indisponível · deslocamento não medido.")
+
+    def aplicar_corpo(self, corpo: dict) -> None:
+        if not corpo:
+            self.corpo_detalhes.setText("Aguardando diagnóstico corporal.\nDeslocamento: não medido.")
+            self.corpo_resumo.setText("Corpo: aguardando diagnóstico · deslocamento não medido.")
+            return
+        linhas = [
+            f"Conexão: {corpo.get('conexao') or 'desconhecida'} · {corpo.get('porta') or corpo.get('transporte') or '—'}",
+            f"Corpo: {corpo.get('nome_corpo') or 'sem nome pareado'} · Identidade USB: {corpo.get('pareamento_corpo') or 'não configurada'}",
+            f"Perfil: {corpo.get('perfil') or '—'}",
+            f"Companhia: {'ativa' if corpo.get('companhia_ativa') else 'inativa'} · Passeio: {'ativo' if corpo.get('passeio_ativo') else 'inativo'}",
+            f"Intenção: {corpo.get('intencao') or 'nenhuma'}",
+            f"Fase: {corpo.get('fase') or '—'}",
+            f"Emoção: {corpo.get('emocao') or '—'} · nível {corpo.get('nivel') or '—'}",
+            f"Motivo: {corpo.get('motivo') or 'não observado'}",
+            f"Objetivo: {corpo.get('objetivo_id') or '—'}",
+            f"Turno: {corpo.get('trace_id') or '—'}",
+            f"Motor: {'indisponível' if not corpo.get('motor_disponivel') else 'em acionamento' if corpo.get('motor_em_andamento') else 'sem acionamento em curso'}",
+            f"Último PWM: {'confirmado' if corpo.get('pwm_confirmado') else 'sem confirmação'} · Parada: {'confirmada' if corpo.get('parada_confirmada') else 'sem confirmação'}",
+            f"Última experiência: {corpo.get('resultado') or 'sem receipt'}",
+            f"Turno da experiência: {corpo.get('experiencia_turno') or '—'}",
+            f"Som: {corpo.get('som') or 'sem diagnóstico'}",
+            f"Frontal: {corpo.get('sensor_frente') or 'não medido'} · Borda: {corpo.get('sensor_borda') or 'não medido'}",
+            f"MPU: {corpo.get('imu_estado') or 'não disponível'} · {corpo.get('imu_manuseio') or 'sem leitura'}",
+            f"Inclinação: {corpo.get('imu_inclinacao') or 'não medida'} · Giro: {corpo.get('imu_rotacao') or 'não medido'}",
+            f"Proteção: {corpo.get('risco_fisico') or 'não medida'} · {corpo.get('fase_protecao') or '—'}",
+            f"Reação ao sensor: {corpo.get('reacao_sensor') or 'não observada'} · Busca: {corpo.get('tentativa_busca') or '0'}/4 por rodada",
+            f"Busca/recuos por companhia: {'autorizados na placa' if corpo.get('vigia_sensores_ativa') else 'sem autorização renovada na placa'}",
+            f"Último boot: {corpo.get('motivo_boot') or 'não medido'} · Reinícios observados: {corpo.get('reinicios_esp') or '0'}",
+            f"Perdas de sessão no ESP: {corpo.get('perdas_sessao_esp') or 'não medidas'}",
+            f"Estado da companhia: {corpo.get('motivo_companhia') or 'não observado'}",
+            f"Recuperação: {corpo.get('recuperacao_corporal') or 'não observada'}",
+            "Deslocamento: não medido.",
+        ]
+        if corpo.get("erro"):
+            linhas.append(f"Diagnóstico: {corpo['erro']}")
+        self.corpo_detalhes.setText("\n".join(linhas))
+        self.corpo_resumo.setText("\n".join(("CORPO · " + linhas[0] + " · " + linhas[1] + " · " + linhas[2],
+            linhas[4] + " · " + linhas[5] + " · " + linhas[6], linhas[7],
+            linhas[8] + " · " + linhas[9] + " · Deslocamento: não medido.")))
 
     def aplicar_dashboard(self, dashboard: dict) -> None:
         self._dashboard = dict(dashboard or {})
@@ -538,7 +608,15 @@ class PaginaDesenvolvedor(QWidget):
         )
 
     def _evento_visivel(self, evento: EventoDesenvolvedor) -> bool:
-        if self._categoria_ativa != "ALL" and evento.categoria != self._categoria_ativa:
+        # Filtro de apresentação pelo marcador emitido pelo owner DEV.
+        # A categoria canônica AUTONOMY e o buffer original são preservados.
+        corporal = "[AUTONOMIA:CORPO]" in evento.titulo or "[AUTONOMIA:CORPO]" in evento.detalhe
+        if self._categoria_ativa == "CORPO":
+            if not corporal:
+                return False
+        elif corporal:
+            return False
+        elif self._categoria_ativa != "ALL" and evento.categoria != self._categoria_ativa:
             return False
         ordem = {"normal": 0, "debug": 1, "trace": 2}
         return ordem[evento.profundidade] <= ordem[self._profundidade_ativa]
@@ -569,7 +647,13 @@ class PaginaDesenvolvedor(QWidget):
 
     def _definir_categoria(self, categoria: str) -> None:
         self._categoria_ativa = categoria
+        self._atualizar_paineis_corpo()
         self._renderizar_eventos()
+
+    def _atualizar_paineis_corpo(self) -> None:
+        selecionado = self._categoria_ativa == "CORPO"
+        self.corpo_compacto.setVisible(selecionado and self.width() < 1320)
+        self.card_corpo.setVisible(selecionado and self.width() >= 1320)
 
     def _definir_profundidade(self, profundidade: str) -> None:
         self._profundidade_ativa = profundidade
@@ -641,6 +725,7 @@ class PaginaDesenvolvedor(QWidget):
 
         mostrar_rail = largura >= 1320
         self.rail.setVisible(mostrar_rail)
+        self._atualizar_paineis_corpo()
         if mostrar_rail:
             largura_rail = max(250, min(286, int(largura * 0.17)))
             self.rail.setMinimumWidth(largura_rail)
@@ -652,6 +737,7 @@ class PaginaDesenvolvedor(QWidget):
             categorias = {"ALL", "SYSTEM", "IA", "ROUTER", "EVENTS", "ERRORS"}
         else:
             categorias = set(self.CATEGORIAS)
+        categorias.add("CORPO")
         for nome, botao in self.botoes_categoria.items():
             botao.setVisible(nome in categorias)
 

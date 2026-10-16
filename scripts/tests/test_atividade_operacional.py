@@ -9,7 +9,7 @@ import pytest
 
 from mente_laylay.memoria_mental.atividade_operacional_runtime import (
     AtividadeOperacionalRuntime, criar_atividade_operacional_runtime,
-    projetar_atividade_operacional,
+    projetar_atividade_operacional, projetar_envio_operacional,
 )
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import criar_estado_compartilhado_runtime
 
@@ -19,6 +19,58 @@ def criar_owner():
     relogio = SimpleNamespace(agora=10.0)
     owner = criar_atividade_operacional_runtime(estado=mente, monotonic=lambda: relogio.agora)
     return owner, mente, relogio
+
+
+def test_envio_sem_observacao_tem_identidade_propria_sem_confirmar_efeito():
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    owner, mente, clock = criar_owner()
+    receipt = ResultadoAcao(intent="MEDIA_CONTROL", origem="executor", id_solicitacao="envio-1",
+                            status="midia_play", ok=True, executou=True, confirmado=None)
+    with owner.escopo():
+        assert owner.observar_resultado(receipt)
+        assert owner.retrato()["envio_id"] == 0
+    assert owner.retrato()["envio_id"] == 1 and owner.retrato()["sucesso_id"] == 0
+    assert projetar_envio_operacional(mente.mental["atividade_operacional"], agora=clock.agora)
+    assert not owner.observar_resultado(receipt)
+    assert receipt.confirmado is None
+    assert not projetar_envio_operacional(owner.retrato(), agora=clock.agora + 3.1)
+
+
+@pytest.mark.parametrize("dados", [
+    {"origem": "modelo"}, {"id_solicitacao": ""}, {"executou": False},
+    {"ok": False}, {"intent": "INVENTADO"}, {"status": "cancelado"},
+    {"intent": "CORPO_MOVER"}, {"status": "bloqueado_sem_autorizacao"},
+])
+def test_proposta_recusa_falha_ou_ack_motor_nao_e_envio_operacional(dados):
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    owner, _, _ = criar_owner()
+    base = dict(intent="MEDIA_CONTROL", origem="executor", id_solicitacao="nao-envio",
+                status="midia_play", ok=True, executou=True, confirmado=None)
+    base.update(dados)
+    owner.observar_resultado(ResultadoAcao(**base))
+    assert not owner.retrato()["envio_id"]
+
+
+def test_falha_parcial_impede_sinal_de_envio_do_lote():
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    owner, _, _ = criar_owner()
+    with owner.escopo():
+        owner.observar_resultado(ResultadoAcao(intent="MEDIA_CONTROL", origem="executor", id_solicitacao="e",
+            status="midia_play", ok=True, executou=True, confirmado=None))
+        owner.observar_resultado(ResultadoAcao(intent="VOLUME", origem="executor", id_solicitacao="f",
+            status="falha_execucao", ok=False, executou=False, confirmado=False))
+    assert owner.retrato()["falha_id"] == 1 and owner.retrato()["envio_id"] == 0
+
+
+def test_lote_com_efeito_confirmado_e_envio_nao_comemora_sucesso_total():
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+    owner, _, _ = criar_owner()
+    with owner.escopo():
+        owner.observar_resultado(ResultadoAcao(intent="VOLUME", origem="executor", id_solicitacao="volume",
+            status="volume_ajustado", ok=True, executou=True, confirmado=True))
+        owner.observar_resultado(ResultadoAcao(intent="MEDIA_CONTROL", origem="executor", id_solicitacao="midia",
+            status="midia_play", ok=True, executou=True, confirmado=None))
+    assert owner.retrato()["envio_id"] == 1 and owner.retrato()["sucesso_id"] == 0
 
 
 def test_escopo_usa_mesmo_estado_compartilhado_sem_promover_receipt_e_pulso_expira():
@@ -193,8 +245,8 @@ def test_cache_do_ciclo_nao_dispara_outra_animacao_apos_mesmo_despacho(monkeypat
 def test_bypasses_instalados_de_resumo_e_saida_audio_reusam_owner(monkeypatch):
     root = importlib.import_module("laylay")
     owner, mente = root._atividade_operacional_runtime, root._estado_compartilhado_runtime
-    assert root.resumir_pagina_ou_video.func.__self__ is owner
-    assert root.resumir_pagina_ou_video.args[0].__self__ is root._resumo_conteudo_runtime
+    assert root.resumir_pagina_ou_video.func.__self__ is root._resumo_conteudo_runtime
+    assert root.resumir_pagina_ou_video.keywords["executar_assincrono"].__self__ is owner
     resultado = {"executou": False, "confirmado": False}
     def selecionar(_referencia):
         assert mente.mental["atividade_operacional"]["ativos"] == 1

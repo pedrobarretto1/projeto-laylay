@@ -1,0 +1,113 @@
+{
+  "ok": false,
+  "diagnostico": {
+    "configurado": true,
+    "conectado": false,
+    "sessao": "",
+    "transporte": "serial",
+    "modo_conexao": "automatico",
+    "endpoint": "",
+    "porta_ativa": "",
+    "identidade_usb": {
+      "dispositivo": "0000000000000000",
+      "nome": "Corpo diferente",
+      "verificada": false,
+      "autoriza_execucao": false,
+      "prova_autenticidade_criptografica": false
+    },
+    "evidencia_recente": false,
+    "aplicacao_confirmada": false,
+    "estado": "indisponivel",
+    "motivo": "ConnectionError:corpo_pareado_nao_encontrado",
+    "confirmado": [],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "sensores": {
+      "suportado": false,
+      "recente": false,
+      "consulta_id": 0,
+      "alerta_suportado": false,
+      "busca_renovada": false,
+      "leituras": {},
+      "protecao": {
+        "recente": false
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    },
+    "imu": {
+      "consulta_id": 0,
+      "suportado": false,
+      "recente": false,
+      "idade_host_ms": 4294967295,
+      "autoriza_execucao": false,
+      "bloqueio_manuseio": false
+    },
+    "saude": {
+      "suportado": false,
+      "recente": false,
+      "reinicios_observados": 0
+    },
+    "expressao": {
+      "suportado": false,
+      "confirmada": false,
+      "motivo": "desconectado",
+      "fase": [
+        0,
+        0,
+        0
+      ],
+      "evidencia": "eack_apos_render",
+      "prova_visual_humana": false,
+      "autoriza_execucao": false
+    },
+    "som": {
+      "resultados_pendentes": [],
+      "suportado": false,
+      "envio_suportado": false,
+      "solicitacao_confirmada": false,
+      "motivo": "desconectado",
+      "prova_auditiva": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "hack": {
+      "suportado": false,
+      "aplicacao_confirmada": false,
+      "ativo": false,
+      "motivo": "desconectado",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": false,
+      "aplicacao_confirmada": false,
+      "motivo": "desconectado",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "rampa_suportada": false,
+      "duracao_maxima_ms": 500,
+      "suportado": false,
+      "disponivel": false,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": false,
+      "motivo": "desconectado",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "trilha": [
+    "HEALTH 1 1"
+  ],
+  "serial_fechada": true
+}

@@ -12,6 +12,8 @@ from mente_laylay.cognicao.modalidade_turno import (
     turno_tem_veto_execucao,
 )
 from mente_laylay.cognicao.retrato_turno import dominio_intent
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
+from mente_laylay.cognicao.gramatica_operacional import tipo_recurso_pedido_direto, candidato_respeita_tipo_recurso
 from mente_laylay.especialistas.operacional import avaliar_candidato_operacional
 from mente_laylay.especialistas.capacidades import INTENTS_SOMENTE_LEITURA
 from mente_laylay.cognicao.decisao_turno import (
@@ -50,6 +52,12 @@ def arbitrar_turno(
     leitura = dict(turno or classificar_modalidade_turno(texto))
     modalidade = str(leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa")
     snapshot = dict(retrato or {})
+    fonte_tipo = str(leitura.get("texto") or "")
+    # O coordenador passa também a cópia normalizada. Delimitadores da fonte
+    # só pertencem a este candidato se a identidade textual for equivalente.
+    if not fonte_tipo or normalizar_texto(fonte_tipo) != normalizar_texto(texto):
+        fonte_tipo = texto
+    tipo_pedido = tipo_recurso_pedido_direto(fonte_tipo)
     painel_bruto = leitura.get("especialistas")
     painel_especialistas = painel_bruto if isinstance(painel_bruto, dict) else {}
     parecer_bruto = painel_especialistas.get("operacional")
@@ -86,6 +94,8 @@ def arbitrar_turno(
         )
         if not isinstance(candidato.valor, dict) or not candidato.valor.get("intent"):
             motivo = "candidato sem intencao executavel"
+        elif not candidato_respeita_tipo_recurso(candidato.valor, tipo_pedido):
+            motivo = f"candidato incompatível com tipo explícito do pedido: {tipo_pedido}"
         elif (
             parecer_operacional
             and intent_candidato not in INTENTS_SOMENTE_LEITURA
@@ -157,6 +167,7 @@ def arbitrar_turno(
         "evidencias": list(vencedor.evidencia) if vencedor else [],
         "rejeitados": rejeitados,
         "retrato_id": snapshot.get("id"),
+        "tipo_recurso_pedido": tipo_pedido,
         "referencia_resolvida": dict(snapshot.get("referencia_resolvida") or {}),
         "depende_contexto": bool(leitura.get("depende_contexto")),
     }

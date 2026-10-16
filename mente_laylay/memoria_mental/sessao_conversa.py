@@ -70,6 +70,7 @@ def renovar_contexto_sessao(
             "pendencia_atual", "ultima_pendencia_encerrada", "oferta_pendente",
             CHAVE_PENDENCIA_ACAO,
             "ultimo_resumo_pagina", "capacidade_futura", "foco_vivo", "focos_por_dominio",
+            "email_contexto", "rascunho_email_atual",
             "conteudo_atual", "turno_atual", "plano_turno_atual", "ultima_decisao_semantica",
             "contrato_fala_atual",
             "cenario_didatico_inventario", "cenario_didatico_sombra",

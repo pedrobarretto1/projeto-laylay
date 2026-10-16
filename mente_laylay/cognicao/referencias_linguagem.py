@@ -6,6 +6,79 @@ import re
 import unicodedata
 
 
+def referencia_explicacao_propria(texto: str) -> str:
+    """Lê a obrigação retrospectiva, sem resolver ocorrência nem escolher owner.
+
+    A construção causal e o interlocutor são necessários. Flexão passada,
+    causativa passada ou posse da decisão/fala qualificam o pedido; o nome da
+    habilidade e a presença de um receipt não participam. Retorna ``fala``,
+    ``ocorrencia`` ou vazio; não atribui um ID. É leitura limitada
+    de linguagem, não prova semântica universal nem autorização operacional.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+
+    if texto_e_metalinguistico(texto):
+        return ""
+    # Conteúdo citado pode ser alvo da consulta, mas não enuncia a consulta.
+    fora_de_aspas = re.sub(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\'[^\'\n]*\'', " ", str(texto or ""))
+    base = normalizar_texto_basico(fora_de_aspas)
+    if (re.search(r"\b(?:hipoteticamente|(?:se|caso)\s+(?:voce|tu))\b", base)
+            or not re.search(r"\b(?:por\s*que|motivo|motivou|razao|causa|levou|explique|explica)\b", base)):
+        return ""
+    passada = re.search(
+        r"\b(?:voce|tu)\s+(?:(?:nao|ja|nunca|ontem)\s+)*"
+        r"(?:[a-z]+(?:ou|eu|iu)|fez|disse|quis|foi|teve|deu|pos|viu|veio)\b", base)
+    causativa = re.search(r"\b(?:te\s+levou|levou\s+(?:voce|a\s+voce))\s+a\b", base)
+    propria = re.search(r"\bsua\s+(?:decisao|escolha|acao|reacao|resposta|fala)\b", base)
+    nominal = propria and not re.search(
+        r"\b(?:futura|futuro|faria|seria|fara|vai|ira|pretende)\b", base)
+    if not (passada or causativa or nominal):
+        return ""
+    fala = re.search(
+        r"\b(?:voce|tu)\s+(?:(?:nao|ja|nunca|ontem)\s+)*"
+        r"(?:disse|falou|respondeu|afirmou|explicou)\b|"
+        r"\bsua\s+(?:resposta|fala)\b|\ba\s+(?:dizer|falar|responder|afirmar|explicar)\b", base)
+    return "fala" if fala else "ocorrencia"
+
+
+def referencia_explicacao_ocorrencia(texto: str, *, entidades: tuple[str, ...]) -> str:
+    """Qualifica retrospectiva de uma entidade, sem decidir fonte ou autoridade.
+
+    Owners fornecem substantivos do seu domínio; a gramática da consulta é
+    compartilhada. Uma pergunta geral, futura ou citada não escolhe ocorrência.
+    """
+    def normalizar(valor: str) -> str:
+        return " ".join("".join(c for c in unicodedata.normalize("NFKD", valor.casefold())
+                               if not unicodedata.combining(c)).split())
+    base = normalizar(str(texto or ""))
+    if (re.search(r"\b(?:traduza|tradu[cz]ir|cite|citacao|hipoteticamente|se voce|vai fazer|fara)\b", base)
+            or not re.search(r"\b(?:por\s*que|motivo|motivou|razao|causa|explique|explica)\b", base)
+            or not any(re.search(rf"\b{re.escape(normalizar(e))}\b", base) for e in entidades)
+            or not re.search(r"\b(?:ess[ea]|dess[ea]|daquel[ea]|aquel[ea]|ultim[oa]|anterior|voce fez|voce escolheu|sua decisao)\b", base)):
+        return ""
+    return "ultima" if re.search(r"\bultim[oa]\b", base) else "referida"
+
+
+def ids_ocorrencias_citadas(texto: str, ocorrencias: tuple[tuple[str, str], ...]) -> tuple[str, ...] | None:
+    """None indica referência implícita; vazio, referência explícita sem fonte.
+
+    Não substituir uma citação desconhecida pela última ocorrência disponível.
+    A resolução é a mesma para qualquer owner, sem interpretar motivos/efeitos.
+    """
+    nomes = {s.casefold().replace("_", " ") for grupo in re.findall(r'"([^"\n]+)"|“([^”\n]+)”', texto)
+             for s in grupo if s}
+    ids = set(re.findall(r"(?<!\w)[0-9a-f]{32}(?!\w)", texto, flags=re.I))
+    ids.update(identidade for identidade, _ in ocorrencias
+               if re.search(rf"(?<!\w){re.escape(identidade)}(?!\w)", texto))
+    if not ids and not nomes:
+        return None
+    conhecidos = {identidade for identidade, _ in ocorrencias}
+    nomes_conhecidos = {nome.casefold().replace("_", " ") for _, nome in ocorrencias}
+    if not ids <= conhecidos or not nomes <= nomes_conhecidos:
+        return ()
+    return tuple(identidade for identidade, nome in ocorrencias
+        if (not ids or identidade in ids) and (not nomes or nome.casefold().replace("_", " ") in nomes))
+
 _PRONOMES = (
     r"ele|ela|eles|elas|isso|isto|aquilo|esse|essa|esses|essas|este|esta|"
     r"estes|estas|aquele|aquela|aqueles|aquelas|desse|dessa|desses|dessas|"
@@ -140,6 +213,78 @@ def separar_alvo_e_complemento_foco(valor: str) -> tuple[str, bool]:
     return alvo_limpo, bool(alvo_limpo)
 
 
+def separar_tipo_e_alvo_nomeado(valor: str, tipos: tuple[str, ...]) -> tuple[str, str, bool]:
+    """Lê uma moldura nominal externa uma vez, preservando o conteúdo do nome.
+
+    O chamador fornece os tipos do domínio, não a decisão/autoridade. Aspas
+    completas delimitam um nome literal; palavras internas nunca são limpas.
+    Retorna alvo, tipo externo (se houver) e literalidade.
+    """
+    alvo = re.sub(r"\s+", " ", str(valor or "")).strip()
+    tipo = ""
+    pares = {'"': '"', "'": "'", "“": "”", "«": "»"}
+
+    def literal(trecho: str) -> bool:
+        return bool(len(trecho) >= 2 and trecho[0] in pares
+                    and trecho[-1] == pares[trecho[0]]
+                    and pares[trecho[0]] not in trecho[1:-1])
+
+    if literal(alvo):
+        return alvo[1:-1], tipo, True
+    nomes_tipo = "|".join(re.escape(t) for t in tipos if t)
+    moldura = re.fullmatch(
+        rf"(?:(?:a|o|as|os|uma|um|essa|esse)\s+)?(?P<tipo>{nomes_tipo})"
+        r"(?:\s+(?P<alvo>.+))?", alvo, flags=re.IGNORECASE,
+    ) if nomes_tipo else None
+    # Uma relação nominal ("som do silêncio", "música para estudar") não
+    # é prova de um nome que começa depois do tipo. Conservá-la é preferível
+    # a perder o núcleo da expressão; aspas já tornam um nome inequívoco.
+    relacao_nominal = bool(moldura and re.match(
+        r"^(?:de|do|da|dos|das|para|pra|pro)\s+", str(moldura.group("alvo") or ""),
+        flags=re.IGNORECASE,
+    ))
+    if moldura and not relacao_nominal:
+        tipo = moldura.group("tipo").casefold()
+        alvo = str(moldura.group("alvo") or "").strip()
+    else:
+        alvo = re.sub(r"^(?:a|o|as|os|uma|um|essa|esse)\s+", "", alvo, flags=re.IGNORECASE)
+    if literal(alvo):
+        return alvo[1:-1], tipo, True
+    return alvo, tipo, False
+
+
+def separar_alvo_e_repeticao(valor: str) -> tuple[str, bool]:
+    """Separa repetição terminal do operando, somente na leitura de comando.
+
+    Nomes integralmente delimitados são literais, mesmo quando terminam em
+    ``de novo``. Retira delimitadores completos, não palavras internas.
+    Não limpa nomes armazenados, resolve entidades ou autoriza execução.
+    """
+    alvo = re.sub(r"\s+", " ", str(valor or "")).strip().rstrip(".!?").strip()
+    pares = {'"': '"', "'": "'", "“": "”", "«": "»"}
+
+    def literal_completo(trecho: str) -> bool:
+        return bool(len(trecho) >= 2 and trecho[0] in pares
+                    and trecho[-1] == pares[trecho[0]]
+                    and pares[trecho[0]] not in trecho[1:-1])
+
+    if literal_completo(alvo):
+        return alvo[1:-1].strip(), False
+    match = re.fullmatch(
+        r"(?P<alvo>.+?)\s+(?P<repeticao>de\s+novo|novamente|outra\s+vez|mais\s+uma\s+vez)",
+        alvo, flags=re.IGNORECASE,
+    )
+    if not match:
+        return alvo, False
+    nome = match.group("alvo").strip()
+    # Um delimitador aberto impede tratar o final como moldura externa.
+    if any(alvo.count(abre) != alvo.count(fecha) for abre, fecha in pares.items() if abre != fecha):
+        return alvo, False
+    if alvo.count('"') % 2 or alvo.count("'") % 2:
+        return alvo, False
+    return (nome[1:-1].strip() if literal_completo(nome) else nome), True
+
+
 def extrair_indice_referencia_ordinal(texto: str) -> int | None:
     """Extrai uma seleção ordinal contextual em índice baseado em zero.
 
@@ -155,9 +300,10 @@ def extrair_indice_referencia_ordinal(texto: str) -> int | None:
         return None
     tem_selecao = bool(re.search(
         r"\b(?:abre|abrir|abra|mostra|mostrar|mostre|seleciona|selecionar|"
+        r"le|leia|ler|"
         r"selecione|escolhe|escolher|escolha|usa|usar|use|toca|tocar|toque|"
         r"executa|executar|execute)\b|"
-        r"\b(?:resultado|resultados|opcao|opcoes|item|itens|arquivo|arquivos)\b",
+        r"\b(?:resultado|resultados|opcao|opcoes|item|itens|arquivo|arquivos|email|e-mail|rascunho)\b",
         base,
     ))
     if not tem_selecao:
@@ -248,3 +394,23 @@ def valor_e_referencia_contextual(valor: str) -> bool:
         flags=re.IGNORECASE,
     ))
     return not limpo or bool(_VALOR_REFERENCIAL.fullmatch(limpo)) or ordinal_solto
+
+
+def operando_inicia_com_referencia_contextual(valor: str) -> bool:
+    """Lê o núcleo referencial, mesmo quando há modificadores depois dele.
+
+    ``ela à esquerda`` não é um nome materializado. A função não resolve o
+    pronome, não escolhe domínio nem concede autoridade. O consumidor fornece
+    o operando estrutural, ANTES de apagar suas aspas. Nomes literais completos,
+    inclusive dentro de uma moldura nominal, não são referências pronominais.
+    """
+    bruto = re.sub(r"\s+", " ", str(valor or "")).strip().rstrip(".!?")
+    if not bruto:
+        return False
+    _, _, literal = separar_tipo_e_alvo_nomeado(bruto, tuple(_NOMES_GENERICOS.split("|")))
+    if literal:
+        return False
+    return bool(re.match(
+        rf"^(?:(?:o|a|os|as|um|uma)\s+)?(?:{_PRONOMES})\b",
+        bruto, flags=re.IGNORECASE,
+    ))

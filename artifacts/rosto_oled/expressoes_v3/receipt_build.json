@@ -1,0 +1,18 @@
+{
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "porta": "COM4",
+  "flags": [
+    "LAYLAY_WIFI=0",
+    "LAYLAY_HABILITAR_MOTORES_BANCADA=1",
+    "LAYLAY_LIMITE_MOTOR_TESTE_MS=5000",
+    "LAYLAY_SOM_PONTE=0 (padrao)"
+  ],
+  "upload": "hash verificado pelo esptool",
+  "pytest_regressao": "197 passed",
+  "observacao_humana": "Pedro avaliou a repeticao: achei otimo chat, ta muito bom",
+  "arquivos": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "cebfc420ef0449e2da9a827983fb382303941ffd2074f987cbc5e56af4fc1b81",
+    "firmware/rosto_laylay/som_expressivo.h": "09eb36b61fe6daac86cf7b7401af95353dd4501448eb9bce0bbfda0da3d21b31",
+    "mente_laylay/autonomia/companhia_corporal.py": "26bdd6088110fd8e37c35b7bcddacd9d21641a6427da3144db8cc51a90fbc06d"
+  }
+}

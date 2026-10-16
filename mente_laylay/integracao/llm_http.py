@@ -77,7 +77,8 @@ def conteudo_fallback_llm_local(data: dict) -> str:
             ultima_usuario = str(mensagem.get("content") or "").strip()
             break
     if "intent" in baixo and "json" in baixo:
-        return '{"intent":"NONE","params":{}}'
+        # Falha/adiamento do transporte não é uma decisão semântica do modelo.
+        return FALHA_LLM_INDISPONIVEL
     # O contrato principal de conversa merece uma fala válida mesmo quando o
     # transporte entra em contingência. Ela não confirma ações nem inventa o
     # conteúdo que o modelo deixou de produzir.
@@ -104,7 +105,7 @@ def conteudo_fallback_modo_jogo(data: dict) -> str:
     texto = " ".join(str((m or {}).get("content") or "")[:500] for m in list(mensagens or []) if isinstance(m, dict))
     baixo = texto.casefold()
     if "intent" in baixo and "json" in baixo:
-        return '{"intent":"NONE","params":{}}'
+        return FALHA_LLM_OCUPADA
     if "responda apenas json" in baixo or "json válido" in baixo or "json valido" in baixo:
         return "{}"
     try:
@@ -187,6 +188,13 @@ def compactar_payload_llm_local(data: dict) -> dict:
             and normalizadas[indice_usuario - 1] is not principal
             else None
         )
+        # Um ato iniciado por evento termina numa instrução system do host,
+        # depois do diálogo anterior. Ela é o ato atual, não contexto auxiliar.
+        instrucao_final = (normalizadas[-1] if novo.get("_laylay_preservar_evento_sistema") is True
+                          and normalizadas[-1]["role"]=="system"
+                          and normalizadas[-1] is not principal else None)
+        if instrucao_final is not None:
+            instrucao_atual=instrucao_final
         auxiliares = [m for m in sistemas if m is not principal and m is not instrucao_atual][-2:]
 
         def compactar_auxiliar(mensagem: dict[str, str]) -> str:
@@ -279,9 +287,11 @@ def compactar_payload_llm_local(data: dict) -> dict:
             ))
             usados += len(conteudo)
         for msg, eh_usuario_atual in reversed(recentes_reverso):
-            if instrucao_atual is not None and eh_usuario_atual:
+            if instrucao_atual is not None and instrucao_final is None and eh_usuario_atual:
                 mensagens.append(dict(instrucao_atual))
             mensagens.append(msg)
+        if instrucao_final is not None:
+            mensagens.append(dict(instrucao_final))
 
         if not mensagens:
             mensagens = [{"role": "user", "content": "Responda em português, curto e natural."}]
@@ -357,7 +367,8 @@ def post_chat_llm(
         ), float(bad_request_until or 0.0)
 
     def _post(payload: dict):
-        return requests_post(url, headers=headers, json=payload, timeout=timeout)
+        externo={k:v for k,v in payload.items() if k!="_laylay_preservar_evento_sistema"}
+        return requests_post(url, headers=headers, json=externo, timeout=timeout)
 
     if not local:
         if callable(registrar_orcamento_prompt):
@@ -483,6 +494,7 @@ class LLMHttpRuntime:
         timer_factory: Callable[..., Any] = threading.Timer,
         registrar_falha: Callable[..., Any] | None = None,
         registrar_orcamento_prompt: Callable[..., Any] | None = None,
+        atividade_local_getter: Callable[[], bool] | None = None,
     ) -> None:
         self.base_url = str(base_url or "").rstrip("/")
         self.local_timeout = int(local_timeout)
@@ -496,6 +508,7 @@ class LLMHttpRuntime:
         self.ao_finalizar_conversa_modo_jogo = ao_finalizar_conversa_modo_jogo
         self.registrar_falha = registrar_falha
         self.registrar_orcamento_prompt = registrar_orcamento_prompt
+        self.atividade_local_getter = atividade_local_getter
         # Estado e transporte não podem compartilhar o mesmo lock: uma chamada
         # local pode durar minutos, enquanto o monitor de jogos precisa ativar
         # o bloqueio imediatamente para mandar o Ollama liberar a GPU.
@@ -546,7 +559,21 @@ class LLMHttpRuntime:
     @property
     def requisicao_local_em_andamento(self) -> bool:
         with self._state_lock:
-            return bool(self.endpoint_eh_local() and self._requisicoes_ativas > 0)
+            return bool(self.endpoint_eh_local() and (
+                self._requisicoes_ativas > 0 or self._atividade_transporte_local()
+            ))
+
+    def _atividade_transporte_local(self) -> bool:
+        """Inclui infraestrutura sem adquirir o lock de serialização HTTP."""
+        if not self.endpoint_eh_local() or not callable(self.atividade_local_getter):
+            return False
+        try:
+            return bool(self.atividade_local_getter())
+        except Exception as erro:
+            self._relatar("falha_consultar_atividade_local", erro,
+                fallback="modelo_mantido_ate_confirmar_ociosidade", fase="atividade_local")
+            # Estado desconhecido não autoriza descarregar por suposta ociosidade.
+            return True
 
     def definir_modo_jogo(self, ativo: bool) -> None:
         with self._state_lock:
@@ -620,7 +647,7 @@ class LLMHttpRuntime:
                 or not self._modo_jogo_ativo
             ):
                 return
-            if self._requisicoes_ativas > 0:
+            if self._requisicoes_ativas > 0 or self._atividade_transporte_local():
                 reagendar = True
             else:
                 reagendar = False

@@ -586,6 +586,17 @@ def validar_aderencia_contrato_fala(
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
+    if {"evidencia_fala_historica", "explicacao_ocorrencia"}.intersection(contrato):
+        from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
+        # Esta API verifica comunicação, sem poder validar execução. O guardião
+        # também confere o plano concreto antes da publicação.
+        historica = avaliar_fala_historica(fala, plano={
+            "id": turno_id, "texto_usuario": texto_usuario, "contrato_fala": contrato,
+            "autoriza_execucao": False, "requer_execucao": False, "comandos": [],
+        })
+        return {**historica, "avaliado": True, "aceita": not historica["problemas"],
+                "requer_reparo": bool(historica["problemas"]),
+                "estrategia": "explicacao_resultados_historicos", "contrato_reparo": {}}
     if contrato.get("exigir_nucleo_verificado") is True:
         return _avaliar_realizacao_nuclear(texto_usuario, fala, contrato, turno_id)
     roteiro = dict(contrato.get("roteiro_concreto") or {})

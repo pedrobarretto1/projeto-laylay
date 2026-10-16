@@ -114,6 +114,15 @@ class PreparadorRequisicaoLLMRuntime:
             log=self.log,
             contexto_fechado=pedido.contexto_fechado,
         )
+        if pedido.tipo_chamada == "presenca_evento":
+            # Contrato tipado do host, nunca inferido de conteúdo user/página.
+            payload["_laylay_preservar_evento_sistema"] = True
+        if pedido.contrato_saida is not None:
+            # Negociação explícita do host. Texto/user não pode escolher schema.
+            payload["response_format"] = pedido.contrato_saida.response_format
+            payload["max_tokens"] = max(payload["max_tokens"], min(
+                pedido.max_tokens, pedido.reserva_saida_tokens,
+            ))
         return RequisicaoTransporteLLM(
             payload=payload,
             timeout=pedido.timeout,

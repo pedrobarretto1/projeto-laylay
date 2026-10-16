@@ -150,6 +150,10 @@ def qss_dev_console() -> str:
         color: {p["apagado"]};
         font: 8px {FONTE_INTERFACE_QSS};
     }}
+    QLabel#devBodySummary {{
+        color: {p["texto"]};
+        font: 10px {FONTE_INTERFACE_QSS};
+    }}
 
     QPushButton#devMaintenanceStatus:disabled {{
         min-height: 22px;

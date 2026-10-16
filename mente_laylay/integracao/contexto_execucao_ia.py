@@ -182,6 +182,8 @@ DEPENDENCIAS_EXECUCAO_INTENCAO = (
 )
 
 DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO = (
+    "_email_executar", "_email_detectar",
+    "_vincular_registro_resultado_execucao",
     "_corpo_motor_runtime",
     "_resolver_repeticao_ultima_acao",
     "_agrupar_resultados_operacionais", "_acumular_resultado_operacional",
@@ -256,6 +258,8 @@ class ContextoIntencaoRuntime:
             for nome in (*DEPENDENCIAS_EXECUCAO_INTENCAO, *DEPENDENCIAS_OPCIONAIS_EXECUCAO_INTENCAO)
             if nome in servicos
         }
+        vincular = servicos.get("_vincular_registro_resultado_execucao")
+        registrar_vinculado = vincular() if callable(vincular) else None
         if self.iot is not None:
             contexto["_registro_iot_runtime"] = self.iot
         if self.arquivos_leitura is not None:
@@ -277,6 +281,8 @@ class ContextoIntencaoRuntime:
         estado = self.estado_getter() or {}
         if isinstance(estado, dict):
             contexto.update(estado)
+        if callable(vincular):
+            contexto["_registrar_resultado_execucao"] = registrar_vinculado
         return contexto
 
 

@@ -70,6 +70,8 @@ _INTENTS_DOMINIO = {
     "PEOPLE_LIST": "pessoas", "PEOPLE_FORGET": "pessoas",
     "GAME_VISION": "jogo", "GAME_VISION_CONTINUE": "jogo", "VISION_QUERY": "jogo",
     "EMAIL_READ": "email", "EMAIL_SYNC": "email", "NOTIFICATIONS": "email",
+    "EMAIL_DRAFT": "email", "EMAIL_DRAFT_READ": "email", "EMAIL_SEND": "email",
+    "EMAIL_MODIFY": "email", "EMAIL_CONFIRM": "email",
     "VOLUME": "sistema", "LOCK_PC": "sistema", "CANCELAR_ACAO": "sistema",
     "WEATHER": "clima", "SUGGEST_ACTION": "conversa",
     "CLIPBOARD_READ": "area_transferencia",

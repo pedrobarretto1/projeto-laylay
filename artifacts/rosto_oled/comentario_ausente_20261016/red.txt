@@ -1,0 +1,32 @@
+FF........F                                                              [100%]
+================================== FAILURES ===================================
+___ test_evento_canonico_nao_vira_turno_humano_ativo[experiencia_corporal] ____
+scripts\tests\test_prioridade_evento_observado.py:26: in test_evento_canonico_nao_vira_turno_humano_ativo
+    assert ponte.turno_em_andamento() is False, 'o evento impede a própria geração como se fosse fala de Pedro'
+E   AssertionError: o evento impede a própria geração como se fosse fala de Pedro
+E   assert True is False
+E    +  where True = turno_em_andamento()
+E    +    where turno_em_andamento = <mente_laylay.integracao.ponte_iniciativa_aplicacao.PonteIniciativaAplicacaoRuntime object at 0x0000024D496C3CB0>.turno_em_andamento
+____ test_evento_canonico_nao_vira_turno_humano_ativo[observador_janelas] _____
+scripts\tests\test_prioridade_evento_observado.py:26: in test_evento_canonico_nao_vira_turno_humano_ativo
+    assert ponte.turno_em_andamento() is False, 'o evento impede a própria geração como se fosse fala de Pedro'
+E   AssertionError: o evento impede a própria geração como se fosse fala de Pedro
+E   assert True is False
+E    +  where True = turno_em_andamento()
+E    +    where turno_em_andamento = <mente_laylay.integracao.ponte_iniciativa_aplicacao.PonteIniciativaAplicacaoRuntime object at 0x0000024D4999E990>.turno_em_andamento
+__ test_composicao_instalada_nao_autobloqueia_corpo_e_preserva_claim_humano ___
+scripts\tests\test_prioridade_evento_observado.py:61: in test_composicao_instalada_nao_autobloqueia_corpo_e_preserva_claim_humano
+    assert not cliente.interacao_ativa(), 'primeira fronteira: callback real bloqueou o evento que acabou de publicar'
+E   AssertionError: primeira fronteira: callback real bloqueou o evento que acabou de publicar
+E   assert not True
+E    +  where True = <function <lambda> at 0x0000024D4B421BC0>()
+E    +    where <function <lambda> at 0x0000024D4B421BC0> = <mente_laylay.integracao.cliente_llm_runtime.ClienteLLMRuntime object at 0x0000024D4B430980>.interacao_ativa
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_prioridade_evento_observado.py::test_evento_canonico_nao_vira_turno_humano_ativo[experiencia_corporal]
+FAILED scripts/tests/test_prioridade_evento_observado.py::test_evento_canonico_nao_vira_turno_humano_ativo[observador_janelas]
+FAILED scripts/tests/test_prioridade_evento_observado.py::test_composicao_instalada_nao_autobloqueia_corpo_e_preserva_claim_humano
+3 failed, 8 passed in 2.07s

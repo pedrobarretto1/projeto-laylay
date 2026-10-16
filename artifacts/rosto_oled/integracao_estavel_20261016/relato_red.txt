@@ -1,0 +1,31 @@
+FFF.                                                                     [100%]
+================================== FAILURES ===================================
+_ test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[OBSTACULO] _
+scripts\tests\test_relato_sensorial_corpo.py:13: in test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor
+    assert e.get('observacao_corporal',{}).get('tipo_observacao')=='protecao_sensorial'
+E   AssertionError: assert None == 'protecao_sensorial'
+E    +  where None = <built-in method get of dict object at 0x0000029A6919E280>('tipo_observacao')
+E    +    where <built-in method get of dict object at 0x0000029A6919E280> = {}.get
+E    +      where {} = <built-in method get of dict object at 0x0000029A6919D880>('observacao_corporal', {})
+E    +        where <built-in method get of dict object at 0x0000029A6919D880> = {}.get
+__ test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[BORDA] ___
+scripts\tests\test_relato_sensorial_corpo.py:13: in test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor
+    assert e.get('observacao_corporal',{}).get('tipo_observacao')=='protecao_sensorial'
+E   AssertionError: assert None == 'protecao_sensorial'
+E    +  where None = <built-in method get of dict object at 0x0000029A6919E800>('tipo_observacao')
+E    +    where <built-in method get of dict object at 0x0000029A6919E800> = {}.get
+E    +      where {} = <built-in method get of dict object at 0x0000029A68DA4200>('observacao_corporal', {})
+E    +        where <built-in method get of dict object at 0x0000029A68DA4200> = {}.get
+_ test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[BORDA_SEM_RETORNO] _
+scripts\tests\test_relato_sensorial_corpo.py:13: in test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor
+    assert e.get('observacao_corporal',{}).get('tipo_observacao')=='protecao_sensorial'
+E   AssertionError: assert None == 'protecao_sensorial'
+E    +  where None = <built-in method get of dict object at 0x0000029A691DB480>('tipo_observacao')
+E    +    where <built-in method get of dict object at 0x0000029A691DB480> = {}.get
+E    +      where {} = <built-in method get of dict object at 0x0000029A691DB500>('observacao_corporal', {})
+E    +        where <built-in method get of dict object at 0x0000029A691DB500> = {}.get
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[OBSTACULO]
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[BORDA]
+FAILED scripts/tests/test_relato_sensorial_corpo.py::test_episodio_sensorial_vira_oportunidade_factual_unica_sem_motor[BORDA_SEM_RETORNO]
+3 failed, 1 passed in 2.90s

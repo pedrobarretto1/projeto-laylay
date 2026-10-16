@@ -21,6 +21,12 @@ def analisar_pedido_corporal(texto: str) -> dict[str, Any] | None:
         return {"intent": "CORPO_COMPANHIA", "params": {"alvo": "corpo", "acao": "desativar"}}
     if re.fullmatch(r"(?:para|pare|parar)\s+(?:(?:os|seus|meus)\s+)?(?:motores|motor|corpo)", t):
         return {"intent": "CORPO_PARAR", "params": {"alvo": "corpo"}}
+    giro_medido = re.fullmatch(
+        r"(?:gira|gire|girar|vira|vire|virar)\s+(\d{1,3})\s*(?:graus|°)\s+"
+        r"(?:(?:para|pra)\s+)?(?:a\s+)?(esquerda|direita)", t)
+    if giro_medido and 15 <= int(giro_medido[1]) <= 360:
+        return {"intent": "CORPO_MOVER", "params": {"alvo": "corpo", "direcao": giro_medido[2],
+                "angulo_graus": int(giro_medido[1]), "pwm": 160, "duracao_ms": 5000}}
     giro = re.fullmatch(r"(?:gira|gire|girar|vira|vire|virar)\s+(?:(?:para|pra)\s+)?(?:a\s+)?(esquerda|direita)(?:\s+um\s+(?:pouco|pouquinho))?", t)
     if giro:
         direcao = giro.group(1)

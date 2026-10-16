@@ -1,0 +1,19 @@
+validar_recuperacao_perifericos.cpp
+RECUPERACAO_GREEN: ausencia, erro, recalibracao e nenhum replay
+validar_imu.cpp
+IMU_GREEN: calibracao, giro medido, replay, manuseio, sem fuga no colo, falha fechada
+validar_manuseio_fofo.cpp
+MANUSEIO_FOFO_GREEN: continuidade, recuperacao e isolamento
+validar_sensores.cpp
+SENSORES_DIAGNOSTICO_OK: endereco, falha isolada, idade, validade, consulta sem MOTOR
+validar_presenca_sensores.cpp
+PRESENCA_GREEN: alerta parado, pavor sem tracao, parede4 buscas, borda prioritaria, lease, STOP, sono
+validar_linguagem_sensores.cpp
+PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda
+validar_som_olhos.cpp
+SOM_OLHOS_OK: notas/pausa/corte/replay/sessao/sem boca/motores preservados
+validar_presenca_v2.cpp
+PRESENCA_V2_OK: render/sem autoridade/TTL/replay/acordar e adormecer graduais/corte imediato
+SNAPSHOT_GREEN: classificacao e idade no mesmo instante
+DISTANCIA_GREEN: nova enumeracao sem colisao, espera limitada e tracao cortada
+OLED_GREEN: falha no boot nao exige reboot

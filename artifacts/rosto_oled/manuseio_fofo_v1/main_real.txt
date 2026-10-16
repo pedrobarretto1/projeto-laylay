@@ -1,0 +1,24 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:60171 | sessão=bdb6c61d pid=3792
+🖥️ [TERMINAL 2] interface iniciada | sessão=bdb6c61d pid=6496 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+⚠️ [BRIEFING] wttr.in não respondeu; usando fonte reserva.
+⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_serial | classe=degradacao | impacto=servico | tipo=timeouterror
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=bdb6c61d
+⚠️ [CLIMA] fonte reserva não respondeu: ReadTimeout
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+
+💬 Você:
+> ╭─ ◕‿◕ Laylay: Olha só. O clima de Boituva não respondeu agora, então hoje eu não vou inventar previsão. O resto do sistema já acordou, e eu também. Qual projeto vai perder a paz primeiro hoje?
+╭─ ◕‿◕ Laylay: Atenção: chegaram 16 e-mails novos, com 2 avisos de segurança. Destaques: Canva: Tem professor que merece um post especial. CGTrader Team: Here's the smarter way to use CGTrader. . Netflix: Dragon Ball Super: Beerus estreia sábado, 17 de outubro.
+
+💬 Você:
+> 

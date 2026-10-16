@@ -1,0 +1,10 @@
+{
+  "antes": "sem_confirmacao_pwm",
+  "candidato_parcial": "MOTOR_OCUPADO",
+  "final": "recusa_por_protecao_correlacionada",
+  "main_real_registros": 26,
+  "companhia_preservada": true,
+  "aplicacao_encerrada": true,
+  "observacao_usuario": "Sim, continua reagindo",
+  "prova_deslocamento": false
+}

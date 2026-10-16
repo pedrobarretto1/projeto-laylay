@@ -1,0 +1,68 @@
+FFFFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[atenta-False] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE43CAF580>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE43CAF580> = {}.get
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[descansar-False] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE45977940>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE45977940> = {}.get
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[explorar-True] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE459A8C00>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE459A8C00> = {}.get
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[expressar-True] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE459FBCC0>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE459FBCC0> = {}.get
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[comemorar-True] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE459BFA80>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE459BFA80> = {}.get
+_ test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[reagir_falha-True] _
+scripts\tests\test_objetivos_curtos_corpo.py:16: in test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo
+    assert objetivo.get('proposito'), 'a mente recebe apenas um nome de gesto, sem propósito finito'
+E   AssertionError: a mente recebe apenas um nome de gesto, sem propósito finito
+E   assert None
+E    +  where None = <built-in method get of dict object at 0x000001BE45A13900>('proposito')
+E    +    where <built-in method get of dict object at 0x000001BE45A13900> = {}.get
+____________ test_objetivo_curto_expirado_nao_autoriza_mais_etapas ____________
+scripts\tests\test_objetivos_curtos_corpo.py:37: in test_objetivo_curto_expirado_nao_autoriza_mais_etapas
+    assert not corpo.companhia._vigente(meta), 'concessão não pode estender o prazo do objetivo'
+E   AssertionError: concessão não pode estender o prazo do objetivo
+E   assert not True
+E    +  where True = _vigente({'concessao_id': 'df8a721872102225', 'perfil': 'bancada', 'proposto_em': 100.0, 'objetivo_curto_id': '630f39ecf80c', ...})
+E    +    where _vigente = <mente_laylay.autonomia.companhia_corporal.CompanhiaCorporalRuntime object at 0x000001BE458F3CE0>._vigente
+E    +      where <mente_laylay.autonomia.companhia_corporal.CompanhiaCorporalRuntime object at 0x000001BE458F3CE0> = <mente_laylay.especialistas.corpo_motor_runtime.CorpoMotorRuntime object at 0x000001BE458F3F00>.companhia
+_____ test_termino_de_gesto_requer_parada_confirmada_e_nao_prova_caminho ______
+scripts\tests\test_objetivos_curtos_corpo.py:52: in test_termino_de_gesto_requer_parada_confirmada_e_nao_prova_caminho
+    assert o.get('estado')=='confirmado_por_receipts'
+E   AssertionError: assert None == 'confirmado_por_receipts'
+E    +  where None = <built-in method get of dict object at 0x000001BE459FB7C0>('estado')
+E    +    where <built-in method get of dict object at 0x000001BE459FB7C0> = {}.get
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[atenta-False]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[descansar-False]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[explorar-True]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[expressar-True]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[comemorar-True]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_publicado_na_mente_tem_proposito_criterio_e_prazo[reagir_falha-True]
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_objetivo_curto_expirado_nao_autoriza_mais_etapas
+FAILED scripts/tests/test_objetivos_curtos_corpo.py::test_termino_de_gesto_requer_parada_confirmada_e_nao_prova_caminho
+8 failed in 2.93s

@@ -72,6 +72,26 @@ def resposta_indefinida_sobre_humor(texto: str) -> bool:
         _normalizar(texto)))
 
 
+def qualificar_feedback_corporal(texto: str) -> Dict[str, Any]:
+    """Entidades corporais no interpretador compartilhado; nunca autoriza motor."""
+    literal = str(texto or "").strip()
+    if not literal or "?" in literal or texto_e_metalinguistico(literal):
+        return {}
+    t = _normalizar(literal)
+    entidade = r"(?:gesto|movimento|dancinha|giro)"
+    referencia = rf"(?:esse|essa|este|esta|o seu|a sua) {entidade}"
+    padroes = (
+        ("recusa", False, rf"nao gostei (?:desse|dessa|deste|desta|do seu|da sua) {entidade}"),
+        ("aceitacao", True, rf"(?:(?:gostei|curti) (?:desse|dessa|deste|desta|do seu|da sua) {entidade}|adorei {referencia})"),
+        ("correcao", False, rf"{referencia} (?:ficou|foi|esta) (?:muito forte|muito rapido|muito fraco|lento demais)"),
+        ("repeticao", None, rf"(?:repete|repita|pode repetir) {referencia}"),
+    )
+    for tipo, aceito, padrao in padroes:
+        if re.fullmatch(padrao, t):
+            return {"alvo_feedback": "corpo_motor", "tipo": tipo, "aceito": aceito, "evidencia_literal": literal}
+    return {}
+
+
 def classificar_feedback_comunicativo(texto: str) -> str:
     """Classifica evidência sobre uma comunicação, sem consumir ou autorizar.
 
@@ -80,6 +100,9 @@ def classificar_feedback_comunicativo(texto: str) -> str:
     """
     if texto_e_metalinguistico(texto):
         return ""
+    corporal = qualificar_feedback_corporal(texto)
+    if corporal:
+        return "aceita" if corporal["tipo"] == "aceitacao" else corporal["tipo"]
     humor = qualificar_feedback_humor(texto)
     if humor:
         return "aceita" if humor["tipo"] == "aceitacao" else humor["tipo"]

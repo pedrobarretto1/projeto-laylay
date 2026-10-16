@@ -1,0 +1,38 @@
+{
+  "head": "d850b8c90cc5ce40bd4832e759ed991ba88cd5cc",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "core": "3.3.12",
+  "perfil_gravado": "somente_imu",
+  "flags": {
+    "LAYLAY_WIFI": 0,
+    "LAYLAY_HABILITAR_MOTORES_BANCADA": 0,
+    "LAYLAY_SOM_PONTE": 0,
+    "LAYLAY_SENSORES_DISTANCIA": 0,
+    "LAYLAY_PROTECAO_CORPORAL": 0,
+    "LAYLAY_IMU": 1,
+    "LAYLAY_TESTE_SOMENTE_IMU": 1
+  },
+  "programa_bytes": 414152,
+  "globais_bytes": 17772,
+  "binario_bytes": 414304,
+  "sha256_binario": "181508ec11467afcd67591447fd1dd4a4140370473060f5fde6734e6827194e0",
+  "upload_hash_verificado": true,
+  "integrado_compilado_nao_gravado": {
+    "programa_bytes": 442942,
+    "globais_bytes": 19532
+  },
+  "sha256_fontes": {
+    "firmware/rosto_laylay/rosto_laylay.ino": "180dafa3e3d4681e409daa0e76e1937d19581b4fe2e7e59fe86c2e31ba3dc6dc",
+    "firmware/rosto_laylay/imu_corporal.h": "46b1544d26e036a9496b9f5fcfbea0a226dd843aba921e2badda3b77b9cf3c4f",
+    "mente_laylay/especialistas/percepcao_inercial.py": "a0d144a9fe206f6ba992fc9270458195f510acdef5bc420818163b2428029e79",
+    "mente_laylay/memoria_mental/experiencia_corporal_runtime.py": "019444551a69f31dd5fd2763238383ad067381278937ee396cd34fc7289a3373",
+    "mente_laylay/autonomia/diretor_presenca.py": "34c78ea304438e5e621c58e473dc2bb03915fcdc7732ae5fd46983581e597656",
+    "mente_laylay/autonomia/resposta_evento_runtime.py": "081a9e882c7c4cb32bf0b81f4a6fac5c9f9dc91fb4d293d53cdd5785c931eceb",
+    "mente_laylay/cognicao/contrato_fala.py": "f496843383c3466bba684799b5bace4c8dab749347d3629c2ec373f29a920adc",
+    "mente_laylay/cognicao/guardiao_alegacoes.py": "6d5ed93551af788a3c87038329452707e77ba0f8da7c19afd2f1686cfa803289",
+    "mente_laylay/personalidade/voz_runtime.py": "4fb51e8b4b8249433134508e934941de00f2c078bd35ea15eeef9b5520809ab0",
+    "mente_laylay/integracao/preparador_requisicao_llm.py": "e27ed4bfafe1c0cf4c4d26133d09f42f505e5b198eac724d4f5b9f12308c07a8",
+    "mente_laylay/integracao/llm_http.py": "95ef21b89a3db2fac781d8c23b13d41b386c949ae886467383ca8fb686386372",
+    "mente_laylay/integracao/conversa_jogo_remota.py": "396fef8c70b72fa1ec23d2d4431169ba884a7a6ea0cee13f36c5600d7139c310"
+  }
+}

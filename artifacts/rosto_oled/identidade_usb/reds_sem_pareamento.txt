@@ -1,0 +1,31 @@
+FFFF...                                                                  [100%]
+================================== FAILURES ===================================
+_ test_intervalo_sem_heartbeats_renova_sessao_antes_de_acordar_com_pose_atual _
+scripts\tests\test_rosto_oled.py:376: in test_intervalo_sem_heartbeats_renova_sessao_antes_de_acordar_com_pose_atual
+    assert [p.split()[0] for p in negociacao] == ["HELLO", "CAPS", "GCAPS", "MCAPS", "LCAPS", "SCAPS", "ECAPS", "RCAPS", "DCAPS", "FACE"]
+E   AssertionError: assert ['HELLO', 'CA... 'SCAPS', ...] == ['HELLO', 'CA... 'SCAPS', ...]
+E     
+E     At index 9 diff: 'ICAPS' != 'FACE'
+E     Left contains one more item: 'FACE'
+E     Use -v to get more diff
+_ test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto _
+scripts\tests\test_corpo_wifi_transporte.py:214: in test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto
+    assert diagnostico["glitch"]["aplicacao_confirmada"] and diagnostico["motor"]["disponivel"]
+E   assert (False)
+_ test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts _
+scripts\tests\test_corpo_wifi_transporte.py:456: in test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts
+    assert processo.returncode == 0, processo.stderr[-2000:]
+E   AssertionError: AssertionError: 'pulso' in root._mapa_habilidades_runtime.responder_pergunta_capacidade(pergunta, turno=turno)
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\...err="AssertionError: 'pulso' in root._mapa_habilidades_runtime.responder_pergunta_capacidade(pergunta, turno=turno)\n").returncode
+_ test_indisponibilidade_real_nao_deve_ser_reparada_para_capacidade[como eu poderia retomar a m\xfasica?-musica-A Laylay n\xe3o controla o \xe1udio diretamente, ent\xe3o o dispositivo ou app que est\xe1 tocando a m\xfasica precisa ser instru\xeddo a retomar o playback.-Posso enviar o pedido de retomada, mas n\xe3o garantir que o \xe1udio mudou.] _
+C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\tests\test_coerencia_capacidade_documentada.py:86: in test_indisponibilidade_real_nao_deve_ser_reparada_para_capacidade
+    ???
+E   assert False
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_rosto_oled.py::test_intervalo_sem_heartbeats_renova_sessao_antes_de_acordar_com_pose_atual
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts
+FAILED scripts/tests/test_coerencia_capacidade_documentada.py::test_indisponibilidade_real_nao_deve_ser_reparada_para_capacidade[como eu poderia retomar a m\xfasica?-musica-A Laylay n\xe3o controla o \xe1udio diretamente, ent\xe3o o dispositivo ou app que est\xe1 tocando a m\xfasica precisa ser instru\xeddo a retomar o playback.-Posso enviar o pedido de retomada, mas n\xe3o garantir que o \xe1udio mudou.]
+4 failed, 3 passed in 7.11s

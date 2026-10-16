@@ -77,3 +77,12 @@ def test_objetos_publicos_sao_estaveis_antes_e_depois_da_conexao() -> None:
     assert composicao.estado is estado
     assert composicao.adaptadores is adaptadores
     assert composicao.conectado is True
+
+
+def test_derivador_canonico_chega_ao_publicador_sem_ampliar_namespace() -> None:
+    composicao = ComposicaoEstadoAplicacaoRuntime(servicos_iniciais={}, estado_runtime_getter=lambda: object())
+    derivador = composicao.estado.derivar_mente_curta
+    composicao.conectar(servicos={"_derivar_mente_curta":derivador, "SEGREDO":"não reter"})
+    assert composicao.adaptadores._ns()["_derivar_mente_curta"] == derivador
+    assert "_derivar_mente_curta" in composicao.servicos_adaptadores_registrados
+    assert "SEGREDO" not in composicao.adaptadores._ns()

@@ -172,6 +172,36 @@ class OrquestradorCooperativoRuntime:
                 return self.quadro.obter_plano(str(plano.get("id") or ""))
         return None
 
+    def preparar_anexos_email(self, *, texto: str, ler_arquivos: Callable[[], dict],
+                             concluir_email: Callable[[list], dict], confirmado: bool = False) -> dict:
+        """Arquivos validam bytes; e-mail valida a versão; falha bloqueia dependente."""
+        evento = self.quadro.publicar_evento(origem="email", tipo="anexos_pedidos",
+            resumo="arquivos locais relacionados a um rascunho de e-mail", confianca=1.0, relevancia=1.0,
+            habilidades=("arquivos", "email"), evidencias=("pedido_usuario",), sensibilidade="metadados_locais")
+        plano = self.quadro.criar_plano(objetivo="validar anexos e concluir a preparação do e-mail",
+            evento_ids=(evento["id"],), etapas=(
+                {"id": "ler", "habilidade": "arquivos", "acao": "ler_anexos", "intent": "FILE_READ"},
+                {"id": "preparar", "habilidade": "email", "acao": "preparar_email", "intent": "EMAIL_DRAFT", "depende_de": ["ler"]},
+            ), confianca=1.0, risco="baixo", autorizacao="explicita_no_pedido",
+            metadados={"fluxo": "arquivos_email"})
+        trabalho: dict = {}
+        def ler(_etapa, _plano):
+            resultado = ler_arquivos()
+            trabalho["leitura"] = resultado
+            return {"ok": resultado.get("ok") is True, "confirmado": resultado.get("ok") is True,
+                    "status": resultado.get("status"), "evidencia": "manifesto_e_bytes_validados" if resultado.get("ok") else ""}
+        def concluir(_etapa, _plano):
+            resultado = concluir_email(trabalho["leitura"]["anexos"])
+            trabalho["resultado"] = resultado
+            return {"ok": resultado.get("ok") is True, "confirmado": resultado.get("ok") is True,
+                    "status": resultado.get("status"), "evidencia": "versao_email_preparada" if resultado.get("ok") else ""}
+        execucao = self.executor_plano.executar(plano["id"], {"ler": ler, "preparar": concluir},
+                                               contexto_execucao={"texto": texto, "confirmado": confirmado})
+        resultado = trabalho.get("resultado") or trabalho.get("leitura") or {"ok": False, "status": "cooperacao_email_bloqueada"}
+        if not execucao.get("ok"):
+            resultado = {**resultado, "ok": False, "confirmado": False}
+        return {**resultado, "cooperacao": {"plano_id": plano["id"], "estado": execucao.get("estado")}}
+
     def registrar_resultado_agenda(
         self, operacao: str, *, alvo: str = "", confirmado: bool = False,
     ) -> dict[str, Any]:

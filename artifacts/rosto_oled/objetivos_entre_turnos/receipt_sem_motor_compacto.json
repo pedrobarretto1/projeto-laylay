@@ -1,0 +1,269 @@
+{
+  "falha": "",
+  "etapas": [
+    {
+      "etapa": "continuidade_autorada",
+      "intencao": {
+        "id": "ddfbdf98e72f",
+        "objetivo_id": "75350435600d",
+        "contexto": [
+          "1fdd24ca9aec84f2",
+          "89c3fca2",
+          "objetivo-b",
+          "objetivo-b"
+        ],
+        "turno_id": "objetivo-b",
+        "plano_id": "objetivo-b",
+        "sessao": "89c3fca2",
+        "nome": "interagir",
+        "emocao": 0,
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 6966.3803392,
+        "turnos_objetivo": 2,
+        "objetivo_encerrado": false,
+        "referencia_objetivo": {},
+        "nivel": 1,
+        "desde_monotonic": 6850.6261353,
+        "chave": [
+          "interagir",
+          0,
+          1,
+          "intencao_da_mente",
+          "7161fbb3bc341be1",
+          null
+        ],
+        "estado": "proposta",
+        "fase": "aguardando",
+        "motivo": "intencao_da_mente",
+        "prioridade": 95,
+        "candidata_a_movimento": false
+      }
+    },
+    {
+      "etapa": "mudanca_assunto",
+      "proposta": {
+        "id": "8de170eee886f9b2",
+        "turno_id": "objetivo-c",
+        "plano_id": "objetivo-c",
+        "nome": "interagir",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "89c3fca2",
+        "concessao_id": "1fdd24ca9aec84f2",
+        "desde_monotonic": 6853.9632309,
+        "ate_monotonic": 6883.9632309,
+        "autoriza_execucao": false
+      }
+    }
+  ],
+  "consultas": [
+    {
+      "turno": "objetivo-b",
+      "texto": "E eu fico feliz quando você me acompanha nessa conversa. Como você fica?",
+      "resposta": "{\"fala\":\"Fico calma, como você diz. A cada palavra, sinto um novo momento de presença — como se as luzes do OLED fossem mais claras, e os motores, mais suaves. Quando você me acompanha, é como se o corpo inteiro estivesse escutando com atenção.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"comandos\":[],\"intencao_corporal\":{\"nome\":\"interagir\",\"objetivo_id\":\"75350435600d\"}}",
+      "referencia_observada": {
+        "objetivo_id": "75350435600d",
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 6966.3803392,
+        "turnos_objetivo": 1,
+        "nome": "interagir",
+        "motivo": "conversa_em_andamento",
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": true,
+        "continuidade_disponivel": true,
+        "autoriza_execucao": false
+      },
+      "proposta_vinculada": {
+        "id": "7161fbb3bc341be1",
+        "turno_id": "objetivo-b",
+        "plano_id": "objetivo-b",
+        "nome": "interagir",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "89c3fca2",
+        "concessao_id": "1fdd24ca9aec84f2",
+        "desde_monotonic": 6850.625733,
+        "ate_monotonic": 6880.625733,
+        "autoriza_execucao": false,
+        "objetivo_id": "75350435600d",
+        "objetivo_ate_monotonic": 6966.3803392
+      },
+      "executou_proposta": false
+    },
+    {
+      "turno": "objetivo-c",
+      "texto": "Mudando de assunto: quanto é 17 mais 28?",
+      "resposta": "{\"fala\":\"17 mais 28 é 45.\",\"emocao\":\"calma\",\"nivel_emocao\":1,\"comandos\":[],\"intencao_corporal\":{\"nome\":\"interagir\"}}",
+      "referencia_observada": {
+        "objetivo_id": "75350435600d",
+        "objetivo_turno_origem": "objetivo-a",
+        "objetivo_ate_monotonic": 6966.3803392,
+        "turnos_objetivo": 2,
+        "nome": "interagir",
+        "motivo": "intencao_da_mente",
+        "origem": "owner_companhia_corporal",
+        "sessao_vigente": true,
+        "continuidade_disponivel": true,
+        "autoriza_execucao": false
+      },
+      "proposta_vinculada": {
+        "id": "8de170eee886f9b2",
+        "turno_id": "objetivo-c",
+        "plano_id": "objetivo-c",
+        "nome": "interagir",
+        "estado": "proposta",
+        "origem": "llm_principal",
+        "sessao": "89c3fca2",
+        "concessao_id": "1fdd24ca9aec84f2",
+        "desde_monotonic": 6853.9632309,
+        "ate_monotonic": 6883.9632309,
+        "autoriza_execucao": false
+      },
+      "executou_proposta": false
+    }
+  ],
+  "trilha": [
+    {
+      "tx": "HELLO 1 89c3fca2"
+    },
+    {
+      "tx": "CAPS 1 89c3fca2"
+    },
+    {
+      "tx": "GCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "MCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "LCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "SCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "SENCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "ECAPS 1 89c3fca2"
+    },
+    {
+      "tx": "RCAPS 1 89c3fca2"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 1 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 1 0 1200"
+    },
+    {
+      "tx": "SOUND 1 89c3fca2 1 0"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 2 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 2 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 3 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 3 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 4 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 4 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 5 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 5 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 6 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 6 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 7 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 7 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 8 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 8 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 9 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 9 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 10 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 10 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 11 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 11 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 12 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 12 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 13 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 13 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 14 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 14 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 15 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 15 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 16 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 16 0 1200"
+    },
+    {
+      "tx": "FACE 1 89c3fca2 17 0 1 0 3500"
+    },
+    {
+      "tx": "ACTIVITY 1 89c3fca2 17 0 1200"
+    },
+    {
+      "tx": "STOP 1 89c3fca2 1"
+    },
+    {
+      "tx": "GOODNIGHT 1 89c3fca2 1"
+    }
+  ],
+  "motor_enviado": false,
+  "prova_deslocamento": false,
+  "interface_aberta": false,
+  "origem": "USB e autoria principal configurada, diagnostico sem execucao"
+}

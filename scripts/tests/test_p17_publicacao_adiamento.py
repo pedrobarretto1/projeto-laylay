@@ -242,7 +242,10 @@ def test_composicao_instalada_publica_aguardo_com_porta_canonica_sem_executar_ma
                                episodio_emocional=evento)
         root._iniciar_planejamento_turno(texto, origem="teste_publicacao_p17")
         ctx = root._contexto_intencao_runtime.montar()
-        instalada = ctx["_registrar_resultado_execucao"] == root._registrar_resultado_execucao
+        instalada = (
+            ctx["_registrar_resultado_execucao"].__wrapped__ == root._registrar_resultado_execucao
+            and root._vincular_registro_resultado_execucao.__self__ is root._adaptadores_aplicacao_runtime
+        )
         falas, despachos = [], []
         ctx["falar_com_lipsync"] = lambda *a: falas.append(a)
         ctx["_avaliar_evento_emocional_operacional"] = lambda *_: (_ for _ in ()).throw(

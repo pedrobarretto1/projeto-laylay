@@ -30,6 +30,9 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
 from mente_laylay.cognicao.arbitro_turno import CandidatoDecisao, arbitrar_turno
+from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+from mente_laylay.cognicao.escopo_autorizacao import AutorizacaoAto, _identidade_operacional
+from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
 from mente_laylay.cognicao.referencias_linguagem import (
     separar_alvo_e_complemento_foco,
     valor_e_referencia_contextual,
@@ -52,11 +55,12 @@ from mente_laylay.memoria_mental.contexto_imediato import (
     _normalizar_dominio_referencia,
     _resultado_compativel_com_dominio,
     referencia_contextual_imediata,
-    texto_pede_ajuste_numerico_contextual,
+    texto_pede_ajuste_parametrico_contextual,
 )
 from mente_laylay.memoria_mental.pendencia_acao import dominio_pendencia
 from mente_laylay.memoria_mental.atividade_operacional_runtime import AtividadeOperacionalRuntime
 from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
     identificar_solicitacao_execucao,
     interpretar_tratamento_operacional,
     marcar_tratamento_operacional,
@@ -65,7 +69,6 @@ from mente_laylay.arquivos.roteador_arquivos import (
     detectar_intencao_arquivos,
     reconciliar_literalidade_filename,
 )
-from mente_laylay.arquivos.nome_natural import texto_contem_caminho_absoluto
 
 INTENTS_EXECUTAVEIS = set(intents_registradas())
 
@@ -355,16 +358,19 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
             str(texto_norm or "").strip(),
         )
     )
-    texto_deteccao = (
-        _call(ctx, "normalizar_texto", trecho_operacional, default=trecho_operacional)
-        if trecho_operacional
+    usar_recorte_operacional = bool(
+        trecho_operacional
         and (
             revisao_resolvida
             or str(turno_congelado.get("modalidade_geral") or "") == "misto"
         )
         and bool(turno_congelado.get("autoriza_execucao"))
         and not moldura_nao_autoriza_recorte
-        else texto_norm
+    )
+    fonte_deteccao = trecho_operacional if usar_recorte_operacional else str(texto or "")
+    texto_deteccao = (
+        _call(ctx, "normalizar_texto", fonte_deteccao, default=fonte_deteccao)
+        if usar_recorte_operacional else texto_norm
     )
 
     # Lembretes completos são comandos locais. Eles precisam ser resolvidos
@@ -438,29 +444,11 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
         texto=texto_norm,
     )
 
-    # O detector de domínio recebe a fala original sempre que o turno inteiro
-    # é operacional. A forma normalizada remove pontuação útil de argumentos
-    # (por exemplo, transforma ``resultado.md`` em ``resultado md``). O
-    # orquestrador determinístico já cria sua própria cópia normalizada para
-    # comparar verbos, portanto manter o original aqui não reduz tolerância a
-    # português e preserva nomes, URLs, aspas e extensões.
-    preservar_argumentos_arquivo = bool(
-        str(turno_congelado.get("modalidade_geral") or "") != "misto"
-        and (texto_contem_caminho_absoluto(texto) or (re.search(
-            r"\b(?:arquivo|pasta|documento|escreve|escreva|grava|grave)\b",
-            str(texto or ""),
-            flags=re.IGNORECASE,
-        )
-        and (
-            bool(re.search(r"\.[a-z0-9]{1,8}\b", str(texto or ""), re.IGNORECASE))
-            or '"' in str(texto or "")
-            or "'" in str(texto or "")
-            or bool(re.search(r"\b(?:nele|nela|dentro\s+dele|dentro\s+dela)\b", str(texto or ""), re.IGNORECASE))
-        )))
-    )
-    texto_detector_deterministico = (
-        str(texto or "") if preservar_argumentos_arquivo else texto_deteccao
-    )
+    # O owner do argumento recebe a fonte literal, não uma projeção lexical
+    # que apaga unidades, decimais, URLs ou aspas. O detector composto possui
+    # sua própria normalização. Quando há recorte canônico, preservamos esse
+    # recorte (não a proposta descartada); a arbitragem mantém a autoridade.
+    texto_detector_deterministico = fonte_deteccao
     intent_deterministica = resolver_referencias_da_intencao(
         _call(ctx, "detectar_intencao_deterministica", texto_detector_deterministico),
         retrato_atual,
@@ -578,7 +566,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     # Continuidade contextual unificada vem antes da repeticao generica para
     # pronomes e respostas curtas. Ex.: "fecha ela", "coloca ele em foco".
     intent_contextual_bruto = _call(
-        ctx, "resolver_comando_contextual_forcado", texto_norm,
+        ctx, "resolver_comando_contextual_forcado", fonte_deteccao,
     )
     if (
         not isinstance(intent_contextual_bruto, dict)
@@ -593,7 +581,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
         intent_contextual_bruto = _call(
             ctx,
             "resolver_comando_acao_geral_contextual_forcado",
-            texto_norm,
+            fonte_deteccao,
         )
         if isinstance(intent_contextual_bruto, dict):
             intent_contextual_bruto = dict(intent_contextual_bruto)
@@ -672,7 +660,7 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if isinstance(arbitragem.get("decisao"), dict):
         return arbitragem["decisao"], str(arbitragem.get("origem") or "arbitro")
 
-    if texto_pede_ajuste_numerico_contextual(texto_norm):
+    if texto_pede_ajuste_parametrico_contextual(fonte_deteccao):
         # A atribuição foi reconhecida, mas nenhum owner vinculou o parâmetro.
         # Uma proposta de IA não pode preencher essa lacuna com outro domínio.
         return None, "contexto_parametro_nao_resolvido"
@@ -878,7 +866,7 @@ class CicloComandosRuntime:
         ] = {}
         self._cache_turno_id = ""
         self._lock_execucao_turno = RLock()
-        self._execucoes_turno: Dict[tuple[str, str], Dict[str, Any]] = {}
+        self._execucoes_turno: Dict[tuple[str, str, int | None], Dict[str, Any]] = {}
         self._metricas_execucao_turno: Dict[str, int] = {
             "iniciadas": 0,
             "reutilizadas": 0,
@@ -949,7 +937,8 @@ class CicloComandosRuntime:
 
     def _chave_execucao_turno(
         self, resultado: Dict[str, Any], contexto: Dict[str, Any],
-    ) -> tuple[str, str] | None:
+        ato: AutorizacaoAto | None = None,
+    ) -> tuple[str, str, int | None] | None:
         turno = dict(contexto.get("turno_atual") or {})
         turno_id = str(turno.get("id") or "").strip()
         intent = _normalizar_intent(resultado)
@@ -973,7 +962,47 @@ class CicloComandosRuntime:
             sort_keys=True,
             separators=(",", ":"),
         )
-        return turno_id, assinatura
+        return turno_id, assinatura, ato.indice if ato is not None else None
+
+    def _convergir_chave_execucao(
+        self, chave: tuple[str, str, int | None],
+    ) -> tuple[str, str, int | None]:
+        """Sob o lock: chamadas sem fonte não podem contornar um ato já iniciado.
+
+        Só atos distintos vinculados podem repetir uma operação. Uma chamada
+        anterior sem índice não prova qual ato consumiu: conservar a trava,
+        inclusive se a chamada seguinte trouxer um vínculo válido.
+        """
+        legado = (chave[0], chave[1], None)
+        if legado in self._execucoes_turno:
+            return legado
+        if chave[2] is None:
+            iguais = [k for k in self._execucoes_turno if k[:2] == chave[:2]]
+            if iguais:
+                return max(iguais, key=lambda k: self._execucoes_turno[k]["ts"])
+        return chave
+
+    @staticmethod
+    def _ato_execucao_vigente(
+        ato: AutorizacaoAto, resultado: dict, texto: str, contexto: dict,
+        vigente: Callable[[], bool] | None,
+    ) -> bool:
+        # O índice nunca vem de params/JSON da LLM. O owner já resolveu alvo e
+        # operação; esta fronteira apenas confere vínculo e a porta de admissão.
+        if type(ato) is not AutorizacaoAto or not callable(vigente):
+            return False
+        turno = contexto.get("turno_atual") or {}
+        segmentos = turno.get("segmentos") or ()
+        if str(turno.get("id") or "").strip() != ato.turno_id or ato.indice >= len(segmentos):
+            return False
+        segmento = segmentos[ato.indice]
+        if (not isinstance(segmento, dict) or str(segmento.get("texto") or "").strip() != ato.texto
+            or texto != ato.texto or segmento.get("autoriza_execucao") is not True
+            or segmento.get("veto_execucao_operacional") or segmento.get("requer_esclarecimento")):
+            return False
+        identidade = _identidade_operacional(resultado)
+        return (identidade is not None and identidade == _identidade_operacional(ato.pedido.como_dict())
+                and vigente() is True)
 
     def _podar_execucoes_turno(self) -> None:
         if len(self._execucoes_turno) <= 256:
@@ -1073,6 +1102,61 @@ class CicloComandosRuntime:
                 metricas["incertos"] = int(metricas.get("incertos") or 0) + 1
 
     def executar_intencao(self, resultado: Dict[str, Any], texto_original: str) -> bool:
+        return self._executar_intencao(resultado, texto_original)
+
+    def executar_intencao_observando(
+        self, resultado: Dict[str, Any], texto_original: str,
+        *, _ato: AutorizacaoAto | None = None,
+        _vigente: Callable[[], bool] | None = None,
+    ) -> ExecucaoObservada:
+        """Transporta só receipts aceitos nesta chamada, sem consultar histórico.
+
+        Cache e bool não recriam publicações. Capturar o turno antes do efeito
+        preserva a origem de resultados tardios, sem torná-los vigentes.
+        """
+        identificado = identificar_solicitacao_execucao(resultado)
+        resultado["id_solicitacao"] = identificado["id_solicitacao"]
+        resultado.pop("request_id", None)
+        pedido = SnapshotComandoIA(identificado)
+        publicacoes: list[SnapshotComandoIA] = []
+        instantes_publicacao: list[float] = []
+        turno_capturado = [""]
+
+        def capturar_contexto(contexto: dict) -> None:
+            turno_capturado[0] = str((contexto.get("turno_atual") or {}).get("id") or "").strip()
+
+        def observar(receipt: ResultadoAcao) -> None:
+            if (not isinstance(receipt, ResultadoAcao)
+                or receipt.id_solicitacao != identificado["id_solicitacao"]
+                or receipt.intent != _normalizar_intent(identificado)
+                or receipt.origem != "executor"):
+                return
+            publicacoes.append(SnapshotComandoIA(receipt.como_dict()))
+            instantes_publicacao.append(time.monotonic())
+
+        retorno = self._executar_intencao(resultado, texto_original,
+            observar_contexto=capturar_contexto, observar_publicacao=observar,
+            ato=_ato, ato_vigente=_vigente)
+        return ExecucaoObservada(turno_capturado[0], pedido, tuple(publicacoes), retorno,
+                                tuple(instantes_publicacao))
+
+    def executar_ato_observando(
+        self, resultado: dict, texto_original: str, ato: AutorizacaoAto,
+        *, vigente: Callable[[], bool],
+    ) -> ExecucaoObservada:
+        """Porta do host: admissão vigente delimita deduplicação, não efeito."""
+        if type(ato) is not AutorizacaoAto:
+            raise ValueError("ato de execução sem vínculo nativo")
+        return self.executar_intencao_observando(resultado, texto_original,
+            _ato=ato, _vigente=vigente)
+
+    def _executar_intencao(
+        self, resultado: Dict[str, Any], texto_original: str, *,
+        observar_contexto: Callable[[dict], None] | None = None,
+        observar_publicacao: Callable[[ResultadoAcao], None] | None = None,
+        ato: AutorizacaoAto | None = None,
+        ato_vigente: Callable[[], bool] | None = None,
+    ) -> bool:
         inicio = time.perf_counter()
         intent = str((resultado or {}).get("intent") or "desconhecida")
         sucesso = False
@@ -1090,10 +1174,19 @@ class CicloComandosRuntime:
                     "execucao", (time.perf_counter() - inicio) * 1000.0, False,
                 )
             raise
-        chave_execucao = self._chave_execucao_turno(resultado, contexto_execucao)
+        if observar_contexto is not None:
+            observar_contexto(contexto_execucao)
+        if ato is not None and not self._ato_execucao_vigente(
+            ato, resultado, texto_original, contexto_execucao, ato_vigente,
+        ):
+            raise ValueError("ato de execução não está vinculado e vigente")
+        chave_execucao = self._chave_execucao_turno(resultado, contexto_execucao, ato)
+        if ato is not None and chave_execucao is None:
+            raise ValueError("ato de execução sem turno/plano ativo para deduplicação")
         evento_existente: Event | None = None
         if chave_execucao is not None:
             with self._lock_execucao_turno:
+                chave_execucao = self._convergir_chave_execucao(chave_execucao)
                 registro = self._execucoes_turno.get(chave_execucao)
                 if registro is not None:
                     self._metricas_execucao_turno["reutilizadas"] += 1
@@ -1130,20 +1223,32 @@ class CicloComandosRuntime:
                 return bool(concluida.get("resultado"))
 
         try:
+            if ato is not None and not self._ato_execucao_vigente(
+                ato, resultado, texto_original, contexto_execucao, ato_vigente,
+            ):
+                raise ValueError("admissão do ato revogada antes do efeito")
             escopo_atividade = (
                 self.atividade_operacional.escopo()
                 if self.atividade_operacional is not None else nullcontext()
             )
             with escopo_atividade:
                 registrar_receipt = contexto_execucao.get("_registrar_resultado_execucao")
-                if self.atividade_operacional is not None and callable(registrar_receipt):
+                if (self.atividade_operacional is not None or observar_publicacao is not None) and callable(registrar_receipt):
                     # Só esta publicação aceita da invocação corrente pode
                     # produzir glitch. Bool tratado e contexto histórico não
                     # oferecem evidência de falha do executor.
                     def registrar_e_observar(receipt, *args, **kwargs):
                         publicacao = registrar_receipt(receipt, *args, **kwargs)
                         if publicacao is not False:
-                            self.atividade_operacional.observar_resultado(receipt)
+                            # Observação não pode alterar o resultado nem causar
+                            # outra execução se sua projeção não for suportada.
+                            if observar_publicacao is not None:
+                                try:
+                                    observar_publicacao(receipt)
+                                except Exception:
+                                    pass
+                            if self.atividade_operacional is not None:
+                                self.atividade_operacional.observar_resultado(receipt)
                         return publicacao
                     contexto_execucao = dict(contexto_execucao)
                     contexto_execucao["_registrar_resultado_execucao"] = registrar_e_observar
@@ -1229,6 +1334,7 @@ class CicloComandosRuntime:
         )
         return {
             "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
+            "detectar_email": contexto_execucao.get("_email_detectar"),
             "texto_depende_de_contexto": ns.get("_texto_depende_de_contexto"),
             "texto_parece_consulta_operacional": ns.get("_texto_parece_consulta_operacional"),
             "refinar_contexto_mental": ns.get("_refinar_contexto_mental"),
@@ -1244,7 +1350,9 @@ class CicloComandosRuntime:
             "extrair_agendamento": ns.get("_extrair_agendamento_local"),
             "extrair_acao_agendada": ns.get("_extrair_acao_agendada_local"),
             "executar_intencao": self.executar_intencao,
-            "registrar_resultado_execucao": ns.get("_registrar_resultado_execucao"),
+            "registrar_resultado_execucao": contexto_execucao.get(
+                "_registrar_resultado_execucao", ns.get("_registrar_resultado_execucao")
+            ),
             "registrar_autoaprimoramento": ns.get("_registrar_autoaprimoramento"),
             "_registrar_resultado_execucao": contexto_execucao.get(
                 "_registrar_resultado_execucao"

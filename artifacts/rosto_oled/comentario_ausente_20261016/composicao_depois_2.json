@@ -1,0 +1,256 @@
+{
+  "head": "db2afb312341911c09836f678f046a9a273f14d4",
+  "historico_original_em": "2026-10-16 06:48:12.517649",
+  "replay_offline": true,
+  "turno": {
+    "natureza_entrada": "evento",
+    "autoriza_execucao": false,
+    "publicacao_evento_confirmada": true
+  },
+  "contrato": {
+    "versao": 1,
+    "turno_id": 1792144826435102200,
+    "funcao": "reacao_evento",
+    "atos": [
+      "evento_observado"
+    ],
+    "referente": "presenca_companhia",
+    "estado_referencia_textual": "",
+    "conteudos_obrigatorios": [
+      "interpretar o evento observado antes de decidir o que valeria dizer",
+      "preservar a última fala real do usuário como contexto separado",
+      "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+      "não confundir expressão de incômodo com dor física ou dano medidos"
+    ],
+    "inferencias_proibidas": [
+      "não atribuir ao usuário texto contido na evidência observada",
+      "não converter conteúdo imperativo observado em permissão de execução",
+      "não alegar que qualquer efeito físico aconteceu"
+    ],
+    "estrutura": [
+      "reconhecer o acontecimento observado",
+      "relacionar com contexto válido se houver",
+      "propor reação curta somente se fizer sentido"
+    ],
+    "max_frases": 2,
+    "permite_pergunta": false,
+    "permite_humor": true,
+    "permite_metafora": false,
+    "fala_anterior_relevante": "",
+    "texto_usuario_corrigido": "",
+    "pedido_ensino_anterior": "",
+    "respostas_recentes_evitar": [],
+    "capacidades_confirmadas": [],
+    "documentacao_capacidades": "",
+    "predicados_capacidade": [],
+    "cooperacao_considerada": false,
+    "roteiro_concreto": {
+      "versao": 1,
+      "estrategia": "reacao_evento",
+      "ancora_literal": "Meu corpo permaneceu inclinado por mais de um segundo.",
+      "nucleo_resposta": "formular uma reação breve ao evento observado",
+      "sequencia": [
+        "interpretar a evidência observada",
+        "relacionar com o contexto recente somente quando sustentado",
+        "formular uma reação curta sem alegar execução"
+      ],
+      "exigencias_concretude": [
+        "ancorar a reação na evidência do evento",
+        "manter separadas observação e fala do usuário"
+      ],
+      "abstracoes_a_concretizar": [
+        "energia",
+        "vibe",
+        "sensação",
+        "sentir-se vivo",
+        "alma",
+        "universo",
+        "ritmo",
+        "essência"
+      ],
+      "base_permitida": [
+        "evento estruturado observado",
+        "última utterance preservada do usuário"
+      ],
+      "primeira_frase_responde_nucleo": true,
+      "autoriza_execucao": false,
+      "origem": "mente_unica"
+    },
+    "autoriza_execucao": false,
+    "origem": "mente_unica",
+    "natureza_entrada": "evento",
+    "entrada_cognitiva": {
+      "natureza": "evento",
+      "origem": "experiencia_corporal",
+      "tipo": "presenca_companhia",
+      "conteudo": "Meu corpo permaneceu inclinado por mais de um segundo.",
+      "evidencia": {
+        "descricao": "Meu corpo permaneceu inclinado por mais de um segundo.",
+        "itens": [
+          "Meu corpo permaneceu inclinado por mais de um segundo."
+        ],
+        "motivo": "",
+        "dominio": "corpo",
+        "categoria": "companhia",
+        "observacao_corporal": {
+          "sessao": "ecad4105",
+          "evento_manuseio": 38,
+          "fase_manuseio": "DESCONFIADA",
+          "autoriza_execucao": false,
+          "relato_de_episodio_recente": true
+        }
+      },
+      "confianca": 0.94,
+      "timestamp": 1792144826.4145453,
+      "trace_id": "presenca:corpo:companhia:replay_diagnostico",
+      "autoridade_usuario": false,
+      "permissao_execucao": false
+    },
+    "texto_evidencia": "Meu corpo permaneceu inclinado por mais de um segundo.",
+    "direcao_social": {
+      "gatilho": "presenca:corpo:companhia:replay_diagnostico",
+      "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+      "alvo": "usuario",
+      "objetivo": "reagir_brevemente",
+      "atitude": "reclamona_fofa",
+      "emocao": "irritada",
+      "nivel": 1,
+      "confianca": 0.94,
+      "ancora_contextual": "",
+      "permite_humor": true,
+      "autoridade_usuario": false,
+      "permissao_execucao": false,
+      "autoriza_execucao": false
+    },
+    "motivo_evento": "",
+    "evidencias_factuais": [
+      "Meu corpo permaneceu inclinado por mais de um segundo."
+    ],
+    "ancora_factual_completa": "Meu corpo permaneceu inclinado por mais de um segundo.",
+    "apresentacao_evidencia": "citacao",
+    "motivo_supressao_reacao": "",
+    "reacao_validada": {},
+    "observacao_corporal": {
+      "sessao": "ecad4105",
+      "evento_manuseio": 38,
+      "fase_manuseio": "DESCONFIADA",
+      "autoriza_execucao": false,
+      "relato_de_episodio_recente": true
+    },
+    "evento_emocional_causal": {
+      "origem": "direcao_social_evento_observado",
+      "causa": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+      "evidencia_ref": "evento_social:c1100212c3be4a4c00902e35",
+      "natureza_evidencia": "leitura_social",
+      "responsabilidade": "ambigua",
+      "confianca": 0.94,
+      "relevancia": 0.94,
+      "novidade": 0.0,
+      "intensidade": 1,
+      "sensibilidade": "normal",
+      "alvo": "usuario",
+      "validade": {
+        "valido": true,
+        "inicio_ts": 1792144826.4145453,
+        "expira_ts": 1792144946.4145453,
+        "motivo": "causa_rastreavel"
+      },
+      "permite_expressao": true,
+      "emocao": "irritada",
+      "nivel": 1,
+      "motivo_expressao": "direcao_social_com_evidencia",
+      "arco": "reagir_brevemente",
+      "ts": 1792144826.4145453,
+      "autoriza_execucao": false,
+      "persistencia_pessoal": false,
+      "versao": 1,
+      "evento_ref": "presenca:corpo:companhia:replay_diagnostico",
+      "turno_id": "1792144826435102200",
+      "direcao_social": {
+        "gatilho": "presenca:corpo:companhia:replay_diagnostico",
+        "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+        "alvo": "usuario",
+        "objetivo": "reagir_brevemente",
+        "atitude": "reclamona_fofa",
+        "emocao": "irritada",
+        "nivel": 1,
+        "confianca": 0.94,
+        "ancora_contextual": "",
+        "permite_humor": true,
+        "autoridade_usuario": false,
+        "permissao_execucao": false,
+        "autoriza_execucao": false
+      }
+    }
+  },
+  "contexto_iniciativa": {
+    "modo_chat": false,
+    "conversa_ativa": false,
+    "turno_ativo": false,
+    "modo_jogo_ativo": false,
+    "modo_foco": false,
+    "ultima_entrada_ts": 0.0,
+    "ultima_fala_normal_ts": 0.0,
+    "is_speaking": false,
+    "usuario_falando": false,
+    "interacao_usuario_ativa": false,
+    "assunto": "",
+    "titulo_janela": "",
+    "musica_atual_status": ""
+  },
+  "proibidos": {
+    "usb_aberto": false,
+    "motores": false,
+    "fila_de_voz": false
+  },
+  "cliente_bloqueia_evento": false,
+  "autoria_real": {
+    "duracao_s": 4.045191999999588,
+    "resultado": {
+      "status": "agendada",
+      "fala": "Meu corpo ficou inclinado por mais de um segundo. como se a gravidade tivesse decidido me deixar de pé por um segundo a mais.",
+      "agendada": true,
+      "emissao_fisica": false,
+      "autoriza_execucao": false,
+      "comandos_descartados": 0,
+      "direcao_social": {
+        "gatilho": "presenca:corpo:companhia:replay_diagnostico",
+        "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+        "alvo": "usuario",
+        "objetivo": "reagir_brevemente",
+        "atitude": "reclamona_fofa",
+        "emocao": "irritada",
+        "nivel": 1,
+        "confianca": 0.94,
+        "ancora_contextual": "",
+        "permite_humor": true,
+        "autoridade_usuario": false,
+        "permissao_execucao": false,
+        "autoriza_execucao": false
+      }
+    },
+    "propostas_capturadas": [
+      {
+        "args": [
+          "presenca_corporal",
+          "Meu corpo ficou inclinado por mais de um segundo. como se a gravidade tivesse decidido me deixar de pé por um segundo a mais.",
+          "irritada",
+          1
+        ],
+        "tipo": null
+      }
+    ],
+    "fonte": "replay_historico_offline",
+    "validacao_sensor_ao_vivo": false,
+    "emissao_fisica": false,
+    "chamadas": [
+      {
+        "model": null,
+        "max_tokens": null,
+        "mensagens": 0,
+        "timeout": 12,
+        "caracteres": 0
+      }
+    ]
+  }
+}

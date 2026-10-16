@@ -1,0 +1,19 @@
+ M "melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md"
+ M "melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md"
+ M mente_laylay/autonomia/coordenador_intencao.py
+ M mente_laylay/autonomia/detectores_playlist.py
+ M mente_laylay/autonomia/orquestrador_deterministico.py
+ M mente_laylay/autonomia/roteador_deterministico.py
+ M mente_laylay/cognicao/gramatica_operacional.py
+ M mente_laylay/cognicao/referencias_linguagem.py
+ M mente_laylay/especialistas/rosto_oled_runtime.py
+ M mente_laylay/memoria_mental/contexto_imediato.py
+ M scripts/analises/sonda_continuacao_operacional.py
+ M scripts/tests/test_regressoes_contexto_operacional.py
+ M scripts/tests/test_som_corporal.py
+?? artifacts/rosto_oled/expressoes_v3/
+?? artifacts/rosto_oled/som_resultados/
+?? scripts/tests/test_argumento_modificador_repeticao.py
+?? scripts/tests/test_contexto_extremos_volume.py
+?? scripts/tests/test_moldura_operando_musical.py
+?? scripts/validar_som_resultados_fisico.py

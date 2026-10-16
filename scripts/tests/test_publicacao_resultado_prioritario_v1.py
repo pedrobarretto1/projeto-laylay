@@ -4,26 +4,11 @@ from __future__ import annotations
 
 from mente_laylay.autonomia.adaptador_resultado import AdaptadorResultadoOperacional
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import AdaptadoresAplicacaoRuntime
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     marcar_tratamento_operacional,
 )
-
-
-class _EstadoFake:
-    def __init__(self) -> None:
-        self.mental = {
-            "plano_turno_atual": {
-                "fase": "executado",
-                "comandos": [],
-                "erros": [],
-                "especialistas": {},
-            }
-        }
-
-    def atualizar_campos(self, dominio: str, **campos) -> None:
-        assert dominio == "mental"
-        self.mental.update(campos)
 
 
 class _MotorFake:
@@ -54,7 +39,9 @@ def _atualizar_plano_fake(plano, *, fase, comandos, erros=(), fala=""):
 
 
 def _runtime(base_callback=None):
-    estado = _EstadoFake()
+    estado = EstadoCompartilhadoRuntime(mental={"plano_turno_atual": {
+        "fase": "executado", "comandos": [], "erros": [], "especialistas": {},
+    }})
     motor = _MotorFake()
     mapa = _MapaFake()
     base = []

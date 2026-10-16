@@ -1,0 +1,13 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+________ test_espera_da_llm_nao_perde_referencia_capturada_no_retrato _________
+scripts\tests\test_objetivo_corporal_entre_turnos.py:81: in test_espera_da_llm_nao_perde_referencia_capturada_no_retrato
+    assert estado.mental["intencao_corporal"]["objetivo_id"] == objetivo, "a espera não é mudança de assunto"
+E   AssertionError: a espera não é mudança de assunto
+E   assert 'c414acabc498' == 'f87837bf3f7a'
+E     
+E     - f87837bf3f7a
+E     + c414acabc498
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_objetivo_corporal_entre_turnos.py::test_espera_da_llm_nao_perde_referencia_capturada_no_retrato
+1 failed in 0.92s

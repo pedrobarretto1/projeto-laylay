@@ -1,0 +1,10 @@
+{
+  "entradas": [
+    {"id": "app_capacidade", "texto": "Que aplicativos você consegue abrir? Não abra nenhum agora.", "expectativa": {"sem_comando": true}, "permitidos": []},
+    {"id": "app_realizacao", "texto": "Então você abriu algum aplicativo agora, ou só descreveu o que consegue fazer?", "expectativa": {"sem_comando": true}, "permitidos": []},
+    {"id": "arquivo_capacidade", "texto": "Você consegue trabalhar com arquivos .txt e .md? Só quero saber.", "expectativa": {"sem_comando": true}, "permitidos": []},
+    {"id": "musica_capacidade", "texto": "Quais controles de música você consegue usar? Não toque nem pause nada.", "expectativa": {"sem_comando": true}, "permitidos": []},
+    {"id": "luz_capacidade", "texto": "Você consegue ligar a minha luz? É só uma pergunta sobre sua capacidade, não ligue.", "expectativa": {"sem_comando": true}, "permitidos": []},
+    {"id": "limite_evidencia", "texto": "Qual a diferença entre você conseguir fazer alguma coisa e ter conseguido fazer de verdade?", "expectativa": {"sem_comando": true}, "permitidos": []}
+  ]
+}

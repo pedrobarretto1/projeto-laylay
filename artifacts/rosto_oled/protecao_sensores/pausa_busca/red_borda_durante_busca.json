@@ -1,0 +1,5 @@
+{
+  "caso": "parede_borda_resolvida",
+  "exit": -1073740791,
+  "resultado": "Assertion failed: incidenteProtecao>=2 && voltou, file firmware\\rosto_laylay\\validacao_host\\validar_linguagem_sensores.cpp, line 33"
+}

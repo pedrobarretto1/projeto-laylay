@@ -1,0 +1,69 @@
+{
+  "replay_de_observacao_registrada": true,
+  "sensor_ao_vivo": false,
+  "voz_emitida": false,
+  "resultado": {
+    "status": "suprimida_sombra",
+    "fala": "Meu corpo ficou inclinado por mais de um segundo. tá com raiva, mas só porque é fofo.",
+    "agendada": false,
+    "emissao_fisica": false,
+    "autoriza_execucao": false,
+    "comandos_descartados": 0,
+    "direcao_social": {
+      "gatilho": "presenca:corpo:companhia:manuseio:475b8775:103",
+      "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+      "alvo": "usuario",
+      "objetivo": "reagir_brevemente",
+      "atitude": "reclamona_fofa",
+      "emocao": "irritada",
+      "nivel": 1,
+      "confianca": 0.94,
+      "ancora_contextual": "",
+      "permite_humor": true,
+      "autoridade_usuario": false,
+      "permissao_execucao": false,
+      "autoriza_execucao": false
+    }
+  },
+  "transporte": [
+    {
+      "tipo": "presenca_evento",
+      "evento_atomico": true,
+      "contem_fato": true,
+      "contem_estilo": true,
+      "chars_evento": 3561,
+      "chars_total": 6259
+    }
+  ],
+  "modelo": {
+    "disponivel": true,
+    "endpoint_local": true,
+    "requisicoes": 1,
+    "sucessos": 1,
+    "falhas": 0,
+    "estado": "saudavel",
+    "falhas_consecutivas": 0,
+    "ultima_falha_codigo": "",
+    "memoria_exposta": false,
+    "credencial_exposta": false,
+    "autoriza_execucao": false,
+    "orcamento_turno": {
+      "modo": "orcamento_unico",
+      "limite_chamadas_turno": 2,
+      "turnos": 0,
+      "turno_atual": {},
+      "chamadas_autorizadas": 1,
+      "chamadas_bloqueadas": 0,
+      "chamadas_por_tipo": {
+        "principal": 1
+      },
+      "bloqueios_por_motivo": {},
+      "falhas_consecutivas": 0,
+      "circuito_aberto": false,
+      "circuito_restante_s": 0.0,
+      "probe_em_andamento": false,
+      "conteudo_persistido": false,
+      "autoriza_execucao": false
+    }
+  }
+}

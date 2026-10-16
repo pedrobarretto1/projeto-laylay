@@ -11,6 +11,7 @@ import re
 import threading
 import time
 from typing import Any, Callable, Mapping
+from mente_laylay.integracao.prioridade_interacao_usuario import conversa_em_andamento
 
 from .governanca_iniciativa import (
     DOMINIOS_PERFIL_SEGURO,
@@ -490,7 +491,7 @@ class MotorIniciativaRuntime:
             pontos -= 45
             motivos.append("turno_ativo")
         if (
-            bool(contexto.get("modo_chat") or contexto.get("conversa_ativa"))
+            conversa_em_andamento(contexto, agora=self.clock())
             and not urgente and not momento_seguro_jogo and not fala_indireta_confiavel
         ):
             pontos -= 34

@@ -65,7 +65,7 @@ class ContratoSaidaEstruturada:
             "de evidência, incerteza e ausência de autoridade."
         )
 
-    def canonizar_json(self, resposta: str) -> str:
+    def decodificar_json(self, resposta: str) -> dict[str, Any]:
         """Decodifica somente o documento completo; não procura JSON na prosa."""
         if not isinstance(resposta, str):
             raise TypeError("resposta estruturada deve ser textual")
@@ -76,6 +76,10 @@ class ContratoSaidaEstruturada:
         if not isinstance(dados, dict):
             raise ValueError("resposta estruturada deve ser um objeto")
         self.validar(dados)
+        return dados
+
+    def canonizar_json(self, resposta: str) -> str:
+        dados = self.decodificar_json(resposta)
         return self.marcador + " " + json.dumps(
             dados, ensure_ascii=False, allow_nan=False, separators=(",", ":"),
         )

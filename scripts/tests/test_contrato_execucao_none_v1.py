@@ -11,22 +11,7 @@ from mente_laylay.autonomia.coordenador_intencao import (
 )
 from mente_laylay.autonomia.higiene_resposta_ia import limpar_resposta_da_ia
 from mente_laylay.integracao.adaptadores_aplicacao_runtime import AdaptadoresAplicacaoRuntime
-
-
-class _EstadoFake:
-    def __init__(self) -> None:
-        self.mental = {
-            "plano_turno_atual": {
-                "fase": "executado",
-                "comandos": [],
-                "erros": [],
-                "especialistas": {},
-            }
-        }
-
-    def atualizar_campos(self, dominio: str, **campos) -> None:
-        assert dominio == "mental"
-        self.mental.update(campos)
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
 
 
 def _atualizar_plano_fake(plano, *, fase, comandos, erros=(), fala=""):
@@ -40,8 +25,11 @@ def _atualizar_plano_fake(plano, *, fase, comandos, erros=(), fala=""):
     return novo
 
 
-def _runtime() -> tuple[AdaptadoresAplicacaoRuntime, _EstadoFake]:
-    estado = _EstadoFake()
+def _runtime() -> tuple[AdaptadoresAplicacaoRuntime, EstadoCompartilhadoRuntime]:
+    # O publicador usa snapshot/transação do owner real, não apenas dict.update.
+    estado = EstadoCompartilhadoRuntime(mental={"plano_turno_atual": {
+        "fase": "executado", "comandos": [], "erros": [], "especialistas": {},
+    }})
     namespace = {
         "_registrar_resultado_execucao_base": lambda *_args, **_kwargs: None,
         "_estado_compartilhado_runtime": estado,

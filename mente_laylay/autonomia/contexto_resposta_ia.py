@@ -6,9 +6,13 @@ import re
 from typing import Any, Callable, Dict, List, Tuple
 
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+from mente_laylay.memoria_mental.registro_semantico import formatar_evidencia_da_fala
 
 from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
 from mente_laylay.cognicao.modelo_corporal import formatar_modelo_corporal
+from mente_laylay.cognicao.leitura_semantica_turno import INSTRUCAO_INTERPRETACAO_POR_ATO
+from mente_laylay.cognicao.saida_interpretacao_principal import criar_contrato_saida_interpretacao_principal
+from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
 from mente_laylay.cognicao.qualidade_comunicacao import (
     montar_mensagens_pedido_fonte_textual,
     montar_mensagens_reconhecimento_limite,
@@ -287,6 +291,7 @@ class ContextoPromptRuntime:
         mapa_recursos_prompt: Callable[[str], str] | None = None,
         registrar_tamanho_prompt: Callable[[str, int], Any] | None = None,
         otimizacao_prompt_ativa: bool = True,
+        interpretacao_por_ato_ativa: bool = False,
     ) -> None:
         self.memoria_sqlite = memoria_sqlite
         self.resumo_mente_integrada = resumo_mente_integrada
@@ -298,6 +303,9 @@ class ContextoPromptRuntime:
         self.mapa_recursos_prompt = mapa_recursos_prompt
         self.registrar_tamanho_prompt = registrar_tamanho_prompt
         self.otimizacao_prompt_ativa = bool(otimizacao_prompt_ativa)
+        # Candidato de formato. A composição atual não o ativa: é necessário
+        # comprovar emissão real/coerente antes de mudar o protocolo diário.
+        self.interpretacao_por_ato_ativa = bool(interpretacao_por_ato_ativa)
         self._preparacoes = 0
         self._preparacoes_rapidas = 0
         self._falhas = 0
@@ -571,7 +579,36 @@ class ContextoPromptRuntime:
             return PacotePrompt(tuple(montar_mensagens_pedido_fonte_textual(
                 pedidos_recentes=contrato.get("respostas_recentes_evitar") or (),
             )), contexto_fechado=True)
-        return PacotePrompt(tuple(dict(item) for item in mensagens))
+        projetadas = [dict(item) for item in mensagens]
+        # Só a ocorrência atual recebe o formato mais rico. Esta instrução
+        # pertence ao envio, não ao histórico, à personalidade ou à memória.
+        # Projeções fechadas de conversa/recusa acima mantêm seu protocolo.
+        if (self.interpretacao_por_ato_ativa
+            and turno_id and turno.get("id") and str(turno_id) == str(turno["id"])
+            and mensagens and mensagens[-1].get("role") == "user"
+            and mensagens[-1].get("content") == (turno.get("texto_original") or turno.get("texto"))
+            and (turno.get("autoriza_execucao") is True or turno.get("veto_execucao_operacional") is True)):
+            projetadas.insert(len(projetadas) - 1, {
+                "role": "system", "content": INSTRUCAO_INTERPRETACAO_POR_ATO,
+            })
+            fontes = fontes_textuais_dos_segmentos(mensagens[-1]["content"], turno.get("segmentos", []))
+            # Uma visão soberana colapsada não prova decomposição completa.
+            # Só transportar fronteiras que o owner atual já publicou; não
+            # resegmentar ou transformar a análise em permissão no preparador.
+            if len(fontes) > 1:
+                import json
+                projetadas[-2]["content"] += (
+                    "\nFontes textuais do turno, não autorização: "
+                    + json.dumps([f.como_dict() for f in fontes], ensure_ascii=False)
+                    + ". Um objeto por fonte, nesta ordem. Copie intervalo do host; não o calcule."
+                )
+            else:
+                fontes = ()
+            # O tamanho da fala não mede os campos/atos do envelope. Piso
+            # limitado, sem exigir prosa longa nem garantir semântica correta.
+            return PacotePrompt(tuple(projetadas), reserva_saida_tokens=1024,
+                contrato_saida=criar_contrato_saida_interpretacao_principal(mensagens[-1]["content"], fontes=fontes))
+        return PacotePrompt(tuple(projetadas))
 
     def preparar_pacote(self, texto: str) -> PacotePrompt:
         mensagens, prompt = self.preparar(texto)
@@ -628,7 +665,8 @@ class ContextoPromptRuntime:
             trechos_prompt = (
                 (fundamentacao,)
                 if lista_factual_materializada
-                else (contrato, retrato, habilidades, formatar_modelo_corporal(estado.get("modelo_corporal")), fundamentacao)
+                else (contrato, formatar_evidencia_da_fala(texto, estado), retrato, habilidades,
+                      formatar_modelo_corporal(estado.get("modelo_corporal")), fundamentacao)
             )
             instrucao = "\n\n".join(
                 # Quando a pesquisa já materializou candidatos, esse bloco é o

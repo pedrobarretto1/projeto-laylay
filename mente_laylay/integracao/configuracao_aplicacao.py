@@ -14,6 +14,7 @@ from typing import Any, Callable, Mapping
 from urllib.parse import quote
 
 import requests
+from mente_laylay.especialistas.saude_corporal import validar_identidade_corpo_usb
 
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1"
@@ -30,6 +31,8 @@ CHAVES_GERENCIADAS = frozenset({
     "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR",
     "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR",
     "LAYLAY_CORPO_PERFIL",
+    "LAYLAY_CORPO_USB_ID",
+    "LAYLAY_CORPO_USB_NOME",
 })
 CHAVES_MODELO_PROVEDOR = {
     "ollama": "LAYLAY_LLM_MODEL_OLLAMA",
@@ -254,6 +257,7 @@ class ConfiguracaoAplicacaoRuntime:
             "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR",
             "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR",
             "LAYLAY_CORPO_PERFIL",
+            "LAYLAY_CORPO_USB_ID", "LAYLAY_CORPO_USB_NOME",
         )
         for chave in ordem:
             if chave in atualizacoes and chave not in vistas:
@@ -272,6 +276,27 @@ class ConfiguracaoAplicacaoRuntime:
             os.replace(temporario_path, self.arquivo_env)
         except OSError as erro:
             raise ErroConfiguracaoAplicacao("Não consegui salvar configuracao.env.") from erro
+
+    def identidade_corpo_usb(self) -> dict[str, str]:
+        """Pareamento portátil, separado da concessão de motores e da porta COM."""
+        _, valores = self._ler_env()
+        dispositivo = valores.get("LAYLAY_CORPO_USB_ID", os.environ.get("LAYLAY_CORPO_USB_ID", ""))
+        nome = valores.get("LAYLAY_CORPO_USB_NOME", os.environ.get("LAYLAY_CORPO_USB_NOME", ""))
+        try:
+            return validar_identidade_corpo_usb(
+                {"dispositivo": dispositivo, "nome": nome} if dispositivo or nome else {})
+        except ValueError:
+            raise ErroConfiguracaoAplicacao("Pareamento USB do corpo inválido.") from None
+
+    def definir_identidade_corpo_usb(self, *, dispositivo: str, nome: str) -> dict[str, Any]:
+        """Salvar exige alvo já verificado pelo chamador autorizado; não escolhe placa."""
+        try:
+            dados = validar_identidade_corpo_usb({"dispositivo": dispositivo, "nome": nome})
+        except ValueError:
+            raise ErroConfiguracaoAplicacao("Pareamento USB do corpo inválido.") from None
+        self._escrever_env({"LAYLAY_CORPO_USB_ID": dados["dispositivo"], "LAYLAY_CORPO_USB_NOME": dados["nome"]})
+        self._reinicio_pendente = True
+        return {"saved": self.identidade_corpo_usb() == dados, "restart_required": True}
 
     def companhia_bancada_ao_iniciar(self) -> bool:
         """Preferência humana persistida; não é uma concessão de transporte."""

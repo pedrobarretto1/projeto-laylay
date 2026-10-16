@@ -21,7 +21,9 @@ def _mensagens_minimas(payload: Mapping[str, Any]) -> list[dict[str, str]]:
     if sistemas:
         partes_sistema = [str(sistemas[0].get("content") or "").strip()[:6000]]
         partes_sistema.extend(
-            str(item.get("content") or "").strip()[:3000]
+            (str(item.get("content") or "").strip()
+             if payload.get("_laylay_preservar_evento_sistema") is True and item is sistemas[-1]
+             else str(item.get("content") or "").strip()[:3000])
             for item in sistemas[1:][-2:]
             if str(item.get("content") or "").strip()
         )

@@ -10,6 +10,8 @@ from typing import Any, Callable, Dict
 from mente_laylay.cognicao.referencias_linguagem import (
     extrair_indice_fechamento_ordinal_aba,
     separar_alvo_e_complemento_foco,
+    separar_alvo_e_repeticao,
+    separar_tipo_e_alvo_nomeado,
     texto_pede_aba_anterior,
     valor_e_referencia_contextual,
 )
@@ -18,12 +20,17 @@ from mente_laylay.cognicao.modalidade_turno import (
     extrair_nucleo_pedido_operacional,
 )
 from mente_laylay.cognicao.gramatica_operacional import (
+    interpretar_relacao_valor_ajuste,
+    localizar_quantidade_ajuste,
+    nivel_ajuste_extremo_volume,
     texto_pede_restauracao_contextual,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
+    normalizar_texto_basico,
     texto_pede_opiniao,
 )
+from mente_laylay.integracao.chrome_navegacao import is_valid_url
 from mente_laylay.autonomia.detectores_playlist import (
     detectar_confirmacao_porteiro,
     detectar_movimento_playlist,
@@ -201,16 +208,31 @@ def extrair_intencao_abrir_app(
     if not encontrado:
         return None
     nome = (encontrado.group(2) or "").strip()
+    encontrado_bruto = re.search(
+        r"\b(?:abre|abra|abrir|inicia|iniciar|executa|executar|roda|rodar)\s+"
+        r"(?:(?:o|a|os|as|um|uma)\s+)?(?P<nome>.+)$", bruto, flags=re.IGNORECASE,
+    )
+    if encontrado_bruto:
+        alvo_literal, _, _ = separar_tipo_e_alvo_nomeado(
+            encontrado_bruto.group("nome"), ("site", "pagina", "página"),
+        )
+        # URI é argumento opaco: caminho/query/fragmento não são palavras para
+        # normalização lexical. Tipagem/validação reutilizam os owners comuns;
+        # a autoridade continua no turno, não na ocorrência de uma URL.
+        if alvo_literal.casefold().startswith(("http://", "https://")):
+            try:
+                valida = not re.search(r"\s", alvo_literal) and is_valid_url(alvo_literal)
+            except ValueError:
+                valida = False
+            return {"intent": "OPEN_URL", "params": {"alvo": alvo_literal}} if valida else None
+    if encontrado_bruto and any(c in encontrado_bruto.group("nome") for c in ('"', "'", "“", "«")):
+        nome = encontrado_bruto.group("nome")
     nome = limpar_destino(nome) if callable(limpar_destino) else nome
     nome = re.sub(r"\s+(agora|aqui|ai|aí|por favor|pfv)$", "", nome).strip()
     # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
     # "de novo" descreve repetição da ação; não faz parte do nome do alvo.
-    nome = re.sub(
-        r"(?:^|\s)(?:de\s+novo|novamente|outra\s+vez)$",
-        "",
-        nome,
-        flags=re.IGNORECASE,
-    ).strip()
+    nome, _ = separar_alvo_e_repeticao(nome)
+    nome = normalizar_texto(nome) if callable(normalizar_texto) else nome.casefold()
     nome = re.sub(r"^(o|a|os|as|um|uma)\s+", "", nome).strip()
     nome = re.sub(r"^(?:programa|app|aplicativo)\s+(?:chamado|chamada|com\s+nome|de\s+nome)\s+", "", nome).strip()
     nome, complemento_foco = separar_alvo_e_complemento_foco(nome)
@@ -227,7 +249,11 @@ def extrair_intencao_abrir_app(
         return {"intent": "SITE_ENTER", "params": {"tema": assunto_site.group(1).strip()}}
     sites = sites_diretos if isinstance(sites_diretos, dict) else {}
     if nome_norm in sites or nome_norm.startswith("site ") or nome_norm in {"youtube", "google", "spotify", "whatsapp", "chatgpt"}:
-        return {"intent": "OPEN_URL", "params": {"alvo": nome_norm.replace("site ", "").strip()}}
+        alvo_site = nome_norm.removeprefix("site ").strip()
+        # O tipo não integra o nome delimitado; o mesmo contrato lê o operando.
+        if alvo_site.startswith(('"', "'", "“", "«")):
+            alvo_site, _ = separar_alvo_e_repeticao(alvo_site)
+        return {"intent": "OPEN_URL", "params": {"alvo": alvo_site}}
     apps = apps_map if isinstance(apps_map, dict) else {}
     for app in sorted(apps.keys(), key=len, reverse=True):
         if nome_norm == app or nome_norm.startswith(app + " ") or app in nome_norm:
@@ -504,6 +530,22 @@ def preparar_entrada_deterministica(
     }
 
 
+_VERBO_MUSICAL_NOMEADO = (
+    r"(?:coloque|coloca|colocar|toca|toque|tocar|ouvir|"
+    r"escuta|escute|escutar|abre|abra|abrir)"
+)
+_TIPOS_OPERANDO_MUSICAL = ("musica", "música", "faixa", "som", "cancao", "canção")
+
+
+def _ler_operando_musical_nomeado(texto: str, *, permitir_prefixo: bool = False) -> tuple[str, str, bool]:
+    """Uma leitura nominal comum à busca e à proteção contra controles internos."""
+    inicio = r"\b" if permitir_prefixo else r"^\s*(?:vamos\s+)?"
+    moldura = re.search(rf"{inicio}{_VERBO_MUSICAL_NOMEADO}\s+(.+)$", str(texto or ""), flags=re.IGNORECASE)
+    return separar_tipo_e_alvo_nomeado(
+        moldura.group(1) if moldura else "", _TIPOS_OPERANDO_MUSICAL,
+    )
+
+
 def _texto_pede_faixa_anterior_contextual(texto: str) -> bool:
     """Distingue referência temporal curta de um título musical real."""
     t = str(texto or "").strip().strip(" .,!?:;")
@@ -511,7 +553,7 @@ def _texto_pede_faixa_anterior_contextual(texto: str) -> bool:
         r"(?:"
         r"(?:coloca|coloque|toca|toque|bota|bote|poe|põe)"
         r"(?:\s+(?:na|a|pra|para\s+a))?\s+"
-        r"(?:musica|música|faixa|cancao|canção)\s+de\s+antes"
+        r"(?:musica|música|faixa|cancao|canção)\s+(?:de\s+antes|anterior)"
         r"|"
         r"(?:volta|volte|retorna|retorne)\s+(?:para|pra)\s+"
         r"(?:a\s+)?(?:(?:musica|música|faixa|cancao|canção)\s+)?de\s+antes"
@@ -526,12 +568,24 @@ def detectar_volume_ou_midia(
     params_cb: Callable[..., Dict[str, Any]],
     contexto_musical_ativo: bool = False,
     contexto_volume_ativo: bool = False,
+    texto_original: str = "",
 ) -> Dict[str, Any] | None:
     """Reconhece volume e controles de mídia sem depender da IA."""
     t = str(texto_normalizado or "").strip()
     if not t:
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
+
+    operando, tipo_operando, literal_operando = _ler_operando_musical_nomeado(t)
+    if operando and (
+        literal_operando or (
+            tipo_operando in {"musica", "música", "faixa", "cancao", "canção"}
+            and not valor_e_referencia_contextual(operando)
+        )
+    ) and (literal_operando or not _texto_pede_faixa_anterior_contextual(t)):
+        # Palavras do nome não são controles. Não resolve o título nem emite
+        # MUSIC_SEARCH aqui: a capacidade proprietária mantém essa decisão.
+        return None
 
     consulta_contextual_player = bool(
         contexto_musical_ativo
@@ -578,19 +632,32 @@ def detectar_volume_ou_midia(
         }
 
     menciona_volume = "volume" in t or bool(re.search(r"\bsom\b", t))
-    referencia_extremo = bool(re.search(
-        r"\b(?:ao|no|para|pro|pra)?\s*(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
-        t,
-    ))
-    if menciona_volume or (contexto_volume_ativo and referencia_extremo) or any(p in t for p in ["mudo", "mute", "muta", "mutar", "desmuta", "desmutar", "sem som", "silencio", "silêncio", "mais alto", "mais baixo"]):
-        m_vol = re.search(r"\b(?:volume|som)\s*(?:em|no|para|pra)?\s*(\d{1,3})\s*%?\b", t)
-        if m_vol:
-            nivel = max(0, min(100, int(m_vol.group(1))))
+    nivel_extremo = nivel_ajuste_extremo_volume(t)
+    if nivel_extremo is not None and (menciona_volume or contexto_volume_ativo):
+        return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=nivel_extremo)}
+    if menciona_volume or any(p in t for p in ["mudo", "mute", "muta", "mutar", "desmuta", "desmutar", "sem som", "silencio", "silêncio", "mais alto", "mais baixo"]):
+        fonte_valor = normalizar_texto_basico(texto_original or t)
+        m_vol = re.search(r"\b(?:volume|som)\s*(?:em|no|para|pra)?\s*(\d{1,3})\s*%?\b", fonte_valor)
+        recurso_volume = re.search(r"\b(?:volume|som)\b", fonte_valor)
+        intervalo_valor = m_vol.span(1) if m_vol else (
+            localizar_quantidade_ajuste(fonte_valor, apos_recurso=recurso_volume.end())
+            if recurso_volume else None)
+        if intervalo_valor is not None:
+            ajuste = interpretar_relacao_valor_ajuste(fonte_valor, intervalo_valor=intervalo_valor)
+            if ajuste is None:
+                return None
+            permitidas = {"", "pontos percentuais"} if ajuste.modo == "relativo" else {"", "%", "por cento"}
+            if ajuste.unidade not in permitidas:
+                return None
+            if ajuste.modo == "relativo":
+                if not 1 <= ajuste.valor <= 100:
+                    return None
+                return {"intent": "VOLUME", "params": params(
+                    acao="up" if ajuste.direcao == "aumentar" else "down", delta=ajuste.valor)}
+            nivel = max(0, min(100, ajuste.valor))
             return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=nivel)}
-        if re.search(r"\b(?:maximo|máximo)\b|\bno\s+talo\b", t):
-            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=100)}
-        if re.search(r"\b(?:minimo|mínimo)\b", t):
-            return {"intent": "VOLUME", "params": params(acao="set", nivel_volume=0)}
+        if menciona_volume and re.search(r"\d", fonte_valor):
+            return None  # Magnitude não lida não pode virar o passo padrão.
         if any(p in t for p in ["desmuta", "desmutar", "tira do mudo", "com som"]):
             return {"intent": "VOLUME", "params": params(acao="unmute")}
         if any(p in t for p in ["mudo", "mute", "muta", "mutar", "sem som", "silencio", "silêncio", "silenciar"]):
@@ -1588,24 +1655,29 @@ def detectar_musica_ou_playlist_direta(
     # a playlist homônima.
     if texto_pede_opiniao(bruto or t):
         return None
-    if re.search(r"\b(?:volume|som)\b", t) and re.search(
+    verbo_musical = _VERBO_MUSICAL_NOMEADO
+    operando, tipo_operando, literal_operando = _ler_operando_musical_nomeado(base)
+    # A cópia normalizada não contém delimitadores. Ler a fonte somente para
+    # preservar um operando literal da mesma moldura, sem reclassificar o ato.
+    if operando:
+        alvo_bruto, tipo_bruto, literal_bruto = _ler_operando_musical_nomeado(bruto, permitir_prefixo=True)
+        if literal_bruto:
+            operando, tipo_operando, literal_operando = alvo_bruto, tipo_bruto, True
+    if nivel_ajuste_extremo_volume(t) is not None:
+        return None
+    if not tipo_operando and not literal_operando and re.search(r"\b(?:volume|som)\b", t) and re.search(
         r"\b(?:maximo|máximo|minimo|mínimo|mudo|mute|aumenta|aumentar|abaixa|baixar|diminui|diminuir)\b",
         t,
     ):
         return None
     params = params_cb if callable(params_cb) else (lambda **kwargs: kwargs)
     detectar_playlist = detectar_playlist_nome_direto if callable(detectar_playlist_nome_direto) else (lambda valor: "")
-    normalizar_musica = normalizar_query_musical if callable(normalizar_query_musical) else (lambda valor: str(valor or "").strip())
-    verbo_musical = (
-        r"(?:coloque|coloca|colocar|toca|toque|tocar|ouvir|"
-        r"escuta|escute|escutar|abre|abra|abrir)"
-    )
 
     def resultado_busca(query: str) -> Dict[str, Any] | None:
         consulta = re.sub(r"\s+", " ", str(query or "")).strip()
         if not consulta:
             return None
-        categoria_referida = categoria_referencia_preferencia_pessoal(
+        categoria_referida = "" if literal_operando else categoria_referencia_preferencia_pessoal(
             consulta,
             categoria="música",
         )
@@ -1643,8 +1715,7 @@ def detectar_musica_ou_playlist_direta(
         t,
     )
     if convite_musical and "playlist" not in t:
-        q = str(convite_musical.group(1) or "").strip()
-        q = re.sub(r"^(?:musica|música|som|faixa)\s+", "", q).strip()
+        q = operando
         if q:
             return resultado_busca(q)
 
@@ -1658,14 +1729,12 @@ def detectar_musica_ou_playlist_direta(
             return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
 
         if any(x in t for x in ["música", "musica", "youtube", "no youtube", "no yt", "no you tube"]):
-            q = re.sub(rf"^\s*{verbo_musical}\b\s*", "", t).strip()
-            q = re.sub(r"^(a|o|as|os|uma|um|essa|esse|essa música|essa musica|essa canção|essa cancao)\s+", "", q).strip()
+            q = operando
             if q:
                 return resultado_busca(q)
 
         if not any(x in t for x in ["playlist", "música", "musica", "youtube", "yt"]):
-            q = re.sub(rf"^\s*{verbo_musical}\b\s*", "", t).strip()
-            q = re.sub(r"^(a|o|as|os|uma|um|essa|esse)\s+", "", q).strip()
+            q = operando
             if q:
                 return resultado_busca(q)
 
@@ -1676,11 +1745,7 @@ def detectar_musica_ou_playlist_direta(
         return {"intent": "PLAYLIST_PLAY", "params": params(nome_playlist=pl_direta)}
 
     if re.match(rf"^\s*{verbo_musical}\b", t) and "playlist" not in t:
-        q = re.sub(rf"^\s*{verbo_musical}\b", " ", base).strip()
-        q = re.sub(r"^(a|o|uma|um)\s+", "", q).strip()
-        q = q.replace("música", " ").replace("musica", " ").replace("no youtube", " ").replace("na youtube", " ")
-        q = re.sub(r"\s+", " ", q).strip()
-        q = normalizar_musica(q)
+        q = operando
         if q and q not in {"playlist"}:
             return resultado_busca(q)
 

@@ -118,6 +118,8 @@ class DiretorPresencaRuntime:
         habilitado: bool = True,
         intervalo_ciclo_s: float = 15.0,
         stop_event: threading.Event | None = None,
+        candidato_observado_getter: Callable[[], Mapping[str, Any]] | None = None,
+        validar_observacao: Callable[[Mapping[str, Any]], bool] | None = None,
     ) -> None:
         self.estado_get = estado_get
         self.estado_set = estado_set
@@ -141,6 +143,8 @@ class DiretorPresencaRuntime:
         self.stop_event = stop_event or threading.Event()
         self._lock = threading.RLock()
         self._running = False
+        self.candidato_observado_getter = candidato_observado_getter
+        self.validar_observacao = validar_observacao
 
     def _falha(self, codigo: str, erro: BaseException) -> None:
         if callable(self.registrar_falha):
@@ -337,6 +341,8 @@ class DiretorPresencaRuntime:
                 "motivo": motivo,
                 "dominio": dominio,
                 "categoria": categoria,
+                **({"observacao_corporal":dict(dados["observacao_corporal"])}
+                   if isinstance(dados.get("observacao_corporal"),Mapping) else {}),
             },
             "confianca": float(dados.get("confianca") or 0.0),
             "timestamp": agora,
@@ -574,6 +580,8 @@ class DiretorPresencaRuntime:
                         ao_iniciar=ao_iniciar_fonte,
                         ao_concluir=ao_concluir,
                         ao_materializar_fala=ao_materializar_fala,
+                        **({"validar_vigencia":lambda: self.validar_observacao(dados)}
+                           if callable(self.validar_observacao) and "observacao_corporal" in dados else {}),
                     )
                     or {}
                 )
@@ -748,6 +756,7 @@ class DiretorPresencaRuntime:
                 "acao_proposta": dados.get("acao_proposta"),
                 "executavel": bool(dados.get("executavel")),
                 "reversivel": bool(dados.get("reversivel")),
+                "assunto": str(dados.get("assunto") or ""),
             }
             decisao_iniciativa: Mapping[str, Any] = {}
             if callable(self.registrar_oportunidade):
@@ -981,6 +990,12 @@ class DiretorPresencaRuntime:
 
     def executar_ciclo(self) -> dict[str, Any]:
         self.registrar_silencio_pendente()
+        # O produtor só oferece fatos. Este mesmo diretor conserva orçamento,
+        # prioridade, feedback e receipt de entrega; não roda na thread serial.
+        if callable(self.candidato_observado_getter):
+            candidato = dict(self.candidato_observado_getter() or {})
+            if candidato:
+                return self.considerar(candidato)
         agora = float(self.clock())
         with self._lock:
             estado = self._estado()

@@ -1,0 +1,72 @@
+[
+  {
+    "caso": "parede_borda_resolvida",
+    "exit": 0,
+    "resultado": "PAREDE_BORDA_GREEN: borda corta busca; tres leituras seguras admitem outro episodio de parede"
+  },
+  {
+    "caso": "parede_borda_stop",
+    "exit": 0,
+    "resultado": "PAREDE_BORDA_GREEN: borda corta busca; tres leituras seguras admitem outro episodio de parede"
+  },
+  {
+    "caso": "pausa_ativa",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_descanso",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_lease",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_stop",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_borda",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_histerese",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "pausa_falha",
+    "exit": 0,
+    "resultado": "PAUSA_GREEN: corta sem concessao, reavalia parede, preserva STOP e limite da borda"
+  },
+  {
+    "caso": "parede",
+    "exit": 0,
+    "resultado": "PAREDE_GREEN: busca, descanso e nova tentativa autorizada"
+  },
+  {
+    "caso": "transicao",
+    "exit": 0,
+    "resultado": "TRANSICAO_GREEN: borda resolvida admite busca de parede com tres amostras novas"
+  },
+  {
+    "caso": "medo",
+    "exit": 0,
+    "resultado": "MEDO_GREEN: quatro recuos finitos com pausas, pavor e parada"
+  },
+  {
+    "caso": "vetos",
+    "exit": 0,
+    "resultado": "VETOS_GREEN: sem concessao, STOP e leitura velha cortam recuos"
+  },
+  {
+    "caso": "som",
+    "exit": 0,
+    "resultado": "SONS_GREEN: quatro contornos, mesmo duty, finitos, timer dos motores preservado"
+  }
+]

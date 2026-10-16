@@ -1,0 +1,6006 @@
+{
+  "diagnostico_somente_leitura": true,
+  "protecao_calibrada": false,
+  "leituras": [
+    {
+      "ts": 1791982959.5155737,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 125,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982959.7234747,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 118,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982959.9244454,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 117,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982960.1357393,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 119,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982960.2443252,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 120,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982960.4446933,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 118,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982960.6625805,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 132,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982960.7731235,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982960.9844775,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982961.2042854,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982961.3140934,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982961.532405,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982961.749387,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 189,
+        "idade_ms": 32,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 199,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982961.8582792,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 159,
+        "idade_ms": 68,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 143,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982962.0750005,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 158,
+        "idade_ms": 32,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 148,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982962.2753248,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982962.484596,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982962.5848715,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982962.8031883,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.0166476,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.224166,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.3296058,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.551188,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.767239,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982963.9832404,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982964.093088,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 163,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 163,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982964.294373,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 134,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 130,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982964.3946927,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 138,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 137,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982964.6065247,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 132,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 119,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982964.8251035,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 117,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 119,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982964.934082,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 109,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 119,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982965.1431606,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 113,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 125,
+        "idade_ms": 81,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982965.3598657,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 116,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 123,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982965.5641742,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 118,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 122,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982965.6733062,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 114,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 125,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982965.8941655,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 128,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 143,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.1135912,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 155,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.3315215,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 148,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.4408607,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 145,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.6571622,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 149,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.7668571,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 149,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982966.9842532,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 150,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982967.2042546,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 145,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 133,
+        "idade_ms": 81,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982967.3119211,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 140,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 125,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982967.5330553,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 145,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 135,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982967.6419997,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 143,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 136,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982967.86025,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 140,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 133,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982968.0771992,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 145,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 131,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982968.1854267,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 140,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982968.3941066,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 131,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982968.5944471,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 135,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982968.8036015,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 136,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982968.9065375,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 130,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982969.1136093,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 133,
+        "idade_ms": 81,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982969.3203473,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 127,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982969.5333474,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 127,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982969.734454,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 128,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982969.9441063,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 128,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982970.0523431,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 148,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 129,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982970.2717793,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 149,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982970.4841259,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 134,
+        "idade_ms": 32,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 133,
+        "idade_ms": 72,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982970.5939813,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 137,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982970.813601,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 141,
+        "idade_ms": 68,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982971.033181,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 139,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982971.1405985,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 140,
+        "idade_ms": 73,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982971.3590431,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 151,
+        "idade_ms": 68,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 175,
+        "idade_ms": 32,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982971.575153,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982971.6754365,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982971.8777177,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.0843916,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.2933013,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.3949888,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.6124036,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.8314002,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982972.9396112,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 100,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 64,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982973.1553419,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 74,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982973.373363,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982973.4817405,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982973.6862226,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982973.8944237,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.107681,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.215067,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.4193013,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.5278683,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.729926,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982974.9421363,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982975.1606622,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 81,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982975.3778827,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982975.4857132,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982975.704405,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982975.923103,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 79,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982976.0301397,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 72,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982976.233068,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 73,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982976.4449065,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 68,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982976.6598494,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 68,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982976.774443,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 64,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 115,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982976.984551,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 62,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 94,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982977.2041738,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 66,
+        "idade_ms": 41,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 85,
+        "idade_ms": 81,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982977.314193,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 65,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982977.5333605,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 61,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 82,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982977.751848,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 61,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 82,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982977.859753,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 66,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 81,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982978.0753007,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982978.2840054,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 87,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982978.500829,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982978.7232885,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 82,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982978.9406476,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 82,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982979.1573672,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 71,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 83,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982979.2670782,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 73,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982979.4840064,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 71,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 87,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982979.594112,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 72,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 86,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982979.8119733,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 71,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 83,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.024752,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 68,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 81,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.1250331,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 61,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.3342576,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 58,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 83,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.4440796,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 55,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 83,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.6626763,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 57,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 81,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.771175,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 55,
+        "idade_ms": 36,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 83,
+        "idade_ms": 76,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982980.9841828,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 58,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "VALIDA",
+        "mm": 84,
+        "idade_ms": 36,
+        "status": 0
+      }
+    },
+    {
+      "ts": 1791982981.1929958,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 58,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      }
+    },
+    {
+      "ts": 1791982981.3039145,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 55,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982981.521762,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 56,
+        "idade_ms": 76,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982981.6308854,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 58,
+        "idade_ms": 32,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982981.844455,
+      "frente": {
+        "estado": "VALIDA",
+        "mm": 62,
+        "idade_ms": 68,
+        "status": 0
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.0631514,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.1743972,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.3916855,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.6107044,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.7190564,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982982.9364927,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.155477,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.2645068,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.4746091,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.6749763,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.886423,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982983.9929738,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982984.19585,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982984.400555,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982984.617451,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982984.7242527,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982984.9433138,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982985.1602206,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982985.375218,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 77,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982985.4842052,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982985.7034934,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982985.8130095,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.0241086,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.2247388,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.4416547,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.5541403,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.7572627,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982986.8636,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.0841548,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.1932573,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.4105577,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.5204444,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.7250457,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982987.940806,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.0518615,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.2703764,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.3744645,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.5940804,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.8141644,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982988.9233782,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.1405673,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.2500677,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.4666495,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.5764236,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.795059,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 72,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982989.904189,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982990.1065364,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982990.3262796,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982990.5447514,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982990.6451797,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982990.853152,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.0543084,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.2721317,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.380964,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 69,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.5942774,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.8032174,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982991.9131331,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.124362,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.3293524,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.4432266,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.6601677,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.8743484,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982992.9844975,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982993.204392,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982993.4233267,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982993.5342336,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982993.7508636,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 72,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982993.9696553,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982994.0782268,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982994.3006382,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982994.517231,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982994.733176,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982994.8419845,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.0453598,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.2625062,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 82,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.464545,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.5740387,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.7744853,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982995.9759786,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982996.1880925,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982996.3015625,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982996.5158432,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982996.7342982,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982996.9365468,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982997.0475962,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982997.265692,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982997.481825,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 91,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982997.5835497,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982997.8044572,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.0243788,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.127265,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.3339548,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.5508497,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.6607428,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982998.877895,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.0943494,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.2045124,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.4244046,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 93,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.6419406,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.8596203,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791982999.9686394,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983000.1871862,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983000.406147,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983000.5145252,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983000.73321,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983000.9353921,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.0453658,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.2539794,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.35434,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 85,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 43,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.5547075,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.7703981,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983001.8759627,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.0940173,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.2033558,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.4230525,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.6333628,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.7344236,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983002.9442618,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983003.164482,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983003.369461,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983003.5790455,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983003.6808333,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983003.8837495,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.0843267,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.193209,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.4108558,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.5205283,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.7248151,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983004.938599,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.047961,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.265216,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.3741333,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.5746002,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.7749784,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983005.8753076,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.0844736,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.290076,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.394286,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.6132183,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.723641,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983006.9433274,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.0509384,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.2690127,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.3782732,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.594216,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.8134894,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983007.9219768,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.138492,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.2474647,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.466212,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.6743062,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.7780764,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983008.9840388,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983009.1933541,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983009.3045456,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983009.5193033,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 83,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983009.7350745,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983009.844214,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.0641937,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.1744714,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.3938856,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.610126,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.8280778,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983010.935033,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983011.151353,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983011.368917,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983011.5828907,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983011.6939187,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983011.9111722,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983012.1251438,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983012.3342474,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 71,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 34,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983012.4401267,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 69,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983012.6580906,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983012.8760512,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 72,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.0932822,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.3083742,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.4122858,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.6245418,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.8342335,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 81,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983013.9411368,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983014.162936,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983014.3744066,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983014.4844763,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983014.7045708,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983014.9242096,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983015.033014,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983015.2510786,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983015.4677124,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983015.5784147,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 93,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983015.7987382,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.0155218,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.123486,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.333545,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.5429654,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.7463408,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983016.855339,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 88,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 42,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.0650637,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 84,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.269408,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.3701937,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.586313,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 85,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 43,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.803104,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983017.9113367,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 80,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983018.1245935,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983018.3433933,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983018.4541726,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983018.6723783,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983018.8920975,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.0011506,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.2184088,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.4343207,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.634709,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 38,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 75,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.8364377,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 70,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 33,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983019.9435732,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 69,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983020.1580014,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983020.2719257,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983020.4845119,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983020.704157,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983020.9219031,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983021.1374884,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983021.344288,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983021.5537448,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983021.6636353,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 91,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983021.8674772,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.0788684,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.1798863,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.3940694,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.6109052,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.827754,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983022.935798,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983023.1519608,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983023.3683896,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983023.470949,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983023.6933956,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 46,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 91,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983023.9112966,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.018859,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.2343907,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.4544163,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.564504,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.7824225,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983024.999857,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.1091735,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.3264635,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 41,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 86,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.5441303,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 82,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.6446085,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.8533306,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983025.9542923,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983026.1616662,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 79,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983026.374464,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983026.484387,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 78,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983026.7035828,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983026.8143883,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.032273,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.2513633,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.358782,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.5779622,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.7973053,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 73,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983027.9065886,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983028.1238978,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983028.3255446,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983028.5344124,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983028.6346867,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983028.8350089,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.0376499,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.2543173,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.3620687,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.5775733,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.7845044,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 37,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 73,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983029.8935747,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983030.1103344,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983030.3295574,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983030.4402223,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 68,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983030.65734,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 136,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 32,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983030.8751702,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983031.0840037,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983031.2844896,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 4
+      }
+    },
+    {
+      "ts": 1791983031.4931388,
+      "frente": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 76,
+        "status": 2
+      },
+      "borda": {
+        "estado": "INVALIDA",
+        "mm": null,
+        "idade_ms": 36,
+        "status": 4
+      }
+    }
+  ]
+}

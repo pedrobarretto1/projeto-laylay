@@ -10,6 +10,7 @@ import re
 from typing import Any, Callable, Dict, Mapping
 
 from mente_laylay.integracao.registro_iot import PortaIoT
+from mente_laylay.cognicao.gramatica_operacional import tipo_recurso_pedido_direto, candidato_respeita_tipo_recurso
 
 from mente_laylay.arquivos.roteador_arquivos import detectar_intencao_arquivos
 from mente_laylay.cognicao.evidencia_operacional import (
@@ -18,6 +19,7 @@ from mente_laylay.cognicao.evidencia_operacional import (
     detectar_consulta_lista_iot,
 )
 from mente_laylay.autonomia.roteador_deterministico import (
+    corrigir_verbo_operacional_digitado,
     detectar_abrir_app_ou_site,
     detectar_confirmacao_porteiro,
     detectar_clima,
@@ -56,7 +58,7 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     selecionar_referente_saliente,
 )
 from mente_laylay.memoria_mental.contexto_imediato import (
-    resolver_continuacao_operacional_confirmada, texto_pede_ajuste_numerico_contextual,
+    resolver_continuacao_operacional_confirmada, texto_pede_ajuste_parametrico_contextual,
 )
 
 
@@ -116,18 +118,25 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     # mais abaixo podem remover justamente o ``não`` ou a moldura ``como eu
     # faria``; uma ação física jamais deve ser autorizada a partir desse texto
     # já reescrito.
+    tipo_pedido = tipo_recurso_pedido_direto(texto)
+    def compativel(candidato):
+        return bool(isinstance(candidato, dict) and candidato.get("intent")
+                    and candidato_respeita_tipo_recurso(candidato, tipo_pedido))
     bloqueio_iot_original = bloqueia_controle_iot_por_modalidade(texto)
     # Entidades do corpo são resolvidas antes do filtro de conversa curta.
     # A autoridade continua no turno/árbitro e é validada pelo executor.
     candidato_corpo = detectar_intencao_corpo(texto)
-    if candidato_corpo:
+    if compativel(candidato_corpo):
         return candidato_corpo
 
-    def _candidato_iot_seguro(texto_detector: str) -> Dict[str, Any] | None:
+    def _candidato_iot_seguro() -> Dict[str, Any] | None:
+        # Reusar correção/moldura canônicas sem a projeção que apaga sinais.
+        # A guarda de autoridade acima continua vinculada à fala original.
+        fonte_iot, _ = normalizar_pedido_natural(corrigir_verbo_operacional_digitado(texto))
         candidato = _call(
             ctx,
             "detectar_intencao_iot",
-            texto_detector,
+            fonte_iot,
             _get(ctx, "mente_integrada_estado", {}),
         )
         if not isinstance(candidato, dict):
@@ -135,17 +144,20 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         intent = str(candidato.get("intent") or "").upper().strip()
         if intent == "IOT_CONTROL" and bloqueio_iot_original:
             return None
-        return candidato
+        return candidato if compativel(candidato) else None
 
     # Consulta objetiva e sem efeito colateral. Ela não depende do runtime IoT
     # já ter sido injetado e vence os filtros genéricos de pergunta/conversa.
     consulta_lista_iot = detectar_consulta_lista_iot(texto)
-    if consulta_lista_iot:
+    if compativel(consulta_lista_iot):
         return consulta_lista_iot
 
     mente_previa = _get(ctx, "mente_integrada_estado", {})
+    candidato_email = _call(ctx, "detectar_email", texto)
+    if compativel(candidato_email):
+        return candidato_email
     elipse_espacial = _detectar_elipse_espacial_confirmada(texto, mente_previa)
-    if elipse_espacial:
+    if compativel(elipse_espacial):
         return elipse_espacial
 
     ultimo_intent_previo = str(
@@ -178,21 +190,13 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     contexto_musical_por_retrato = tipo_referencia_retrato in {
         "musica", "música", "midia", "playlist", "playlist_laylay",
     }
-    texto_previo = str(texto or "").casefold()
-    if ultimo_intent_previo == "VOLUME" and re.search(
-        r"\b(?:aumenta|sobe|coloca|deixa|abaixa|diminui)?\b.*\b(?:maximo|máximo|minimo|mínimo)\b|\bno\s+talo\b",
-        texto_previo,
-    ):
-        nivel = 0 if re.search(r"\b(?:minimo|mínimo)\b", texto_previo) else 100
-        return {"intent": "VOLUME", "params": {"acao": "set", "nivel_volume": nivel, "referencia_contextual": True}}
-
     sugestao_indireta = _call(
         ctx,
         "detectar_sugestao_indireta",
         texto,
         _get(ctx, "mente_integrada_estado", {}),
     )
-    if isinstance(sugestao_indireta, dict):
+    if compativel(sugestao_indireta):
         return sugestao_indireta
 
     contexto_jogo = dict(_call(ctx, "modo_jogo_contexto", default={}) or {})
@@ -200,7 +204,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         _call(ctx, "visao_jogo_tem_analise_recente", default=False)
     )
     pedido_visao_jogo = detectar_pedido_visao_jogo(texto, contexto_jogo)
-    if pedido_visao_jogo:
+    if compativel(pedido_visao_jogo):
         return pedido_visao_jogo
 
     # O detector IoT conhece aliases, capacidades e parâmetros reais. Ele deve
@@ -220,7 +224,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         texto_normalizado_previo,
     ))
     candidato_iot_leitura = (
-        _candidato_iot_seguro(texto_operacional_iot)
+        _candidato_iot_seguro()
         if not contexto_musical_por_retrato or iot_explicito_na_fala
         else None
     )
@@ -231,7 +235,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     ):
         return candidato_iot_leitura
     if autoriza_candidato_iot_direto(texto_operacional_iot, modalidade=modalidade_iot):
-        candidato_iot = candidato_iot_leitura or _candidato_iot_seguro(texto_operacional_iot)
+        candidato_iot = candidato_iot_leitura or _candidato_iot_seguro()
         if isinstance(candidato_iot, dict):
             return candidato_iot
 
@@ -261,7 +265,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         playlist_laylay_recente=playlist_laylay_previa,
         detectar_nome_direto=_get(ctx, "detectar_playlist_laylay_nome_direto"),
     )
-    if isinstance(candidato_playlist_laylay, dict):
+    if compativel(candidato_playlist_laylay):
         intent_laylay = str(candidato_playlist_laylay.get("intent") or "").upper()
         params_laylay = dict(candidato_playlist_laylay.get("params") or {})
         alvo_laylay = str(
@@ -296,7 +300,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     # Perguntas naturais de consulta precisam chegar aqui antes dos filtros
     # genéricos de conversa, sem conceder nenhuma operação de escrita.
     consulta_recurso = _call(ctx, "resolver_consulta_recurso_local", texto)
-    if isinstance(consulta_recurso, dict):
+    if compativel(consulta_recurso):
         return consulta_recurso
 
     # Consultas objetivas de leitura não precisam de autorização operacional e
@@ -311,6 +315,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         isinstance(consulta_email, dict)
         and str(consulta_email.get("intent") or "").upper() == "EMAIL_READ"
         and modalidade_iot != "deliberativo"
+        and compativel(consulta_email)
     ):
         return consulta_email
 
@@ -319,7 +324,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         params_cb=lambda **kwargs: kwargs,
         estado_mental=mente_previa,
     )
-    if consulta_clima and modalidade_iot != "deliberativo":
+    if compativel(consulta_clima) and modalidade_iot != "deliberativo":
         return consulta_clima
 
     # Uma gramática contextual já resolveu o referente e o novo parâmetro.
@@ -329,11 +334,9 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         texto, mente_previa if isinstance(mente_previa, Mapping) else {},
         normalizar_texto=_get(ctx, "normalizar_texto"),
     )
-    if continuacao_confirmada:
+    if compativel(continuacao_confirmada):
         return continuacao_confirmada
-    if texto_pede_ajuste_numerico_contextual(
-        _call(ctx, "normalizar_texto", texto, default=texto)
-    ):
+    if texto_pede_ajuste_parametrico_contextual(texto):
         # Sem vínculo vigente, essa atribuição não vira um título em outro
         # domínio. Ausência de candidato deixa esclarecimento/conversa ao owner.
         return None
@@ -351,8 +354,9 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             _call(ctx, "contexto_musical_ativo", default=False)
         ) or contexto_musical_por_recibo or contexto_musical_por_retrato,
         contexto_volume_ativo=ultimo_intent_previo == "VOLUME",
+        texto_original=texto,
     )
-    if isinstance(candidato_midia_previo, dict):
+    if compativel(candidato_midia_previo):
         intent_midia_previo = str(
             candidato_midia_previo.get("intent") or ""
         ).upper().strip()
@@ -373,7 +377,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         texto_normalizado_previo,
         params_cb=lambda **kwargs: kwargs,
     )
-    if consulta_abas and modalidade_iot != "deliberativo":
+    if compativel(consulta_abas) and modalidade_iot != "deliberativo":
         sobrevivente = selecionar_aba_sobrevivente_fechamento_ordinal(
             dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
             texto=texto_normalizado_previo,
@@ -398,7 +402,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
         params_cb=lambda **kwargs: kwargs,
     )
-    if continuacao_resultado_web:
+    if compativel(continuacao_resultado_web):
         return continuacao_resultado_web
 
     # ``Fecha a primeira`` seleciona a primeira das aberturas consecutivas
@@ -408,7 +412,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         dict(mente_previa or {}) if isinstance(mente_previa, Mapping) else {},
         texto=texto_normalizado_previo,
     )
-    if fechamento_ordinal:
+    if compativel(fechamento_ordinal):
         return fechamento_ordinal
 
     # O roteador de arquivos possui marcadores locais mais específicos. Ele
@@ -425,6 +429,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         isinstance(consulta_arquivo, dict)
         and str(consulta_arquivo.get("intent") or "").upper()
         in {"FILE_SEARCH", "FILE_OPEN_RESULT"}
+        and compativel(consulta_arquivo)
     ):
         return consulta_arquivo
 
@@ -442,6 +447,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         isinstance(consulta_web, dict)
         and str(consulta_web.get("intent") or "").upper() == "SEARCH"
         and modalidade_iot != "deliberativo"
+        and compativel(consulta_web)
     ):
         return consulta_web
 
@@ -449,7 +455,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         texto_normalizado_previo,
         params_cb=lambda **kwargs: kwargs,
     )
-    if consulta_aprendizados:
+    if compativel(consulta_aprendizados):
         return consulta_aprendizados
 
     referente_atual = selecionar_referente_saliente(
@@ -468,7 +474,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
             params_cb=lambda **kwargs: kwargs,
             contexto_email_ativo=True,
         )
-        if seguimento_email:
+        if compativel(seguimento_email):
             return seguimento_email
 
     preparo = preparar_entrada_deterministica(
@@ -557,7 +563,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         )
 
     detectores: list[Callable[[], Dict[str, Any] | None]] = [
-        lambda: _candidato_iot_seguro(t),
+        _candidato_iot_seguro,
         lambda: detectar_url_visual(t, bruto, params_cb=params),
         # Posicionamento espacial e organizacao da area de trabalho precisam
         # vencer musica e abertura generica. "Steam na esquerda" descreve uma
@@ -621,6 +627,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
                 or contexto_musical_por_retrato
             ),
             contexto_volume_ativo=ultimo_intent == "VOLUME",
+            texto_original=texto,
         ),
         lambda: detectar_playlist_laylay(
             t,
@@ -645,7 +652,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         ),
         lambda: detectar_janela_explicita(t, t_sem_destino, params_cb=params),
         lambda: detectar_abrir_app_ou_site(
-            t_sem_destino,
+            bruto_sem_destino,
             params_cb=params,
             extrair_intencao_abrir_app=_get(ctx, "extrair_intencao_abrir_app"),
         ),
@@ -681,7 +688,7 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
 
     for detector in detectores:
         resultado = detector()
-        if resultado:
+        if resultado and compativel(resultado):
             # Invariante final: nenhum detector atual ou futuro consegue
             # contornar a modalidade original de um controle físico.
             if (
@@ -754,6 +761,7 @@ class DeteccaoDeterministicaRuntime:
                     return {"intent": "AGENDAR_ACAO", "params": params}
 
         nomes = (
+            "_email_detectar",
             "_normalizar_texto_com_apelidos", "_texto_conversa_casual_sem_acao",
             "_texto_bloqueia_playlist_agora", "_texto_social_curto", "_ignorar_token_solto",
             "_fluxo_prioritario_da_ia", "_texto_expresso_melhor_no_deterministico",
@@ -768,6 +776,7 @@ class DeteccaoDeterministicaRuntime:
         )
         contexto = {nome.lstrip("_"): ns.get(nome) for nome in nomes}
         contexto.update({
+            "detectar_email": ns.get("_email_detectar"),
             "normalizar_texto": ns.get("_normalizar_texto_com_apelidos"),
             "abas_sugeridas_fechar": ns.get("_abas_sugeridas_fechar", []),
             "mente_integrada_estado": dict(estado_mental) if estado_mental is not None else self.estado_getter() or {},

@@ -1,0 +1,90 @@
+................................................FF..F................... [ 53%]
+.......................FFFFFFFFFF..............................          [100%]
+================================== FAILURES ===================================
+______ test_composicao_instalada_resolve_executa_publica_e_conhece_corpo ______
+scripts\tests\test_corpo_motor.py:268: in test_composicao_instalada_resolve_executa_publica_e_conhece_corpo
+    assert retrato["intent"] == "CORPO_MOVER" and retrato["confirmado"] is True
+           ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+_ test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel _
+scripts\tests\test_corpo_motor.py:291: in test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel
+    assert hipotese and hipotese["tipo"] == "resultado_habilidade"
+E   assert (None)
+_ test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial _
+scripts\tests\test_corpo_motor.py:339: in test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial
+    assert ponte.chamadas == [(255, 255, 250), "STOP"]
+E   AssertionError: assert [(255, 255, 250)] == [(255, 255, 250), 'STOP']
+E     
+E     Right contains one more item: 'STOP'
+E     Use -v to get more diff
+---------------------------- Captured stdout call -----------------------------
+⚡ [ROTEADOR DETERMINISTICO-EXPLICITO [teste_corpo_composto-1]] {'intent': 'CORPO_MOVER', 'params': {'alvo': 'corpo', 'direcao': 'frente', 'pwm': 255, 'duracao_ms': 250}}
+⚠️ [COOPERAÇÃO:CADEIA] etapa não executada | indice=1 concluidas=0 trecho=ande para frente
+_______ test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro _______
+scripts\tests\test_som_corporal.py:283: in test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro
+    assert pedido["_laylay_tratamento_operacional"]["confirmado"] is False
+E   assert None is False
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-despausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-retoma a m\xfasica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-pausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-despausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-retoma a m\xfasica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-pausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-despausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-retoma a m\xfasica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+_ test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-pausa a musica] _
+scripts\tests\test_som_corporal.py:328: in test_receipt_midia_instalado_distingue_envio_sucesso_e_falha
+    assert chamadas and receipt["intent"] == "MEDIA_CONTROL"
+                        ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_motor.py::test_composicao_instalada_resolve_executa_publica_e_conhece_corpo
+FAILED scripts/tests/test_corpo_motor.py::test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissao_duravel
+FAILED scripts/tests/test_corpo_motor.py::test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial
+FAILED scripts/tests/test_som_corporal.py::test_executor_instalado_publica_falha_para_o_mesmo_rosto_sonoro
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-despausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-retoma a m\xfasica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[envio-pausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-despausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-retoma a m\xfasica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[sucesso-pausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-despausa a musica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-retoma a m\xfasica]
+FAILED scripts/tests/test_som_corporal.py::test_receipt_midia_instalado_distingue_envio_sucesso_e_falha[falha-pausa a musica]
+13 failed, 122 passed in 11.50s

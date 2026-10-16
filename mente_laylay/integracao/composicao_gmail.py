@@ -79,6 +79,26 @@ class ComposicaoGmailLaylayRuntime:
     def configurado(self) -> bool:
         return bool(self.runtime.configurado())
 
+    @property
+    def identidade_conta(self) -> str:
+        return self.runtime.identidade_conta
+
+    @property
+    def endereco_envio(self) -> str:
+        return self.runtime.mental.usuario
+
+    def consultar_mensagens(self, **filtros: Any) -> dict:
+        return self.runtime.consultar_mensagens(**filtros)
+
+    def ler_mensagem(self, referencia: dict) -> dict:
+        return self.runtime.ler_mensagem(referencia)
+
+    def alterar_mensagem(self, referencia: dict, acao: str) -> dict:
+        return self.runtime.alterar_mensagem(referencia, acao)
+
+    def enviar_rascunho(self, rascunho: dict) -> dict:
+        return self.runtime.enviar_rascunho(rascunho)
+
     def buscar_nao_lidos(self) -> list:
         return self.runtime.buscar_nao_lidos()
 

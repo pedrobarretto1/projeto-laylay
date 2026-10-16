@@ -1,0 +1,409 @@
+"""Experiência factual do executor, no estado e aprendizado compartilhados."""
+from __future__ import annotations
+
+from copy import deepcopy
+import math
+import threading
+import time
+from typing import Any, Callable, Mapping
+from uuid import uuid4
+import hashlib
+
+from mente_laylay.memoria_mental.decisao_observada import DecisaoObservada
+
+
+def _limitar_historico(historico: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Um histórico, duas cotas: telemetria não apaga o orçamento dos gestos."""
+    contagens = {False:0, True:0}
+    mantidos = []
+    for e in reversed(historico):
+        sensorial = e.get("tipo") == "episodio_sensorial"
+        if contagens[sensorial] < 12:
+            mantidos.append(e)
+            contagens[sensorial] += 1
+    return list(reversed(mantidos))
+
+
+class ExperienciaCorporalRuntime:
+    def __init__(self, *, estado: Any, diagnostico_getter: Callable[[], Mapping[str, Any]],
+                 relatar_falha: Callable[..., Any] | None = None,
+                 clock: Callable[[], float] = time.time) -> None:
+        self.estado, self.diagnostico_getter = estado, diagnostico_getter
+        self.relatar_falha, self.clock = relatar_falha, clock
+        self.aprendizado: Any = None
+        self._ultimo_erro = ""
+        self._lock = threading.RLock()
+        self._consulta_sensorial: tuple[str, int, int] = ("", 0, 0)
+        self._inercial_anterior: tuple[str, str] = ("", "ESTAVEL")
+
+    def observar_sensores(self, diagnostico: Mapping[str, Any], *, perfil: str) -> dict[str, Any]:
+        """Consome GUARD/DIST do owner; não executa, não estima movimento."""
+        self.observar_inercial(diagnostico, perfil=perfil)
+        from mente_laylay.especialistas.percepcao_distancia import FASES_REFLEXO, RISCOS
+        sensores = diagnostico.get("sensores") or {}
+        p = sensores.get("protecao") or {}
+        sessao = str(diagnostico.get("sessao") or "")
+        consulta, incidente = sensores.get("consulta_id"), p.get("incidente_id")
+        fase, risco = p.get("fase"), p.get("risco")
+        if (self.estado is None or diagnostico.get("aplicacao_confirmada") is not True
+            or not sessao or sensores.get("origem") != "owner_usb_dist_guard"
+            or sensores.get("suportado") is not True or sensores.get("recente") is not True
+            or p.get("origem") != "executor_protecao_esp" or p.get("recente") is not True
+            or p.get("autoriza_execucao") is not False or risco not in RISCOS
+            or fase not in FASES_REFLEXO | {"PRONTA","BLOQUEADA","CONCLUIDA","CANCELADA","FALHA_PWM","ESPERA_BUSCA"}
+            or type(consulta) is not int or consulta <= 0
+            or type(incidente) is not int or incidente <= 0
+            or type(p.get("tentativa_busca")) is not int or not 0 <= p["tentativa_busca"] <= 4):
+            return {}
+        with self._lock:
+            anterior_sessao, anterior_consulta, anterior_incidente = self._consulta_sensorial
+            if sessao == anterior_sessao and (consulta <= anterior_consulta or incidente < anterior_incidente):
+                return {}
+            self._consulta_sensorial = (sessao, consulta, incidente)
+            identidade = "sensor_" + hashlib.sha256(f"{sessao}:{incidente}".encode()).hexdigest()[:24]
+            historico = self.estado.obter_copia("mental", "historico_corporal", [])
+            anterior = next((e for e in historico if e.get("id") == identidade), {})
+            # Um cancelamento herdado do handshake não é um incidente novo.
+            if not anterior and fase in {"PRONTA", "CANCELADA"}:
+                return {}
+            assinatura = (fase, risco, p["tentativa_busca"], p.get("vigia_ativa") is True)
+            if tuple(anterior.get("assinatura_observacao", ())) == assinatura:
+                return deepcopy(anterior)
+            agora = self.clock()
+            desfechos = {"ESPERA_BUSCA":"busca_em_espera", "BLOQUEADA":"protecao_bloqueada",
+                "CONCLUIDA":"reflexo_concluido", "CANCELADA":"reflexo_cancelado",
+                "FALHA_PWM":"falha_pwm", "PRONTA":"protecao_rearmada"}
+            resultado = desfechos.get(fase,"reflexo_em_andamento")
+            marcos = list(anterior.get("desfechos_observados") or [])
+            novo_marco = fase in desfechos and resultado not in marcos
+            if novo_marco:
+                marcos.append(resultado)
+            e = {**anterior, "id":identidade, "tipo":"episodio_sensorial", "origem":"executor_corpo",
+                "origem_intencao":"reflexo_firmware", "nome":"protecao_sensorial", "familia":"protecao_sensorial",
+                "perfil":perfil, "variante":0, "turno_id":"", "sessao":sessao,
+                "incidente_id":incidente, "consulta_id":consulta,
+                "iniciada_em":anterior.get("iniciada_em",agora), "ts":agora,
+                "fase":fase, "risco":risco, "risco_inicial_observado":anterior.get("risco_inicial_observado",risco),
+                "tentativa_busca":p["tentativa_busca"], "resultado":resultado,
+                "desfechos_observados":marcos, "assinatura_observacao":list(assinatura),
+                "observacao_confirmada":True, "recuperada_da_memoria":False, "confirmado":False, "parada_confirmada":False,
+                "movimentos_confirmados":0, "duracao_comandada_confirmada_ms":0,
+                "prova_deslocamento":False, "autoriza_execucao":False, "pertence_ao_turno_atual":False,
+                "evidencia":"DIST_GUARD_correlacionados", "leituras_observadas":deepcopy(sensores.get("leituras") or {}),
+                "transicoes_observadas":(list(anterior.get("transicoes_observadas") or []) +
+                    [{"fase":fase,"risco":risco,"tentativa":p["tentativa_busca"],"ts":agora}])[-12:]}
+            if novo_marco and resultado == "busca_em_espera":
+                e["espera_observada_em"] = agora
+            def publicar(mental):
+                h = list(mental.get("historico_corporal") or [])
+                h = [e if item.get("id")==identidade else item for item in h]
+                if not any(item.get("id")==identidade for item in h):
+                    h.append(e)
+                return {**mental, "historico_corporal":_limitar_historico(h), "experiencia_corporal":e}
+            self.estado.atualizar("mental",publicar)
+            if novo_marco and self.aprendizado is not None:
+                try:
+                    aprendido = self.aprendizado.registrar_evidencia(
+                        chave=f"corpo_sensorial:{perfil}:{e['risco_inicial_observado']}:{resultado}",
+                        tipo="episodio_sensorial_corporal", escopo="corpo_motor",
+                        valor={"risco":e["risco_inicial_observado"],"resultado":resultado,
+                            "descricao_humana":"fases observadas da proteção, sem medir deslocamento"},
+                        sinal=.5, origem="executor_corpo", evidencia=resultado,
+                        contexto={"perfil":perfil,"experiencia":e}, id_evento=f"sensorial:{identidade}:{resultado}")
+                    self._ultimo_erro = "" if aprendido is not None else "falha_persistencia_experiencia_sensorial"
+                except Exception as erro:
+                    self._falha("falha_aprendizado_sensorial",erro)
+            return deepcopy(e)
+
+    def observar_inercial(self, diagnostico: Mapping[str, Any], *, perfil: str) -> dict[str, Any]:
+        """Só transições medidas; hipótese de levantamento não vira fato de colo."""
+        i = diagnostico.get("imu") or {}
+        sessao = str(diagnostico.get("sessao") or "")
+        if (self.estado is None or diagnostico.get("aplicacao_confirmada") is not True or not sessao
+                or i.get("origem") != "imu_esp" or i.get("recente") is not True
+                or i.get("autoriza_execucao") is not False):
+            return {}
+        m = i.get("manuseio")
+        if m not in {"ESTAVEL", "INCLINADA", "TOMBADA", "MOVIMENTO_BRUSCO", "POSSIVEL_LEVANTAMENTO"}:
+            return {}
+        with self._lock:
+            anterior = self._inercial_anterior
+            self._inercial_anterior = (sessao, m)
+            if anterior == (sessao, m) or (anterior[0] != sessao and m == "ESTAVEL"):
+                return {}
+            e = {"id": "inercial_" + uuid4().hex, "tipo": "episodio_sensorial", "familia": "manuseio_inercial",
+                 "nome": "manuseio", "sessao": sessao, "perfil": perfil, "variante": 0, "turno_id": "",
+                 "ts": self.clock(), "resultado": m.lower(), "observacao_confirmada": True, "confirmado": False,
+                 "origem": "executor_corpo", "evidencia": "imu_esp_recente", "autoriza_execucao": False,
+                 "prova_deslocamento": False, "parada_confirmada": False, "movimentos_confirmados": 0,
+                 "duracao_comandada_confirmada_ms": 0,
+                 "leituras_observadas": {k: i.get(k) for k in ("modelo", "roll_graus", "pitch_graus", "yaw_relativo_graus")}}
+            self.estado.atualizar("mental", lambda mental: {**mental,
+                "historico_corporal": _limitar_historico(list(mental.get("historico_corporal") or []) + [e]),
+                "experiencia_corporal": e})
+            if self.aprendizado is not None:
+                try:
+                    self.aprendizado.registrar_evidencia(chave=f"corpo_inercial:{perfil}:{m}",
+                        tipo="episodio_sensorial_corporal", escopo="corpo_motor",
+                        valor={"observacao": m, "descricao_humana": "transição inercial observada; levantamento é hipótese"},
+                        sinal=.5, origem="executor_corpo", evidencia=e["evidencia"],
+                        contexto={"perfil": perfil, "experiencia": e}, id_evento=e["id"])
+                except Exception as erro:
+                    self._falha("falha_aprendizado_inercial", erro)
+            return deepcopy(e)
+
+    def contexto_sensorial(self, diagnostico: Mapping[str, Any], *, perfil: str) -> dict[str, Any]:
+        """Projeção factual da mesma história para raciocínio e ritmo."""
+        sensores = diagnostico.get("sensores") or {}
+        p = sensores.get("protecao") or {}
+        sessao = str(diagnostico.get("sessao") or "")
+        historico = self.estado.obter_copia("mental","historico_corporal",[]) if self.estado is not None else []
+        recentes = []
+        for e in historico:
+            ts = e.get("ts")
+            if (e.get("tipo")=="episodio_sensorial" and e.get("sessao")==sessao
+                and e.get("perfil")==perfil and not e.get("recuperada_da_memoria")
+                and type(ts) in {int,float} and math.isfinite(ts) and 0 <= self.clock()-ts <= 180):
+                recentes.append(e)
+        esperas = [e for e in recentes if "busca_em_espera" in e.get("desfechos_observados",[])]
+        return {"origem":"experiencia_sensorial_observada", "vigente":bool(
+                diagnostico.get("aplicacao_confirmada") is True and sensores.get("recente") is True
+                and sensores.get("suportado") is True and sensores.get("origem")=="owner_usb_dist_guard"
+                and p.get("origem")=="executor_protecao_esp" and p.get("recente") is True and sessao),
+            "episodios_recentes":len(recentes), "buscas_em_espera":len(esperas),
+            "ultima_espera_em":max((e.get("espera_observada_em",0) for e in esperas),default=0),
+            "segundos_ultima_espera":max(0,self.clock()-max(e.get("espera_observada_em",0) for e in esperas)) if esperas else None,
+            "fase_atual":p.get("fase",""), "risco_atual":p.get("risco",""),
+            "autoriza_execucao":False, "prova_deslocamento":False}
+
+    def _falha(self, codigo: str, erro: Exception) -> None:
+        self._ultimo_erro = codigo
+        try:
+            if callable(self.relatar_falha):
+                self.relatar_falha("corpo_motor", codigo, erro=erro)
+        except Exception:
+            pass
+
+    def conectar_aprendizado(self, aprendizado: Any) -> None:
+        self.aprendizado = aprendizado
+        # Recupera observações, nunca sessão ou concessão. Não substitui o vivo.
+        try:
+            if self.estado is None or self.estado.obter_copia("mental", "historico_corporal", []):
+                return
+            historico = []
+            for h in aprendizado.memoria.listar_hipoteses_aprendizado(limit=500):
+                if h.get("tipo") not in {"execucao_corporal", "episodio_sensorial_corporal"}:
+                    continue
+                for evento in aprendizado.memoria.listar_eventos_aprendizado(h["chave"], limit=3):
+                    e = (evento.get("contexto") or {}).get("experiencia")
+                    if isinstance(e, dict) and e.get("origem") == "executor_corpo":
+                        historico.append({**e, "recuperada_da_memoria": True, "pertence_ao_turno_atual": False})
+            historico = sorted(historico,key=lambda e:e.get("ts",0))
+            historico = _limitar_historico(sorted({e["id"]:e for e in historico if e.get("id")}.values(),key=lambda e:e["ts"]))
+            if historico:
+                self.estado.atualizar_campos("mental", historico_corporal=historico, experiencia_corporal=historico[-1])
+        except Exception as erro:
+            self._falha("falha_recuperacao_experiencia", erro)
+
+    def iniciar(self, *, nome: str, origem_intencao: str, perfil: str,
+                intencao_id: str = "", turno_id: str | None = None,
+                variante: int = 0, movimentos: tuple = (), familia: str = "",
+                decisao_origem: DecisaoObservada | None = None) -> dict[str, Any]:
+        mental = self.estado.retrato_dominio("mental") if self.estado is not None else {}
+        diag = self.diagnostico_getter()
+        ocorrencia = {"id": uuid4().hex, "origem": "executor_corpo", "nome": nome, "familia": familia or nome,
+                "origem_intencao": origem_intencao, "perfil": perfil,
+                "intencao_id": intencao_id, "turno_id": str(turno_id if turno_id is not None else (mental.get("turno_atual") or {}).get("id", "")),
+                "sessao": str(diag.get("sessao") or ""), "iniciada_em": self.clock(),
+                "variante": variante % 3, "movimentos": [list(m) for m in movimentos]}
+        if decisao_origem is not None:
+            if type(decisao_origem) is not DecisaoObservada:
+                raise ValueError("Fonte da decisão exige captura tipada anterior ao efeito.")
+            fonte = decisao_origem.como_dict()
+            if any(fonte[k] != ocorrencia[k] for k in ("intencao_id", "turno_id", "sessao")):
+                raise ValueError("Fonte da decisão não pertence à ocorrência.")
+            if fonte["registrada_em"] > ocorrencia["iniciada_em"]:
+                raise ValueError("Fonte da decisão não pode nascer depois da ocorrência.")
+            ocorrencia["decisao_origem"] = fonte
+        return ocorrencia
+
+    def registrar(self, ocorrencia: Mapping[str, Any], retorno: Mapping[str, Any],
+                  receipts: list[dict[str, Any]], *, parada: bool = False) -> dict[str, Any]:
+        if ocorrencia.get("origem") != "executor_corpo" or not ocorrencia.get("id"):
+            raise ValueError("experiência exige ocorrência criada pelo executor")
+        confirmado = bool(retorno.get("ok") is True and receipts and all(
+            r.get("ok") is True and r.get("parada_confirmada") is True
+            and (parada or r.get("aplicacao_pwm_confirmada") is True) for r in receipts))
+        cancelado = retorno.get("cancelado") is True or retorno.get("status") == "cancelado"
+        e = {**deepcopy(dict(ocorrencia)), "ts": self.clock(), "confirmado": confirmado,
+             "duracao_comandada_confirmada_ms": sum(r.get("duracao_ms", 0) for r in receipts
+                 if r.get("aplicacao_pwm_confirmada") is True and type(r.get("duracao_ms")) is int
+                 and 0 <= r["duracao_ms"] <= 5000),
+             "resultado": "parada_eletrica_confirmada" if confirmado and parada else "pwm_e_parada_confirmados" if confirmado else "interrompida" if cancelado else "gesto_nao_confirmado",
+             "motivo": str(retorno.get("motivo") or retorno.get("status") or "")[:120],
+             "movimentos_confirmados": sum(r.get("aplicacao_pwm_confirmada") is True for r in receipts),
+             "parada_confirmada": bool(receipts and receipts[-1].get("parada_confirmada") is True),
+             "prova_deslocamento": False, "autoriza_execucao": False}
+        if retorno.get("rotacao_medida_graus") is not None:
+            e.update(rotacao_medida_graus=retorno["rotacao_medida_graus"],
+                     prova_rotacao=retorno.get("prova_rotacao") is True,
+                     evidencia_rotacao="imu_relativa_turnend_e_sack" if retorno.get("prova_rotacao") else "giro_parcial_ou_interrompido")
+            if confirmado and e["prova_rotacao"]:
+                e["resultado"] = "giro_relativo_confirmado"
+        novo = False
+        with self._lock:
+            if self.estado is not None:
+                def publicar(mental):
+                    nonlocal novo, e
+                    historico = list(mental.get("historico_corporal") or [])
+                    if any(item.get("id") == e["id"] for item in historico):
+                        return mental
+                    novo = True
+                    e = {**e, "pertence_ao_turno_atual": bool(e["turno_id"] and str((mental.get("turno_atual") or {}).get("id", "")) == e["turno_id"])}
+                    return {**mental, "historico_corporal": _limitar_historico(historico + [e]), "experiencia_corporal": e}
+                self.estado.atualizar("mental", publicar)
+            else:
+                novo = True
+            if novo and self.aprendizado is not None:
+                try:
+                    aprendido = self.aprendizado.registrar_evidencia(
+                        chave=f"corpo_execucao:{e['perfil']}:{e['nome']}:{e['variante']}", tipo="execucao_corporal", escopo="corpo_motor",
+                        valor={"nome": e["nome"], "perfil": e["perfil"], "variante": e["variante"], "descricao_humana": "confirmação elétrica de gesto, sem observação de deslocamento"},
+                        sinal=0 if cancelado else .7 if confirmado else -.8, origem="executor_corpo", evidencia=e["resultado"],
+                        contexto={"perfil": e["perfil"], "experiencia": e}, id_evento=f"corpo_execucao:{e['id']}")
+                    if aprendido is None:
+                        self._ultimo_erro = "falha_persistencia_experiencia"
+                    elif self.estado is not None:
+                        self._ultimo_erro = ""
+                        self.estado.atualizar_campos("mental", aprendizado_corporal={
+                            "origem": "aprendizado_compartilhado", "chave": aprendido["chave"],
+                            "estado_hipotese": aprendido["status"], "confianca": aprendido["confianca"],
+                            "limite_evidencia": "confirmacao_eletrica_sem_deslocamento", "autoriza_execucao": False})
+                except Exception as erro:
+                    self._falha("falha_aprendizado_experiencia", erro)
+        return deepcopy(e)
+
+    def observar_feedback(self, texto: str, *, turno_id: str, referencia_id: str) -> bool:
+        from mente_laylay.cognicao.interpretador_continuidade import qualificar_feedback_corporal
+        qualificacao = qualificar_feedback_corporal(texto)
+        if not qualificacao or not self.aprendizado or self.estado is None or not turno_id or not referencia_id:
+            return False
+        historico = self.estado.obter_copia("mental", "historico_corporal", [])
+        e = next((e for e in reversed(historico) if e.get("id") == referencia_id), {})
+        diag = self.diagnostico_getter()
+        idade = self.clock() - float(e.get("ts", 0))
+        if not e or not math.isfinite(idade) or not 0 <= idade <= 60 or e.get("recuperada_da_memoria") or e.get("sessao") != diag.get("sessao"):
+            return False
+        if diag.get("aplicacao_confirmada") is not True:
+            return False
+        fonte = {"dominio": "corpo_motor", "experiencia_id": e["id"], "turno_id": turno_id,
+                 "perfil": e["perfil"], "nome": e["nome"], "variante": e["variante"], "autoriza_execucao": False}
+        identidade = f"corpo:{turno_id}:{e['id']}"
+        tipo, aceito = qualificacao["tipo"], qualificacao["aceito"]
+        registro = self.aprendizado.registrar_feedback_contextual(tipo=tipo, aceito=aceito,
+            resultado=texto, origem="corpo_motor", alvo=e["nome"], id_evento=identidade, proveniencia=fonte)
+        if registro is None:
+            return False
+        if tipo in {"aceitacao", "recusa"} and e.get("tipo") != "episodio_sensorial":
+            self.aprendizado.registrar_evidencia(
+                chave=f"{'corpo_preferencia' if aceito else 'corpo_evitacao'}:{e['perfil']}:{e.get('familia', e['nome'])}:{e['variante']}", tipo="preferencia_corporal", escopo="corpo_motor",
+                valor={"nome": e["nome"], "perfil": e["perfil"], "variante": e["variante"], "direcao": "favorecer" if aceito else "evitar", "descricao_humana": "avaliação do usuário sobre este gesto corporal"},
+                # Recusa é evidência a favor de evitar a variante; não falha
+                # da hipótese de preferência. O feedback genérico mantém sinal.
+                sinal=.45, origem="feedback_usuario", evidencia=texto,
+                contexto=fonte, id_evento=f"corpo_preferencia:{identidade}")
+        self.estado.atualizar_campos("mental", feedback_corporal={**fonte, "tipo": tipo, "aceito": aceito})
+        return True
+
+    def selecionar_variante(self, nome: str, perfil: str, padrao: int) -> int | None:
+        historico = self.estado.obter_copia("mental", "historico_corporal", []) if self.estado is not None else []
+        sessao = str(self.diagnostico_getter().get("sessao") or "")
+        gestos = [e for e in historico if e.get("tipo") != "episodio_sensorial"]
+        recentes = [e for e in gestos[-6:] if e.get("familia") == nome and e.get("perfil") == perfil
+                    and e.get("sessao") == sessao and not e.get("recuperada_da_memoria")
+                    and (e.get("confirmado") is True or e.get("movimentos_confirmados", 0) > 0)]
+        ordem = [(padrao + i) % 3 for i in range(3)]
+        # Escolha sobre experiência factual da mesma sessão, sem estimar distância.
+        # Não muda a assinatura, os parâmetros ou a autoridade do executor.
+        contagens = {v: sum(e.get("variante") == v for e in recentes) for v in ordem}
+        ultima = recentes[-1].get("variante") if recentes else None
+        ordem.sort(key=lambda v: (v == ultima, contagens[v]))
+        if self.aprendizado is None:
+            return ordem[0]
+        candidatas = []
+        evitadas = set()
+        try:
+            for variante in range(3):
+                evitar = f"corpo_evitacao:{perfil}:{nome}:{variante}"
+                if self.aprendizado.avaliar_hipotese(evitar).get("aplicavel"):
+                    evitadas.add(variante)
+                    continue
+                chave = f"corpo_preferencia:{perfil}:{nome}:{variante}"
+                h = self.aprendizado.memoria.obter_hipotese_aprendizado(chave)
+                if not h or h.get("evidencias_positivas", 0) <= h.get("evidencias_negativas", 0):
+                    continue
+                avaliacao = self.aprendizado.avaliar_hipotese(chave)
+                if avaliacao.get("aplicavel"):
+                    candidatas.append((h.get("confianca", 0), -ordem.index(variante), variante))
+            if candidatas:
+                return max(candidatas)[2]
+            return next((v for v in ordem if v not in evitadas), None)
+        except Exception as erro:
+            self._falha("falha_selecao_variante", erro)
+            return ordem[0]
+
+    def ritmo_recente(self, *, sessao: str, perfil: str, agora: float | None = None) -> dict[str, Any]:
+        """Resumo amostral de comandos confirmados; não estima fadiga ou bateria."""
+        agora = self.clock() if agora is None else agora
+        historico = self.estado.obter_copia("mental", "historico_corporal", []) if self.estado is not None else []
+        motor_ms = gestos = exploracoes = 0
+        vistos = set()
+        for e in [item for item in historico if item.get("tipo") != "episodio_sensorial"][-12:]:
+            if (not isinstance(e, Mapping) or not isinstance(e.get("id"), str) or not e["id"]
+                or e["id"] in vistos or e.get("origem") != "executor_corpo"
+                or e.get("sessao") != sessao or e.get("perfil") != perfil or e.get("recuperada_da_memoria")):
+                continue
+            try:
+                idade = agora - float(e.get("ts", 0))
+            except (ValueError, TypeError):
+                continue
+            if not math.isfinite(idade) or not 0 <= idade <= 180:
+                continue
+            duracao = e.get("duracao_comandada_confirmada_ms")
+            if duracao is None and e.get("confirmado") is True:
+                # Compatibilidade com receipts antigos, de coreografia completa.
+                duracao = sum(m[2] for m in e.get("movimentos", [])
+                    if isinstance(m, (list, tuple)) and len(m) == 3
+                    and type(m[2]) is int and 0 <= m[2] <= 5000)
+            if type(duracao) is not int or not 0 < duracao <= 20000:
+                continue
+            vistos.add(e["id"])
+            if idade <= 60:
+                motor_ms += duracao
+            if e.get("confirmado") is True:
+                if idade <= 120:
+                    gestos += 1
+                familia = str(e.get("familia") or e.get("nome") or "")
+                if familia.split(":", 1)[0] == "explorar" or familia.startswith("passeio_"):
+                    exploracoes += 1
+        return {"origem": "ritmo_corporal_observado", "motor_ms_60s": motor_ms,
+                "gestos_120s": gestos, "exploracoes_180s": exploracoes,
+                "amostra_maxima": 12, "autoriza_execucao": False, "prova_deslocamento": False}
+
+    def retrato(self) -> dict[str, Any]:
+        historico = self.estado.obter_copia("mental", "historico_corporal", []) if self.estado is not None else []
+        try:
+            sensores_fisicos = (self.diagnostico_getter().get("sensores") or {}).get("suportado") is True
+        except Exception:
+            sensores_fisicos = False
+        campos = ("id", "nome", "tipo", "turno_id", "origem_intencao", "perfil", "variante", "resultado", "confirmado", "ts", "prova_deslocamento", "prova_rotacao", "rotacao_medida_graus", "recuperada_da_memoria", "fase", "risco", "observacao_confirmada", "tentativa_busca", "decisao_origem")
+        return {"origem": "experiencia_corporal_observada", "historico_recente": [{k: e[k] for k in campos if k in e} for e in historico[-3:]],
+                "aprendizado": self.estado.obter_copia("mental", "aprendizado_corporal", {}) if self.estado is not None else {},
+                "feedback": self.estado.obter_copia("mental", "feedback_corporal", {}) if self.estado is not None else {},
+                "aprendizado_conectado": self.aprendizado is not None, "autoriza_execucao": False,
+                "sensores_fisicos": sensores_fisicos,
+                "ultimo_erro": self._ultimo_erro}
+
+
+def criar_experiencia_corporal_runtime(**kwargs: Any) -> ExperienciaCorporalRuntime:
+    return ExperienciaCorporalRuntime(**kwargs)

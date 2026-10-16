@@ -18,6 +18,7 @@ from collections import Counter
 from typing import Any, Callable, Iterable, Mapping
 
 from mente_laylay.emocoes.contrato_causal import criar_evento_emocional_causal
+from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 
 
 _MODOS = frozenset({"interromper", "resumir", "silenciar"})
@@ -101,6 +102,7 @@ class CentralNotificacoesRuntime:
             },
             "eventos": [],
             "vistos": {},
+            "apresentados": {},
             "ultima_categoria": "",
         }
 
@@ -241,7 +243,7 @@ class CentralNotificacoesRuntime:
             140,
         )
         remetente = _curto(evento.get("remetente") or evento.get("aplicativo") or "", 60)
-        return {
+        registro = {
             "id": self._fingerprint(evento, categoria),
             "origem": origem,
             "categoria": categoria,
@@ -252,6 +254,55 @@ class CentralNotificacoesRuntime:
             "anunciado": False,
             "quantidade": 1,
         }
+        referencia = evento.get("referencia_email")
+        if origem == "email" and isinstance(referencia, Mapping):
+            registro["referencia_email"] = {
+                chave: str(referencia[chave])[:160]
+                for chave in ("conta", "identidade_conta", "pasta", "uidvalidity", "uid", "gmail_id", "conversa_id")
+                if chave in referencia
+            }
+        return registro
+
+    def registrar_apresentacao_resultados(
+        self, *, resultados: tuple[ResultadoAcao, ...], fala: str,
+        id_entrega: str, canal_entrega: str,
+    ) -> None:
+        """Entrega explícita satisfaz avisos da mesma identidade, sem nova fala.
+
+        Leitura, enfileiramento e última ação não provam apresentação. O
+        orquestrador fornece os receipts capturados e a fala efetivamente entregue.
+        """
+        if not id_entrega or canal_entrega not in {"texto_publicado", "audio_reproducao_confirmada"}:
+            return
+        chaves=set()
+        fala_normalizada=re.sub(r"\s+", " ", str(fala or "")).strip()
+        for receipt in resultados:
+            if not isinstance(receipt, ResultadoAcao) or receipt.origem != "executor" or receipt.confirmado is not True or not receipt.id_solicitacao:
+                continue
+            for item in receipt.contexto.get("itens_apresentados") or []:
+                if not isinstance(item, Mapping):
+                    continue
+                marcador=re.sub(r"\s+", " ", str(item.get("texto") or "")).strip()
+                if not marcador or marcador not in fala_normalizada or not item.get("origem") or not item.get("uid"):
+                    continue
+                chaves.add(self._fingerprint(item, ""))
+        if not chaves:
+            return
+        agora=float(self.time_cb())
+        with self._lock:
+            apresentados=self._estado.setdefault("apresentados", {})
+            for chave in chaves:
+                apresentados[chave]={"ts":agora,"id_entrega":str(id_entrega)[:120],"canal":canal_entrega}
+            self._estado["apresentados"]={k:v for k,v in list(apresentados.items())[-400:]
+                if agora-float(v.get("ts") or 0)<7*86400}
+            for evento in self._estado.get("eventos", []):
+                if evento.get("id") in chaves:
+                    evento["apresentado_em"]=agora
+            self._salvar()
+
+    def _apresentado(self, chave: str) -> bool:
+        registro=(self._estado.get("apresentados") or {}).get(chave) or {}
+        return bool(registro and float(self.time_cb())-float(registro.get("ts") or 0)<7*86400)
 
     def _modo_evento(self, evento: Mapping[str, Any]) -> str:
         categoria = str(evento.get("categoria") or "geral")
@@ -325,6 +376,9 @@ class CentralNotificacoesRuntime:
     ) -> None:
         """Materializa o receipt da voz sem confundir fila com entrega."""
         if not entregue:
+            if motivo == "apresentacao_ja_entregue":
+                self.log("🧠 [NOTIFICAÇÕES] anúncio dispensado: itens já apresentados ou sem aviso vigente")
+                return
             self.log(
                 "🧠 [NOTIFICAÇÕES] anúncio continua pendente | "
                 f"itens={len(chaves)} motivo={motivo or 'nao_entregue'}"
@@ -352,6 +406,17 @@ class CentralNotificacoesRuntime:
                 )
             except Exception as erro:
                 self.log(f"⚠️ [NOTIFICAÇÕES] vínculo da entrega falhou: {type(erro).__name__}")
+        if alterou and callable(self.contexto_atualizar_cb):
+            with self._lock:
+                mensagens = [{"referencia_email": dict(e["referencia_email"]),
+                              "assunto": e["titulo"], "remetente": e["remetente"]}
+                    for chave in chaves for e in self._estado.get("eventos", [])
+                    if e.get("id") == chave and e.get("referencia_email")]
+            if mensagens:
+                self.contexto_atualizar_cb(email_contexto={
+                    "mensagens": mensagens, "ts": float(self.time_cb()),
+                    "origem": "aviso_entregue", "autoriza_execucao": False,
+                })
 
     def ingerir(self, eventos: Iterable[Mapping[str, Any]]) -> set[str]:
         """Guarda uma leva e devolve os IDs externos aceitos pela central."""
@@ -389,7 +454,7 @@ class CentralNotificacoesRuntime:
         if not novos or not bool(self._estado.get("ativa", True)):
             return aceitos
 
-        candidatos = [e for e in novos if self._modo_evento(e) != "silenciar"]
+        candidatos = [e for e in novos if self._modo_evento(e) != "silenciar" and not self._apresentado(e["id"])]
         escolhidos = candidatos
         if escolhidos and callable(self.agendar_fala_cb):
             texto = self._texto_lote(escolhidos)
@@ -430,6 +495,18 @@ class CentralNotificacoesRuntime:
                     categoria="seguranca" if tem_seguranca else "notificacoes",
                 )
 
+            def preparar_entrega() -> dict[str, Any] | None:
+                nonlocal chaves, texto
+                with self._lock:
+                    pendentes=[dict(e) for e in self._estado.get("eventos", [])
+                        if e.get("id") in chaves and not e.get("anunciado")
+                        and not self._apresentado(e["id"]) and self._modo_evento(e) != "silenciar"]
+                chaves=tuple(e["id"] for e in pendentes)
+                if not pendentes:
+                    return None
+                texto=self._texto_lote(pendentes)
+                return {"texto":texto}
+
             try:
                 try:
                     agendou = bool(self.agendar_fala_cb(
@@ -438,6 +515,7 @@ class CentralNotificacoesRuntime:
                         "calma", 1,
                         ao_concluir=concluir,
                         preservar_ate_entrega=True,
+                        preparar_entrega_cb=preparar_entrega,
                     ))
                 except TypeError:
                     # Adaptadores antigos podem agendar, mas não comprovam
@@ -628,7 +706,7 @@ class CentralNotificacoesRuntime:
                 "ativa": bool(self._estado.get("ativa", True)),
                 "eventos": len(eventos),
                 "importantes": sum(e.get("prioridade") in {"alta", "critica"} for e in eventos if isinstance(e, dict)),
-                "pendentes": sum(not e.get("anunciado") for e in eventos if isinstance(e, dict)),
+                "pendentes": sum(not e.get("anunciado") and not self._apresentado(e["id"]) for e in eventos if isinstance(e, dict)),
                 "preferencias": dict(self._estado.get("preferencias") or {}),
                 "persistencia_disponivel": bool(
                     os.path.exists(self.arquivo_estado)

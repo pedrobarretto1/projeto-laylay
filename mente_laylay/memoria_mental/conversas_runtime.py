@@ -25,6 +25,7 @@ _CAMPOS_MENTAIS_CONVERSA = frozenset({
     "emocao_da_fala", "pendencia_atual", "ultima_pendencia_encerrada",
     "pendencia_acao_canonica", "oferta_pendente", "continuidade_geral",
     "ultimo_resumo_pagina", "capacidade_futura", "conteudo_atual",
+    "email_contexto", "rascunho_email_atual",
     "focos_por_dominio", "assunto_estruturado_atual",
     "correcao_interpretacao_pendente", "alvo_corrigido", "alvo_corrigido_ts",
     "ultima_reparacao_alvo_anterior", "ultima_reparacao_alvo_novo",

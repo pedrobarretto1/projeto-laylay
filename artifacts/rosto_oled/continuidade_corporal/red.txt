@@ -1,0 +1,31 @@
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+____ test_espera_do_mesmo_objetivo_nao_renasce_por_timeout_de_apresentacao ____
+scripts\tests\test_continuidade_intencao_corporal.py:16: in test_espera_do_mesmo_objetivo_nao_renasce_por_timeout_de_apresentacao
+    assert depois["id"] == antes["id"], "timeout visual não cria outro acontecimento"
+E   AssertionError: timeout visual não cria outro acontecimento
+E   assert 'a43aac082d0a' == 'befb3f810022'
+E     
+E     - befb3f810022
+E     + a43aac082d0a
+_____ test_contextos_distintos_com_mesma_emocao_nao_compartilham_objetivo _____
+scripts\tests\test_continuidade_intencao_corporal.py:30: in test_contextos_distintos_com_mesma_emocao_nao_compartilham_objetivo
+    assert depois["id"] != antes["id"], "um novo turno não herda a intenção anterior"
+E   AssertionError: um novo turno não herda a intenção anterior
+E   assert '104f66e74b6f' != '104f66e74b6f'
+_ test_objetivo_persiste_entre_espera_e_reacao_mas_resultados_tem_identidade __
+scripts\tests\test_continuidade_intencao_corporal.py:45: in test_objetivo_persiste_entre_espera_e_reacao_mas_resultados_tem_identidade
+    assert primeiro["objetivo_id"] == aguardando["objetivo_id"]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'objetivo_id'
+___________ test_emocao_vigente_aguarda_intervalo_sem_ser_consumida ___________
+scripts\tests\test_continuidade_intencao_corporal.py:65: in test_emocao_vigente_aguarda_intervalo_sem_ser_consumida
+    assert corpo.companhia.processar()["ok"], "intervalo não descarta emoção ainda vigente"
+E   AssertionError: intervalo não descarta emoção ainda vigente
+E   assert False
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_continuidade_intencao_corporal.py::test_espera_do_mesmo_objetivo_nao_renasce_por_timeout_de_apresentacao
+FAILED scripts/tests/test_continuidade_intencao_corporal.py::test_contextos_distintos_com_mesma_emocao_nao_compartilham_objetivo
+FAILED scripts/tests/test_continuidade_intencao_corporal.py::test_objetivo_persiste_entre_espera_e_reacao_mas_resultados_tem_identidade
+FAILED scripts/tests/test_continuidade_intencao_corporal.py::test_emocao_vigente_aguarda_intervalo_sem_ser_consumida
+4 failed in 0.99s

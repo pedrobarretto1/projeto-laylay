@@ -9,8 +9,13 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from mente_laylay.emocoes.estado_emocional import retrato_emocional_expressavel
+from mente_laylay.especialistas.percepcao_distancia import (
+    interpretar_linha_distancia, interpretar_linha_protecao, RISCOS,
+)
+from mente_laylay.especialistas.saude_corporal import interpretar_saude, validar_identidade_corpo_usb
+from mente_laylay.especialistas.percepcao_inercial import interpretar_imu
 from mente_laylay.memoria_mental.atividade_operacional_runtime import (
-    projetar_atividade_operacional, projetar_falha_operacional, projetar_sucesso_operacional,
+    projetar_atividade_operacional, projetar_falha_operacional, projetar_sucesso_operacional, projetar_envio_operacional,
 )
 from mente_laylay.especialistas.corpo_wifi_transporte import (
     CAMINHO_CONFIGURACAO_WIFI, ConfiguracaoCorpoWifi, ConfiguracaoCorpoWifiInvalida,
@@ -32,7 +37,14 @@ def projetar_rosto(estado: Mapping[str, Any], *, agora: float | None = None) -> 
 
 def _abrir_serial(porta: str) -> Any:
     import serial  # Opcional: instalação sem corpo continua iniciando normalmente.
-    return serial.Serial(porta, 115200, timeout=0.1, write_timeout=0.5)
+    # Configurar antes de open: o padrão True/True do pyserial altera as linhas
+    # de controle do USB-JTAG e pode resetar a placa numa simples reconexão.
+    dispositivo=serial.Serial(port=None,baudrate=115200,timeout=0.1,write_timeout=0.5)
+    dispositivo.dtr=False
+    dispositivo.rts=False
+    dispositivo.port=porta
+    dispositivo.open()
+    return dispositivo
 
 
 def _listar_portas_rosto() -> tuple[str, ...]:
@@ -50,11 +62,13 @@ class RostoOledRuntime:
         atividade_getter: Callable[[], Mapping[str, Any]] | None = None,
         interacao_getter: Callable[[], bool] | None = None,
         companhia_getter: Callable[[], Mapping[str, Any]] | None = None,
+        busca_obstaculos_getter: Callable[[str], bool] | None = None,
         autodetectar: bool = False,
         listar_portas: Callable[[], tuple[str, ...]] = _listar_portas_rosto,
         abrir_serial: Callable[[str], Any] = _abrir_serial,
         config_wifi_path: Path | str | None = None,
         abrir_tcp: Callable[[ConfiguracaoCorpoWifi], Any] = abrir_corpo_tcp,
+        identidade_usb_getter: Callable[[], Mapping[str, str]] | None = None,
         publicar_diagnostico: Callable[[dict[str, Any]], Any] | None = None,
         relatar_falha: Callable[..., Any] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
@@ -63,6 +77,9 @@ class RostoOledRuntime:
         self.atividade_getter = atividade_getter or (lambda: {})
         self.interacao_getter = interacao_getter or (lambda: False)
         self.companhia_getter = companhia_getter or (lambda: {})
+        self.busca_obstaculos_getter = busca_obstaculos_getter or (lambda _: False)
+        self._vigia_suportada = self._vigia_ativa = False
+        self._seq_vigia = 0
         self._expressao_suportada = False
         self._seq_expressao = 0
         self._ultimo_ack_expressao = float("-inf")
@@ -76,6 +93,9 @@ class RostoOledRuntime:
         self._porta_ativa = ""
         self.abrir_serial = abrir_serial
         self.abrir_tcp = abrir_tcp
+        self.identidade_usb_getter = identidade_usb_getter or (lambda: {})
+        self._pareamento_usb: dict[str, str] = {}
+        self._identidade_usb_verificada = False
         self._config_wifi_path = Path(config_wifi_path) if config_wifi_path is not None else None
         self._config_wifi: ConfiguracaoCorpoWifi | None = None
         self._erro_wifi = ""
@@ -104,10 +124,12 @@ class RostoOledRuntime:
         self._ultima_falha_consumida = 0  # Não reexecuta eventos numa nova conexão.
         self._erro_glitch = "nao_negociado"
         self._som_suportado = False
+        self._som_envio_suportado = False
         self._seq_som = 0
         self._acordar_som_pendente = True
         self._ultima_emocao_sonora: tuple[int, int] = (0, 1)
-        self._eventos_som_consumidos = {"sucesso": 0, "falha": 0}
+        self._eventos_som_consumidos = {"sucesso": 0, "falha": 0, "envio": 0}
+        self._resultados_som_pendentes: dict[str, tuple[int, float]] = {}
         self._ultimo_envio_som = float("-inf")
         self._ultimo_ack_som = float("-inf")
         self._erro_som = "nao_negociado"
@@ -119,6 +141,23 @@ class RostoOledRuntime:
         self._motor_em_pulso = self._motor_parada_solicitada = False
         self._motor_pwm_confirmado = self._motor_parada_confirmada = False
         self._erro_motor = "nao_negociado"
+        self._sensores_suportados = False
+        self._seq_sensores = 0
+        self._sensores: dict[str, Any] = {}
+        self._protecao: dict[str, Any] = {}
+        self._sensores_em = float("-inf")
+        self._imu_suportada = False
+        self._imu: dict[str, Any] = {}
+        self._imu_em = float("-inf")
+        self._seq_imu = 0
+        self._giro_resultado: dict[str, Any] = {}
+        self._risco_motor = ""
+        self._saude: dict[str, Any] = {}
+        self._saude_em = float("-inf")
+        self._saude_suportada: bool | None = None
+        self._seq_saude = self._reinicios_observados = 0
+        self._ultimo_boot = ""
+        self._ultimo_dispositivo = ""
         self._erro = "aguardando_esp32" if self.autodetectar else (
             "porta_nao_configurada" if not self.porta else "aguardando_conexao"
         )
@@ -148,12 +187,20 @@ class RostoOledRuntime:
                 "modo_conexao": "rede" if self._config_wifi_path is not None else "automatico" if self.autodetectar else "manual",
                 "endpoint": self._config_wifi.endpoint if self._config_wifi is not None else "",
                 "porta_ativa": self._porta_ativa,
+                "identidade_usb": {**self._pareamento_usb,
+                    "verificada": self._serial is not None and self._identidade_usb_verificada,
+                    "autoriza_execucao": False, "prova_autenticidade_criptografica": False},
                 "evidencia_recente": recente, "aplicacao_confirmada": recente and not self._erro,
                 "estado": "disponivel" if recente and not self._erro else "indisponivel",
                 "motivo": self._erro or ("frame_confirmado_pelo_esp" if recente else "ack_expirado"),
                 "confirmado": list(self._confirmado) if recente and not self._erro else [],
                 "evidencia": "ack_apos_renderizacao", "prova_optica": False,
                 "autoriza_execucao": False,
+                "sensores": self._diagnostico_sensores(),
+                "imu": self._diagnostico_imu(),
+                "saude": {**self._saude,"suportado":self._saude_suportada is True,
+                    "recente":self._serial is not None and self.monotonic()-self._saude_em<3,
+                    "reinicios_observados":self._reinicios_observados},
                 "expressao": {
                     "suportado": self._expressao_suportada,
                     "confirmada": recente and not self._erro_expressao and self.monotonic() - self._ultimo_ack_expressao < self._duracao_expressao_ms / 1000,
@@ -163,7 +210,9 @@ class RostoOledRuntime:
                     "autoriza_execucao": False,
                 },
                 "som": {
+                    "resultados_pendentes": sorted(self._resultados_som_pendentes),
                     "suportado": self._som_suportado,
+                    "envio_suportado": self._som_envio_suportado,
                     "solicitacao_confirmada": recente and not self._erro and not self._erro_som
                         and self.monotonic() - self._ultimo_ack_som < 3,
                     "motivo": self._erro_som or "sequencia_aceita_pelo_firmware",
@@ -192,7 +241,8 @@ class RostoOledRuntime:
                     "disponivel": self._motor_suportado and recente and not self._erro,
                     "aplicacao_pwm_confirmada": self._motor_pwm_confirmado,
                     "parada_confirmada": self._motor_parada_confirmada,
-                    "em_andamento": self._motor_cancelar is not None,
+                    "em_andamento": self._motor_cancelar is not None or (
+                        self.monotonic()-self._sensores_em<.5 and self._protecao.get("reflexo_ativo") is True),
                     "motivo": self._erro_motor,
                     "evidencia": "negociacao_firmware_e_receipts_correlacionados",
                     "prova_rotacao": False, "prova_parada_fisica": False,
@@ -220,7 +270,8 @@ class RostoOledRuntime:
             raise ConnectionError("escrita_serial_parcial")
 
     def _esperar(self, esperado: str, timeout: float, *, reenviar: str = "", opcional: bool = False,
-                 cancelar: Callable[[], bool] | None = None, durante_encerramento: bool = False) -> bool:
+                 cancelar: Callable[[], bool] | None = None, durante_encerramento: bool = False,
+                 capturar: Callable[[str], bool] | None = None) -> bool:
         prazo = self.monotonic() + timeout
         proximo_envio = self.monotonic() + 0.5
         while self.monotonic() < prazo:
@@ -238,6 +289,39 @@ class RostoOledRuntime:
                 linha, _, resto = self._rx.partition(b"\n")
                 self._rx = bytearray(resto)
                 recebida = linha.rstrip(b"\r").decode("ascii", errors="replace")
+                if recebida.startswith("TURNEND "):
+                    p = recebida.split()
+                    if (len(p) == 6 and p[:3] == ["TURNEND", "1", self._sessao]
+                            and p[3] == str(self._seq_motor) and self._motor_em_pulso
+                            and p[4] in {"ALVO", "INTERROMPIDO", "IMU_OU_SESSAO", "PROTECAO", "SENTIDO_DIVERGENTE",
+                                         "TEMPO_LIMITE", "SEM_ROTACAO", "SATURACAO", "ULTRAPASSOU"}):
+                        try:
+                            centesimos = int(p[5])
+                            if abs(centesimos) <= 360000:
+                                self._giro_resultado = {"resultado": p[4], "rotacao_graus": centesimos / 100,
+                                                       "sessao": p[2], "sequencia": int(p[3])}
+                        except ValueError:
+                            pass
+                if (recebida=="BOOT 1 LAYLAY_ROSTO" and self._confirmado is not None
+                    and not esperado.startswith("READY ")):
+                    # O boot invalida imediatamente o receipt anterior, mesmo
+                    # quando a porta USB continua aberta e o ACK era recente.
+                    self._ultimo_ack=float("-inf")
+                    self._vigia_ativa=False
+                    if self._motor_cancelar is not None:
+                        self._motor_cancelar.set()
+                    raise ConnectionError("boot_observado_no_esp")
+                if recebida.startswith("HAZARD "):
+                    p = recebida.split()
+                    if (len(p) == 6 and p[:3] == ["HAZARD", "1", self._sessao]
+                        and p[3].isdecimal() and p[4].isdecimal()
+                        and p[5] in RISCOS | {"AGUARDANDO_ESTABILIDADE"}
+                        and int(p[3]) == self._seq_motor and self._motor_em_pulso):
+                        self._risco_motor = p[5]
+                        if esperado.startswith(("MACK ", "TURNACK ", "TURNPWM ")):
+                            return False
+                if capturar is not None and capturar(recebida):
+                    return True
                 if recebida == esperado:
                     return True
                 if esperado.startswith("SOUNDACK ") and recebida.startswith("ERROR 1 SOM_"):
@@ -250,6 +334,151 @@ class RostoOledRuntime:
         if opcional:
             return False
         raise TimeoutError("sem_confirmacao_do_esp")
+
+    def _diagnostico_sensores(self) -> dict[str, Any]:
+        idade = max(0, int((self.monotonic() - self._sensores_em) * 1000)) if self._sensores else 4294967295
+        recente = self._serial is not None and idade <= 500
+        leituras = {}
+        for nome, s in self._sensores.items():
+            idade_total = min(4294967295, s["idade_ms"] + idade)
+            expirada = idade_total > 300
+            leituras[nome] = {**s, "idade_ms": idade_total,
+                "estado": "EXPIRADA" if expirada else s["estado"],
+                "mm": None if expirada else s["mm"]}
+        return {"suportado": self._sensores_suportados, "recente": recente,
+            "consulta_id": self._seq_sensores,
+            "alerta_suportado": self._vigia_suportada, "busca_renovada": self._vigia_ativa,
+            "leituras": leituras, "protecao": {**self._protecao, "recente": recente},
+            "origem": "owner_usb_dist_guard", "autoriza_execucao": False}
+
+    def _diagnostico_imu(self) -> dict[str, Any]:
+        idade_host = max(0, int((self.monotonic() - self._imu_em) * 1000)) if self._imu else 4294967295
+        recente = self._serial is not None and idade_host < 750 and self._imu.get("estado") == "PRONTA"
+        return {**self._imu, "consulta_id": self._seq_imu, "suportado": self._imu_suportada, "recente": recente,
+                "idade_host_ms": idade_host, "autoriza_execucao": False,
+                "bloqueio_manuseio": self._imu_suportada and (not recente or self._imu.get("manuseio") != "ESTAVEL")}
+
+    def _consultar_imu(self) -> None:
+        if not self._imu_suportada:
+            return
+        self._seq_imu += 1
+        seq = self._seq_imu
+        dados: dict[str, Any] = {}
+        def capturar(linha: str) -> bool:
+            if not linha.startswith(f"IMU 1 {seq} "):
+                return False
+            dados.update(interpretar_imu(linha, seq))
+            return True
+        self._escrever(f"IMU 1 {seq}")
+        self._esperar("", .25, capturar=capturar)
+        self._imu, self._imu_em = dados, self.monotonic()
+
+    def _consultar_sensores(self) -> None:
+        if not self._sensores_suportados:
+            return
+        self._seq_sensores += 1
+        seq = self._seq_sensores
+        dados: dict[str, Any] = {}
+        def distancia(linha: str) -> bool:
+            if not linha.startswith(f"DIST 1 {seq} "):
+                return False
+            dados.update(interpretar_linha_distancia(linha, seq))
+            return True
+        self._escrever(f"DIST 1 {seq}")
+        self._esperar("", .35, capturar=distancia)
+        protecao: dict[str, Any] = {}
+        def guarda(linha: str) -> bool:
+            if not linha.startswith(f"GUARD 1 {seq} "):
+                return False
+            protecao.update(interpretar_linha_protecao(linha, seq, self._sessao))
+            return True
+        self._escrever(f"GUARD 1 {seq}")
+        self._esperar("", .35, capturar=guarda)
+        self._sensores, self._protecao = dados, protecao
+        self._sensores_em = self.monotonic()
+
+    def _sincronizar_vigia(self) -> None:
+        if not self._vigia_suportada:
+            return
+        try:
+            ativa = (not self._deve_parar() and self.busca_obstaculos_getter(self._sessao) is True
+                     and not self._diagnostico_imu()["bloqueio_manuseio"])
+        except Exception:
+            ativa = False
+        self._seq_vigia += 1
+        campos = f"{self._sessao} {self._seq_vigia} {int(ativa)}"
+        self._escrever(f"SENTRY 1 {campos} 1200")
+        self._vigia_ativa = self._esperar(f"SENTRYACK 1 {campos}",.3,opcional=True) and ativa
+
+    def _ler_saude(self) -> dict[str, Any]:
+        self._seq_saude += 1
+        seq = self._seq_saude
+        dados: dict[str, Any] = {}
+        def receber(linha: str) -> bool:
+            if not linha.startswith(f"HEALTH 1 {seq} "):
+                return False
+            dados.update(interpretar_saude(linha, seq))
+            return True
+        self._escrever(f"HEALTH 1 {seq}")
+        return dados if self._esperar("", .3, opcional=True, capturar=receber) else {}
+
+    def _selecionar_usb_pareado(self) -> None:
+        """Sonda só HEALTH. Uma identidade ambígua/ausente não recebe HELLO/FACE."""
+        candidatas = (self.porta,) if self.porta else tuple(sorted(set(self.listar_portas())))
+        if len(candidatas) > 16:
+            raise ConnectionError("muitas_portas_esp32")
+        escolhida = None
+        try:
+            for porta in candidatas:
+                if self._deve_parar():
+                    raise InterruptedError("encerramento_solicitado")
+                self._rx.clear()
+                try:
+                    try:
+                        self._serial = self.abrir_serial(porta)
+                        dados = self._ler_saude()
+                    except InterruptedError:
+                        raise
+                    except (OSError, TimeoutError, ValueError):
+                        # Porta ocupada, firmware antigo ou receipt inválido não são outro corpo.
+                        dados = {}
+                    if dados.get("dispositivo") == self._pareamento_usb["dispositivo"]:
+                        if escolhida is not None:
+                            raise ConnectionError("identidade_usb_ambigua")
+                        escolhida = (self._serial, porta)
+                        self._serial = None
+                finally:
+                    if self._serial is not None:
+                        self._serial.close()
+                        self._serial = None
+            if escolhida is None:
+                raise ConnectionError("corpo_pareado_nao_encontrado")
+            self._serial, self._porta_ativa = escolhida
+            self._rx.clear()
+            self._identidade_usb_verificada = True
+        except Exception:
+            if escolhida is not None:
+                escolhida[0].close()
+            raise
+
+    def _consultar_saude(self) -> None:
+        if ((not self._vigia_suportada and not self._pareamento_usb) or self._saude_suportada is False
+            or self.monotonic()-self._saude_em<2):
+            return
+        dados = self._ler_saude()
+        if dados:
+            if self._config_wifi_path is None and self._pareamento_usb and dados["dispositivo"] != self._pareamento_usb["dispositivo"]:
+                raise ConnectionError("identidade_usb_divergente")
+            if (self._ultimo_boot and self._ultimo_dispositivo==dados["dispositivo"]
+                and self._ultimo_boot!=dados["boot"]):
+                self._reinicios_observados+=1
+            self._ultimo_boot=dados["boot"]
+            self._ultimo_dispositivo=dados["dispositivo"]
+            self._saude,self._saude_em,self._saude_suportada=dados,self.monotonic(),True
+        elif self._saude_suportada is None:
+            if self._config_wifi_path is None and self._pareamento_usb:
+                raise ConnectionError("identidade_usb_sem_confirmacao")
+            self._saude_suportada=False
 
     def _sincronizar_atividade(self) -> None:
         if not self._hack_suportado:
@@ -292,8 +521,13 @@ class RostoOledRuntime:
             self._ultimo_ack_glitch = float("-inf")
             self._erro_glitch = "sem_confirmacao_glitch"
 
+    def _descartar_resultados_som(self) -> None:
+        for nome, (identidade, _) in self._resultados_som_pendentes.items():
+            self._eventos_som_consumidos[nome] = max(self._eventos_som_consumidos.get(nome, 0), identidade)
+        self._resultados_som_pendentes.clear()
+
     def _sincronizar_som(self, rosto: tuple[int, int, int], *, pela_coreografia: bool = False) -> None:
-        """Uma ocorrência atual; descarta excesso, não enfileira nem repete."""
+        """Resultados atuais aguardam o intervalo; nenhuma tentativa é repetida."""
         if not self._som_suportado:
             return
         agora = self.monotonic()
@@ -302,25 +536,40 @@ class RostoOledRuntime:
             modo = self.companhia_getter()
             atividade = self.atividade_getter()
             falha_atual = projetar_falha_operacional(atividade, agora=agora)
-            if (not pela_coreografia and not self._acordar_som_pendente and self._expressao_suportada
+            for nome, projetor, codigo in (("envio", projetar_envio_operacional, 8),
+                                           ("sucesso", projetar_sucesso_operacional, 1),
+                                           ("falha", projetar_falha_operacional, 2)):
+                if nome == "envio" and not self._som_envio_suportado:
+                    continue
+                evento = projetor(atividade, agora=agora)
+                if evento and evento[0] > self._eventos_som_consumidos.get(nome, 0):
+                    pendente = self._resultados_som_pendentes.get(nome)
+                    if pendente is None or evento[0] > pendente[0]:
+                        # Apenas ocorrências admitidas ainda frescas pelo owner.
+                        # Um por tipo, prazo fixo; amostrar não o renova.
+                        self._resultados_som_pendentes[nome] = (evento[0], agora + 2.5)
+                pendente = self._resultados_som_pendentes.get(nome)
+                if pendente and (agora >= pendente[1] or atividade.get("origem") != "atividade_operacional_observada"):
+                    self._eventos_som_consumidos[nome] = max(self._eventos_som_consumidos[nome], pendente[0])
+                    del self._resultados_som_pendentes[nome]
+                elif pendente:
+                    tipo = codigo  # Falha prevalece no conjunto acumulado.
+            if (tipo is None and not pela_coreografia and not self._acordar_som_pendente and self._expressao_suportada
                     and modo.get("ativa") is True and modo.get("perfil_corporal") == "rodas_suspensas"
                     and not falha_atual):
-                return  # O mesmo owner sonoro será chamado na fase expressiva.
-            for nome, projetor, codigo in (("sucesso", projetar_sucesso_operacional, 1),
-                                           ("falha", projetar_falha_operacional, 2)):
-                evento = projetor(atividade, agora=agora)
-                if evento and evento[0] > self._eventos_som_consumidos[nome]:
-                    self._eventos_som_consumidos[nome] = evento[0]
-                    tipo = codigo  # Falha prevalece sobre sucesso na mesma amostra.
+                return  # Só o detalhe emocional aguarda a fase expressiva.
             pose = rosto[:2]
             if tipo is None and pose != self._ultima_emocao_sonora and pose[0] and pose[1] >= 2:
                 tipo = {1: 3, 2: 4, 3: 5, 4: 5, 5: 7, 6: 6, 7: 3}.get(pose[0])
             self._ultima_emocao_sonora = pose
-            if self._acordar_som_pendente:
+            acordando = self._acordar_som_pendente
+            if acordando:
                 self._acordar_som_pendente = False
                 tipo = 0
             if tipo is None or agora - self._ultimo_envio_som < 2:
                 return
+            if not acordando and tipo in {1, 2, 8}:
+                self._descartar_resultados_som()
             self._ultimo_envio_som = agora  # Consome antes do envio; ACK perdido não toca de novo.
             self._seq_som += 1
             campos = f"{self._sessao} {self._seq_som} {tipo}"
@@ -399,16 +648,22 @@ class RostoOledRuntime:
                             return False
                         self._serial = self.abrir_tcp(self._config_wifi)
                         porta = self._config_wifi.endpoint
-                    elif self.autodetectar:
+                    else:
+                        self._identidade_usb_verificada = False
+                        self._pareamento_usb = validar_identidade_corpo_usb(self.identidade_usb_getter())
+                        if self._pareamento_usb:
+                            self._selecionar_usb_pareado()
+                    if self._serial is None and self._config_wifi_path is None and self.autodetectar:
                         candidatas = self.listar_portas()
                         if len(candidatas) != 1:
                             self._erro = "multiplos_esp32" if candidatas else "aguardando_esp32"
                             self._publicar()
                             return False
                         porta = candidatas[0]
-                    if self._config_wifi_path is None:
+                    if self._config_wifi_path is None and self._serial is None:
                         self._serial = self.abrir_serial(porta)
-                    self._porta_ativa = porta
+                    if not self._identidade_usb_verificada:
+                        self._porta_ativa = porta
                 if self.monotonic() - self._ultimo_ack >= 2.5:
                     # A placa dorme e invalida a sessão após TTL. Uma pausa no
                     # supervisor precisa renovar antes de enviar a amostra atual.
@@ -416,11 +671,21 @@ class RostoOledRuntime:
                         self._motor_cancelar.set()
                     self._ultimo_ack = float("-inf")
                     self._sessao = secrets.token_hex(4)
+                    self._descartar_resultados_som()
                     self._seq = 0
                     self._seq_atividade = 0
                     self._seq_glitch = self._seq_motor = self._seq_parada = 0
                     self._seq_som = 0
                     self._seq_expressao = 0
+                    self._sensores_suportados = False
+                    self._vigia_suportada = self._vigia_ativa = False
+                    self._seq_vigia = 0
+                    self._saude_suportada=None
+                    self._saude_em=float("-inf")
+                    self._sensores, self._protecao = {}, {}
+                    self._sensores_em = float("-inf")
+                    self._imu_suportada = False
+                    self._imu, self._imu_em = {}, float("-inf")
                     self._atencao_anterior = False
                     self._ultimo_ack_hack = float("-inf")
                     self._hack_suportado = False
@@ -428,6 +693,10 @@ class RostoOledRuntime:
                     hello = f"HELLO 1 {self._sessao}"
                     self._escrever(hello)
                     self._esperar(f"READY 1 {self._sessao} SSD1306 128 64", 3.0, reenviar=hello)
+                    if self._config_wifi_path is None and self._pareamento_usb:
+                        atual = self._ler_saude()
+                        if atual.get("dispositivo") != self._pareamento_usb["dispositivo"]:
+                            raise ConnectionError("identidade_usb_divergente")
                     self._escrever(f"CAPS 1 {self._sessao}")
                     self._hack_suportado = self._esperar(f"CAPS 1 {self._sessao} HACK1", 0.3, opcional=True)
                     self._erro_hack = "aguardando_ack" if self._hack_suportado else "firmware_sem_hack"
@@ -441,12 +710,22 @@ class RostoOledRuntime:
                     self._limite_motor_ms = 5000 if self._esperar(f"LCAPS 1 {self._sessao} LONGO1", .3, opcional=True) else 500
                     self._escrever(f"SCAPS 1 {self._sessao}")
                     self._som_suportado = self._esperar(f"SCAPS 1 {self._sessao} SOM1", .3, opcional=True)
+                    if self._som_suportado:
+                        self._escrever(f"SENCAPS 1 {self._sessao}")
+                        self._som_envio_suportado = self._esperar(f"SENCAPS 1 {self._sessao} ENVIO1", .3, opcional=True)
                     self._erro_som = "aguardando_evento" if self._som_suportado else "firmware_sem_som"
                     self._escrever(f"ECAPS 1 {self._sessao}")
                     self._expressao_suportada = self._esperar(f"ECAPS 1 {self._sessao} OLHOS2", .3, opcional=True)
                     self._erro_expressao = "aguardando_evento" if self._expressao_suportada else "firmware_sem_expressao"
                     self._escrever(f"RCAPS 1 {self._sessao}")
                     self._rampa_suportada = self._esperar(f"RCAPS 1 {self._sessao} RAMPA1", .3, opcional=True)
+                    self._escrever(f"DCAPS 1 {self._sessao}")
+                    self._sensores_suportados = self._esperar(f"DCAPS 1 {self._sessao} SENSORES2", .3, opcional=True)
+                    if self._sensores_suportados:
+                        self._escrever(f"PCAPS 1 {self._sessao}")
+                        self._vigia_suportada = self._esperar(f"PCAPS 1 {self._sessao} VIGIA1",.3,opcional=True)
+                    self._escrever(f"ICAPS 1 {self._sessao}")
+                    self._imu_suportada = self._esperar(f"ICAPS 1 {self._sessao} IMU1",.3,opcional=True)
                 # Amostra depois do handshake: a mente pode ter mudado durante o boot.
                 rosto = projetar_rosto(self.estado_getter())
                 self._seq += 1
@@ -457,6 +736,10 @@ class RostoOledRuntime:
                 self._confirmado = rosto
                 self._ultimo_ack = self.monotonic()
                 self._erro = ""
+                self._consultar_saude()
+                self._consultar_imu()
+                self._sincronizar_vigia()
+                self._consultar_sensores()
                 self._sincronizar_atividade()
                 self._sincronizar_falha()
                 self._sincronizar_presenca()
@@ -481,6 +764,7 @@ class RostoOledRuntime:
             return True
 
     def _fechar(self) -> None:
+        self._descartar_resultados_som()
         if self._motor_cancelar is not None:
             self._motor_cancelar.set()
             if self._serial is not None:
@@ -489,6 +773,7 @@ class RostoOledRuntime:
                 except Exception:
                     pass
         dispositivo, self._serial = self._serial, None
+        self._identidade_usb_verificada = False
         self._sessao = ""
         self._ultimo_ack = float("-inf")
         self._confirmado = None
@@ -500,10 +785,17 @@ class RostoOledRuntime:
         self._motor_suportado = self._glitch_suportado = False
         self._limite_motor_ms = 500
         self._rampa_suportada = False
+        self._sensores_suportados = False
+        self._imu_suportada = False
+        self._imu, self._imu_em = {}, float("-inf")
+        self._vigia_suportada = self._vigia_ativa = False
+        self._sensores, self._protecao = {}, {}
+        self._sensores_em = float("-inf")
         self._ultimo_ack_glitch = float("-inf")
         self._motor_pwm_confirmado = self._motor_parada_confirmada = False
         self._erro_motor = self._erro_glitch = "desconectado"
         self._som_suportado = False
+        self._som_envio_suportado = False
         self._expressao_suportada = False
         self._erro_expressao = "desconectado"
         self._ultimo_ack_som = float("-inf")
@@ -524,6 +816,9 @@ class RostoOledRuntime:
             "evidencia": "mack_pwm_e_sack" if pwm and parada else "sack" if parada else "sem_receipt_completo",
             "prova_rotacao": False, "prova_parada_fisica": False,
             "cancelado": cancelado, "status": "cancelado" if cancelado else "sucesso" if ok else "falha_execucao",
+            "interrompido_por_protecao": bool(self._risco_motor),
+            "risco_detectado": self._risco_motor,
+            "protecao": self._diagnostico_sensores() if self._sensores_suportados else {},
         }
 
     def _parar_corpo_conectado(self, *, durante_encerramento: bool = False) -> bool:
@@ -561,11 +856,16 @@ class RostoOledRuntime:
                 return self._receipt_motor(ok=False, motivo=type(erro).__name__ + ":" + str(erro)[:100])
 
     def mover_corpo(self, pwm_esquerdo: int, pwm_direito: int, duracao_ms: int,
-                    *, validar_inicio: Callable[[], bool] | None = None, suave: bool = False) -> dict[str, Any]:
+                    *, validar_inicio: Callable[[], bool] | None = None, suave: bool = False,
+                    angulo_graus: int | None = None) -> dict[str, Any]:
         """Um pulso finito. Repetição/reconexão jamais reenviam MOTOR."""
         if (type(suave) is not bool or any(type(v) is not int for v in (pwm_esquerdo, pwm_direito, duracao_ms))
                 or not -255 <= pwm_esquerdo <= 255 or not -255 <= pwm_direito <= 255
-                or not 50 <= duracao_ms <= self._limite_motor_ms or (pwm_esquerdo == 0 and pwm_direito == 0)):
+                or not 50 <= duracao_ms <= (5000 if angulo_graus is not None else self._limite_motor_ms)
+                or (pwm_esquerdo == 0 and pwm_direito == 0)
+                or (angulo_graus is not None and (type(angulo_graus) is not int or not 15 <= abs(angulo_graus) <= 360
+                    or not 90 <= abs(pwm_esquerdo) <= 200 or pwm_direito != -pwm_esquerdo
+                    or (pwm_esquerdo < 0) != (angulo_graus > 0)))):
             return self._receipt_motor(ok=False, motivo="parametros_invalidos")
         cancelar = threading.Event()
         pwm = parada = False
@@ -578,6 +878,8 @@ class RostoOledRuntime:
             self._motor_cancelar = cancelar
             self._motor_em_pulso = self._motor_parada_solicitada = False
             self._motor_pwm_confirmado = self._motor_parada_confirmada = False
+            self._risco_motor = ""
+            self._giro_resultado = {}
             try:
                 if not self.sincronizar():
                     motivo = "corpo_indisponivel"
@@ -587,6 +889,8 @@ class RostoOledRuntime:
                     motivo = "firmware_sem_rampa"
                 elif duracao_ms > self._limite_motor_ms:
                     motivo = "firmware_sem_movimento_longo"
+                elif angulo_graus is not None and (not self._imu_suportada or self._diagnostico_imu()["bloqueio_manuseio"]):
+                    motivo = "imu_indisponivel_ou_manuseio"
                 elif cancelar.is_set():
                     motivo = "movimento_cancelado"
                 elif validar_inicio is not None and not validar_inicio():
@@ -596,24 +900,56 @@ class RostoOledRuntime:
                     sessao_operacao, serial_operacao = self._sessao, self._serial
                     campos = f"{self._sessao} {self._seq_motor} {pwm_esquerdo} {pwm_direito} {duracao_ms}"
                     versao = 2 if suave else 1
-                    self._escrever(f"MOTOR {versao} {campos}")
                     self._motor_em_pulso = True
-                    pwm = self._esperar(f"MACK {versao} {campos}", 0.5, opcional=True,
+                    if angulo_graus is None:
+                        self._escrever(f"MOTOR {versao} {campos}")
+                    else:
+                        self._escrever(f"TURN 1 {self._sessao} {self._seq_motor} {angulo_graus} {abs(pwm_esquerdo)} {duracao_ms}")
+                    esperado = (f"MACK {versao} {campos}" if angulo_graus is None else
+                                f"TURNPWM 1 {self._sessao} {self._seq_motor}")
+                    pwm = self._esperar(esperado, 0.5, opcional=True,
                         cancelar=lambda: cancelar.is_set() or (validar_inicio is not None and not validar_inicio()))
                     motivo = ("" if pwm else "concessao_expirada_antes_do_motor"
                               if validar_inicio is not None and not validar_inicio() else "sem_confirmacao_pwm")
             except Exception as erro:
                 motivo = type(erro).__name__ + ":" + str(erro)[:100]
         try:
-            if pwm:
+            if pwm or self._risco_motor:
                 # Solta o lock serial: STOP e heartbeats podem passar durante o pulso.
                 prazo_movimento = time.monotonic() + duracao_ms / 1000 + .02
-                while time.monotonic() < prazo_movimento and not cancelar.is_set():
+                prazo_reflexo = time.monotonic() + 3.3
+                proxima_consulta = time.monotonic()
+                proxima_face = time.monotonic() + .5
+                while not cancelar.is_set():
+                    if angulo_graus is not None:
+                        with self._lock:
+                            self._esperar("", .025, opcional=True)
+                        if self._giro_resultado:
+                            motivo = "" if self._giro_resultado["resultado"] == "ALVO" else "giro:" + self._giro_resultado["resultado"]
+                            break
                     if validar_inicio is not None and not validar_inicio():
                         motivo = "concessao_expirada_antes_do_motor"
                         cancelar.set()
                         break
-                    cancelar.wait(min(.05, max(0, prazo_movimento - time.monotonic())))
+                    if (self._sensores_suportados or self._imu_suportada) and time.monotonic() >= proxima_consulta:
+                        with self._lock:
+                            self._consultar_sensores()
+                            self._consultar_imu()
+                            if time.monotonic() >= proxima_face:
+                                if not self.sincronizar():
+                                    motivo = "corpo_indisponivel"
+                                    break
+                                proxima_face = time.monotonic() + .5
+                        proxima_consulta = time.monotonic() + .05
+                    if self._risco_motor:
+                        motivo = "interrompido_por_protecao:" + self._risco_motor
+                        if not self._protecao.get("reflexo_ativo") or time.monotonic() >= prazo_reflexo:
+                            break
+                    elif time.monotonic() >= prazo_movimento:
+                        break
+                    cancelar.wait(.02 if self._risco_motor else min(.05, max(0, prazo_movimento - time.monotonic())))
+        except Exception as erro:
+            motivo = type(erro).__name__ + ":" + str(erro)[:100]
         finally:
             with self._lock:
                 cancelado = self._motor_parada_solicitada
@@ -639,9 +975,28 @@ class RostoOledRuntime:
                     self._publicar()
                 except Exception:
                     pass  # Publicação diagnóstica não muda o receipt observado.
-        return self._receipt_motor(ok=pwm and parada and not sessao_alterada and not cancelado and not motivo,
+        receipt = self._receipt_motor(ok=pwm and parada and not sessao_alterada and not cancelado and not motivo,
                                    motivo=motivo, pwm=pwm, parada=parada, cancelado=cancelado,
                                    esquerdo=pwm_esquerdo, direito=pwm_direito, duracao=duracao_ms)
+        if angulo_graus is not None:
+            resultado = dict(self._giro_resultado)
+            medido = resultado.get("rotacao_graus")
+            correlacionado = resultado.get("sessao") == sessao_operacao and resultado.get("sequencia") == self._seq_motor
+            confirmado = (correlacionado and resultado.get("resultado") == "ALVO" and isinstance(medido, (int, float))
+                          and abs(medido - angulo_graus) <= 12 and receipt["ok"])
+            receipt.update(ok=bool(confirmado), prova_rotacao=bool(confirmado),
+                           angulo_solicitado_graus=angulo_graus, rotacao_medida_graus=medido if correlacionado else None,
+                           resultado_giro=resultado.get("resultado", "SEM_RECEIPT"),
+                           evidencia="imu_relativa_turnend_e_sack" if confirmado else receipt["evidencia"])
+            if not confirmado:
+                receipt.update(status="falha_execucao", motivo=motivo or "giro_sem_alvo_confirmado")
+        return receipt
+
+    def girar_corpo(self, angulo_graus: int, *, pwm: int = 160) -> dict[str, Any]:
+        if type(angulo_graus) is not int or type(pwm) is not int:
+            return self._receipt_motor(ok=False, motivo="parametros_invalidos")
+        e = -pwm if angulo_graus > 0 else pwm
+        return self.mover_corpo(e, -e, 5000, angulo_graus=angulo_graus)
 
     def executar(self, *, deve_parar: Callable[[], bool], aguardar_fn: Callable[[float], Any]) -> None:
         self._deve_parar = deve_parar

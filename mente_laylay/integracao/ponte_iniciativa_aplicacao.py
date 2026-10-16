@@ -89,12 +89,19 @@ class PonteIniciativaAplicacaoRuntime:
         return self._motor, self._porteiro, self._coordenador, self._rede
 
     def turno_em_andamento(self) -> bool:
-        plano = self._estado_mental_getter().get("plano_turno_atual") or {}
+        """Prioridade da conversa humana; evento não ocupa o próprio canal."""
+        mental = self._estado_mental_getter()
+        plano = mental.get("plano_turno_atual") or {}
         fase = (
             str(plano.get("fase") or "").strip().casefold()
             if isinstance(plano, dict) else ""
         )
-        return fase in {"planejado", "resposta_planejada"}
+        turno = mental.get("turno_atual") or {}
+        evento_observado = bool(isinstance(plano, Mapping) and isinstance(turno, Mapping)
+            and plano.get("id") and plano.get("id") == turno.get("id")
+            and plano.get("natureza_entrada") == turno.get("natureza_entrada") == "evento"
+            and plano.get("autoriza_execucao") is False and turno.get("autoriza_execucao") is False)
+        return fase in {"planejado", "resposta_planejada"} and not evento_observado
 
     def contexto(self) -> dict[str, Any]:
         contexto_sistema = dict(self._percepcao_getter("contexto_sistema", {}) or {})
@@ -120,6 +127,7 @@ class PonteIniciativaAplicacaoRuntime:
                 "programação", "programacao", "estudo", "trabalho focado",
             )),
             "ultima_entrada_ts": float(mental.get("ultima_entrada_ts") or 0.0),
+            "ultima_fala_normal_ts": float(mental.get("ultima_fala_emitida_ts") or 0.0),
             "is_speaking": bool(self._conversa_getter("is_speaking", False)),
             "usuario_falando": usuario_falando,
             "interacao_usuario_ativa": interacao_usuario_ativa,

@@ -86,7 +86,9 @@ _DESCRICAO_DOMINIO = {
         "'ande para trás', 'vire para a esquerda', 'vire para a direita' e 'pare os motores'. "
         "Cada movimento é um pulso curto de bancada, por padrão 250 milissegundos, seguido de parada. "
         "A sessão exige firmware MOTOR1 habilitado. MACK e SACK correlacionados confirmam apenas "
-        "PWM aplicado e ponte desenergizada; não possuo sensor de giro, deslocamento ou obstáculos. "
+        "PWM aplicado e ponte desenergizada; não medem deslocamento. Com IMU1 recente e calibrada, "
+        "percebo inclinação e rotação relativa, reajo ao manuseio e aceito 'gire 90 graus para a esquerda'. "
+        "Giro medido exige TURNEND do alvo e SACK, sem prometer posição ou retorno ao início. "
         "Repetir exige outro pedido atual. Posso reagir com pequenos gestos ao mudar de emoção ou começar a falar "
         "se você pedir 'ative modo companhia na bancada', 'na área delimitada' ou 'com rodas suspensas'. "
         "Esse modo exige a sessão USB atual. Uma preferência explícita salva pode ativá-lo ao iniciar; "
@@ -97,7 +99,8 @@ _DESCRICAO_DOMINIO = {
         "Com 'ative modo passeio na mesa com barreiras', 'ative passeio na área delimitada' "
         "ou a preferência explícita salva para iniciar passeio na área com barreiras, "
         "intercalo avanços, recuos e giros espontâneos a cada 8 a 14 segundos, em silêncio e sem ação em andamento. "
-        "'Desative passeio', 'desative modo companhia', parada, movimento manual, falha ou reconexão revogam a concessão. "
+        "'Desative passeio', 'desative modo companhia', parada e movimento manual revogam a concessão. "
+        "Perda de conexão suspende o controle; firmware com diagnóstico de identidade pode renovar a concessão no mesmo ESP após conexão estável, sem repetir movimentos antigos. "
         "O perfil explícito rodas_suspensas acrescenta intenções de atenção, interação, expressão, "
         "comemoração, exploração e descanso, usando atividade do PC e emoção causal. "
         "Com LONGO1 negociado, esse perfil usa comandos contínuos de até 5 segundos e coreografias "
@@ -110,7 +113,11 @@ _DESCRICAO_DOMINIO = {
         "Com OLHOS2, coordeno antecipação, olhar durante o gesto e acomodação; vario lado e ritmo "
         "sem repetir imediatamente a mesma versão da emoção. Com RAMPA1 negociado, o gesto usa "
         "subida e descida graduais de PWM, mantendo prazo absoluto e parada imediata quando solicitada. "
-        "Sem sensores, não mapeio o ambiente nem evito bordas; giro de 360 graus ainda não está calibrado"
+        "Com SENSORES2 negociado, recebo distância frontal e inferior dianteira; a proteção local corta "
+        "movimento por borda acima de 13cm, leitura inferior inválida ou obstáculo até 10cm. "
+        "Posso recuar, girar por tempo e medir a nova direção antes de avançar; isso não confirma 180 graus "
+        "nem cobre bordas traseiras ou laterais. Sem esse suporte não possuo proteção por distância. "
+        "Não mapeio todo o ambiente; precisão de giros medidos depende de calibração e validação física"
     ),
     "rosto_oled": (
         "expressar a emoção causal e intensidade da mente num rosto animado no OLED SSD1306 "
@@ -163,7 +170,8 @@ _DESCRICAO_DOMINIO = {
         "uma conversão automática do conteúdo"
     ),
     "email": (
-        "sincronizar e consultar emails; reunir emails, agenda, lembretes e alertas "
+        "ler e explicar o corpo dos emails, mantendo a mensagem exata; criar, editar e descartar rascunhos locais; "
+        "revisar envio e alterações com confirmação da versão; reunir emails, agenda, lembretes e alertas "
         "internos numa central que prioriza, agrupa e silencia categorias"
     ),
     "iot": "listar, consultar e controlar dispositivos inteligentes configurados",
@@ -215,7 +223,7 @@ _DESCRICAO_DOMINIO = {
 }
 
 _TERMOS_DOMINIO = {
-    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha"),
+    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha", "objetivo corporal", "sensor", "sensores", "borda", "obstaculo", "parede", "distancia", "giroscopio", "acelerometro", "imu", "inclinacao", "manuseio", "mpu6050", "giro medido"),
     "rosto_oled": ("oled", "esp32", "rostinho", "rosto fisico", "corpo fisico", "animacao de hack", "mini terminal", "bip", "bips", "olhos expressivos"),
     "musica": ("musica", "som", "faixa", "playlist", "tocar", "pausar", "youtube", "spotify"),
     "sistema": (
@@ -359,6 +367,8 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
         return False
     if any(frase in t for frase in _PEDIDO_CAPACIDADES):
         return True
+    if re.search(r"\b(?:voce|laylay|lay)\s+tem\s+(?:algum[as]?\s+)?(?:sensores?|giroscopio|acelerometro|imu)\b", t):
+        return True
     if re.match(r"^como\s+(?:(?:eu\s+)?posso\s+)?(?:pedir|solicitar)\b", t):
         return True
     if _texto_sobre_feedback_presenca(t) and re.search(
@@ -375,7 +385,7 @@ def _texto_pergunta_capacidade(texto: str) -> bool:
         r"(?:no|dentro\s+do)\s+(?:meu|seu)\s+(?:pc|computador)\b|"
         r"\b(?:voce|laylay|lay)\s+(?:so|apenas)\s+"
         r"(?:consegue|pode|sabe)\s+(?:conversar|responder|falar)\b|"
-        r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
+        r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz|aprende|reconhece)\b|"
         r"^(?:e\s+|mas\s+|entao\s+)?se eu\s+"
         r"(?:pedir|mandar|falar|disser)(?:\s+(?:para|pra)\s+voce)?\b|"
         r"\b(?:voce|laylay|lay)\s+(?:vai|iria|faria)\s+"
@@ -459,12 +469,28 @@ def _contexto_conversacional_texto(contexto: Mapping[str, Any] | None) -> str:
     return _normalizar(" ".join(partes[-3:]))
 
 
+# Famílias deliberadas do catálogo, não prefixos incidentais de toda palavra.
+# Conservam as flexões já reconhecidas sem fazer "andar" surgir em "mandar".
+_RADICAIS_DOMINIO = frozenset({
+    "pesquis", "renome", "convers", "agenda", "posiciona", "anota", "explica",
+})
+
+
 def _termo_dominio_mencionado(termo: str, texto_normalizado: str) -> bool:
-    # Termos curtos representam palavras completas: "aba" em
-    # "retrabalho" não é evidência de uma capacidade do navegador.
-    if len(termo) <= 3 and termo.isalnum():
-        return bool(re.search(rf"(?<!\w){re.escape(termo)}(?!\w)", texto_normalizado))
-    return termo in texto_normalizado
+    """Seleciona documentação lexical; nunca interpreta ou autoriza comandos."""
+    termo = _normalizar(termo)
+    if not termo:
+        return False
+    padrao = re.escape(termo)
+    if termo.startswith("."):
+        # Extensão se anexa ao nome: notas.txt, mas não notas.txtx.
+        return bool(re.search(padrao + r"(?!\w)", texto_normalizado))
+    if termo in _RADICAIS_DOMINIO:
+        padrao += r"\w*"
+    elif termo.replace("-", "").isalnum() and len(termo) > 3:
+        # Plurais regulares antes atendidos por substring (arquivos, motores).
+        padrao += r"(?:s|es)?"
+    return bool(re.search(r"(?<!\w)" + padrao + r"(?!\w)", texto_normalizado))
 
 
 def _dominios_mencionados(texto: str) -> list[str]:
@@ -943,11 +969,72 @@ class MapaHabilidadesRuntime:
             )
         dominios = self.dominios_relevantes(t, turno=leitura_turno)
         pergunta_geral = any(frase in t for frase in _PEDIDO_CAPACIDADES)
+        if (not pergunta_geral and any(x in t for x in ("esp32", "corpo", "oled"))
+                and any(x in t for x in ("outro pc", "porta usb", "pareamento", "identidade", "reconhec"))):
+            rosto = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {})
+            identidade = rosto.get("identidade_usb") or {}
+            if not identidade.get("dispositivo"):
+                return "Não tenho um corpo pareado por identidade nesta sessão. Sem pareamento, a USB automática exige um único ESP32 compatível."
+            atual = ("A identidade do corpo está verificada na conexão atual. "
+                     if rosto.get("estado") == "disponivel" and identidade.get("verificada") is True
+                     else "O corpo pareado ainda não está confirmado na conexão atual. ")
+            return (atual + "Posso reconhecer o mesmo chip mesmo se a porta COM mudar, inclusive em outro PC levando configuracao.env junto. "
+                    "O nome amigável não substitui a identidade, e reconhecer o corpo não autoriza movimentos.")
         if "corpo_motor" in dominios and not pergunta_geral:
+            if any(trecho in t for trecho in ("giroscop", "acelerometr", "imu", "inclina", "manuseio", "mpu", "giro medido")):
+                imu = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("imu") or {}
+                if not imu.get("suportado") or not imu.get("recente"):
+                    return "Minha leitura inercial está indisponível ou em calibração agora; não posso afirmar inclinação ou giro medido."
+                controle = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("estado") == "disponivel"
+                return ("Tenho acelerômetro e giroscópio com leitura recente: percebo inclinação e rotação relativa. "
+        "Posso reagir ao manuseio com olhos e bips, resmungar de modo fofo e fazer comentários ocasionais pelo diretor de presença, respeitando silêncio e prioridades. "
+                        + ("Aceito pedidos como 'gire 90 graus para a esquerda', com calibração e corpo apoiado. "
+                           if controle else "Os motores estão indisponíveis neste perfil; não posso executar giros agora. ")
+                        + "Possível levantamento combina sinais e não prova colo. "
+                        "Não meço posição ou distância percorrida e não sei voltar ao ponto inicial só com a IMU. "
+                        "A pergunta não iniciou movimento.")
             if mapa["dominios"]["corpo_motor"]["estado"] != "disponivel":
                 return "Meu controle dos motores está indisponível agora: preciso de uma sessão recente e firmware com MOTOR1 habilitado."
             modo = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("companhia") or {}
             estado_modo = " O modo companhia está ativo nesta sessão." if modo.get("ativa") is True else " O modo companhia está desativado agora."
+            saude=(((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("saude") or {})
+            if saude.get("suportado"):
+                estado_modo+=" Posso recuperar o controle após reconexão estável do mesmo ESP identificado, sem repetir movimentos interrompidos. Parada ou desativação continuam revogando a retomada."
+            if modo.get("recuperacao_pendente"):
+                estado_modo+=" O controle está suspenso aguardando recuperar a conexão, sem motores autorizados."
+            sensores = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("sensores") or {}
+            if any(trecho in t for trecho in ("sensor", "borda", "obstaculo", "parede", "distancia")):
+                if sensores.get("suportado") is not True:
+                    return "Não tenho leitura dos sensores disponível nesta conexão. Não posso afirmar que detecto bordas ou obstáculos agora."
+                if sensores.get("recente") is not True:
+                    return "O firmware oferece sensores, mas as leituras atuais estão indisponíveis ou expiradas. Não posso afirmar que a superfície está segura."
+                p = sensores.get("protecao") or {}
+                experiencia = (((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("experiencia") or {})
+                integracao = (" Registro as fases observadas dos episódios dos sensores na mesma experiência corporal; "
+                    "esse histórico participa das próximas decisões. Quando o aprendizado compartilhado está conectado, "
+                    "persisto os desfechos observados, sem confundir detecção com deslocamento ou sucesso de uma tarefa. "
+                    if (experiencia.get("sensorial") or {}).get("origem")=="experiencia_sensorial_observada" else "")
+                alerta = ("O firmware atual oferece VIGIA1: expresso medo/pavor parada diante de borda e irritação diante de parede. "
+                    "Busca de outra direção depende do modo companhia autorizado e tem até quatro tentativas por rodada, com pausa antes de reavaliar. "
+                    "Na borda persistente faço no máximo três recuos hesitantes adicionais por episódio; sem superfície confirmada não giro nem avanço. "
+                    if sensores.get("alerta_suportado") is True else
+                    "Alertas expressivos parada e busca espontânea de parede estão indisponíveis no firmware desta conexão. ")
+                return ("Tenho leitura frontal e inferior dianteira pelo VL53L0X. A proteção do ESP interrompe movimento "
+                    "quando a borda passa de 13 cm, a leitura inferior é inválida ou um obstáculo está a 10 cm ou menos. "
+                    "O reflexo pode recuar e girar por tempo; só avança após novas leituras seguras. "
+                    "Não meço o ângulo do giro e não cubro a traseira ou as laterais. "
+                    "Posso propor um comentário breve sobre um episódio recente realmente medido, respeitando silêncio e conversa; detecção não prova que escapei do perigo. "
+                    + alerta + integracao +
+                    f"O risco informado agora é {p.get('risco', 'desconhecido')}, na fase {p.get('fase', 'desconhecida')}. "
+                    "A pergunta não iniciou movimento.")
+            if modo.get("continuidade_intencao") is True:
+                estado_modo += " Acompanho o objetivo corporal entre espera, gesto e acomodação; um novo turno ou tarefa pode interrompê-lo, sem renovar permissão de movimento."
+            if modo.get("objetivos_entre_turnos") is True:
+                estado_modo += " Posso propor continuar o mesmo objetivo entre turnos por até dois minutos e oito turnos, validando a referência atual sem retomar comandos antigos."
+            if modo.get("objetivos_curtos") is True:
+                estado_modo += " Cada gesto tem um propósito curto, prazo e confirmação de parada; também posso escolher ficar quietinha e observar, sem enviar movimento. Isso não prova deslocamento ou posição."
+            if modo.get("planejamento_por_historico") is True:
+                estado_modo += " Escolho variantes com meu histórico recente e preferências aprendidas para reduzir repetição."
             if modo.get("perfil_corporal") == "rodas_suspensas":
                 estado_modo += " O perfil atual é rodas suspensas; a intenção corporal usa minha atividade no PC e emoção causal."
             estado_modo += " O passeio espontâneo está ativo." if modo.get("passeio_ativado") is True else " O passeio espontâneo está desativado agora."
@@ -964,6 +1051,11 @@ class MapaHabilidadesRuntime:
                         "Cada movimento pode durar até 5 segundos quando o firmware negocia LONGO1; "
                         "uma tarefa no PC pode interromper o passeio. Não tenho sensores de deslocamento."
                         + estado_modo)
+            experiencia = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("experiencia") or {}
+            if experiencia.get("origem") == "experiencia_corporal_observada":
+                estado_modo += " Pedidos e gestos espontâneos alimentam a mesma experiência corporal; confirmação elétrica não prova deslocamento."
+                if experiencia.get("aprendizado_conectado") is True:
+                    estado_modo += " Posso aprender com 'gostei desse movimento' ou 'não gostei desse gesto', vinculando a avaliação a uma experiência recente; a preferência não autoriza movimentos."
             return "Posso " + _DESCRICAO_DOMINIO["corpo_motor"] + "." + estado_modo
         if "rosto_oled" in dominios and not pergunta_geral:
             if mapa["dominios"]["rosto_oled"]["estado"] != "disponivel":
@@ -972,6 +1064,8 @@ class MapaHabilidadesRuntime:
             som = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {}).get("som") or {}
             descricao += (" O firmware atual oferece SOM1 para os bips." if som.get("suportado") is True
                           else " Os bips estão indisponíveis no firmware conectado agora.")
+            if som.get("envio_suportado") is True:
+                descricao += " Com ENVIO1, um bip neutro sinaliza comando enviado sem confirmar o efeito; sucesso e falha têm sons distintos."
             expressao = ((self._operacional().get("dominios") or {}).get("rosto_oled") or {}).get("expressao") or {}
             descricao += (" OLHOS2 está disponível: demonstro atenção antes da resposta e acordo/adormeço gradualmente."
                           if expressao.get("suportado") is True else " OLHOS2 está indisponível no firmware atual.")
@@ -1236,8 +1330,15 @@ class MapaHabilidadesRuntime:
                 "persistência local; a entrega passa pela central de notificações."
             )
         if "email" in dominios:
+            if not capacidade_disponivel("EMAIL_READ"):
+                return "Posso trabalhar com rascunhos locais quando o modelo está disponível. Meu acesso à caixa de e-mail está indisponível agora."
             return (
-                "Consigo consultar emails e reunir avisos de email, agenda, lembretes e alertas internos. "
+                "Consigo consultar e explicar o corpo dos e-mails da conta principal e continuar perguntas sobre a mensagem selecionada. "
+                "Posso criar, revisar, editar e descartar rascunhos locais, responder e encaminhar por rascunho; "
+                "o envio e alterações da caixa precisam de confirmação. Editar invalida a revisão anterior. "
+                "Posso anexar até cinco arquivos locais permitidos, com 12 MB totais e revalidação antes de enviar. "
+                "Ainda não leio o conteúdo dos anexos recebidos, e várias contas ainda não estão disponíveis. "
+                "Também reúno avisos de email, agenda, lembretes e alertas internos. "
                 "A central prioriza o importante, agrupa repetições e aprende quais categorias devem "
                 "interromper, entrar no resumo ou ficar em silêncio."
             )

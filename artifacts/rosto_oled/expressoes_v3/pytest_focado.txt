@@ -1,0 +1,21 @@
+......................................F.....                             [100%]
+================================== FAILURES ===================================
+__________ test_perfil_e_preferencia_explicita_preserva_configuracao __________
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-3604/test_perfil_e_preferencia_expl0')
+
+    def test_perfil_e_preferencia_explicita_preserva_configuracao(tmp_path):
+        from mente_laylay.integracao.configuracao_aplicacao import ConfiguracaoAplicacaoRuntime, ErroConfiguracaoAplicacao
+        arquivo = tmp_path / "configuracao.env"
+        arquivo.write_text("OUTRA_CONFIG=valor\n", encoding="utf-8")
+        c = ConfiguracaoAplicacaoRuntime(raiz=tmp_path)
+>       assert c.perfil_corporal() == "bancada"
+E       AssertionError: assert 'rodas_suspensas' == 'bancada'
+E         
+E         - bancada
+E         + rodas_suspensas
+
+scripts\tests\test_decisao_corporal_v1.py:93: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_decisao_corporal_v1.py::test_perfil_e_preferencia_explicita_preserva_configuracao
+1 failed, 43 passed in 11.05s

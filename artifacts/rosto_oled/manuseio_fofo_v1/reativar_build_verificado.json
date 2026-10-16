@@ -1,0 +1,23 @@
+{
+  "perfil_gravado": "integrado_usb",
+  "fqbn": "esp32:esp32:esp32c3:CDCOnBoot=cdc",
+  "programa_bytes": 442942,
+  "globais_bytes": 19532,
+  "binario_bytes": 443088,
+  "sha256_binario": "76b1437fc225b9c28a0b9d2252555bb84bb25538781102a80ac3e2bddac5a7a1",
+  "hash_upload_verificado": true,
+  "opcoes": "compiler.cpp.extra_flags=-DLAYLAY_WIFI=0 -DLAYLAY_HABILITAR_MOTORES_BANCADA=1 -DLAYLAY_LIMITE_MOTOR_TESTE_MS=5000 -DLAYLAY_SOM_PONTE=0 -DLAYLAY_SENSORES_DISTANCIA=1 -DLAYLAY_PROTECAO_CORPORAL=1 -DLAYLAY_IMU=1 -DLAYLAY_TESTE_SOMENTE_IMU=0",
+  "sha256_fontes_firmware": {
+    "firmware/rosto_laylay/fonte_terminal.h": "456db1ab15af4791914fa6006e9830c3c8782d0a56a06a80003d3c30c511a342",
+    "firmware/rosto_laylay/giro_medido.h": "51f3a2e503a3296ff8d3a38811fae26331e99c739f6ef65a09946d58e6763393",
+    "firmware/rosto_laylay/imu_corporal.h": "46b1544d26e036a9496b9f5fcfbea0a226dd843aba921e2badda3b77b9cf3c4f",
+    "firmware/rosto_laylay/presenca_expressiva.h": "85da3ac6f9659a572c2e19b6c001eead9458d4fffdddb76a9ba72b5030c40229",
+    "firmware/rosto_laylay/protecao_corporal.h": "e7ce3267d40165692b6d99a8d78b4134f46be5c2e70c177c9dcdc6f9e1b74367",
+    "firmware/rosto_laylay/rosto_laylay.ino": "180dafa3e3d4681e409daa0e76e1937d19581b4fe2e7e59fe86c2e31ba3dc6dc",
+    "firmware/rosto_laylay/saude_corporal.h": "60cca97d7942cf2d7983053c7245413b61fbed400e97676cb79f19ffce21c943",
+    "firmware/rosto_laylay/sensores_distancia.h": "4ba9c92a6b8e8100d1f9711d8e79a05e6867277adfd7e9d7d56902692f609c8f",
+    "firmware/rosto_laylay/som_expressivo.h": "a4777db7ba3fe194a41012bfcd84bad500e162b1f45989c992ee3374e1afbda4",
+    "firmware/rosto_laylay/sono_vivo.h": "1a786e113f2709608dc1ce465778fa47b97b9f5f13702880c59ae6cd79bb475f",
+    "firmware/rosto_laylay/transporte_wifi.h": "e20b68fb3ea309f2bf84312f4e87ad3ccd7d04264e45a6667af85ee3797b5e77"
+  }
+}
