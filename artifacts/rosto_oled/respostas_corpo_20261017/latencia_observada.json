@@ -1,0 +1,39 @@
+{
+  "prompt_chars": 17251,
+  "modelo_sucesso": true,
+  "rota": "principal",
+  "proposta": {
+    "status": "agendada",
+    "fala": "Meu corpo ficou inclinado por mais de um segundo. isso é demais, tá na hora de eu me recompor.",
+    "agendada": true,
+    "emissao_fisica": false,
+    "autoriza_execucao": false,
+    "comandos_descartados": 0,
+    "direcao_social": {
+      "gatilho": "presenca:corpo:companhia:manuseio:diagnostico-latencia:1",
+      "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+      "alvo": "usuario",
+      "objetivo": "reagir_brevemente",
+      "atitude": "reclamona_fofa",
+      "emocao": "irritada",
+      "nivel": 1,
+      "confianca": 0.94,
+      "ancora_contextual": "",
+      "permite_humor": true,
+      "autoridade_usuario": false,
+      "permissao_execucao": false,
+      "autoriza_execucao": false
+    }
+  },
+  "concluiu": true,
+  "instalacao_sinal": true,
+  "fila": 1,
+  "tempos_s": {
+    "publicacao": 0.0,
+    "cognicao": 0.0025,
+    "modelo_inicio": 0.1031,
+    "modelo_fim": 4.1356,
+    "proposta_fim": 4.1398
+  },
+  "sem_hardware_sem_audio": true
+}

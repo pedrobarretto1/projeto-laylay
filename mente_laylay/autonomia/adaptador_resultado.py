@@ -10,6 +10,7 @@ from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     CHAVE_TRATAMENTO_OPERACIONAL,
     ResultadoAcao,
+    AspectoResultado,
     STATUS_RESULTADO_JA_SATISFEITO,
     identificar_solicitacao_execucao,
     inferir_confirmacao,
@@ -24,8 +25,9 @@ from mente_laylay.personalidade.confirmacao_llm import (
     INTENTS_INFORMATIVOS,
     personalizar_confirmacao_llm,
     personalizar_informacao_llm,
+    ConfirmacaoPersonalizada,
 )
-from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
+from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao, fala_resultado_por_aspectos
 from mente_laylay.personalidade.higiene_fala import limpar_fala_operacional
 
 
@@ -142,6 +144,7 @@ class AdaptadorResultadoOperacional:
         params_resolvidos: Dict[str, Any] | None = None,
         contexto_resultado: Dict[str, Any] | None = None,
         evidencia_confirmacao: str = "",
+        aspectos: tuple[AspectoResultado, ...] = (),
     ) -> None:
         """Publica também as resoluções descobertas durante a execução.
 
@@ -200,6 +203,7 @@ class AdaptadorResultadoOperacional:
                 contexto=contexto_receipt,
                 id_solicitacao=self.id_solicitacao,
                 evidencia_confirmacao=str(evidencia_confirmacao or ""),
+                aspectos=aspectos,
             )
             publicacao = registrar(
                 contrato,
@@ -297,6 +301,8 @@ class AdaptadorResultadoOperacional:
         if receipt is None:
             return falar("Não consegui validar o resultado dessa ação com segurança.",
                 "calma", 1, **kwargs) is not False
+        if receipt.aspectos:
+            texto = fala_resultado_por_aspectos(receipt)
         acumular = self.ctx.get("_acumular_resultado_operacional")
         if callable(acumular) and acumular(receipt, texto, emocao, nivel, contexto=self.contexto_fala()):
             return True
@@ -375,6 +381,7 @@ class AdaptadorResultadoOperacional:
             texto_usuario=self.texto_original,
             id_solicitacao=self.id_solicitacao,
             contexto=contexto_receipt,
+            aspectos=receipt.aspectos if receipt is not None else (),
         )
         if self.intent == "NOTIFICATIONS" and str(fallback or "").strip():
             # O resumo da central já é o dado observado. Passá-lo pelo gerador
@@ -444,7 +451,11 @@ class AdaptadorResultadoOperacional:
             # O receipt já foi publicado. A autoria e a entrega pertencem ao
             # pedido composto inteiro, depois de todas as etapas concluídas.
             return
-        if contrato.intent in INTENTS_INFORMATIVOS:
+        if contrato.aspectos:
+            # A realização enumera alcances distintos da mesma publicação.
+            # Não submeter confirmações parciais a uma paráfrase por status global.
+            confirmacao = ConfirmacaoPersonalizada(plano.fala, plano.emocao, plano.nivel)
+        elif contrato.intent in INTENTS_INFORMATIVOS:
             # A frase factual inteira vira âncora literal. A LLM pode cercá-la
             # com a voz da Laylay, mas não resumir, trocar ou omitir os dados.
             # Listagens válidas não precisam ganhar um prefixo operacional.
@@ -502,7 +513,7 @@ class AdaptadorResultadoOperacional:
                 alvo=contrato.alvo,
                 contexto=contexto_fala,
             )
-            if modo_jogo_ativo
+            if modo_jogo_ativo and not contrato.aspectos
             else confirmacao.fala
         )
         fala_final = limpar_fala_operacional(fala_final)

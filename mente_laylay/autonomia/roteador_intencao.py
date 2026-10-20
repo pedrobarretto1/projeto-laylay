@@ -305,7 +305,8 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
     despacho_corpo = executar_intencao_corpo(
         intent, params, texto_original, ctx,
         DependenciasExecutorCorpo(marcar_resultado=adaptador_resultado.marcar_resultado,
-                                 falar_por_status=adaptador_resultado.falar_por_status),
+                                 falar_por_status=adaptador_resultado.falar_por_status,
+                                 id_solicitacao=adaptador_resultado.id_solicitacao),
     )
     if despacho_corpo.tratado:
         return _finalizar_despacho_moderno(despacho_corpo)

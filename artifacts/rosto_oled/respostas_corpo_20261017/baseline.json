@@ -1,0 +1,12 @@
+{
+  "head": "ca592a9609dd1865b63b22c714f8d3e802fa2a5c",
+  "status": " M artifacts/rosto_oled/wifi/hotspot_windows.json\n M firmware/rosto_laylay/iniciar_laylay_com_rosto.ps1\n M \"melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md\"\n M \"melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md\"\n M mente_laylay/autonomia/companhia_corporal.py\n M mente_laylay/especialistas/capacidades.py\n M mente_laylay/especialistas/corpo_wifi_transporte.py\n M mente_laylay/especialistas/rosto_oled_runtime.py\n M scripts/tests/test_corpo_wifi_transporte.py\n?? artifacts/rosto_oled/reativar_wifi_20261016/\n?? artifacts/rosto_oled/transporte_automatico_20261017/\n?? artifacts/rosto_oled/wifi_bateria_20261017/\n?? scripts/tests/test_companhia_transporte_autenticado.py\n?? scripts/tests/test_corpo_selecao_automatica.py\n?? scripts/tests/test_rede_local_corpo.py\n",
+  "hashes": {
+    "mente_laylay/autonomia/resposta_evento_runtime.py": "8c20d1f1d9541184f30f328bb7e6beebd27b95e9be3584e0dcf94cb0b6673e9d",
+    "mente_laylay/autonomia/diretor_presenca.py": "34c78ea304438e5e621c58e473dc2bb03915fcdc7732ae5fd46983581e597656",
+    "mente_laylay/integracao/ponte_iniciativa_aplicacao.py": "08c35a147318b172896020caf53bdd40e56195da163669b7016ef7a99c728310",
+    "mente_laylay/memoria_mental/experiencia_corporal_runtime.py": "8ed6b105ff8f52bc21de38d24f3f3549806aed659a09e305aaaef3d481bf91cd",
+    "mente_laylay/personalidade/voz_runtime.py": "4fb51e8b4b8249433134508e934941de00f2c078bd35ea15eeef9b5520809ab0",
+    "mente_laylay/autonomia/porteiro_proatividade.py": "594789f6579172e89314586ea9838d231dea1de6e4215694ae8a27cf2ebed48e"
+  }
+}

@@ -29,16 +29,31 @@ def proibido(*_args, **_kwargs):
     pytest.fail("configuração de rede não pode abrir USB nem iniciar conexão na composição")
 
 
-def test_factory_auto_seleciona_rede_configurada_sem_abrir_socket_ou_usb(tmp_path, monkeypatch):
+def test_factory_auto_prepara_dois_canais_sem_abrir_socket_ou_usb(tmp_path, monkeypatch):
     configurar(tmp_path, monkeypatch)
     runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, abrir_serial=proibido,
                                       listar_portas=proibido)
     dados = runtime.diagnostico()
-    assert dados.get("transporte") == "tcp", "primeira fronteira: factory ignora servidor configurado"
-    assert dados["modo_conexao"] == "rede" and dados["configurado"]
-    assert dados["endpoint"] == "127.0.0.1:8765"
+    assert dados['selecao_automatica_usb_wifi']
+    assert dados["modo_conexao"] == "automatico" and dados["configurado"]
+    assert dados["endpoint"] == ""
     assert not dados["conectado"] and not dados["aplicacao_confirmada"]
     assert TOKEN_TESTE not in str(dados)
+
+
+@pytest.mark.parametrize('arquivo_presente', [True, False])
+def test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback(tmp_path, monkeypatch, arquivo_presente):
+    caminho = configurar(tmp_path, monkeypatch)
+    if not arquivo_presente:
+        caminho.unlink()
+    monkeypatch.setenv('LAYLAY_ROSTO_PORTA', 'WIFI')
+    runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, abrir_serial=proibido,
+        listar_portas=proibido, preferir_usb=True)
+    assert runtime.diagnostico()['transporte'] == 'tcp'
+    assert not runtime.autodetectar and not runtime.porta
+    if not arquivo_presente:
+        assert runtime.sincronizar() is False
+        assert runtime.diagnostico()['motivo'] == 'configuracao_wifi_inativa'
 
 
 @pytest.mark.parametrize("porta", ["AUTO", "OFF", "COM8"])
@@ -198,17 +213,21 @@ def servidor():
 
 def runtime_rede(tmp_path, monkeypatch, esp, **kwargs):
     configurar(tmp_path, monkeypatch, porta=esp.porta)
-    return criar_rosto_oled_runtime(estado_getter=lambda: {}, abrir_serial=proibido,
+    return criar_rosto_oled_runtime(porta='WIFI', estado_getter=lambda: {}, abrir_serial=proibido,
                                    listar_portas=proibido, **kwargs)
 
 
 def test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto(tmp_path, monkeypatch, servidor):
     esp = servidor(fragmentar=True)
-    atividade = {"origem": "atividade_operacional_observada", "falha_id": 1,
-                 "falha_monotonic": time.monotonic(), "ativos": 1}
+    atividade = {}
     runtime = runtime_rede(tmp_path, monkeypatch, esp, atividade_getter=lambda: atividade)
     try:
         assert runtime.sincronizar(), "fronteira AUTH/HELLO/FACE no TCP"
+        # A negociação pode exceder a validade de um overlay. A ocorrência
+        # desta prova nasce depois dela; não se enfraquece o prazo em produção.
+        atividade.update(origem="atividade_operacional_observada", falha_id=1,
+                         falha_monotonic=time.monotonic(), ativos=1)
+        assert runtime.sincronizar()
         diagnostico = runtime.diagnostico()
         assert diagnostico["aplicacao_confirmada"] and diagnostico["hack"]["ativo"]
         assert diagnostico["glitch"]["aplicacao_confirmada"] and diagnostico["motor"]["disponivel"]
@@ -431,11 +450,13 @@ instancia_unica.adquirir_instancia_unica = lambda _: adquirir(saida.parent / 'mu
 # Perfil TCP isolado: a preferência USB pessoal do usuário não é fixture.
 from mente_laylay.integracao.configuracao_aplicacao import ConfiguracaoAplicacaoRuntime
 ConfiguracaoAplicacaoRuntime.companhia_bancada_ao_iniciar = lambda self: False
+ConfiguracaoAplicacaoRuntime.perfil_corporal = lambda self: 'bancada'
+ConfiguracaoAplicacaoRuntime.identidade_corpo_usb = lambda self: {}
 root = importlib.import_module('laylay')
 runtime = root._rosto_oled_runtime
 assert root._corpo_motor_runtime.transporte is runtime
 assert root._composicao_ciclo_comandos_runtime.contexto.montar()['_corpo_motor_runtime'] is root._corpo_motor_runtime
-assert runtime.diagnostico()['transporte'] == 'tcp' and not runtime.diagnostico()['conectado']
+assert runtime.diagnostico()['selecao_automatica_usb_wifi'] and not runtime.diagnostico()['conectado']
 assert not root._mapa_habilidades_runtime.consultar('CORPO_MOVER')['disponivel']
 assert runtime.sincronizar()
 assert root._mapa_habilidades_runtime.consultar('CORPO_MOVER')['disponivel']

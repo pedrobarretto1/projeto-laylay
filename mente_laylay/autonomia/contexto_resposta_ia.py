@@ -6,7 +6,9 @@ import re
 from typing import Any, Callable, Dict, List, Tuple
 
 from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
-from mente_laylay.memoria_mental.registro_semantico import formatar_evidencia_da_fala
+from mente_laylay.memoria_mental.registro_semantico import (
+    formatar_evidencia_da_fala, formatar_revisoes_alegacoes,
+)
 
 from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
 from mente_laylay.cognicao.modelo_corporal import formatar_modelo_corporal
@@ -54,47 +56,60 @@ def _texto_pede_contexto_da_aba(texto: str) -> bool:
     ))
 
 
-def _formatar_fundamentacao_rapida(
+def _selecionar_fontes_fundamentacao(
     fundamentacao: Dict[str, Any] | None,
-) -> str:
-    """Expõe só a evidência factual necessária ao turno rápido atual."""
+) -> list[dict[str, Any]]:
+    """Única seleção das fontes expostas no texto e no contrato de autoria."""
     base = dict(fundamentacao or {})
     if not (
         base.get("confiavel")
         and base.get("evidencia_dentro_validade", True) is not False
         and str(base.get("resumo") or "").strip()
     ):
+        return []
+    fontes_lidas = [
+        item for item in list(base.get("fontes") or [])[:5]
+        if isinstance(item, dict) and item.get("url")
+        and type(item.get("trecho")) is str and 0 < len(item["trecho"]) <= 850
+    ]
+    # Preserva a seleção anterior: dois alvos distintos e uma terceira âncora.
+    selecionadas = []
+    alvos_vistos = set()
+    for item in fontes_lidas:
+        alvo = str(item.get("alvo") or "").casefold()
+        if alvo and alvo in alvos_vistos:
+            continue
+        selecionadas.append(item)
+        alvos_vistos.add(alvo)
+        if len(selecionadas) >= 2:
+            break
+    for item in fontes_lidas:
+        if len(selecionadas) >= 3:
+            break
+        if item not in selecionadas:
+            selecionadas.append(item)
+    return selecionadas
+
+
+def _formatar_fundamentacao_rapida(
+    fundamentacao: Dict[str, Any] | None,
+) -> str:
+    """Expõe só a evidência factual necessária ao turno rápido atual."""
+    base = dict(fundamentacao or {})
+    if not (base.get("confiavel") and base.get("evidencia_dentro_validade", True) is not False
+            and str(base.get("resumo") or "").strip()):
         return ""
     tema = re.sub(r"\s+", " ", str(base.get("tema") or "esse tema")).strip()[:160]
     fonte = re.sub(r"\s+", " ", str(base.get("fonte") or "fonte externa")).strip()[:80]
     resumo = re.sub(r"\s+", " ", str(base.get("resumo") or "")).strip()[:1200]
-    fontes_lidas = [
-        item for item in list(base.get("fontes") or [])[:5]
-        if isinstance(item, dict) and item.get("url") and item.get("trecho")
-    ]
-    if fontes_lidas:
-        # O pesquisador pode ler cinco sites; a LLM pequena recebe apenas
-        # as âncoras necessárias, preservando um conceito por lado quando
-        # a pergunta compara dois assuntos.
-        selecionadas = []
-        alvos_vistos = set()
-        for item in fontes_lidas:
-            alvo = str(item.get("alvo") or "").casefold()
-            if alvo and alvo in alvos_vistos:
-                continue
-            selecionadas.append(item)
-            alvos_vistos.add(alvo)
-            if len(selecionadas) >= 2:
-                break
-        for item in fontes_lidas:
-            if len(selecionadas) >= 3:
-                break
-            if item not in selecionadas:
-                selecionadas.append(item)
+    selecionadas = _selecionar_fontes_fundamentacao(base)
+    if selecionadas:
         linhas = "\n".join(
             f"[{indice}] {str(item.get('alvo') or tema)[:60]} — "
             f"{str(item.get('titulo') or item.get('dominio') or 'Fonte')[:90]} "
-            f"({str(item['url'])[:260]}): {str(item['trecho'])[:300]}"
+            # O snapshot individual já é limitado pela fundamentação. Cortar
+            # novamente apagaria ressalvas e divergiria da revisão integral.
+            f"({str(item['url'])[:260]}): {item['trecho']}"
             for indice, item in enumerate(selecionadas, 1)
         )
         return (
@@ -121,6 +136,33 @@ def _formatar_fundamentacao_rapida(
         "--- EVIDÊNCIA FACTUAL EFÊMERA DO TURNO ---\n"
         f"Tema: {tema}. Fonte: {fonte}. Evidência: {resumo}\n{instrucao}"
     )
+
+
+def negociar_autoria_com_fontes(
+    pacote: PacotePrompt, fundamentacao: Dict[str, Any] | None, *, incluir_evidencia: bool = False,
+    plano_autoria: Dict[str, Any] | None = None,
+) -> PacotePrompt:
+    """Negocia o mesmo inventário no envio principal e nas reescritas do host."""
+    from dataclasses import replace
+    from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
+    bloco = _formatar_fundamentacao_rapida(fundamentacao)
+    exposta = bool(not pacote.contexto_fechado and bloco and any(
+        m.get("role") == "system" and bloco in str(m.get("content") or "") for m in pacote.mensagens))
+    if incluir_evidencia and not pacote.contexto_fechado and bloco and not exposta:
+        mensagens = [dict(m) for m in pacote.mensagens]
+        indice = next((i for i in range(len(mensagens) - 1, -1, -1) if mensagens[i].get("role") == "user"), len(mensagens))
+        mensagens.insert(indice, {"role": "system", "content": bloco})
+        pacote = replace(pacote, mensagens=tuple(mensagens))
+        exposta = True
+    referencias = tuple(dict.fromkeys(
+        f["url"] for f in _selecionar_fontes_fundamentacao(fundamentacao)
+        if type(f.get("url")) is str and 0 < len(f["url"]) <= 200
+        and f["url"] == f["url"].strip() and f["url"].isprintable())) if exposta else ()
+    pacote = exigir_suporte_no_pacote_autoral(pacote, referencias_disponiveis=referencias)
+    if plano_autoria:
+        from mente_laylay.cognicao.suporte_autoria import vincular_atos_no_pacote_autoral
+        pacote = vincular_atos_no_pacote_autoral(pacote, plano=plano_autoria)
+    return pacote
 
 
 def preparar_contexto_resposta_ia(
@@ -533,9 +575,32 @@ class ContextoPromptRuntime:
         contrato = contrato if isinstance(contrato, dict) else {}
         turno = estado.get("turno_atual")
         turno = turno if isinstance(turno, dict) else {}
+        autoria_atual = bool(turno_id and turno.get("id")) and (
+            str(turno_id) == str(turno["id"])
+            and bool(mensagens) and mensagens[-1].get("role") == "user"
+            and mensagens[-1].get("content") == (turno.get("texto_original") or turno.get("texto"))
+        )
+
+        def concluir(pacote: PacotePrompt) -> PacotePrompt:
+            if not autoria_atual:
+                return pacote
+            plano_autoria = dict(estado.get("plano_turno_atual") or {})
+            if str(plano_autoria.get("id")) != str(turno_id):
+                plano_autoria = {}
+            return negociar_autoria_com_fontes(pacote, estado.get("fundamentacao_factual_turno"), plano_autoria=plano_autoria)
+
         identidade_atual = bool(turno_id and contrato.get("turno_id") and turno.get("id")) and (
             str(turno_id) == str(contrato["turno_id"]) == str(turno["id"])
         )
+        if identidade_atual and autoria_atual and turno.get("autoriza_execucao") is False:
+            plano_historico = estado.get("plano_turno_atual")
+            if (isinstance(plano_historico, dict)
+                and str(plano_historico.get("id")) == str(turno_id)
+                and plano_historico.get("contrato_fala") == contrato):
+                from mente_laylay.cognicao.explicacao_fala_historica import montar_pacote_explicacao_historica
+                pacote_historico = montar_pacote_explicacao_historica(plano_historico)
+                if pacote_historico is not None:
+                    return concluir(pacote_historico)
         if (
             identidade_atual
             and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "explicacao_capacidades"
@@ -546,9 +611,9 @@ class ContextoPromptRuntime:
             and mensagens and mensagens[-1].get("role") == "user"
             and mensagens[-1].get("content") == turno.get("texto")
         ):
-            return PacotePrompt(tuple(montar_mensagens_explicacao_capacidades(
+            return concluir(PacotePrompt(tuple(montar_mensagens_explicacao_capacidades(
                 str(turno["texto"]), str(contrato["documentacao_capacidades"]),
-            )), contexto_fechado=True)
+            )), contexto_fechado=True))
         if (
             identidade_atual
             and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "negacao_operacional_sem_efeito"
@@ -565,9 +630,9 @@ class ContextoPromptRuntime:
                 str(turno.get("texto") or ""), re.IGNORECASE,
             )
         ):
-            return PacotePrompt(tuple(montar_mensagens_reconhecimento_limite(
+            return concluir(PacotePrompt(tuple(montar_mensagens_reconhecimento_limite(
                 str(mensagens[-1].get("content") or ""),
-            )), contexto_fechado=True)
+            )), contexto_fechado=True))
         if (
             identidade_atual
             and contrato.get("estado_referencia_textual") == "nao_resolvida"
@@ -576,13 +641,13 @@ class ContextoPromptRuntime:
             and (turno.get("modalidade_geral") or turno.get("modalidade")) != "misto"
             and len(turno.get("segmentos") or []) <= 1
         ):
-            return PacotePrompt(tuple(montar_mensagens_pedido_fonte_textual(
+            return concluir(PacotePrompt(tuple(montar_mensagens_pedido_fonte_textual(
                 pedidos_recentes=contrato.get("respostas_recentes_evitar") or (),
-            )), contexto_fechado=True)
+            )), contexto_fechado=True))
         projetadas = [dict(item) for item in mensagens]
         # Só a ocorrência atual recebe o formato mais rico. Esta instrução
         # pertence ao envio, não ao histórico, à personalidade ou à memória.
-        # Projeções fechadas de conversa/recusa acima mantêm seu protocolo.
+        # Projeções fechadas acima continuam sem interpretação operacional.
         if (self.interpretacao_por_ato_ativa
             and turno_id and turno.get("id") and str(turno_id) == str(turno["id"])
             and mensagens and mensagens[-1].get("role") == "user"
@@ -606,9 +671,9 @@ class ContextoPromptRuntime:
                 fontes = ()
             # O tamanho da fala não mede os campos/atos do envelope. Piso
             # limitado, sem exigir prosa longa nem garantir semântica correta.
-            return PacotePrompt(tuple(projetadas), reserva_saida_tokens=1024,
-                contrato_saida=criar_contrato_saida_interpretacao_principal(mensagens[-1]["content"], fontes=fontes))
-        return PacotePrompt(tuple(projetadas))
+            return concluir(PacotePrompt(tuple(projetadas), reserva_saida_tokens=1024,
+                contrato_saida=criar_contrato_saida_interpretacao_principal(mensagens[-1]["content"], fontes=fontes)))
+        return concluir(PacotePrompt(tuple(projetadas)))
 
     def preparar_pacote(self, texto: str) -> PacotePrompt:
         mensagens, prompt = self.preparar(texto)
@@ -663,9 +728,10 @@ class ContextoPromptRuntime:
                 else self._contexto_habilidades(texto, turno if isinstance(turno, dict) else {})
             )
             trechos_prompt = (
-                (fundamentacao,)
+                (estado.get("revisoes_alegacoes_prompt") or formatar_revisoes_alegacoes(estado), fundamentacao)
                 if lista_factual_materializada
-                else (contrato, formatar_evidencia_da_fala(texto, estado), retrato, habilidades,
+                else (contrato, formatar_evidencia_da_fala(texto, estado),
+                      estado.get("revisoes_alegacoes_prompt") or formatar_revisoes_alegacoes(estado), retrato, habilidades,
                       formatar_modelo_corporal(estado.get("modelo_corporal")), fundamentacao)
             )
             instrucao = "\n\n".join(

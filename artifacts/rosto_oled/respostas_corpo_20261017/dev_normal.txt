@@ -1,0 +1,25 @@
+13:47:39.279  [SYSTEM]  Mente conectada  A interface e o núcleo estão sincronizados.
+13:47:35.842  [SYSTEM]  ║  ◕‿◕ Laylay inicializando          ║
+13:47:36.096  [SYSTEM]  ✅ AppOpener carregado — abertura rápida de programas ativada!
+13:47:36.206  [AUTONOMY]  🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+13:47:36.223  [SYSTEM]  🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:60864 | sessão=ba710e67 pid=15072
+13:47:36.231  [SYSTEM]  🖥️ [TERMINAL 2] interface iniciada | sessão=ba710e67 pid=22092 python=python.exe arquivo=%USERPROFILE%\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+13:47:36.521  [SYSTEM]  📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+13:47:36.527  [SYSTEM]  📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+13:47:36.527  [SYSTEM]  🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+13:47:36.581  [SYSTEM]  🚀 WebSocket Server Chrome rodando em http://localhost:8080
+13:47:36.662  [SYSTEM]  🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+13:47:37.551  [SYSTEM]  🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+13:47:39.275  [SYSTEM]  🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=ba710e67
+13:47:40.564  [IA]  🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+13:47:40.628  [SYSTEM]  🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+13:48:00.050  [IA]  Resposta entregue  A fala final chegou à conversa.
+13:48:00.162  [IA]  Falando  Estado da mente · emoção calma.
+13:48:00.049  [IA]  ╭─ ◕‿◕ Laylay: Meu sensor frontal acabou de sentir algo a menos de 10 centímetros e não foi nada divertido.
+13:48:00.463  [IA]  ❌ [FALA] Erro no áudio: WSServerHandshakeError → 429, message='Invalid response status', url='[URL TTS omitida]'
+13:48:00.464  [IA]  ⚠️ [VOZ] texto preservado; não vou trocar a voz após a falha de áudio.
+13:50:14.155  [SYSTEM]  ⚠️ [MENTE:FALHA] corpo_motor:gesto_nao_confirmado | classe=defeito | impacto=servico
+13:54:03.896  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:54:36.063  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:55:08.947  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:55:59.460  [SYSTEM]  ⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror

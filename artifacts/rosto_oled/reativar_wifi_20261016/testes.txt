@@ -1,0 +1,78 @@
+.........F...................F.....................                      [100%]
+================================== FAILURES ===================================
+_ test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto _
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4027/test_tcp_real_fragmentado_sinc0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E80E166270>
+servidor = <function servidor.<locals>.criar at 0x000001E80E169BC0>
+
+    def test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto(tmp_path, monkeypatch, servidor):
+        esp = servidor(fragmentar=True)
+        atividade = {"origem": "atividade_operacional_observada", "falha_id": 1,
+                     "falha_monotonic": time.monotonic(), "ativos": 1}
+        runtime = runtime_rede(tmp_path, monkeypatch, esp, atividade_getter=lambda: atividade)
+        try:
+            assert runtime.sincronizar(), "fronteira AUTH/HELLO/FACE no TCP"
+            diagnostico = runtime.diagnostico()
+            assert diagnostico["aplicacao_confirmada"] and diagnostico["hack"]["ativo"]
+>           assert diagnostico["glitch"]["aplicacao_confirmada"] and diagnostico["motor"]["disponivel"]
+E           assert (False)
+
+scripts\tests\test_corpo_wifi_transporte.py:229: AssertionError
+_ test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts _
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4027/test_composicao_instalada_le_c0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001E80E139A20>
+servidor = <function servidor.<locals>.criar at 0x000001E80E1C5A60>
+
+    def test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts(tmp_path, monkeypatch, servidor):
+        import os
+        from pathlib import Path
+        esp = servidor()
+        configurar(tmp_path, monkeypatch, porta=esp.porta)
+        arquivo_saida = tmp_path / "composicao_tcp.json"
+        ambiente = dict(os.environ, LAYLAY_TESTE_CORPO_SAIDA=str(arquivo_saida))
+        codigo = """
+    import importlib, json, os
+    from pathlib import Path
+    from mente_laylay.integracao import instancia_unica
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    adquirir = instancia_unica.adquirir_instancia_unica
+    saida = Path(os.environ['LAYLAY_TESTE_CORPO_SAIDA'])
+    instancia_unica.adquirir_instancia_unica = lambda _: adquirir(saida.parent / 'mutex_tcp')
+    # Perfil TCP isolado: a preferência USB pessoal do usuário não é fixture.
+    from mente_laylay.integracao.configuracao_aplicacao import ConfiguracaoAplicacaoRuntime
+    ConfiguracaoAplicacaoRuntime.companhia_bancada_ao_iniciar = lambda self: False
+    root = importlib.import_module('laylay')
+    runtime = root._rosto_oled_runtime
+    assert root._corpo_motor_runtime.transporte is runtime
+    assert root._composicao_ciclo_comandos_runtime.contexto.montar()['_corpo_motor_runtime'] is root._corpo_motor_runtime
+    assert runtime.diagnostico()['transporte'] == 'tcp' and not runtime.diagnostico()['conectado']
+    assert not root._mapa_habilidades_runtime.consultar('CORPO_MOVER')['disponivel']
+    assert runtime.sincronizar()
+    assert root._mapa_habilidades_runtime.consultar('CORPO_MOVER')['disponivel']
+    pergunta = 'você consegue andar?'
+    turno = classificar_modalidade_turno(pergunta)
+    root._estado_compartilhado_runtime.atualizar_campos('mental', turno_atual=turno)
+    assert 'pulso' in root._mapa_habilidades_runtime.responder_pergunta_capacidade(pergunta, turno=turno)
+    pedido, _ = root._composicao_ciclo_comandos_runtime.ciclo.resolver_comando_natural(pergunta, 'teste_wifi')
+    assert pedido is None
+    assert root._estado_compartilhado_runtime.obter_copia('mental', 'rosto_oled', {})['transporte'] == 'tcp'
+    runtime.encerrar()
+    assert not root._mapa_habilidades_runtime.consultar('CORPO_MOVER')['disponivel']
+    saida.write_text(json.dumps({'owner_unico': True, 'catalogo_vivo': True, 'pergunta_nao_executa': True}), encoding='utf-8')
+    """
+        processo = subprocess.run([sys.executable, "-c", codigo], env=ambiente,
+                                  cwd=Path(__file__).resolve().parents[2], capture_output=True,
+                                  text=True, timeout=30)
+>       assert processo.returncode == 0, processo.stderr[-2000:]
+E       AssertionError: AssertionError
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\...ogramas ativada!\n🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto\n', stderr='AssertionError\n').returncode
+
+scripts\tests\test_corpo_wifi_transporte.py:471: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_tcp_real_fragmentado_sincroniza_face_hack_glitch_e_pulso_sem_falar_texto
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_composicao_instalada_le_config_tcp_e_catalogo_so_disponivel_com_receipts
+2 failed, 49 passed in 35.82s

@@ -7,6 +7,7 @@ import threading
 import time
 from typing import Any, Callable, Dict
 from mente_laylay.integracao.prioridade_interacao_usuario import conversa_em_andamento
+from mente_laylay.autonomia.ocorrencia_observada import INTERVALO_REACAO_CORPORAL_S
 
 
 _BASE_UTILIDADE = {
@@ -43,7 +44,7 @@ _INTERVALO_BASE_S = {
     "observacao": 1200.0,
     "aprendizado": 1800.0,
     "presenca_jogo": 240.0,
-    "presenca_corporal": 120.0,
+    "presenca_corporal": INTERVALO_REACAO_CORPORAL_S,
 }
 _INTERVALO_MAX_S = 86400.0
 
@@ -113,7 +114,15 @@ class PorteiroProatividadeRuntime:
     def _perfil(self) -> Dict[str, Any]:
         try:
             valor = self._perfil_getter() if callable(self._perfil_getter) else self._perfil_local
-            return dict(valor) if isinstance(valor, dict) else {}
+            perfil = dict(valor) if isinstance(valor, dict) else {}
+            registro = dict(perfil.get("presenca_corporal") or {})
+            sequencia = max(0, min(8, int(registro.get("recusas_consecutivas") or 0)))
+            # Migra só o valor derivado da base antiga, preservando recusas.
+            if registro.get("intervalo_s") == min(_INTERVALO_MAX_S, 120.0 * 2**sequencia):
+                registro["intervalo_s"] = min(_INTERVALO_MAX_S, _INTERVALO_BASE_S["presenca_corporal"] * 2**sequencia)
+                perfil["presenca_corporal"] = registro
+                self._salvar_perfil(perfil)
+            return perfil
         except Exception:
             return dict(self._perfil_local)
 
@@ -203,6 +212,7 @@ class PorteiroProatividadeRuntime:
         inicio_forcado: bool = False,
         ultima_fala_normal_ts: float = 0.0,
         revalidacao_entrega: bool = False,
+        admissao_observada: Any = None,
     ) -> Dict[str, Any]:
         agora = self._agora()
         tipo_norm = str(tipo or "").strip().lower() or "observacao"
@@ -211,6 +221,14 @@ class PorteiroProatividadeRuntime:
         motivos = [f"utilidade base {pontos}"]
         prioritario = tipo_norm in _TIPOS_PRIORITARIOS
         presenca_jogo = tipo_norm == "presenca_jogo"
+        reacao_admitida = False
+        if admissao_observada is not None:
+            from mente_laylay.autonomia.ocorrencia_observada import AdmissaoReacaoObservada
+            reacao_admitida = (tipo_norm == "presenca_corporal"
+                and isinstance(admissao_observada,AdmissaoReacaoObservada) and admissao_observada.vigente())
+            if not reacao_admitida:
+                return {"acao":"descartar", "pontuacao":0,"motivos":["admissao observada inválida ou expirada"],
+                    "adiar_s":0.0,"validade_s":self.validade_s}
 
         interacao_usuario_ativa = bool(
             contexto.get("interacao_usuario_ativa")
@@ -264,7 +282,9 @@ class PorteiroProatividadeRuntime:
                 registro = dict(self._perfil().get(tipo_norm) or {})
             ultima_emissao = float(registro.get("ultima_emissao_ts") or 0.0)
             ultima_recusa = float(registro.get("ultima_recusa_ts") or 0.0)
-            referencia = max(ultima_emissao, ultima_recusa)
+            # O Diretor já decidiu novidade/saturação. Sua admissão não
+            # substitui a recusa aprendida do usuário, que ainda tem prioridade.
+            referencia = ultima_recusa if reacao_admitida else max(ultima_emissao, ultima_recusa)
             intervalo = float(registro.get("intervalo_s") or _INTERVALO_BASE_S.get(tipo_norm, 0.0))
             restante = intervalo - (agora - referencia) if referencia else 0.0
             if restante > 0.0:

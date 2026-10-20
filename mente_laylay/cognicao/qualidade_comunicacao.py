@@ -12,7 +12,10 @@ import hashlib
 import json
 import re
 from collections.abc import Iterable
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
 
 from mente_laylay.memoria_mental.memoria_confiavel import (
     extrair_aprendizados_pessoais_explicitos,
@@ -21,7 +24,8 @@ from mente_laylay.memoria_mental.memoria_confiavel import (
 from mente_laylay.cognicao.validacao_contrato_fala import (
     validar_aderencia_contrato_fala,
     solicita_fonte_sem_afirmar_conteudo,
-    reconhecimento_estado_pessoal_valido,
+    conferir_ato_social,
+    realizacoes_ato_social,
 )
 from mente_laylay.cognicao.reacao_social_curta import (
     classificar_provocacao_curta,
@@ -665,10 +669,6 @@ def avaliar_qualidade_comunicacao(
         ):
             problemas.append("explicacao_permaneceu_nebulosa")
 
-        estado_pessoal = _ESTADO_PESSOAL.search(usuario)
-        if estado_pessoal and not _RECONHECIMENTO_ESTADO.search(resposta):
-            problemas.append("estado_pessoal_nao_reconhecido")
-
         if resposta.count("?") > 1:
             problemas.append("perguntas_em_excesso")
 
@@ -698,6 +698,14 @@ def avaliar_qualidade_comunicacao(
             turno_id=plano_atual.get("id"),
         )
         problemas.extend(aderencia_contrato.get("problemas") or [])
+        # O contrato do ato é o owner quando avaliou esse reconhecimento.
+        # O detector legado cobre apenas chamadas sem esse contrato; duplicar
+        # a decisão alterava a rota de reparo conforme o estado relatado.
+        estado_no_contrato = (aderencia_contrato.get("avaliado") is True
+            and "estado_pessoal" in dict(plano_atual.get("contrato_fala") or {}).get("atos", ()))
+        if (not estado_no_contrato and _ESTADO_PESSOAL.search(usuario)
+            and not _RECONHECIMENTO_ESTADO.search(resposta)):
+            problemas.append("estado_pessoal_nao_reconhecido")
 
     if fala_nega_capacidade_emocional(resposta):
         problemas.append("capacidade_emocional_negada")
@@ -759,12 +767,43 @@ def compor_reparo_comunicacao(
     original = _normalizar(original)
     if hashlib.sha256(original.encode("utf-8")).hexdigest() != reparo.get("rascunho_preservado_sha256"):
         return ""
-    estado = dict(reparo.get("estado_pessoal_informado") or {})
-    if not reconhecimento_estado_pessoal_valido(candidata, str(estado.get("estado") or "")):
+    if conferir_ato_social(candidata, plano=plano) is None:
         return ""
     if validar_alegacoes_da_fala(candidata, plano=dict(plano)).get("problemas"):
         return ""
     return candidata.strip() + " " + original
+
+
+def montar_pacote_reparo_comunicacao(
+    texto_usuario: str, fala_rejeitada: str, avaliacao: Mapping[str, Any], *,
+    plano: Mapping[str, Any], mensagens: Iterable[Mapping[str, Any]] | None = None,
+) -> PacotePrompt:
+    """Negocia somente o ato solicitado, com realizações conferíveis pelo owner."""
+    from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+    from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
+    reparo = dict(avaliacao.get("contrato_reparo") or {})
+    lista = montar_mensagens_reparo_comunicacao(texto_usuario, fala_rejeitada, avaliacao, mensagens=mensagens)
+    if reparo.get("escopo") != "reconhecimento_estado_pessoal":
+        return PacotePrompt(tuple(lista))
+    opcoes = realizacoes_ato_social(plano)
+    if not opcoes:
+        raise ValueError("ato_social_sem_realizacao_conferivel")
+
+    def validar(dados: dict[str, Any]) -> None:
+        if (set(dados) != {"fala", "comandos"} or dados.get("fala") not in opcoes
+            or dados.get("comandos") != []):
+            raise ValueError("realizacao_fora_do_ato_contratado")
+
+    codec = ContratoSaidaEstruturada("realizacao_discursiva_v1", "[REALIZACAO_DISCURSIVA]", {
+        "type": "object", "additionalProperties": False, "required": ["fala", "comandos"],
+        "properties": {"fala": {"type": "string", "enum": list(opcoes)},
+                       "comandos": {"type": "array", "maxItems": 0, "items": {"type": "object"}}},
+    }, validar)
+    lista[0]["content"] += (
+        "\nNesta emissão escolha somente uma das realizações do schema, sem completar "
+        "ou explicar. São opções de redação sobre o relato atual, não prova do estado "
+        "real, de causa, de fato externo ou autorização. O host confere o ato depois.")
+    return PacotePrompt(tuple(lista), contexto_fechado=True, contrato_saida=codec)
 
 
 def selecionar_contexto_imediato(

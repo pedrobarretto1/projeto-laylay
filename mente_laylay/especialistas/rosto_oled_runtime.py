@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import math
 import secrets
 import threading
 import time
@@ -20,6 +21,8 @@ from mente_laylay.memoria_mental.atividade_operacional_runtime import (
 from mente_laylay.especialistas.corpo_wifi_transporte import (
     CAMINHO_CONFIGURACAO_WIFI, ConfiguracaoCorpoWifi, ConfiguracaoCorpoWifiInvalida,
     abrir_corpo_tcp, carregar_configuracao_corpo_wifi,
+    RedeLocalCorpoWindows,
+    ConexaoCorpoIndisponivel,
 )
 
 EMOCOES_ROSTO = (
@@ -67,6 +70,8 @@ class RostoOledRuntime:
         listar_portas: Callable[[], tuple[str, ...]] = _listar_portas_rosto,
         abrir_serial: Callable[[str], Any] = _abrir_serial,
         config_wifi_path: Path | str | None = None,
+        wifi_alternativo_path: Path | str | None = None,
+        rede_local: Any = None,
         abrir_tcp: Callable[[ConfiguracaoCorpoWifi], Any] = abrir_corpo_tcp,
         identidade_usb_getter: Callable[[], Mapping[str, str]] | None = None,
         publicar_diagnostico: Callable[[dict[str, Any]], Any] | None = None,
@@ -93,10 +98,12 @@ class RostoOledRuntime:
         self._porta_ativa = ""
         self.abrir_serial = abrir_serial
         self.abrir_tcp = abrir_tcp
+        self.rede_local = rede_local
         self.identidade_usb_getter = identidade_usb_getter or (lambda: {})
         self._pareamento_usb: dict[str, str] = {}
         self._identidade_usb_verificada = False
         self._config_wifi_path = Path(config_wifi_path) if config_wifi_path is not None else None
+        self._wifi_alternativo_path = Path(wifi_alternativo_path) if wifi_alternativo_path is not None else None
         self._config_wifi: ConfiguracaoCorpoWifi | None = None
         self._erro_wifi = ""
         if self._config_wifi_path is not None:
@@ -184,7 +191,9 @@ class RostoOledRuntime:
                 "conectado": self._serial is not None,
                 "sessao": self._sessao,
                 "transporte": "tcp" if self._config_wifi_path is not None else "serial",
+                "canal_autenticado": self._serial is not None and self._config_wifi_path is not None,
                 "modo_conexao": "rede" if self._config_wifi_path is not None else "automatico" if self.autodetectar else "manual",
+                "selecao_automatica_usb_wifi": self._wifi_alternativo_path is not None,
                 "endpoint": self._config_wifi.endpoint if self._config_wifi is not None else "",
                 "porta_ativa": self._porta_ativa,
                 "identidade_usb": {**self._pareamento_usb,
@@ -418,6 +427,7 @@ class RostoOledRuntime:
             if not linha.startswith(f"HEALTH 1 {seq} "):
                 return False
             dados.update(interpretar_saude(linha, seq))
+            dados["consulta_id"] = seq
             return True
         self._escrever(f"HEALTH 1 {seq}")
         return dados if self._esperar("", .3, opcional=True, capturar=receber) else {}
@@ -467,7 +477,7 @@ class RostoOledRuntime:
             return
         dados = self._ler_saude()
         if dados:
-            if self._config_wifi_path is None and self._pareamento_usb and dados["dispositivo"] != self._pareamento_usb["dispositivo"]:
+            if self._pareamento_usb and dados["dispositivo"] != self._pareamento_usb["dispositivo"]:
                 raise ConnectionError("identidade_usb_divergente")
             if (self._ultimo_boot and self._ultimo_dispositivo==dados["dispositivo"]
                 and self._ultimo_boot!=dados["boot"]):
@@ -632,6 +642,27 @@ class RostoOledRuntime:
             self.expressar_gesto(0, 2, 0, 900)
         self._atencao_anterior = atenta
 
+    def _selecionar_canal_automatico(self) -> None:
+        """Escolhe na reconexão; canal ativo não é trocado nem ganha replay."""
+        self._config_wifi_path = None
+        self._config_wifi = None
+        self._pareamento_usb = validar_identidade_corpo_usb(self.identidade_usb_getter())
+        if self._pareamento_usb:
+            try:
+                self._selecionar_usb_pareado()
+            except ConnectionError as erro:
+                if str(erro) != "corpo_pareado_nao_encontrado":
+                    raise
+        else:
+            candidatas = self.listar_portas()
+            if len(candidatas) > 1:
+                raise ConnectionError("multiplos_esp32")
+            if candidatas:
+                self._serial = self.abrir_serial(candidatas[0])
+                self._porta_ativa = candidatas[0]
+        if self._serial is None:
+            self._config_wifi_path = self._wifi_alternativo_path
+
     def sincronizar(self) -> bool:
         """Uma amostra atual e um receipt correlacionado; nenhuma fila histórica."""
         if not self.porta and not self.autodetectar and self._config_wifi_path is None:
@@ -639,16 +670,29 @@ class RostoOledRuntime:
         with self._lock:
             try:
                 if self._serial is None:
-                    porta = self.porta
+                    if self._wifi_alternativo_path is not None:
+                        self._selecionar_canal_automatico()
+                    porta = self._porta_ativa or self.porta
                     if self._config_wifi_path is not None:
                         self._ler_config_wifi()
                         if self._erro_wifi:
                             self._erro = self._erro_wifi
                             self._publicar()
                             return False
-                        self._serial = self.abrir_tcp(self._config_wifi)
+                        try:
+                            self._serial = self.abrir_tcp(self._config_wifi)
+                        except ConexaoCorpoIndisponivel:
+                            if self.rede_local is None:
+                                raise
+                            self.rede_local.preparar(self._config_wifi)
+                            self._serial = self.abrir_tcp(self._config_wifi)
+                        self._pareamento_usb = validar_identidade_corpo_usb(self.identidade_usb_getter())
+                        if self._pareamento_usb:
+                            dados = self._ler_saude()
+                            if dados.get("dispositivo") != self._pareamento_usb["dispositivo"]:
+                                raise ConnectionError("identidade_tcp_divergente")
                         porta = self._config_wifi.endpoint
-                    else:
+                    elif self._serial is None:
                         self._identidade_usb_verificada = False
                         self._pareamento_usb = validar_identidade_corpo_usb(self.identidade_usb_getter())
                         if self._pareamento_usb:
@@ -815,6 +859,7 @@ class RostoOledRuntime:
             "pwm_direito": direito, "duracao_ms": duracao,
             "evidencia": "mack_pwm_e_sack" if pwm and parada else "sack" if parada else "sem_receipt_completo",
             "prova_rotacao": False, "prova_parada_fisica": False,
+            "leitura_rotacao_valida": False, "evidencia_leitura_rotacao": "",
             "cancelado": cancelado, "status": "cancelado" if cancelado else "sucesso" if ok else "falha_execucao",
             "interrompido_por_protecao": bool(self._risco_motor),
             "risco_detectado": self._risco_motor,
@@ -982,9 +1027,18 @@ class RostoOledRuntime:
             resultado = dict(self._giro_resultado)
             medido = resultado.get("rotacao_graus")
             correlacionado = resultado.get("sessao") == sessao_operacao and resultado.get("sequencia") == self._seq_motor
+            # Estes encerramentos passam pelas guardas de IMU/calibração e
+            # saturação em atualizarGiroMedido. Os demais podem carregar um
+            # número antigo/reiniciado e não comprovam uma leitura válida.
+            leitura_valida = bool(correlacionado and not sessao_alterada
+                and resultado.get("resultado") in {"ALVO", "TEMPO_LIMITE", "SEM_ROTACAO",
+                    "SENTIDO_DIVERGENTE", "ULTRAPASSOU"}
+                and type(medido) in (int, float) and math.isfinite(medido))
             confirmado = (correlacionado and resultado.get("resultado") == "ALVO" and isinstance(medido, (int, float))
                           and abs(medido - angulo_graus) <= 12 and receipt["ok"])
             receipt.update(ok=bool(confirmado), prova_rotacao=bool(confirmado),
+                           leitura_rotacao_valida=leitura_valida,
+                           evidencia_leitura_rotacao="turnend_correlacionado_imu_valida" if leitura_valida else "",
                            angulo_solicitado_graus=angulo_graus, rotacao_medida_graus=medido if correlacionado else None,
                            resultado_giro=resultado.get("resultado", "SEM_RECEIPT"),
                            evidencia="imu_relativa_turnend_e_sack" if confirmado else receipt["evidencia"])
@@ -1034,22 +1088,34 @@ class RostoOledRuntime:
             self._ultimo_ack = float("-inf")
             self._erro = "encerrado"
         self._publicar()
+        if self.rede_local is not None:
+            self.rede_local.encerrar()
 
 
 def criar_rosto_oled_runtime(**kwargs: Any) -> RostoOledRuntime:
-    preferir_usb = kwargs.pop("preferir_usb", False) is True
+    kwargs.pop("preferir_usb", False)  # Compatibilidade: AUTO agora considera os dois canais.
     porta = str(kwargs.pop("porta", os.environ.get("LAYLAY_ROSTO_PORTA", "AUTO"))).strip()
     automatico = porta.casefold() in {"", "auto"}
     desligado = porta.casefold() in {"off", "0", "desligado"}
+    rede_explicita = porta.casefold() == "wifi"
     caminho_wifi = kwargs.pop("config_wifi_path", os.environ.get("LAYLAY_CORPO_WIFI_CONFIG", CAMINHO_CONFIGURACAO_WIFI))
-    if automatico and not preferir_usb:
+    if rede_explicita:
+        # Escolha humana de transporte prevalece sobre preferência automática;
+        # arquivo ausente/inválido não permite procurar outro alvo pela USB.
+        kwargs["config_wifi_path"] = caminho_wifi
+    elif automatico:
         try:
             config_wifi = carregar_configuracao_corpo_wifi(caminho_wifi)
         except ConfiguracaoCorpoWifiInvalida:
             # Nunca substituir configuração inválida por outra porta/owner.
             config_wifi = True
         if config_wifi is not None:
-            kwargs["config_wifi_path"] = caminho_wifi
-    kwargs["porta"] = "" if automatico or desligado else porta
+            if config_wifi is True:  # Configuração inválida: não procurar outro alvo.
+                kwargs["config_wifi_path"] = caminho_wifi
+            else:
+                kwargs["wifi_alternativo_path"] = caminho_wifi
+    kwargs["porta"] = "" if automatico or desligado or rede_explicita else porta
     kwargs.setdefault("autodetectar", automatico and "config_wifi_path" not in kwargs)
+    if "config_wifi_path" in kwargs or "wifi_alternativo_path" in kwargs:
+        kwargs.setdefault("rede_local", RedeLocalCorpoWindows())
     return RostoOledRuntime(**kwargs)

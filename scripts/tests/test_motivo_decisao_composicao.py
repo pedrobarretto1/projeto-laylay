@@ -49,10 +49,19 @@ def decisao_instalada(tmp_path_factory):
         estado = root._estado_compartilhado_runtime
         corpo, rosto = root._corpo_motor_runtime, root._rosto_oled_runtime
         esp = EspCorpo()
+        if os.environ.get("LAYLAY_COLETAR_MEDIDAS_OCORRENCIA") == "1":
+            from scripts.tests.test_imu_corporal import EspImu
+            esp = EspImu()
+            if os.environ.get("LAYLAY_COLETAR_LEITURAS_PARCIAIS") == "1":
+                from scripts.tests.test_leituras_parciais_corpo import EspLeituraParcial
+                esp = EspLeituraParcial()
         # O owner/transporte/handshake são os instalados. Somente a porta física
         # é substituída; nenhum USB/TCP real pode ser aberto neste processo.
         rosto._config_wifi_path = None
         rosto._config_wifi = None
+        rosto._wifi_alternativo_path = None
+        rosto.identidade_usb_getter = lambda: {}
+        rosto.listar_portas = lambda: ()
         rosto.porta = "SERIAL_SIMULADO"
         rosto.autodetectar = False
         rosto.abrir_serial = lambda _: esp
@@ -120,7 +129,52 @@ def decisao_instalada(tmp_path_factory):
                 "plano_consulta": estado.obter_copia("mental", "plano_turno_atual", {}),
                 "motores_antes_consulta": quantidade_motores,
                 "motores_depois_consulta": len([f for f in esp.enviados if f.startswith("MOTOR ")])}
-            if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_IMPLICITA") == "1":
+            if os.environ.get("LAYLAY_COLETAR_AGENTE_EXPLICACAO") == "1":
+                consultas = []
+                for texto_consulta in (
+                    "Por que você fez esse gesto?",
+                    "Por que eu fiz esse gesto?",
+                    "Por que ela fez esse gesto?",
+                    "Por que ele fez esse movimento?",
+                    "Por que nós fizemos esse gesto?",
+                    "Por que você fez esse gesto quando eu cheguei?",
+                    "O que motivou esse movimento?",
+                ):
+                    root._iniciar_planejamento_turno(texto_consulta, origem="teste_agente_explicacao")
+                    plano = estado.obter_copia("mental", "plano_turno_atual", {})
+                    fonte = corpo.experiencias.recuperar_explicacao(texto_consulta, turno=plano)
+                    candidata = "A decisão anterior registrou o motivo mudanca emocional causal."
+                    preparada = root._resposta_ia_runtime._contexto()["preparar_resposta"](texto_consulta,
+                        json.dumps({"fala": candidata, "comandos": []}))
+                    consultas.append({"texto": texto_consulta, "fonte_owner": fonte, "plano": plano,
+                        "turno": estado.obter_copia("mental", "turno_atual", {}), "preparada": preparada,
+                        "guarda_final": root._verificar_fala_do_turno(candidata, origem="ia")})
+                saida["consultas_agentes"] = consultas
+                root._iniciar_planejamento_turno(pergunta, origem="restabelecer_consulta_literal")
+            if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1":
+                consultas = []
+                for texto_consulta in (
+                    "Por que você fez esse gesto? Por que você apagou esse arquivo?",
+                    "Por que você apagou esse arquivo? Por que você fez esse gesto?",
+                    "Por que você fez esse gesto e por que você desligou essa tomada?",
+                    "Por que você fez esse gesto e apagou esse arquivo?",
+                    "O que motivou esse movimento? Por que você apagou esse arquivo?",
+                    "O que motivou esse movimento? Qual é a capital do Brasil?",
+                ):
+                    root._iniciar_planejamento_turno(texto_consulta, origem="teste_cobertura_explicacao")
+                    plano = estado.obter_copia("mental", "plano_turno_atual", {})
+                    fonte = corpo.experiencias.recuperar_explicacao(texto_consulta, turno=plano)
+                    candidata = "O gesto e a outra ação aconteceram porque uma rotina agendada pediu."
+                    preparada = root._resposta_ia_runtime._contexto()["preparar_resposta"](texto_consulta,
+                        json.dumps({"fala": candidata, "comandos": []}))
+                    consultas.append({"texto": texto_consulta, "fonte_owner": fonte, "plano": plano,
+                        "turno": estado.obter_copia("mental", "turno_atual", {}),
+                        "preparada": preparada, "guarda_final": root._verificar_fala_do_turno(candidata, origem="ia")})
+                saida["consultas_multiplas"] = consultas
+                root._iniciar_planejamento_turno(pergunta, origem="restabelecer_consulta_literal")
+            if (os.environ.get("LAYLAY_COLETAR_EXPLICACAO_IMPLICITA") == "1"
+                    or os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1"
+                    or os.environ.get("LAYLAY_COLETAR_AGENTE_EXPLICACAO") == "1"):
                 consultas = []
                 for texto_consulta in (
                     "Por que você fez esse gesto?",
@@ -149,9 +203,16 @@ def decisao_instalada(tmp_path_factory):
                     return True
                 root._orquestrador_fala_runtime.registrar_observador_texto_final(receber_texto_implicito)
                 try:
-                    for texto_consulta in ("Por que você reagiu daquele jeito?",
-                                           "Por que você apagou esse arquivo?",
-                                           "Por que você desligou essa tomada?"):
+                    textos_ciclo = (("Por que você fez esse gesto? Por que você apagou esse arquivo?",
+                                     "Por que você apagou esse arquivo? Por que você fez esse gesto?",
+                                     "Por que você fez esse gesto e por que você desligou essa tomada?")
+                        if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1" else
+                        ("Por que você reagiu daquele jeito?", "Por que você apagou esse arquivo?",
+                         "Por que você desligou essa tomada?"))
+                    if os.environ.get("LAYLAY_COLETAR_AGENTE_EXPLICACAO") == "1":
+                        textos_ciclo = ("Por que eu fiz esse gesto?", "Por que ela fez esse gesto?",
+                                        "Por que ela fez esse gesto? Por que você fez esse gesto?")
+                    for texto_consulta in textos_ciclo:
                         for modo in (False, True):
                             modelos, executores = [], []
                             def gerar_implicita(self, pedido):
@@ -177,7 +238,9 @@ def decisao_instalada(tmp_path_factory):
                 finally:
                     runtime._contexto_getter = contexto_original
                     RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("", False)
-                saida["turnos_implicitos"] = turnos
+                saida["turnos_agentes" if os.environ.get("LAYLAY_COLETAR_AGENTE_EXPLICACAO") == "1"
+                      else "turnos_multiplos" if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1"
+                      else "turnos_implicitos"] = turnos
                 root._iniciar_planejamento_turno(pergunta, origem="restabelecer_consulta_literal")
             if os.environ.get("LAYLAY_COLETAR_REVISAO_CAUSA") == "1":
                 revisoes = []
@@ -236,6 +299,10 @@ def decisao_instalada(tmp_path_factory):
             if os.environ.get("LAYLAY_DECISAO_QWEN_REAL") == "1":
                 if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_IMPLICITA") == "1":
                     pergunta = "Por que você reagiu daquele jeito?"
+                if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1":
+                    pergunta = "Por que você fez esse gesto? Por que você apagou esse arquivo?"
+                if os.environ.get("LAYLAY_COLETAR_AGENTE_EXPLICACAO") == "1":
+                    pergunta = "Por que eu fiz esse gesto?"
                 from copy import deepcopy
                 from dataclasses import asdict
                 from types import SimpleNamespace
@@ -318,16 +385,310 @@ def decisao_instalada(tmp_path_factory):
                     consultas.append({"texto": texto_consulta, "preparada": resultado,
                         "plano": estado.obter_copia("mental", "plano_turno_atual", {})})
                 saida["consultas_limites"] = consultas
+            if os.environ.get("LAYLAY_COLETAR_ESCOPO_OCORRENCIA") == "1":
+                from mente_laylay.cognicao.explicacao_fala_historica import realizacoes_explicacao_ocorrencia
+                from copy import deepcopy
+                from types import SimpleNamespace
+                runtime_escopo = root._resposta_ia_runtime
+                contexto_escopo = runtime_escopo._contexto_getter
+                publicacoes_escopo = []
+                root._orquestrador_fala_runtime.registrar_observador_texto_final(
+                    lambda texto, *_a, **_k: publicacoes_escopo.append(texto) or True)
+                saida["escopos_ocorrencias"] = {}
+                for nome, intent, ok in (("parada_ok", "CORPO_PARAR", True),
+                        ("parada_falha", "CORPO_PARAR", False),
+                        ("pwm_ok", "CORPO_MOVER", True), ("pwm_falha", "CORPO_MOVER", False)):
+                    esp.stopped, esp.mack = True, True
+                    assert rosto.sincronizar()
+                    esp.stopped = ok if intent == "CORPO_PARAR" else True
+                    esp.mack = ok
+                    comando = "pare os motores" if intent == "CORPO_PARAR" else "ande para frente"
+                    root._iniciar_planejamento_turno(comando, origem="teste_escopo_ocorrencia")
+                    retorno = corpo.executar(intent, {} if intent == "CORPO_PARAR" else
+                        {"direcao": "frente", "pwm": 160, "duracao_ms": 50})
+                    e = estado.obter_copia("mental", "experiencia_corporal", {})
+                    chave_escopo = f"corpo_execucao:{e['perfil']}:{e['nome']}:{e['variante']}"
+                    eventos_escopo = root._motor_aprendizado_runtime.memoria.listar_eventos_aprendizado(chave_escopo)
+                    pergunta = f"Por que você fez esse gesto {e['id']}?"
+                    root._iniciar_planejamento_turno(pergunta, origem="teste_recuperacao_escopo")
+                    historico = deepcopy(estado.obter_copia("mental", "historico_corporal", []))
+                    efeitos = tuple(f for f in esp.enviados if f.startswith(("MOTOR ", "STOP ", "TURN ")))
+                    normal = root._contexto_prompt_runtime.preparar_pacote(pergunta)
+                    rapido = root._contexto_prompt_runtime.preparar_instrucao_rapida(pergunta)
+                    plano = estado.obter_copia("mental", "plano_turno_atual", {})
+                    fonte = plano["contrato_fala"]["explicacao_ocorrencia"]
+                    fala = realizacoes_explicacao_ocorrencia(fonte)[0]
+                    turnos_escopo = []
+                    try:
+                        for modo in (False, True):
+                            contexto = contexto_escopo()
+                            contexto["usar_modo_rapido"] = lambda _t: modo
+                            executores = []
+                            def impedir_efeito_escopo(pedido, texto):
+                                executores.append(pedido)
+                                raise AssertionError("Consulta histórica não executa.")
+                            contexto["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda: {"executar_intencao": impedir_efeito_escopo})
+                            runtime_escopo._contexto_getter = lambda: contexto
+                            RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo(json.dumps({
+                                "fala": "A ponte confirmou PWM e deslocamento físico por causa de uma rotina antiga.",
+                                "comandos": []}), True)
+                            inicio_publicacoes = len(publicacoes_escopo)
+                            runtime_escopo.processar(pergunta, origem="teste_ciclo_escopo_ocorrencia")
+                            turnos_escopo.append({"modo": "rapido" if modo else "normal",
+                                "textos": publicacoes_escopo[inicio_publicacoes:], "executores": executores})
+                    finally:
+                        runtime_escopo._contexto_getter = contexto_escopo
+                        RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("", False)
+                    saida["escopos_ocorrencias"][nome] = {
+                        "retorno": retorno, "experiencia": e, "fonte": dataclasses.asdict(fonte),
+                        "eventos_aprendizado": eventos_escopo,
+                        "turnos": turnos_escopo,
+                        "fala_owner": fala, "normal": fala in normal.prompt_sistema or json.dumps(fala, ensure_ascii=False) in normal.prompt_sistema,
+                        "rapido": fala in rapido or json.dumps(fala, ensure_ascii=False) in rapido,
+                        "sem_novos_efeitos": efeitos == tuple(f for f in esp.enviados if f.startswith(("MOTOR ", "STOP ", "TURN "))),
+                        "sem_mutacao_historico": historico == estado.obter_copia("mental", "historico_corporal", [])}
+            if os.environ.get("LAYLAY_COLETAR_MEDIDAS_OCORRENCIA") == "1":
+                from copy import deepcopy
+                from types import SimpleNamespace
+                from mente_laylay.cognicao.explicacao_fala_historica import realizacoes_explicacao_ocorrencia
+                from mente_laylay.cognicao.suporte_autoria import segmentar_realizacao_autoral
+                runtime_medidas = root._resposta_ia_runtime
+                contexto_medidas = runtime_medidas._contexto_getter
+                textos_medidas = []
+                rastros_imediatos = []
+                if os.environ.get("LAYLAY_COLETAR_RESPOSTA_IMEDIATA") == "1":
+                    import mente_laylay.autonomia.adaptador_resultado as adaptador_imediato
+                    escolher_fala_original = adaptador_imediato.fala_por_estado_acao
+                    planejar_fala_original = adaptador_imediato.planejar_resposta_acao
+                    def escolher_fala_imediata(status, **kw):
+                        fala = escolher_fala_original(status, **kw)
+                        rastros_imediatos.append({"fronteira": "escolha", "fallback": kw.get("fallback"),
+                            "resultado": kw["resultado"].como_dict(), "fala": fala})
+                        return fala
+                    def planejar_fala_imediata(resultado, fala, **kw):
+                        plano = planejar_fala_original(resultado, fala, **kw)
+                        rastros_imediatos.append({"fronteira": "planejamento", "fala_base": fala,
+                            "resultado": resultado.como_dict(), "plano": dataclasses.asdict(plano)})
+                        return plano
+                    adaptador_imediato.fala_por_estado_acao = escolher_fala_imediata
+                    adaptador_imediato.planejar_resposta_acao = planejar_fala_imediata
+                root._orquestrador_fala_runtime.registrar_observador_texto_final(
+                    lambda t, *_a, **_k: textos_medidas.append(t) or True)
+                saida["medidas_ocorrencias"] = {}
+                transportes_medidas = []
+                if os.environ.get("LAYLAY_MEDIDAS_QWEN_REAL") == "1":
+                    import requests
+                    from scripts.analises.sonda_escopo_geracao_real import selecao_local, criar_guarda_http_local
+                    from mente_laylay.integracao.registro_conversa_llm import PedidoModelo
+                    selecao_medidas = selecao_local()
+                    requests.sessions.Session.request = criar_guarda_http_local(
+                        selecao_medidas, transportes_medidas, requests.sessions.Session.request)
+                    saida["selecao_medidas"] = selecao_medidas
+                ciclo_medidas = root._composicao_ciclo_comandos_runtime.ciclo
+                casos_medidas = (
+                    ("esquerda", "gire 90 graus para a esquerda", "ALVO", "atual"),
+                    ("direita", "gire 180 graus para a direita", "ALVO", "atual"),
+                    ("giro_falhou", "gire 45 graus para a esquerda", "SEM_ROTACAO", "atual"),
+                    ("outra_sequencia", "gire 60 graus para a esquerda", "ALVO", "outra_sequencia"),
+                    ("pulso", "ande para frente", "ALVO", "atual"),
+                    ("parada", "pare os motores", "ALVO", "atual"))
+                if os.environ.get("LAYLAY_COLETAR_LEITURAS_PARCIAIS") == "1":
+                    casos_medidas = tuple((nome, "gire 90 graus para a esquerda", resultado, correlacao)
+                        for nome, resultado, correlacao in (
+                            ("parcial", "TEMPO_LIMITE", "atual"), ("zero", "SEM_ROTACAO", "atual"),
+                            ("divergente", "SENTIDO_DIVERGENTE", "atual"), ("ultrapassou", "ULTRAPASSOU", "atual"),
+                            ("imu_invalida", "IMU_OU_SESSAO", "atual"), ("saturacao", "SATURACAO", "atual"),
+                            ("protecao", "PROTECAO", "atual"), ("interrompido", "INTERROMPIDO", "atual"),
+                            ("outra_sequencia", "TEMPO_LIMITE", "outra_sequencia"),
+                            ("sem_parada", "TEMPO_LIMITE", "atual")))
+                for nome, comando, resultado_giro, correlacao in casos_medidas:
+                    esp.mack = esp.stopped = True
+                    esp.resultado, esp.correlacao = resultado_giro, correlacao
+                    if os.environ.get("LAYLAY_COLETAR_LEITURAS_PARCIAIS") == "1":
+                        esp.valor = {"zero": 0.0, "divergente": -17.25, "ultrapassou": 110.5}.get(nome, 23.75)
+                        esp.stopped = nome != "sem_parada"
+                    root._iniciar_planejamento_turno(comando, origem="teste_medida_ocorrencia")
+                    assert rosto.sincronizar()
+                    pedido, rota = ciclo_medidas.resolver_comando_natural(comando, "teste_medida_ocorrencia")
+                    assert pedido, rota
+                    inicio_imediato, inicio_rastro = len(textos_medidas), len(rastros_imediatos)
+                    observada = ciclo_medidas.executar_intencao_observando(pedido, comando)
+                    textos_imediatos = textos_medidas[inicio_imediato:]
+                    autoria_imediata = deepcopy(rastros_imediatos[inicio_rastro:])
+                    e = estado.obter_copia("mental", "experiencia_corporal", {})
+                    chave_medida = f"corpo_execucao:{e['perfil']}:{e['nome']}:{e['variante']}"
+                    eventos_medida = root._motor_aprendizado_runtime.memoria.listar_eventos_aprendizado(chave_medida)
+                    pergunta = f"Por que você fez esse gesto {e['id']}?"
+                    root._iniciar_planejamento_turno(pergunta, origem="teste_recuperacao_medida")
+                    historico = deepcopy(estado.obter_copia("mental", "historico_corporal", []))
+                    efeitos = tuple(f for f in esp.enviados if f.startswith(("TURN ", "MOTOR ", "STOP ")))
+                    normal = root._contexto_prompt_runtime.preparar_pacote(pergunta)
+                    rapido = root._contexto_prompt_runtime.preparar_instrucao_rapida(pergunta)
+                    plano = estado.obter_copia("mental", "plano_turno_atual", {})
+                    fonte = plano["contrato_fala"]["explicacao_ocorrencia"]
+                    fala = realizacoes_explicacao_ocorrencia(fonte)[0]
+                    turnos_medidas = []
+                    try:
+                        for modo in (False, True):
+                            mensagens = [{"role": "system", "content": rapido if modo else normal.prompt_sistema},
+                                {"role": "user", "content": pergunta}]
+                            plano_envio = estado.obter_copia("mental", "plano_turno_atual", {})
+                            envio = root._contexto_prompt_runtime.preparar_envio_modelo(mensagens, turno_id=plano_envio["id"])
+                            assert envio.contexto_fechado and envio.contrato_saida is not None
+                            partes = segmentar_realizacao_autoral(fala)
+                            dados_codec = envio.contrato_saida.decodificar_json(json.dumps({
+                                "suporte_proposicoes": [{"texto": p, "fontes": []} for p in partes], "comandos": []}))
+                            contexto = contexto_medidas()
+                            contexto["usar_modo_rapido"] = lambda _t: modo
+                            executores = []
+                            def impedir_efeito_medida(pedido, texto):
+                                executores.append(pedido)
+                                raise AssertionError("Consulta de medida não executa.")
+                            contexto["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda: {"executar_intencao": impedir_efeito_medida})
+                            runtime_medidas._contexto_getter = lambda: contexto
+                            RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo(json.dumps({
+                                "fala": "Girei exatamente 999 graus porque uma rotina pediu; sei minha posição absoluta.",
+                                "comandos": []}), True)
+                            inicio_textos = len(textos_medidas)
+                            runtime_medidas.processar(pergunta, origem="teste_ciclo_medida")
+                            turnos_medidas.append({"modo": "rapido" if modo else "normal",
+                                "textos": textos_medidas[inicio_textos:], "executores": executores,
+                                "contexto_fechado": envio.contexto_fechado, "codec_integral": dados_codec["fala"] == fala})
+                    finally:
+                        runtime_medidas._contexto_getter = contexto_medidas
+                        RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("", False)
+                    qwen_medida = None
+                    if os.environ.get("LAYLAY_MEDIDAS_QWEN_REAL") == "1" and nome in ("esquerda", "direita", "parcial", "zero"):
+                        plano_real = estado.obter_copia("mental", "plano_turno_atual", {})
+                        pacote_real = root._contexto_prompt_runtime.preparar_envio_modelo([
+                            {"role": "system", "content": normal.prompt_sistema},
+                            {"role": "user", "content": pergunta}], turno_id=plano_real["id"])
+                        inicio_http = len(transportes_medidas)
+                        RegistroModeloLLM.executar = executar_modelo_original
+                        try:
+                            resultado_real = runtime_medidas._contexto()["modelo_llm"].executar(PedidoModelo.criar(
+                                pacote_real.mensagens, contexto_fechado=pacote_real.contexto_fechado,
+                                contrato_saida=pacote_real.contrato_saida, max_tokens=1024, timeout=60))
+                        finally:
+                            RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("", False)
+                        qwen_medida = {"resultado": dataclasses.asdict(resultado_real),
+                            "http": deepcopy(transportes_medidas[inicio_http:]), "bruto_integral": False}
+                        if qwen_medida["http"] and qwen_medida["http"][-1].get("status") == 200:
+                            resposta_http = json.loads(qwen_medida["http"][-1]["resposta_http"])
+                            bruto = resposta_http["choices"][0]["message"]["content"]
+                            try:
+                                decodificado = pacote_real.contrato_saida.decodificar_json(bruto)
+                                qwen_medida["bruto_integral"] = decodificado["fala"] == fala
+                            except (ValueError, TypeError, KeyError):
+                                pass
+                    saida["medidas_ocorrencias"][nome] = {"experiencia": e,
+                        "textos_imediatos": textos_imediatos, "autoria_imediata": autoria_imediata,
+                        "eventos_aprendizado": eventos_medida,
+                        "qwen_real": qwen_medida,
+                        "turnos": turnos_medidas,
+                        "publicacoes": [r.como_dict() for r in observada.publicacoes],
+                        "fonte": dataclasses.asdict(fonte), "fala_owner": fala,
+                        "normal": normal.prompt_sistema, "rapido": rapido,
+                        "sem_novos_efeitos": efeitos == tuple(f for f in esp.enviados if f.startswith(("TURN ", "MOTOR ", "STOP "))),
+                        "sem_mutacao_historico": historico == estado.obter_copia("mental", "historico_corporal", [])}
+                if os.environ.get("LAYLAY_COLETAR_RESPOSTA_IMEDIATA") == "1":
+                    saida["compostos_aspectos"] = {}
+                    contexto_cadeia_original = ciclo_medidas.contexto_intencao_runtime.montar
+                    import mente_laylay.autonomia.roteador_intencao as roteador_aspectos
+                    executar_corpo_original = roteador_aspectos.executar_intencao_corpo
+                    antecedentes_corpo = []
+                    def executar_corpo_rastreado(intent, params, texto, contexto, deps):
+                        if intent == "CORPO_MOVER":
+                            from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+                            antecedentes_corpo.append({"texto": texto, "params": deepcopy(params),
+                                "turno": EstadoCompartilhadoRuntime._copiar_valor(contexto.get("turno_atual"))})
+                        return executar_corpo_original(intent, params, texto, contexto, deps)
+                    roteador_aspectos.executar_intencao_corpo = executar_corpo_rastreado
+                    folhas_janela = []
+                    def impedir_janela(*_a, **_k):
+                        raise AssertionError("Ensaio de aspectos não abre/foca janela real.")
+                    def contexto_cadeia_aspectos():
+                        contexto = contexto_cadeia_original()
+                        def ler_janela(nome):
+                            folhas_janela.append(nome)
+                            return {"programa_aberto": True, "programa_em_foco": True}
+                        contexto.update(_resolver_alvo_ambiente=ler_janela, abrir_programa=impedir_janela,
+                            focar_janela_app=impedir_janela, ativar_tela_cheia_robusta=impedir_janela,
+                            _enviar_pc_b=impedir_janela)
+                        return contexto
+                    ciclo_medidas.contexto_intencao_runtime.montar = contexto_cadeia_aspectos
+                    try:
+                        for modo_autoria in ("fiel", "causa_inventada", "sucesso_total"):
+                            autorias_aspectos = []
+                            def modelo_aspectos(self, pedido):
+                                dados = json.loads(pedido.mensagens[1]["content"])
+                                autorias_aspectos.append(dados)
+                                trechos = [r["fato_verificado"].rstrip(".") for r in dados["resultados"]]
+                                if modo_autoria == "causa_inventada":
+                                    trechos[-1] += ". Isso aconteceu porque você não configurou direito."
+                                elif modo_autoria == "sucesso_total":
+                                    trechos[-1] = "Concluí o giro e todos os pedidos."
+                                return ResultadoModelo(json.dumps({"fala": " e ".join(trechos) + ".",
+                                    "trechos": trechos}, ensure_ascii=False), True)
+                            RegistroModeloLLM.executar = modelo_aspectos
+                            esp.resultado, esp.correlacao, esp.valor = "TEMPO_LIMITE", "atual", 23.75
+                            esp.stopped = True
+                            conector_teste = os.environ.get("LAYLAY_CONECTOR_COMPOSTO_TESTE", "; ")
+                            comando = "abre a calculadora" + conector_teste + "gire 90 graus para a esquerda"
+                            root._iniciar_planejamento_turno(comando, origem="teste_aspectos_compostos")
+                            assert rosto.sincronizar()
+                            inicio_textos = len(textos_medidas)
+                            antes_turns = len([f for f in esp.enviados if f.startswith("TURN ")])
+                            from mente_laylay.autonomia.dispatcher_comandos_json import executar_comandos_json
+                            from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
+                            comandos_compostos = [{"intent": "APP_OPEN", "params": {"nome_app": "calculadora"}},
+                                detectar_intencao_corpo("gire 90 graus para a esquerda")]
+                            turno_antes_execucao = estado.obter_copia("mental", "turno_atual", {})
+                            if os.environ.get("LAYLAY_ROTA_COMPOSTO_TESTE") == "cadeia":
+                                retorno_cadeia = ciclo_medidas.processar_cadeia(comando, origem="teste_coordenacao")
+                            else:
+                                retorno_cadeia = executar_comandos_json(root._contexto_dispatcher_runtime.montar(),
+                                    comando, comandos_compostos, "", "comando", False, False, False)
+                            saida["compostos_aspectos"][modo_autoria] = {
+                                "tratado": retorno_cadeia, "textos": textos_medidas[inicio_textos:],
+                                "autorias": deepcopy(autorias_aspectos), "leituras_janela": list(folhas_janela),
+                                "antecedentes_corpo": deepcopy(antecedentes_corpo),
+                                "turno_antes_execucao": turno_antes_execucao,
+                                "plano": estado.obter_copia("mental", "plano_turno_atual", {}),
+                                "novos_giros": len([f for f in esp.enviados if f.startswith("TURN ")]) - antes_turns}
+                        if os.environ.get("LAYLAY_COLETAR_GUARDAS_COORDENACAO") == "1":
+                            comando_condicionado = "abre a calculadora e depois se eu confirmar, gire 90 graus para a esquerda"
+                            root._iniciar_planejamento_turno(comando_condicionado, origem="teste_coordenacao_condicionada")
+                            inicio_textos = len(textos_medidas)
+                            antes_turns = len([f for f in esp.enviados if f.startswith("TURN ")])
+                            turno_condicionado = estado.obter_copia("mental", "turno_atual", {})
+                            if os.environ.get("LAYLAY_ROTA_COMPOSTO_TESTE") == "cadeia":
+                                ciclo_medidas.processar_cadeia(comando_condicionado, origem="teste_coordenacao_condicionada")
+                            else:
+                                executar_comandos_json(root._contexto_dispatcher_runtime.montar(),
+                                    comando_condicionado, comandos_compostos, "", "comando", False, False, False)
+                            saida["guarda_coordenacao"] = {
+                                "turno": turno_condicionado,
+                                "plano": estado.obter_copia("mental", "plano_turno_atual", {}),
+                                "textos": textos_medidas[inicio_textos:],
+                                "novos_giros": len([f for f in esp.enviados if f.startswith("TURN ")]) - antes_turns}
+                    finally:
+                        ciclo_medidas.contexto_intencao_runtime.montar = contexto_cadeia_original
+                        roteador_aspectos.executar_intencao_corpo = executar_corpo_original
+                        RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("", False)
         finally:
             rosto.encerrar()
         sys.__stdout__.write("DECISAO_INSTALADA " + json.dumps(saida, ensure_ascii=False,
-            default=dataclasses.asdict) + "\n")
+            default=lambda v: {"callable_host": v.__name__} if callable(v) else dataclasses.asdict(v)) + "\n")
     ''')
-    processo = subprocess.run([sys.executable, "-c", codigo],
+    # O ensaio cresceu além do limite de linha de comando do Windows.
+    # stdin conserva o mesmo programa/ambiente sem criar outro módulo de teste.
+    processo = subprocess.run([sys.executable, "-"], input=codigo,
         cwd=Path(__file__).resolve().parents[2],
         env=dict(os.environ, PYTHONIOENCODING="utf-8", LAYLAY_DECISAO_MEMORIA_TESTE=str(pasta)),
         capture_output=True, text=True, encoding="utf-8",
-        timeout=180 if os.environ.get("LAYLAY_DECISAO_QWEN_REAL") == "1" else 60)
+        timeout=180 if (os.environ.get("LAYLAY_DECISAO_QWEN_REAL") == "1"
+                        or os.environ.get("LAYLAY_MEDIDAS_QWEN_REAL") == "1") else 60)
     assert processo.returncode == 0, processo.stdout[-1500:] + processo.stderr[-5000:]
     dados = json.loads(next(linha.removeprefix("DECISAO_INSTALADA ")
         for linha in processo.stdout.splitlines() if linha.startswith("DECISAO_INSTALADA ")))

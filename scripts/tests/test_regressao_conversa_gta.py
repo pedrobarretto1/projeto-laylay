@@ -136,12 +136,13 @@ def test_higiene_remove_cauda_tecnica_da_visao_mesmo_truncada() -> None:
     assert fala == "Essas botas parecem úteis."
 
 
-def test_higiene_remove_letra_isolada_de_resposta_interrompida() -> None:
+def test_higiene_preserva_letra_final_sem_evidencia_de_interrupcao() -> None:
     fala = remover_residuos_operacionais(
         "Dreamcore mistura lugares familiares com uma nostalgia estranha. H."
     )
 
-    assert fala == "Dreamcore mistura lugares familiares com uma nostalgia estranha."
+    # A aparência da cauda, sem receipt do provedor, não prova interrupção.
+    assert fala == "Dreamcore mistura lugares familiares com uma nostalgia estranha. H."
 
 
 def test_favorito_explicito_e_aprendido_mesmo_com_lista_vazia_do_modelo() -> None:

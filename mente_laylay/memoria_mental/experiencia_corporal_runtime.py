@@ -10,7 +10,7 @@ from uuid import uuid4
 import hashlib
 
 from mente_laylay.memoria_mental.decisao_observada import (
-    DecisaoObservada, EpisodioExplicavel, ExplicacaoOcorrencia,
+    DecisaoObservada, EpisodioExplicavel, ExplicacaoOcorrencia, MedicaoObservada,
 )
 from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
 
@@ -66,13 +66,36 @@ class ExperienciaCorporalRuntime:
                     or decisao.registrada_em > e["iniciada_em"]):
                 decisao = None
             try:
+                # O booleano confirma somente a obrigação registrada pelo owner.
+                # Legado/valor inválido não herda o escopo do diagnóstico atual.
+                escopo = e.get("escopo_confirmacao")
+                if type(escopo) is not str or escopo not in ("parada elétrica", "PWM e parada elétrica", "giro solicitado, PWM e parada elétrica"):
+                    escopo = "escopo não registrado"
+                medicoes = ()
+                angulo = e.get("rotacao_medida_graus")
+                if (e.get("confirmado") is True and e.get("prova_rotacao") is True
+                        and e.get("evidencia_rotacao") == "imu_relativa_turnend_e_sack"
+                        and type(angulo) in (int, float) and math.isfinite(angulo)):
+                    medicoes = (MedicaoObservada(ocorrencia_id=e["id"], owner="executor_corpo",
+                        grandeza="rotação relativa", valor=angulo, unidade="graus",
+                        metodo="imu_relativa_turnend_e_sack",
+                        limite_observacao="Estimativa relativa da IMU para esta ocorrência; não mede posição absoluta."),)
+                elif (e.get("leitura_rotacao_valida") is True
+                        and e.get("evidencia_leitura_rotacao") == "turnend_correlacionado_imu_valida"
+                        and type(angulo) in (int, float) and math.isfinite(angulo)):
+                    # Validade da observação não depende da conclusão da ação.
+                    # O transporte é quem confere a semântica do encerramento.
+                    medicoes = (MedicaoObservada(ocorrencia_id=e["id"], owner="executor_corpo",
+                        grandeza="rotação relativa", valor=angulo, unidade="graus",
+                        metodo="turnend_correlacionado_imu_valida",
+                        limite_observacao="Leitura até o encerramento reportado; não confirma conclusão da operação nem posição absoluta."),)
                 episodio = EpisodioExplicavel(id=e["id"], owner="executor_corpo", nome=e["nome"],
                     turno_origem=str(e.get("turno_id") or ""), sessao=str(e.get("sessao") or ""),
                     iniciada_em=e["iniciada_em"], encerrada_em=e["ts"],
                     intencao_id=str(e.get("intencao_id") or ""), decisao=decisao,
                     justificativa_registrada=decisao is not None and e.get("origem_intencao") != "llm_principal",
-                    confirmado=e.get("confirmado"), escopo_confirmacao="PWM e parada elétrica",
-                    limite_observacao="Não há medição de deslocamento neste registro.")
+                    confirmado=e.get("confirmado"), escopo_confirmacao=escopo,
+                    limite_observacao="Não há medição de deslocamento neste registro.", medicoes=medicoes)
                 episodios.append(episodio)
             except (ValueError, TypeError, KeyError):
                 continue
@@ -97,7 +120,10 @@ class ExperienciaCorporalRuntime:
         self._consulta_sensorial: tuple[str, int, int] = ("", 0, 0)
         self._inercial_anterior: tuple[Any, ...] = ("", "ESTAVEL")
         self._presenca_inercial_considerada: tuple[str, int] | None = None
-        self._presenca_sensorial_considerada: tuple[str, int] | None = None
+        self._marcos_presenca_considerados: list[tuple[str, str]] = []
+        # Sinal coalescido, sem payload, fila ou autoridade. O consumidor
+        # acorda e relê o mesmo estado factual; nunca gera fala na thread USB.
+        self.notificacao_observada = threading.Event()
 
     def observar_sensores(self, diagnostico: Mapping[str, Any], *, perfil: str) -> dict[str, Any]:
         """Consome GUARD/DIST do owner; não executa, não estima movimento."""
@@ -157,6 +183,16 @@ class ExperienciaCorporalRuntime:
                     [{"fase":fase,"risco":risco,"tentativa":p["tentativa_busca"],"ts":agora}])[-12:]}
             if novo_marco and resultado == "busca_em_espera":
                 e["espera_observada_em"] = agora
+            marco = ("recuperacao" if risco == "NENHUM" else "inicio"
+                if risco == e["risco_inicial_observado"] else f"mudanca:{risco}")
+            relatos = list(anterior.get("marcos_relato") or [])
+            observado = next((m for m in relatos if m["marco"] == marco), None)
+            novo_relato = observado is None
+            if observado is None:
+                observado = {"marco":marco, "risco":risco, "ts":agora}
+                relatos.append(observado)
+            e["marcos_relato"] = relatos
+            e["marco_relato_atual"] = observado
             def publicar(mental):
                 h = list(mental.get("historico_corporal") or [])
                 h = [e if item.get("id")==identidade else item for item in h]
@@ -164,6 +200,8 @@ class ExperienciaCorporalRuntime:
                     h.append(e)
                 return {**mental, "historico_corporal":_limitar_historico(h), "experiencia_corporal":e}
             self.estado.atualizar("mental",publicar)
+            if novo_relato:
+                self.notificacao_observada.set()
             if novo_marco and self.aprendizado is not None:
                 try:
                     aprendido = self.aprendizado.registrar_evidencia(
@@ -208,6 +246,8 @@ class ExperienciaCorporalRuntime:
             self.estado.atualizar("mental", lambda mental: {**mental,
                 "historico_corporal": _limitar_historico(list(mental.get("historico_corporal") or []) + [e]),
                 "experiencia_corporal": e})
+            if fase in {"DESCONFIADA", "SUSTO", "RESMUNGO", "DESORIENTADA", "RECOMPONDO"}:
+                self.notificacao_observada.set()
             if self.aprendizado is not None:
                 try:
                     self.aprendizado.registrar_evidencia(chave=f"corpo_inercial:{perfil}:{m}",
@@ -225,6 +265,30 @@ class ExperienciaCorporalRuntime:
         i = d.get("imu") or {}
         fonte = evento.get("observacao_corporal") or {}
         historico = self.estado.obter_copia("mental","historico_corporal",[]) if self.estado is not None else []
+        ocorrencia = evento.get("ocorrencia_observada")
+        if ocorrencia is not None:
+            if not isinstance(ocorrencia, Mapping):
+                return False
+            # Vincula o marco genérico à prova deste owner; IDs fornecidos
+            # por outro chamador não adquirem a política de reação corporal.
+            if fonte.get("tipo_observacao") == "protecao_sensorial":
+                comprovada = any(e.get("sessao") == fonte.get("sessao")
+                    and e.get("id") == ocorrencia.get("episodio_id")
+                    and e.get("id") == fonte.get("experiencia_id")
+                    and any(m.get("marco") == ocorrencia.get("marco")
+                        and m.get("ts") == evento.get("timestamp")
+                        and m.get("risco") == fonte.get("risco_medido")
+                        for m in e.get("marcos_relato") or []) for e in historico)
+            else:
+                comprovada = any(e.get("id") == ocorrencia.get("episodio_id")
+                    and e.get("sessao") == fonte.get("sessao")
+                    and e.get("evento_manuseio") == fonte.get("evento_manuseio")
+                    and e.get("fase_manuseio") == fonte.get("fase_manuseio")
+                    and e.get("ts") == evento.get("timestamp")
+                    and ocorrencia.get("marco") == ("recuperacao" if e.get("fase_manuseio") == "RECOMPONDO"
+                        else f"mudanca:{e.get('fase_manuseio')}") for e in historico)
+            if not comprovada:
+                return False
         if fonte.get("tipo_observacao") == "protecao_sensorial":
             sensores = d.get("sensores") or {}
             p = sensores.get("protecao") or {}
@@ -289,6 +353,8 @@ class ExperienciaCorporalRuntime:
                 "assunto":f"manuseio:{fase.lower()}",
                 "motivo":"Reação breve, reclamona e fofa ao próprio corpo; sem acusar Pedro, sem dor, dano ou colo inventados. Pode ficar em silêncio.",
                 "executavel":False,"autoriza_execucao":False}
+            evento["ocorrencia_observada"] = {"episodio_id":e["id"],
+                "marco":"recuperacao" if fase == "RECOMPONDO" else f"mudanca:{fase}"}
             if not self.evento_presenca_vigente(evento):
                 return {}
             self._presenca_inercial_considerada = (sessao,numero)
@@ -308,25 +374,32 @@ class ExperienciaCorporalRuntime:
                 and e.get("observacao_confirmada") is True and not e.get("recuperada_da_memoria")),{})
             if not e:
                 return {}
-            chave = (e["sessao"],e["incidente_id"])
-            if self._presenca_sensorial_considerada == chave:
+            marco = e.get("marco_relato_atual") or {}
+            if not marco:
                 return {}
-            descricao = descricoes[e["risco_inicial_observado"]]
+            chave = (e["id"], marco["marco"])
+            if chave in self._marcos_presenca_considerados:
+                return {}
+            recuperacao = marco["marco"] == "recuperacao"
+            descricao = ("A proteção voltou a registrar ausência de alerta nos sensores; isso não mede deslocamento nem garante todo o entorno."
+                if recuperacao else descricoes.get(marco["risco"], "A proteção registrou uma mudança de alerta."))
             fonte = {"tipo_observacao":"protecao_sensorial", "sessao":e["sessao"],
                 "experiencia_id":e["id"], "incidente_id":e["incidente_id"],
                 "risco_observado":e["risco_inicial_observado"],
+                "risco_medido":marco["risco"],
                 "fase_observada":e["fase"], "relato_de_episodio_recente":True,
                 "prova_deslocamento":False, "autoriza_execucao":False}
             evento = {"origem":"experiencia_corporal", "dominio":"corpo", "categoria":"companhia",
                 "conteudo":descricao, "evidencias":[descricao], "foco_evidencia":descricao,
-                "observacao_corporal":fonte, "timestamp":e["iniciada_em"], "validade_s":25,
-                "chave":f"protecao:{e['sessao']}:{e['incidente_id']}", "confianca":.94,
-                "utilidade":80, "assunto":f"protecao:{e['risco_inicial_observado'].lower()}",
-                "motivo":"Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar caminho percorrido ou perigo já resolvido.",
+                "observacao_corporal":fonte, "timestamp":e["iniciada_em"] if marco["marco"] == "inicio" else marco["ts"], "validade_s":25,
+                "ocorrencia_observada":{"episodio_id":e["id"], "marco":marco["marco"]},
+                "chave":f"protecao:{e['sessao']}:{e['incidente_id']}:{marco['marco']}", "confianca":.94,
+                "utilidade":80, "assunto":f"protecao:{marco['risco'].lower()}",
+                "motivo":"Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar deslocamento, caminho percorrido ou segurança além da medição.",
                 "executavel":False, "autoriza_execucao":False}
             if not self.evento_presenca_vigente(evento):
                 return {}
-            self._presenca_sensorial_considerada = chave
+            self._marcos_presenca_considerados = [*self._marcos_presenca_considerados, chave][-128:]
             return evento
 
     def contexto_sensorial(self, diagnostico: Mapping[str, Any], *, perfil: str) -> dict[str, Any]:
@@ -413,6 +486,10 @@ class ExperienciaCorporalRuntime:
             and (parada or r.get("aplicacao_pwm_confirmada") is True) for r in receipts))
         cancelado = retorno.get("cancelado") is True or retorno.get("status") == "cancelado"
         e = {**deepcopy(dict(ocorrencia)), "ts": self.clock(), "confirmado": confirmado,
+             # A obrigação angular vem do retorno do executor, nunca do nome
+             # ou da medida observada; declarar o alvo não comprova seu efeito.
+             "escopo_confirmacao": "parada elétrica" if parada else "giro solicitado, PWM e parada elétrica"
+                 if type(retorno.get("angulo_solicitado_graus")) is int else "PWM e parada elétrica",
              "duracao_comandada_confirmada_ms": sum(r.get("duracao_ms", 0) for r in receipts
                  if r.get("aplicacao_pwm_confirmada") is True and type(r.get("duracao_ms")) is int
                  and 0 <= r["duracao_ms"] <= 5000),
@@ -424,6 +501,8 @@ class ExperienciaCorporalRuntime:
         if retorno.get("rotacao_medida_graus") is not None:
             e.update(rotacao_medida_graus=retorno["rotacao_medida_graus"],
                      prova_rotacao=retorno.get("prova_rotacao") is True,
+                     leitura_rotacao_valida=retorno.get("leitura_rotacao_valida") is True,
+                     evidencia_leitura_rotacao=str(retorno.get("evidencia_leitura_rotacao") or "")[:120],
                      evidencia_rotacao="imu_relativa_turnend_e_sack" if retorno.get("prova_rotacao") else "giro_parcial_ou_interrompido")
             if confirmado and e["prova_rotacao"]:
                 e["resultado"] = "giro_relativo_confirmado"

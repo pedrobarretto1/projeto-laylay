@@ -8,13 +8,77 @@ from pathlib import Path
 import re
 import socket
 import time
+import os
+import subprocess
+from typing import Any
 
 
 CAMINHO_CONFIGURACAO_WIFI = Path(__file__).resolve().parents[2] / "memoria" / "corpo_wifi.json"
 
 
+class RedeLocalCorpoWindows:
+    """Reutiliza o gerente de rede já provisionado; não altera a rede principal."""
+
+    def __init__(self, raiz: Path | None = None) -> None:
+        self.raiz = raiz or CAMINHO_CONFIGURACAO_WIFI.parents[1]
+        self._processo: Any = None
+        self._nova_tentativa_em = 0.0
+
+    def preparar(self, configuracao: ConfiguracaoCorpoWifi) -> None:
+        arquivo = self.raiz / 'memoria' / 'corpo_hotspot_windows.json'
+        script = self.raiz / 'scripts' / 'hotspot_corpo_windows.ps1'
+        if (os.name != 'nt' or not configuracao.host.startswith('192.168.137.')
+                or not arquivo.is_file() or not script.is_file()):
+            return
+        perfil = json.loads(arquivo.read_text(encoding='utf-8-sig'))
+        if perfil.get('modo') != 'hosted_network_temporario' or perfil.get('ssid') != 'Laylay-Corpo-PC':
+            return
+        recibo = self.raiz / 'artifacts' / 'rosto_oled' / 'wifi' / 'hotspot_windows.json'
+        import psutil
+
+        def pronto(pid: int | None = None) -> bool:
+            try:
+                r = json.loads(recibo.read_text(encoding='utf-8-sig'))
+                if r.get('estado') != 'ativo' or r.get('conexao_original_preservada') is not True:
+                    return False
+                if pid is not None and r.get('pid') != pid:
+                    return False
+                processo = psutil.Process(int(r['pid']))
+                return processo.name().casefold() == 'powershell.exe' and any(
+                    Path(a).resolve() == script.resolve() for a in processo.cmdline() if a.casefold().endswith('.ps1'))
+            except (OSError, ValueError, KeyError, psutil.Error):
+                return False
+
+        if pronto():
+            return
+        if time.monotonic() < self._nova_tentativa_em:
+            raise ConnectionError('aguardando_rede_local_corpo')
+        self._nova_tentativa_em = time.monotonic() + 30
+        self._processo = subprocess.Popen(['powershell.exe', '-NoProfile', '-ExecutionPolicy',
+            'Bypass', '-File', str(script)], cwd=str(self.raiz),
+            creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        prazo = time.monotonic() + 8
+        while time.monotonic() < prazo and self._processo.poll() is None:
+            if pronto(self._processo.pid):
+                return
+            time.sleep(.1)
+        raise ConnectionError('rede_local_corpo_nao_confirmada')
+
+    def encerrar(self) -> None:
+        if self._processo is not None and self._processo.poll() is None:
+            (self.raiz / 'memoria' / 'corpo_hotspot_windows.parar').write_text('parar', encoding='ascii')
+            try:
+                self._processo.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                pass
+
+
 class ConfiguracaoCorpoWifiInvalida(ValueError):
     """Não inclui o conteúdo do arquivo nem a credencial na mensagem."""
+
+
+class ConexaoCorpoIndisponivel(ConnectionError):
+    """Falha antes da autenticação; permite preparar a rede local existente."""
 
 
 @dataclass(frozen=True)
@@ -98,7 +162,10 @@ def abrir_corpo_tcp(configuracao: ConfiguracaoCorpoWifi) -> FluxoCorpoTcp:
     conexao = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         conexao.settimeout(.8)
-        conexao.connect((configuracao.host, configuracao.porta))
+        try:
+            conexao.connect((configuracao.host, configuracao.porta))
+        except OSError:
+            raise ConexaoCorpoIndisponivel('conexao_corpo_indisponivel') from None
         conexao.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         fluxo = FluxoCorpoTcp(conexao)
         fluxo.write(f"AUTH 1 {configuracao.token}\n".encode("ascii"))

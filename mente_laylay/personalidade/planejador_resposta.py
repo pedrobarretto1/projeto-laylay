@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import json
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 from mente_laylay.cognicao.preferencia_humor import humor_bloqueado_por_preferencia
@@ -260,6 +261,22 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
     return f"{ancora} {texto[0].upper() + texto[1:] if len(texto) > 1 else texto.upper()}"
 
 
+def fala_resultado_por_aspectos(resultado: ResultadoAcao) -> str:
+    """Realiza alcances explícitos; uma parte não substitui a conclusão global."""
+    if not resultado.aspectos:
+        return ""
+    classe = classificar_resultado(resultado)
+    # Cancelamento não desfaz as partes já observadas desta ocorrência.
+    ancora = (f"O pedido em {resultado.alvo or 'o alvo solicitado'} foi cancelado."
+              if classe == "cancelado" else _ancora_resultado(resultado, classe))
+    partes = [ancora]
+    for aspecto in resultado.aspectos:
+        prefixo = ("Confirmação registrada de" if aspecto.confirmado is True else
+                   "Sem confirmação de" if aspecto.confirmado is False else "Confirmação desconhecida de")
+        partes.append(f"{prefixo} {json.dumps(aspecto.escopo, ensure_ascii=False)}.")
+    return " ".join(partes)
+
+
 def planejar_resposta_acao(
     resultado: ResultadoAcao,
     fala_base: str = "",
@@ -309,6 +326,9 @@ def planejar_resposta_acao(
     )
     fala = _contextualizar_turno_misto(fala, resultado.texto_usuario)
 
+    if resultado.aspectos:
+        fala = fala_resultado_por_aspectos(resultado)
+
     return PlanoResposta(
         fala=fala,
         classe=classe,
@@ -332,6 +352,9 @@ def fala_factual_resultados_compostos(
         status = str(item.status or "").casefold()
         # Abrir um alvo não confirma foco nem reprodução. No novo caminho
         # composto a contingência declara apenas o efeito mínimo do receipt.
+        if item.aspectos:
+            partes.append(fala_resultado_por_aspectos(item))
+            continue
         if classe == "sucesso" and "abert" in status and "focad" not in status:
             objeto = item.alvo or "o que você pediu"
             if status.startswith("playlist_aberta"):

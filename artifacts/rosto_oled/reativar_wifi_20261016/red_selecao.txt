@@ -1,0 +1,48 @@
+FF                                                                       [100%]
+================================== FAILURES ===================================
+___ test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback[True] ____
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4026/test_wifi_explicito_prevalece_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000173E2466650>
+arquivo_presente = True
+
+    @pytest.mark.parametrize('arquivo_presente', [True, False])
+    def test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback(tmp_path, monkeypatch, arquivo_presente):
+        caminho = configurar(tmp_path, monkeypatch)
+        if not arquivo_presente:
+            caminho.unlink()
+        monkeypatch.setenv('LAYLAY_ROSTO_PORTA', 'WIFI')
+        runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, abrir_serial=proibido,
+            listar_portas=proibido, preferir_usb=True)
+>       assert runtime.diagnostico()['transporte'] == 'tcp'
+E       AssertionError: assert 'serial' == 'tcp'
+E         
+E         - tcp
+E         + serial
+
+scripts\tests\test_corpo_wifi_transporte.py:52: AssertionError
+___ test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback[False] ___
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4026/test_wifi_explicito_prevalece_1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000173E2466060>
+arquivo_presente = False
+
+    @pytest.mark.parametrize('arquivo_presente', [True, False])
+    def test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback(tmp_path, monkeypatch, arquivo_presente):
+        caminho = configurar(tmp_path, monkeypatch)
+        if not arquivo_presente:
+            caminho.unlink()
+        monkeypatch.setenv('LAYLAY_ROSTO_PORTA', 'WIFI')
+        runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, abrir_serial=proibido,
+            listar_portas=proibido, preferir_usb=True)
+>       assert runtime.diagnostico()['transporte'] == 'tcp'
+E       AssertionError: assert 'serial' == 'tcp'
+E         
+E         - tcp
+E         + serial
+
+scripts\tests\test_corpo_wifi_transporte.py:52: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback[True]
+FAILED scripts/tests/test_corpo_wifi_transporte.py::test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback[False]
+2 failed, 28 deselected in 0.45s

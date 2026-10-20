@@ -2211,6 +2211,7 @@ _recomendar_playlist_real_para_presenca = partial(
 
 _diretor_presenca_runtime = _criar_diretor_presenca_runtime_mente(
     candidato_observado_getter=_corpo_motor_runtime.experiencias.candidato_presenca,
+    notificacao_observada=_corpo_motor_runtime.experiencias.notificacao_observada,
     validar_observacao=_corpo_motor_runtime.experiencias.evento_presenca_vigente,
     estado_get=lambda: dict(
         _estado_compartilhado_runtime.mental.get("presenca_contextual") or {}

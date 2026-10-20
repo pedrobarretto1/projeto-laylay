@@ -1,0 +1,20 @@
+F.                                                                       [100%]
+================================== FAILURES ===================================
+____ test_preferencia_de_companhia_aceita_rede_so_apos_autenticacao[True] _____
+
+autenticado = True
+
+    @pytest.mark.parametrize('autenticado', [True, False])
+    def test_preferencia_de_companhia_aceita_rede_so_apos_autenticacao(autenticado):
+        _, _, rosto, corpo, _, agora = montar(automatico=True, passeio=True)
+        original = rosto.diagnostico
+        rosto.diagnostico = lambda: {**original(), 'transporte': 'tcp', 'canal_autenticado': autenticado}
+        resultado = corpo.companhia.processar()
+>       assert corpo.companhia.diagnostico()['ativa'] is autenticado, resultado
+E       AssertionError: {'ok': False, 'motivo': 'companhia_requer_sessao_usb_pronta'}
+E       assert False is True
+
+scripts\tests\test_companhia_transporte_autenticado.py:12: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_companhia_transporte_autenticado.py::test_preferencia_de_companhia_aceita_rede_so_apos_autenticacao[True]
+1 failed, 1 passed in 1.15s

@@ -1,4 +1,4 @@
-"""Terminal Laylay 3.0 — cliente PySide6 da mente canônica."""
+"""Laylay — Interface 1.0, cliente PySide6 da mente canônica."""
 
 from __future__ import annotations
 
@@ -67,6 +67,9 @@ from cliente.terminal_2.volume_mestre_windows import (
     DefinidorVolumeMestreWindows,
 )
 from cliente.terminal_2.desenvolvedor import PaginaDesenvolvedor
+from cliente.terminal_2.mascote_v1 import MascoteLaylay
+from cliente.terminal_2.apresentacao_v1 import ApresentacaoLaylayV1
+from cliente.terminal_2.theme.v1 import qss_interface_v1, qss_pagina_v1
 from cliente.terminal_2.theme import (
     PALETA,
     qss_automation_components,
@@ -136,6 +139,16 @@ class PonteWorker(QObject):
     def executar(self) -> None:
         self.transporte.executar()
         self.terminou.emit()
+
+
+class PresencaMascoteV1(MascoteLaylay):
+    """Adapta a presença do cliente ao novo rosto, sem outro runtime."""
+
+    def __init__(self, raiz: Path, tamanho: int = 42, *, reduzir_movimento: bool = False) -> None:
+        super().__init__(tamanho=tamanho, reduzir_movimento=reduzir_movimento)
+
+    def atualizar(self, atividade: str, emocao: str) -> None:
+        self.definir_estado(atividade, emocao, conectado=self._conectado)
 
 
 class AroPresenca(QWidget):
@@ -867,13 +880,19 @@ class PaginaConfiguracoes(QWidget):
         interface_titulo.setObjectName("sectionTitle")
         self.manter_sidebar = QCheckBox("Manter a barra lateral expandida")
         self.manter_sidebar.setChecked(True)
-        self.mostrar_mascote = QCheckBox("Mostrar mascote da Laylay")
+        self.mascote_integrado = QCheckBox("Mostrar o rosto da Laylay na interface")
+        self.mascote_integrado.setChecked(True)
+        self.mascote_integrado.setToolTip("Controla apenas o rosto integrado a esta janela.")
+        self.reduzir_movimento = QCheckBox("Reduzir movimento e animações")
+        self.mostrar_mascote = QCheckBox("Abrir também o mascote de desktop legado")
         self.mostrar_mascote.setChecked(False)
         self.mostrar_mascote.setToolTip(
             "Abre o mascote junto da Laylay após reiniciar o aplicativo."
         )
         lay.addWidget(interface_titulo)
         lay.addWidget(self.manter_sidebar)
+        lay.addWidget(self.mascote_integrado)
+        lay.addWidget(self.reduzir_movimento)
         lay.addWidget(self.mostrar_mascote)
         lay.addStretch()
         scroll.setWidget(conteudo)
@@ -1246,15 +1265,26 @@ class JanelaLaylay(QMainWindow):
         self._provedor_modelo = ""
         self._dashboard_recebido = False
         self._nivel_microfone = 0.0
-        self._reduzir_movimento = os.environ.get(
+        self._movimento_reduzido_ambiente = os.environ.get(
             "LAYLAY_REDUZIR_MOVIMENTO", "0",
         ).casefold() in {"1", "true", "sim", "yes", "on"}
+        self._reduzir_movimento = self._movimento_reduzido_ambiente or bool(
+            self.preferencias.value("v1/reduzir_movimento", False, type=bool)
+        )
+        self._mascote_integrado_visivel = bool(
+            self.preferencias.value("v1/mascote_integrado", True, type=bool)
+        )
         self._sidebar_expandida = bool(self.preferencias.value("sidebar_expandida", True, type=bool))
         titulo_sessao = f" · {self._session_id}" if self._session_id else ""
-        self.setWindowTitle(f"Laylay — Terminal 3.0{titulo_sessao}")
+        self.setWindowTitle(f"Laylay — Interface 1.0{titulo_sessao}")
         self.setMinimumSize(375, 620)
         self.resize(1680, 940)
         self._montar()
+        self.apresentacao = ApresentacaoLaylayV1(self)
+        self.controles_apresentacao = self.apresentacao.criar_controles(self.topbar)
+        self.topbar.layout().addWidget(self.controles_apresentacao)
+        self.apresentacao.atualizar_estado("reconnecting", "calma", False, self.status.text())
+        self._aplicar_preferencias_interface_v1()
         self._atalhos()
         self._estilizar()
         self._aplicar_sidebar()
@@ -1276,6 +1306,7 @@ class JanelaLaylay(QMainWindow):
 
     def _montar(self) -> None:
         raiz = QWidget(objectName="root")
+        self.raiz_interface = raiz
         self.setCentralWidget(raiz)
         geral = QHBoxLayout(raiz)
         geral.setContentsMargins(0, 0, 0, 0)
@@ -1294,7 +1325,7 @@ class JanelaLaylay(QMainWindow):
         topo.setContentsMargins(5, 3, 2, 7)
         topo.setSpacing(8)
 
-        self.avatar_side = AroPresenca(
+        self.avatar_side = PresencaMascoteV1(
             self.raiz,
             34,
         )
@@ -1573,7 +1604,7 @@ class JanelaLaylay(QMainWindow):
         )
         profile_top.setSpacing(8)
 
-        self.avatar_profile = AroPresenca(
+        self.avatar_profile = PresencaMascoteV1(
             self.raiz,
             34,
         )
@@ -1632,7 +1663,7 @@ class JanelaLaylay(QMainWindow):
         )
 
         self.profile_version = QLabel(
-            "Terminal 3.0"
+            "Interface 1.0"
         )
         self.profile_version.setObjectName(
             "profileVersion"
@@ -1646,6 +1677,7 @@ class JanelaLaylay(QMainWindow):
         side.addWidget(self.profile_card)
         geral.addWidget(self.sidebar)
         centro = QFrame(objectName="mainSurface")
+        self.superficie_principal = centro
         centro_lay = QVBoxLayout(centro)
         centro_lay.setContentsMargins(0, 0, 0, 0)
         centro_lay.setSpacing(0)
@@ -1674,6 +1706,11 @@ class JanelaLaylay(QMainWindow):
         self.titulo_header = QLabel("Início", header)
         self.titulo_header.setObjectName("headerTitle")
         hlay.addWidget(self.menu_compacto)
+        self.mascote_cabecalho = MascoteLaylay(header, tamanho=38, reduzir_movimento=self._reduzir_movimento)
+        hlay.addWidget(self.mascote_cabecalho)
+        self.marca_cabecalho = QLabel("Laylay", header)
+        self.marca_cabecalho.setObjectName("v1Brand")
+        hlay.addWidget(self.marca_cabecalho)
         self.voltar.hide()
         self.avancar.hide()
         self.titulo_header.hide()
@@ -1736,21 +1773,28 @@ class JanelaLaylay(QMainWindow):
         self.chat_cabecalho.setSizePolicy(
             QSizePolicy.Expanding, QSizePolicy.Preferred,
         )
-        chat_head_lay = QVBoxLayout(self.chat_cabecalho)
+        chat_head_lay = QHBoxLayout(self.chat_cabecalho)
         chat_head_lay.setContentsMargins(
             16, 14, 16, 13
         )
-        chat_head_lay.setSpacing(4)
+        chat_head_lay.setSpacing(20)
+        self.mascote_inicio = MascoteLaylay(self.chat_cabecalho, tamanho=112, reduzir_movimento=self._reduzir_movimento)
+        chat_head_lay.addWidget(self.mascote_inicio, 0, Qt.AlignVCenter)
+        chat_head_textos = QVBoxLayout()
+        chat_head_textos.setSpacing(5)
         hora = datetime.now().hour
         saudacao = "Bom dia" if hora < 12 else "Boa tarde" if hora < 18 else "Boa noite"
         self._saudacao_inicio = f"{saudacao}!  ✦"
         self._subtitulo_inicio = "Como posso te ajudar hoje?"
         self.chat_saudacao = QLabel(self._saudacao_inicio)
         self.chat_saudacao.setObjectName("chatGreeting")
+        self.chat_saudacao.setWordWrap(True)
         self.chat_subtitulo = QLabel(self._subtitulo_inicio)
         self.chat_subtitulo.setObjectName("chatGreetingSub")
-        chat_head_lay.addWidget(self.chat_saudacao)
-        chat_head_lay.addWidget(self.chat_subtitulo)
+        self.chat_subtitulo.setWordWrap(True)
+        chat_head_textos.addWidget(self.chat_saudacao)
+        chat_head_textos.addWidget(self.chat_subtitulo)
+        chat_head_lay.addLayout(chat_head_textos, 1)
         chat_lay.addWidget(self.chat_cabecalho, 0, Qt.AlignHCenter)
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -1772,10 +1816,10 @@ class JanelaLaylay(QMainWindow):
         vazio_lay = QVBoxLayout(self.vazio)
         vazio_lay.setContentsMargins(32, 50, 32, 50)
         vazio_lay.setSpacing(10)
-        vazio_t = QLabel("◕‿◕")
+        vazio_t = QLabel("✦")
         vazio_t.setObjectName("emptyMark")
         vazio_t.setAlignment(Qt.AlignCenter)
-        vazio_h = QLabel("Pode chegar. A mente está do outro lado.")
+        vazio_h = QLabel("A conversa começa aqui.")
         vazio_h.setObjectName("emptyTitle")
         vazio_h.setAlignment(Qt.AlignCenter)
         vazio_h.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
@@ -1840,8 +1884,8 @@ class JanelaLaylay(QMainWindow):
         self.painel_lateral.acao_solicitada.connect(self.enviar_acao_painel)
 
         self.inspector_shell = QFrame(objectName="inspectorShell")
-        self.inspector_shell.setMinimumWidth(320)
-        self.inspector_shell.setMaximumWidth(360)
+        self.inspector_shell.setMinimumWidth(280)
+        self.inspector_shell.setMaximumWidth(320)
         inspector_lay = QVBoxLayout(self.inspector_shell)
         inspector_lay.setContentsMargins(14, 16, 14, 14)
         inspector_lay.setSpacing(10)
@@ -1956,6 +2000,14 @@ class JanelaLaylay(QMainWindow):
         self.paginas.addWidget(diagnostico)
 
         self.configuracoes = PaginaConfiguracoes()
+        self.configuracoes.setStyleSheet(self.configuracoes.styleSheet() + qss_pagina_v1("configuracoes"))
+        self.configuracoes.mascote_integrado.setChecked(self._mascote_integrado_visivel)
+        self.configuracoes.reduzir_movimento.setChecked(self._reduzir_movimento)
+        self.configuracoes.reduzir_movimento.setEnabled(not self._movimento_reduzido_ambiente)
+        if self._movimento_reduzido_ambiente:
+            self.configuracoes.reduzir_movimento.setToolTip("Ativado por LAYLAY_REDUZIR_MOVIMENTO nesta sessão.")
+        self.configuracoes.mascote_integrado.toggled.connect(self._preferencia_mascote_integrado)
+        self.configuracoes.reduzir_movimento.toggled.connect(self._preferencia_reduzir_movimento)
         self.configuracoes.salvar.connect(self.salvar_configuracoes)
         self.configuracoes.reiniciar.connect(self.reiniciar_laylay)
         self.configuracoes.avatar_alterado.connect(
@@ -2055,6 +2107,8 @@ class JanelaLaylay(QMainWindow):
             raise KeyError(f"Página sem marcador de carregamento: {nome}")
 
         pagina = self._criar_pagina_adiada(nome)
+        if nome != "musica":  # a página musical aplica seu próprio preset V1
+            pagina.setStyleSheet(pagina.styleSheet() + qss_pagina_v1(nome))
         indice = self.paginas.indexOf(marcador)
         era_atual = self.paginas.currentWidget() is marcador
         self._paginas_carregadas[nome] = pagina
@@ -2401,6 +2455,9 @@ class JanelaLaylay(QMainWindow):
         self.marca_status.setText(
             f"{texto.casefold()} · {str(emocao or 'calma')}"
         )
+        apresentacao = getattr(self, "apresentacao", None)
+        if apresentacao is not None:
+            apresentacao.atualizar_estado(atividade, emocao, self._conectado, texto)
 
         if atualizar_avatar:
             self.avatar_side.atualizar(atividade, emocao)
@@ -2600,6 +2657,7 @@ class JanelaLaylay(QMainWindow):
             + qss_memory_refresh()
             + qss_product_polish()
             + qss_live_presence()
+            + qss_interface_v1()
         )
 
     @staticmethod
@@ -2727,7 +2785,9 @@ class JanelaLaylay(QMainWindow):
                     self.titulo_header.setText(titulo)
                     self._atualizar_cabecalho_chat()
         else:
-            avatar = AroPresenca(self.raiz, 38)
+            # A identidade acompanha a nova interface. Ícones do histórico são
+            # estáticos: apenas as presenças atuais piscam e seguem o cursor.
+            avatar = PresencaMascoteV1(self.raiz, 38, reduzir_movimento=True)
             avatar.atualizar("idle", "calma")
 
             coluna_mensagem = QVBoxLayout()
@@ -2837,7 +2897,11 @@ class JanelaLaylay(QMainWindow):
 
         self.chat_saudacao.setText(titulo)
         self.chat_subtitulo.setText(subtitulo)
+        self.mascote_inicio.setVisible(
+            not modo_conversa and self._mascote_integrado_visivel
+        )
         self.chat_cabecalho.setProperty("conversationMode", modo_conversa)
+        self.chat_cabecalho.setProperty("v1MascotHero", not modo_conversa)
         self.chat_cabecalho.style().unpolish(self.chat_cabecalho)
         self.chat_cabecalho.style().polish(self.chat_cabecalho)
 
@@ -3425,6 +3489,9 @@ class JanelaLaylay(QMainWindow):
             )
             self.avatar_side.atualizar(atividade_avatar, emocao_resposta)
             self.avatar_profile.atualizar(atividade_avatar, emocao_resposta)
+            self.apresentacao.atualizar_estado(
+                atividade_avatar, emocao_resposta, self._conectado, self.status.text()
+            )
             self.adicionar_evento(
                 "Resposta entregue",
                 (
@@ -4426,6 +4493,9 @@ class JanelaLaylay(QMainWindow):
         self.composer.editor.setFocus()
 
     def selecionar_pagina(self, nome: str) -> None:
+        apresentacao = getattr(self, "apresentacao", None)
+        if apresentacao is not None and apresentacao.modo != "completa":
+            apresentacao.definir_modo("completa")
         mapa = {
             "inicio": 0,
             "conversa": 0,
@@ -4492,6 +4562,8 @@ class JanelaLaylay(QMainWindow):
         )
 
     def alternar_sidebar(self) -> None:
+        if self.apresentacao.modo != "completa":
+            self.apresentacao.definir_modo("completa")
         self._sidebar_expandida = not self._sidebar_expandida
         self.preferencias.setValue("sidebar_expandida", self._sidebar_expandida)
         self.configuracoes.manter_sidebar.blockSignals(True)
@@ -4561,7 +4633,45 @@ class JanelaLaylay(QMainWindow):
         for botao in self._nav.values():
             botao.setText("")
 
+    def _preferencia_mascote_integrado(self, visivel: bool) -> None:
+        self._mascote_integrado_visivel = bool(visivel)
+        self.preferencias.setValue("v1/mascote_integrado", bool(visivel))
+        self._aplicar_preferencias_interface_v1()
+
+    def _preferencia_reduzir_movimento(self, reduzir: bool) -> None:
+        self.preferencias.setValue("v1/reduzir_movimento", bool(reduzir))
+        self._reduzir_movimento = self._movimento_reduzido_ambiente or bool(reduzir)
+        self._aplicar_preferencias_interface_v1()
+
+    def _aplicar_preferencias_interface_v1(self) -> None:
+        apresentacao = getattr(self, "apresentacao", None)
+        if apresentacao is None:
+            return
+        for mascote in (self.mascote_inicio, self.mascote_cabecalho, apresentacao.mascote_ilha):
+            mascote.definir_reduzir_movimento(self._reduzir_movimento)
+            mascote.setVisible(self._mascote_integrado_visivel)
+        self._atualizar_cabecalho_chat()
+        self.avatar_side.definir_reduzir_movimento(self._reduzir_movimento)
+        self.avatar_profile.definir_reduzir_movimento(self._reduzir_movimento)
+        if self._reduzir_movimento:
+            self._parar_pulso_presenca()
+            self._encerrar_microinteracoes()
+            self._encerrar_rolagem_suave()
+            self._encerrar_transicao_pagina()
+            self._encerrar_animacoes_mensagens()
+            self._encerrar_animacoes_conversas()
+            self._encerrar_transicao_conversa()
+        self.configuracoes.reduzir_movimento.blockSignals(True)
+        self.configuracoes.reduzir_movimento.setChecked(self._reduzir_movimento)
+        self.configuracoes.reduzir_movimento.blockSignals(False)
+
     def _aplicar_responsividade(self) -> None:
+        apresentacao = getattr(self, "apresentacao", None)
+        if apresentacao is not None and apresentacao.aplicar_responsividade_compacta():
+            return
+        self.chat_cabecalho.show()
+        self.presenca_pill.show()
+        self.topbar.layout().setContentsMargins(18, 9, 18, 9)
         largura = self.width()
         estreita = largura < 760
         compacta = largura < 1080
@@ -4584,7 +4694,7 @@ class JanelaLaylay(QMainWindow):
         largura_mudou = largura != self._ultima_largura_responsiva
         self._ultima_largura_responsiva = largura
         if mostrar_inspector:
-            largura_inspector = max(300, min(360, int(largura * 0.19)))
+            largura_inspector = max(280, min(320, int(largura * 0.21)))
             self.inspector_shell.setFixedWidth(largura_inspector)
         if assinatura == self._assinatura_responsividade:
             if largura_mudou:
@@ -4644,6 +4754,7 @@ class JanelaLaylay(QMainWindow):
             )
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        self.apresentacao.encerrar()
         streaming = self._paginas_carregadas.get("streaming")
         if streaming is not None:
             streaming.fechar()
@@ -4765,6 +4876,8 @@ def processo_esta_ativo(pid: int) -> bool:
 
 
 def main() -> int:
+    from cliente.terminal_2.interface_web_v1 import JanelaInterfaceWebV1
+
     host, port, token = configuracao_ponte()
     session_id = os.environ.get("LAYLAY_DESKTOP_SESSION", "").strip()
     try:
@@ -4773,7 +4886,7 @@ def main() -> int:
         parent_pid = 0
     raiz = Path(os.environ.get("LAYLAY_PROJECT_ROOT") or Path(__file__).resolve().parents[1]).resolve()
     app = QApplication(sys.argv)
-    app.setApplicationName("Laylay Terminal 3.0")
+    app.setApplicationName("Laylay Interface 1.0")
     app.setOrganizationName("Laylay")
     familia = carregar_fontes_interface()
     app.setFont(QFont(familia, 10))
@@ -4782,7 +4895,7 @@ def main() -> int:
     worker.moveToThread(thread)
     thread.started.connect(worker.executar)
     worker.terminou.connect(thread.quit)
-    janela = JanelaLaylay(
+    janela = JanelaInterfaceWebV1(
         worker, raiz, session_id=session_id, parent_pid=parent_pid,
     )
     janela.show()

@@ -1,7 +1,7 @@
 ﻿{
-    "pid":  21264,
-    "conexao_original_preservada":  false,
-    "erro":  "Conexao original mudou durante teste.",
-    "horario":  "2026-10-11T16:29:44",
-    "estado":  "falhou"
+    "pid":  27040,
+    "conexao_original_preservada":  true,
+    "erro":  "",
+    "horario":  "2026-10-20T06:20:16",
+    "estado":  "ativo"
 }

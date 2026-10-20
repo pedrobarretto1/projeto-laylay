@@ -1,0 +1,10 @@
+{
+  "plataforma": "windows",
+  "monitor": "D-300D 100H",
+  "origem_playlist": "PlaylistRuntime e OperacoesMusicaisRuntime reais, 125 faixas temporarias",
+  "origem_logs": "DevConsoleRuntime real, linhas de instrumentacao da validacao",
+  "origem_metricas": "DashboardTerminalRuntime com psutil real, somente leitura",
+  "origem_playing_e_meter": "fixture declarada e publicada no protocolo autenticado; nao houve reproducao externa",
+  "mente_iniciada": false,
+  "efeitos_externos": false
+}

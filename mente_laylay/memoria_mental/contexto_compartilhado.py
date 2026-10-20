@@ -27,7 +27,7 @@ from mente_laylay.memoria_mental.consciencia_temporal import (
     atualizar_consciencia_temporal,
 )
 from mente_laylay.memoria_mental.registro_semantico import (
-    registrar_interacao_semantica,
+    projetar_contestacao_alegacao, registrar_interacao_semantica,
 )
 from mente_laylay.memoria_mental.estado_contexto import criar_estado_mental_inicial
 
@@ -665,23 +665,13 @@ def registrar_mente_curta(
     escopo = str(escopo or "").strip()
     habilidade = str(habilidade or "").strip()
 
-    # Uma contestação explícita reduz a confiança da fala anterior. Ela não
-    # pode continuar circulando no prompt como se fosse um fato confirmado.
-    texto_contestacao = str(texto_usuario or "").casefold()
-    if texto_usuario and re.search(
-        r"\b(?:que\s+papo\s+(?:e|é)\s+esse|de\s+onde\s+(?:voce|você)\s+tirou|"
-        r"isso\s+(?:e|é)\s+verdade|viajou|nada\s+a\s+ver|tem\s+certeza\s+disso)\b",
-        texto_contestacao,
-    ):
-        anterior_contestada = str(estado.get("ultima_resposta") or "").strip()
-        if anterior_contestada:
-            estado["alegacao_contestada"] = {
-                "texto": anterior_contestada[:500],
-                "contestacao": texto_usuario[:300],
-                "topico": str(estado.get("assunto_da_fala") or ultimo_topico_conversa or "")[:160],
-                "status": "nao_confiavel_ate_verificacao",
-                "ts": time.time(),
-            }
+    contestada = projetar_contestacao_alegacao(
+        estado.get("registro_semantico"), texto_usuario,
+        fala_anterior=str(estado.get("ultima_resposta") or "").strip(),
+    )
+    if contestada is not None:
+        # O registro é dono da seleção. A projeção não escolhe outra resposta.
+        estado["alegacao_contestada"] = contestada
 
     assunto_semantico = str(
         ((estado.get("assunto_estruturado_atual") or {}).get("titulo")
@@ -704,6 +694,8 @@ def registrar_mente_curta(
         assunto=assunto_semantico,
         # A rota não é fonte. Somente a fundamentação fechada do turno é.
         fonte_resposta=fonte_factual,
+        suporte_autoria=dict(estado.get("plano_turno_atual") or {}).get("suporte_autoria_proposto"),
+        turno_id=str(dict(estado.get("turno_atual") or {}).get("id") or ""),
     )
 
     if texto_usuario:

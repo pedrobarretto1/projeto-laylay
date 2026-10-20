@@ -508,6 +508,151 @@ def reconhecimento_estado_pessoal_valido(fala: str, estado: str) -> bool:
     return _indice_reconhecimento_estado("estou " + str(estado), texto) >= 0
 
 
+def conferir_ato_social(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Confere um ato discursivo integral contra sua fonte atual.
+
+    Consome segmentos já decididos e seu vínculo textual compartilhado, sem
+    resegmentar. Saudação/recepção de agradecimento não certificam serviço
+    prestado; acolhimento de relato não certifica o estado real da pessoa.
+    Tom e declaração da IA não substituem a conferência da unidade inteira.
+    """
+    import hashlib
+    from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+
+    contrato = plano.get("contrato_fala")
+    usuario, turno = plano.get("texto_usuario"), plano.get("id")
+    if (not isinstance(contrato, Mapping) or not turno or type(usuario) is not str
+        or contrato.get("origem") != "mente_unica"
+        or str(contrato.get("turno_id")) != str(turno)
+        or contrato.get("autoriza_execucao") is not False
+        or plano.get("natureza_entrada") == "evento"
+        or plano.get("requer_execucao") or plano.get("comandos")
+        or dict(contrato.get("roteiro_concreto") or {}).get("ancora_literal") != usuario):
+        return None
+    atos = plano.get("atos")
+    if (not isinstance(atos, list) or not atos
+        or any(not isinstance(a, Mapping) or a.get("requer_execucao") is not False for a in atos)
+        or any(type(a.get("ordem")) is not int or a["ordem"] != i for i, a in enumerate(atos))
+        or any(a.get("tipo") != "pergunta" for a in atos[1:])):
+        return None
+    fontes = fontes_textuais_dos_segmentos(usuario, atos)
+    if len(fontes) != len(atos):
+        return None
+    origem = fontes[0].como_dict()
+    inicio, fim = origem["intervalo"]
+    # Só o ato social é certificado. Conectores entre perguntas pertencem à
+    # segmentação canônica; não são condição para provar a saudação inicial.
+    # À esquerda não pode haver aspas, condição ou negação omitida; à direita
+    # o trecho precisa terminar antes de um delimitador ou do fim da entrada.
+    if (usuario[:inicio].strip()
+        or (fim < len(usuario) and usuario[fim] not in ",;.!?")):
+        return None
+    trecho = origem["texto_original"]
+
+    def dobrar(texto: str) -> str:
+        # Preservar pontuação e aspas: removê-las poderia converter uma
+        # citação, uma pergunta ou uma segunda oração em reconhecimento.
+        texto = unicodedata.normalize("NFKD", texto.casefold())
+        return re.sub(r"\s+", " ", "".join(c for c in texto if not unicodedata.combining(c))).strip()
+
+    if type(fala) is not str or not fala or len(fala) > 140:
+        return None
+    texto, fonte = dobrar(fala), dobrar(trecho)
+
+    def certificado(tipo: str, forma: str, papeis: dict[str, str]) -> dict[str, Any]:
+        return {
+            "regra": "ato_discursivo_fonte_atual_v2", "owner": "validacao_contrato_fala",
+            "tipo_ato": tipo, "forma": forma, "escopo": "ato_discursivo_sobre_utterance_atual",
+            "fonte": {"tipo": "utterance_atual", "turno_id": str(turno), "texto": trecho,
+                      "intervalo": origem["intervalo"], "origem": origem["origem"],
+                      "sha256": hashlib.sha256(usuario.encode("utf-8")).hexdigest()},
+            "papeis": papeis,
+            "realizacao": {"texto": fala, "intervalo": [0, len(fala)],
+                           "sha256": hashlib.sha256(fala.encode("utf-8")).hexdigest()},
+            "ato_conferido": True, "estado_real_verificado": False,
+            "prova_semantica_livre": False, "pode_confirmar_fato_externo": False, "autoriza_execucao": False,
+        }
+
+    tipos = contrato.get("atos") or ()
+    vocativo = r"(?:[, ]+(?:lay|laylay))?"
+    if "saudacao" in tipos and atos[0].get("tipo") == "conversa":
+        saudacao = re.fullmatch(rf"(?P<nucleo>oi|ola|e ai|bom dia|boa tarde|boa noite){vocativo}[.!]?", fonte)
+        resposta = re.fullmatch(r"(?:oi|ola|e ai|bom dia|boa tarde|boa noite)[.!]?", texto)
+        if saudacao and resposta:
+            periodo = re.sub(r"[.!]$", "", texto)
+            if periodo not in {"bom dia", "boa tarde", "boa noite"} or periodo == saudacao.group("nucleo"):
+                return certificado("saudacao", "reciprocidade_de_saudacao", {
+                    "emissor_original": "usuario", "destinatario": "usuario"})
+    if ("agradecimento" in tipos and len(atos) == 1 and atos[0].get("tipo") in {"reacao", "conversa"}
+        and re.fullmatch(rf"(?:obrigad[oa]|valeu|vlw){vocativo}[.!]?", fonte)
+        and re.fullmatch(r"(?:de nada|por nada|disponha|imagina)[.!]?", texto)):
+        return certificado("agradecimento", "recepcao_de_agradecimento", {
+            "agradecedor": "usuario", "destinatario": "usuario"})
+    if "estado_pessoal" not in tipos or atos[0].get("tipo") != "conversa":
+        return None
+    relato = _ESTADO_USUARIO.search(trecho)
+    if (relato is None or trecho[:relato.start()].strip().casefold() not in {"", "eu"}
+        or re.fullmatch(r"[.!]?", trecho[relato.end():]) is None
+        or relato.group(0).split()[0].casefold() not in {"estou", "to", "tô", "ando"}):
+        return None
+    estado = dobrar(relato.group("estado"))
+    positivo = estado in {"bem", "feliz", "animado", "animada", "tranquilo", "tranquila"}
+    predicado = r"(?:que )?(?:bom|otimo|legal)"
+    referencia = rf"que voce esta {re.escape(estado)}"
+    formas = [("retomada_explicita", rf"entendo {referencia}")]
+    if positivo:
+        formas.extend([
+            ("acolhimento_eliptico", rf"{predicado}(?: saber(?: disso)?)?"),
+            ("acolhimento_explicito", rf"{predicado} (?:saber )?{referencia}"),
+        ])
+    forma = next((nome for nome, padrao in formas
+                  if re.fullmatch(rf"(?:ah,? )?{padrao}[.!]?", texto)), None)
+    if forma is None or not reconhecimento_estado_pessoal_valido(fala, relato.group("estado")):
+        return None
+    return certificado("estado_pessoal", forma, {
+        "relator": "usuario", "destinatario": "usuario", "estado_declarado": estado})
+
+
+def realizacoes_ato_social(plano: Mapping[str, Any]) -> tuple[str, ...]:
+    """Projeta a gramática conferível do owner para negociação, sem prova da IA."""
+    relato = _ESTADO_USUARIO.search(str(plano.get("texto_usuario") or ""))
+    candidatas = ("Oi!", "Olá!", "Bom dia!", "Boa tarde!", "Boa noite!", "Por nada.", "De nada!")
+    if relato is not None:
+        estado = relato.group("estado").casefold()
+        candidatas += ("Que bom saber!", f"Que bom que você está {estado}!",
+                       f"Entendo que você está {estado}.")
+    return tuple(fala for fala in candidatas if conferir_ato_social(fala, plano=plano) is not None)
+
+
+def inventariar_atos_autoria(plano: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
+    """Alvos da emissão, não prova de que uma proposição responda à pergunta.
+
+    Primeira adoção: saudação conferível seguida de perguntas não operacionais.
+    Reusa o plano e o vínculo textual atuais; não interpreta a saída da IA.
+    """
+    import hashlib
+    from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+    opcoes = tuple(f for f in realizacoes_ato_social(plano)
+                   if conferir_ato_social(f, plano=plano).get("tipo_ato") == "saudacao")
+    atos = plano.get("atos")
+    if not opcoes or not isinstance(atos, list) or not 2 <= len(atos) <= 8:
+        return ()
+    texto = plano["texto_usuario"]
+    fontes = fontes_textuais_dos_segmentos(texto, atos)
+    if len(fontes) != len(atos):
+        return ()
+    itens = []
+    for i, fonte in enumerate(fontes):
+        dados = fonte.como_dict()
+        identidade = json.dumps([str(plano["id"]), texto, i, dados["intervalo"]], ensure_ascii=False)
+        itens.append({"id": "ato:" + hashlib.sha256(identidade.encode("utf-8")).hexdigest()[:24],
+            "tipo": "saudacao" if i == 0 else "pergunta", "ordem": i,
+            "texto_original": dados["texto_original"], "intervalo": dados["intervalo"],
+            "turno_id": str(plano["id"]), "realizacoes": list(opcoes) if i == 0 else [],
+            "autoriza_execucao": False, "prova_implicacao": False})
+    return tuple(itens)
+
+
 def _resumo_reparo(
     contrato: Mapping[str, Any],
     roteiro: Mapping[str, Any],
@@ -586,7 +731,7 @@ def validar_aderencia_contrato_fala(
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
-    if {"evidencia_fala_historica", "explicacao_ocorrencia"}.intersection(contrato):
+    if {"evidencia_fala_historica", "explicacao_ocorrencia", "explicacoes_historicas_por_ato", "revisao_alegacao"}.intersection(contrato):
         from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
         # Esta API verifica comunicação, sem poder validar execução. O guardião
         # também confere o plano concreto antes da publicação.

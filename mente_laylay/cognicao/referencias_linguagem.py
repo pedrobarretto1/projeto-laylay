@@ -6,6 +6,62 @@ import re
 import unicodedata
 
 
+def agente_explicacao_causal(texto: str) -> tuple[str, bool]:
+    """Qualifica o agente explícito da ação perguntada, não participantes citados.
+
+    Leitura limitada de oração causal e causativa. Agente e passado são
+    dimensões separadas: reconhecer "eu" não prova um episódio histórico.
+    Não identifica
+    pessoas por nome, resolve elipses ou demonstra que a ação aconteceu.
+    Os papéis são relativos à fala do usuário, nunca à voz da resposta.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+
+    if texto_e_metalinguistico(texto):
+        return "", False
+    fora_de_aspas = re.sub(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\'[^\'\n]*\'', " [citacao] ", str(texto or ""))
+    base = normalizar_texto_basico(fora_de_aspas)
+    papeis = {"eu": "enunciador", "me": "enunciador", "voce": "destinatario", "tu": "destinatario",
+              "te": "destinatario", "laylay": "destinatario", "a laylay": "destinatario",
+              "ele": "terceiro", "ela": "terceiro", "eles": "terceiro", "elas": "terceiro",
+              "nos": "grupo", "a gente": "grupo"}
+    sujeitos = r"a gente|a laylay|laylay|voce|tu|eu|ele|ela|eles|elas|nos"
+    causa = re.search(rf"\bpor\s*que\s+(?P<agente>{sujeitos})\s+"
+                     r"(?:(?:nao|ja|tambem|mesmo|so|ontem)\s+)*(?P<verbo>[a-z]+)\b", base)
+    if causa:
+        verbo = causa["verbo"]
+        passado = re.fullmatch(
+            r"(?:fez|fiz|fizemos|fizeram|disse|dissemos|disseram|quis|quisemos|quiseram|"
+            r"foi|fui|fomos|foram|teve|tive|tivemos|tiveram|deu|dei|demos|deram|"
+            r"viu|vi|vimos|viram|veio|vim|viemos|vieram|pos|pus|pusemos|puseram|"
+            r"[a-z]+(?:ou|eu|iu|ei|amos|emos|imos|aram|eram|iram|aste|este|iste))", verbo)
+        # Irregulares presentes compartilham terminações com o pretérito;
+        # a terminação isolada não basta para classificá-los como passado.
+        presente = verbo in {"sou", "estou", "vou", "dou", "sei", "estamos", "vamos",
+                             "sabemos", "temos", "podemos", "queremos"}
+        return papeis[causa["agente"]], bool(passado and not presente
+            and not re.search(r"(?:aremos|eremos|iremos|oremos)$", verbo))
+    if re.search(r"\b(?:o que|motivo|razao|causa)\b", base):
+        causativa = re.search(rf"\b(?:(?P<pronome>me|te)\s+levou|levou\s+(?P<agente>{sujeitos}))\s+a\b", base)
+        if causativa:
+            return papeis[causativa["pronome"] or causativa["agente"]], True
+    return "", False
+
+
+def agente_explicacao_retrospectiva(texto: str) -> str:
+    """Projeção temporal da mesma leitura, sem outro parser de agente."""
+    agente, retrospectiva = agente_explicacao_causal(texto)
+    return agente if retrospectiva else ""
+
+
+def referencia_explicacao_historica(texto: str) -> str:
+    """A obrigação não confunde agente perguntado com o dono da fonte própria."""
+    agente = agente_explicacao_retrospectiva(texto)
+    if agente and agente != "destinatario":
+        return "outro_agente"
+    return referencia_explicacao_propria(texto)
+
+
 def referencia_explicacao_propria(texto: str) -> str:
     """Lê a obrigação retrospectiva, sem resolver ocorrência nem escolher owner.
 
@@ -47,6 +103,9 @@ def referencia_explicacao_ocorrencia(texto: str, *, entidades: tuple[str, ...]) 
     Owners fornecem substantivos do seu domínio; a gramática da consulta é
     compartilhada. Uma pergunta geral, futura ou citada não escolhe ocorrência.
     """
+    agente, _ = agente_explicacao_causal(texto)
+    if agente and agente != "destinatario":
+        return ""
     def normalizar(valor: str) -> str:
         return " ".join("".join(c for c in unicodedata.normalize("NFKD", valor.casefold())
                                if not unicodedata.combining(c)).split())

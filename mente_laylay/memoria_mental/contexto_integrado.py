@@ -14,7 +14,7 @@ from mente_laylay.memoria_mental.continuidade_conversa import assunto_coerente_c
 from mente_laylay.cognicao.seletor_contexto import selecionar_contexto_turno
 from mente_laylay.cognicao.fundamentacao_factual import avaliar_validade_fundamentacao
 from mente_laylay.memoria_mental.registro_semantico import (
-    resumo_registro_semantico_para_prompt, formatar_evidencia_da_fala,
+    resumo_registro_semantico_para_prompt, formatar_evidencia_da_fala, formatar_revisoes_alegacoes,
 )
 from mente_laylay.memoria_mental.continuidade_geral import resumo_continuidade_para_prompt
 
@@ -300,19 +300,9 @@ def resumo_mente_integrada_para_prompt(
             "Cumpra esse objetivo antes de acrescentar pergunta, conselho ou sugestão."
         )
 
-    alegacao_contestada = mente.get("alegacao_contestada")
-    if isinstance(alegacao_contestada, dict):
-        try:
-            recente = (datetime.now().timestamp() - float(alegacao_contestada.get("ts") or 0.0)) <= 900.0
-        except (TypeError, ValueError):
-            recente = False
-        if recente:
-            blocos.append(
-                "ALEGAÇÃO CONTESTADA: a fala anterior foi questionada pelo usuário e está marcada como não confiável. "
-                f"alegação={alegacao_contestada.get('texto') or '-'} | "
-                f"contestação={alegacao_contestada.get('contestacao') or '-'}. "
-                "Não repita nem desenvolva essa alegação como fato. Reconheça a incerteza ou use somente informação verificada."
-            )
+    revisoes = formatar_revisoes_alegacoes(mente)
+    if revisoes:
+        blocos.append(revisoes)
 
     plano_turno = mente.get("plano_turno_atual") if isinstance(mente, dict) else {}
     if isinstance(plano_turno, dict) and plano_turno:

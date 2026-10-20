@@ -120,6 +120,7 @@ class DiretorPresencaRuntime:
         stop_event: threading.Event | None = None,
         candidato_observado_getter: Callable[[], Mapping[str, Any]] | None = None,
         validar_observacao: Callable[[Mapping[str, Any]], bool] | None = None,
+        notificacao_observada: threading.Event | None = None,
     ) -> None:
         self.estado_get = estado_get
         self.estado_set = estado_set
@@ -145,6 +146,7 @@ class DiretorPresencaRuntime:
         self._running = False
         self.candidato_observado_getter = candidato_observado_getter
         self.validar_observacao = validar_observacao
+        self.notificacao_observada = notificacao_observada
 
     def _falha(self, codigo: str, erro: BaseException) -> None:
         if callable(self.registrar_falha):
@@ -343,6 +345,8 @@ class DiretorPresencaRuntime:
                 "categoria": categoria,
                 **({"observacao_corporal":dict(dados["observacao_corporal"])}
                    if isinstance(dados.get("observacao_corporal"),Mapping) else {}),
+                **({"ocorrencia_observada":dict(dados["ocorrencia_observada"])}
+                   if dados.get("_reacao_observada_validada") else {}),
             },
             "confianca": float(dados.get("confianca") or 0.0),
             "timestamp": agora,
@@ -513,6 +517,8 @@ class DiretorPresencaRuntime:
             "contrato_fala": contrato_fala,
             "contexto_humor": contexto_humor_turno(
                 modo_jogo_ativo=bool(self._contexto().get("modo_jogo_ativo"))),
+            **({"ocorrencia_observada":dict(dados["ocorrencia_observada"])}
+               if dados.get("_reacao_observada_validada") else {}),
         }
         id_entrega = f"{evento.get('trace_id') or 'presenca'}:{agora:.6f}"
         registro["id_entrega"] = id_entrega
@@ -561,6 +567,12 @@ class DiretorPresencaRuntime:
             )
 
         proposta_comunicativa: dict[str, Any] = {}
+        opcoes_admissao: dict[str, Any] = {}
+        if dados.get("_reacao_observada_validada"):
+            from mente_laylay.autonomia.ocorrencia_observada import AdmissaoReacaoObservada
+            opcoes_admissao["admissao_observada"] = AdmissaoReacaoObservada(
+                trace_id=str(evento["trace_id"]),
+                validar_vigencia=lambda: bool(callable(self.validar_observacao) and self.validar_observacao(dados)))
         if callable(self.processar_proposta_comunicativa):
             emocao = str(
                 dados.get("emocao")
@@ -580,6 +592,7 @@ class DiretorPresencaRuntime:
                         ao_iniciar=ao_iniciar_fonte,
                         ao_concluir=ao_concluir,
                         ao_materializar_fala=ao_materializar_fala,
+                        **opcoes_admissao,
                         **({"validar_vigencia":lambda: self.validar_observacao(dados)}
                            if callable(self.validar_observacao) and "observacao_corporal" in dados else {}),
                     )
@@ -639,6 +652,15 @@ class DiretorPresencaRuntime:
 
     def _bloqueio_orcamento(self, estado: Mapping[str, Any], dados: Mapping[str, Any], agora: float) -> str:
         historico = list(estado.get("historico") or [])
+        if dados.get("_reacao_observada_validada"):
+            from mente_laylay.autonomia.ocorrencia_observada import avaliar_relevancia_observada
+            avaliacao = avaliar_relevancia_observada(dados,
+                estado.get("admissoes_observadas") or [], agora=agora,
+                perfil=str(estado["configuracao"].get("perfil") or "adaptativo"),
+                pontuacao_feedback=self._pontuacao_categoria(estado,"companhia"))
+            if isinstance(dados, dict):
+                dados["_avaliacao_reacao_observada"] = avaliacao
+            return "" if avaliacao["permitida"] else avaliacao["motivo"]
         origem = str(dados.get("origem") or "").strip().casefold()
         if origem == "observador_area_transferencia":
             # Copiar algo relevante é uma interação implícita do usuário, não
@@ -688,6 +710,8 @@ class DiretorPresencaRuntime:
 
     def considerar(self, evento: Mapping[str, Any] | None) -> dict[str, Any]:
         dados = dict(evento or {})
+        dados.pop("_reacao_observada_validada", None)
+        dados.pop("_avaliacao_reacao_observada", None)
         agora = float(self.clock())
         with self._lock:
             estado = self._estado()
@@ -710,6 +734,18 @@ class DiretorPresencaRuntime:
             self._escolher_perfil(estado, contexto, categoria)
             motivo = self._bloqueio_contextual(dados, contexto, agora)
             contador = "bloqueadas_contexto"
+            if not motivo and "ocorrencia_observada" in dados:
+                from mente_laylay.autonomia.ocorrencia_observada import identidade_ocorrencia
+                try:
+                    vigente = bool(identidade_ocorrencia(dados) and callable(self.validar_observacao)
+                        and self.validar_observacao(dados))
+                except Exception as erro:
+                    self._falha("validar_observacao", erro)
+                    vigente = False
+                if not vigente:
+                    motivo = "observacao_expirada"
+                elif dominio == "corpo":
+                    dados["_reacao_observada_validada"] = True
             if not motivo:
                 motivo = self._bloqueio_qualidade(dados)
                 contador = "bloqueadas_qualidade"
@@ -725,6 +761,7 @@ class DiretorPresencaRuntime:
             limite_variedade = cooldowns_variedade.get(categoria, 900.0) * 1.10
             if (
                 not motivo and ultima.get("categoria") == categoria
+                and not dados.get("_reacao_observada_validada")
                 and str(dados.get("origem") or "").casefold() != "observador_area_transferencia"
                 and categoria not in {"celebracao"} and idade_ultima < limite_variedade
             ):
@@ -732,7 +769,9 @@ class DiretorPresencaRuntime:
                 contador = "bloqueadas_variedade"
             if motivo:
                 self._incrementar(estado, contador)
-                decisao = {"status": "bloqueada", "motivo": motivo, "categoria": categoria, "ts": agora}
+                decisao = {"status": "bloqueada", "motivo": motivo, "categoria": categoria, "ts": agora,
+                    **({"relevancia_observada":dict(dados["_avaliacao_reacao_observada"])}
+                       if dados.get("_avaliacao_reacao_observada") else {})}
                 estado["ultima_decisao"] = decisao
                 self.estado_set(estado)
                 if dominio == "jogo":
@@ -757,6 +796,9 @@ class DiretorPresencaRuntime:
                 "executavel": bool(dados.get("executavel")),
                 "reversivel": bool(dados.get("reversivel")),
                 "assunto": str(dados.get("assunto") or ""),
+                "autoriza_execucao": False,
+                **({"ocorrencia_observada":dict(dados["ocorrencia_observada"])}
+                   if dados.get("_reacao_observada_validada") else {}),
             }
             decisao_iniciativa: Mapping[str, Any] = {}
             if callable(self.registrar_oportunidade):
@@ -777,6 +819,15 @@ class DiretorPresencaRuntime:
                 return decisao
 
             if callable(self.processar_evento_cognitivo):
+                if dados.get("_reacao_observada_validada"):
+                    avaliacao = dict(dados["_avaliacao_reacao_observada"])
+                    estado["admissoes_observadas"] = [*(estado.get("admissoes_observadas") or []),
+                        {**avaliacao,"ts":agora}][-32:]
+                    estado["ultima_reacao_observada"] = {
+                        "ts":agora, "ocorrencia_observada":dict(dados["ocorrencia_observada"]),
+                        "etapa":"admissao", "nao_prova_reproducao":True,
+                        "avaliacao":avaliacao,
+                    }
                 return self._processar_proposta_cognitiva(
                     estado,
                     dados,
@@ -988,14 +1039,17 @@ class DiretorPresencaRuntime:
             "chave": f"foco_longo:{chave}",
         }
 
-    def executar_ciclo(self) -> dict[str, Any]:
-        self.registrar_silencio_pendente()
+    def executar_ciclo(self, *, incluir_cotidiano: bool = True) -> dict[str, Any]:
+        if incluir_cotidiano:
+            self.registrar_silencio_pendente()
         # O produtor só oferece fatos. Este mesmo diretor conserva orçamento,
         # prioridade, feedback e receipt de entrega; não roda na thread serial.
         if callable(self.candidato_observado_getter):
             candidato = dict(self.candidato_observado_getter() or {})
             if candidato:
                 return self.considerar(candidato)
+        if not incluir_cotidiano:
+            return {"status": "observando"}
         agora = float(self.clock())
         with self._lock:
             estado = self._estado()
@@ -1006,15 +1060,29 @@ class DiretorPresencaRuntime:
 
     def executar(self) -> None:
         self._running = True
+        proximo_cotidiano = 0.0
         try:
             while self._running and not self.stop_event.is_set():
+                cotidiano = time.monotonic() >= proximo_cotidiano
+                if cotidiano:
+                    proximo_cotidiano = time.monotonic() + self.intervalo_ciclo_s
+                # Limpa antes da leitura: publicação durante autoria permanece
+                # sinalizada. Várias mudanças convergem no fato mais recente.
+                if self.notificacao_observada is not None:
+                    self.notificacao_observada.clear()
                 try:
-                    self.executar_ciclo()
+                    self.executar_ciclo(incluir_cotidiano=cotidiano)
                 except Exception as exc:
                     self.log(f"⚠️ [PRESENÇA] ciclo ignorado: {type(exc).__name__}: {exc}")
                     self._falha("ciclo", exc)
-                if self.stop_event.wait(self.intervalo_ciclo_s):
-                    break
+                while self._running and not self.stop_event.is_set():
+                    restante = proximo_cotidiano - time.monotonic()
+                    if restante <= 0:
+                        break
+                    if self.notificacao_observada is None:
+                        self.stop_event.wait(restante)
+                    elif self.notificacao_observada.wait(min(.25, restante)):
+                        break
         finally:
             self._running = False
 

@@ -8,6 +8,9 @@ from typing import Callable, List, Optional
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
 )
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    PADRAO_COORDENACAO_OPERACIONAL,
+)
 from mente_laylay.arquivos.nome_natural import mapear_pares_aspas_globais
 from mente_laylay.memoria_mental.resultado_acao import (
     interpretar_tratamento_operacional,
@@ -37,8 +40,7 @@ _INICIO_ETAPA_OPERACIONAL = re.compile(
 )
 
 _SEPARADOR_ETAPA_OPERACIONAL = re.compile(
-    r"\be\s+depois\b|\bem\s+seguida\b|\bdepois\b|"
-    r"\bent[aã]o\b|[,;]|\be\b",
+    rf"\b{PADRAO_COORDENACAO_OPERACIONAL}\b|[,;]",
     flags=re.IGNORECASE,
 )
 

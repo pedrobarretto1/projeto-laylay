@@ -198,11 +198,8 @@ def remover_residuos_operacionais(texto: str) -> str:
     fala = re.sub(r"\[\s*\]", " ", fala)
     fala = re.sub(r"\s+([,.;:!?])", r"\1", fala)
     fala = re.sub(r"([.!?])(?:\s*\1)+", r"\1", fala)
-    # Uma geração interrompida pode deixar apenas o início da próxima
-    # palavra como uma falsa frase final (por exemplo: ``... nostalgia. H.``).
-    # Só removemos a letra isolada quando já existe uma resposta substancial,
-    # preservando iniciais legítimas em respostas curtas.
-    if len(fala.split()) >= 5:
-        fala = re.sub(r"\s+[A-Za-zÀ-ÿ]\.\s*$", "", fala).rstrip()
+    # Uma letra final também pode ser unidade, identificador ou inicial.
+    # O texto e sua extensão não provam interrupção da geração; cortá-la
+    # altera o conteúdo autorado e rompe o vínculo com sua declaração.
     fala = re.sub(r"\s+", " ", fala).strip()
     return remover_fragmento_final_incompleto(fala)

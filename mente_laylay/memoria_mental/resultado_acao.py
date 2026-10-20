@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Dict
 from uuid import uuid4
 
@@ -64,6 +64,7 @@ def identificar_solicitacao_execucao(
             "status", "executou", "confirmado", "origem", "ok",
             "evidencia_confirmacao", "confirmacao_oferecida",
             "estado_final", "estado_confirmacao", "tratado",
+            "aspectos",
             "resultado_publicado", "retorno_legado", "legado",
             CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, CHAVE_TRATAMENTO_OPERACIONAL,
         ):
@@ -243,6 +244,22 @@ def interpretar_tratamento_operacional(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class AspectoResultado:
+    """Alcance de uma confirmação do owner, nunca sucesso global ou autoridade."""
+    id_solicitacao: str
+    escopo: str
+    confirmado: bool | None
+    evidencia: str
+
+    def __post_init__(self) -> None:
+        if any(type(v) is not str or not v or v != v.strip() or "\n" in v
+               for v in (self.id_solicitacao, self.escopo, self.evidencia)):
+            raise ValueError("Aspecto exige identidade, escopo e fonte explícitos.")
+        if self.confirmado is not None and type(self.confirmado) is not bool:
+            raise ValueError("Confirmação do aspecto deve ser bool ou desconhecida.")
+
+
 @dataclass(frozen=True)
 class ResultadoAcao:
     intent: str = ""
@@ -260,6 +277,7 @@ class ResultadoAcao:
     id_solicitacao: str = ""
     confirmacao_oferecida: str = ""
     evidencia_confirmacao: str = ""
+    aspectos: tuple[AspectoResultado, ...] = ()
 
     def __post_init__(self) -> None:
         intent = str(self.intent or self.acao or "").strip().upper()
@@ -274,6 +292,12 @@ class ResultadoAcao:
         object.__setattr__(self, "params", dict(self.params or {}))
         object.__setattr__(self, "contexto", dict(self.contexto or {}))
         object.__setattr__(self, "id_solicitacao", str(self.id_solicitacao or "").strip())
+        if (type(self.aspectos) is not tuple or len(self.aspectos) > 8
+                or any(type(a) is not AspectoResultado or a.id_solicitacao != self.id_solicitacao
+                       for a in self.aspectos)
+                or len({a.escopo for a in self.aspectos}) != len(self.aspectos)
+                or (self.aspectos and (self.origem != "executor" or not self.id_solicitacao))):
+            raise ValueError("Aspectos exigem captura tipada do executor e da mesma ocorrência.")
         # Importação tardia evita o ciclo especialistas -> operacional ->
         # resultado_acao durante a inicialização do pacote.
         from mente_laylay.especialistas.capacidades import consultar_capacidade
@@ -325,6 +349,7 @@ class ResultadoAcao:
             "contexto": dict(self.contexto),
             "confirmacao_oferecida": self.confirmacao_oferecida,
             "evidencia_confirmacao": self.evidencia_confirmacao,
+            **({"aspectos": [asdict(a) for a in self.aspectos]} if self.aspectos else {}),
             "estado_confirmacao": (
                 "cancelado" if self.status in STATUS_RESULTADO_CANCELADO
                 else "confirmado" if self.confirmado is True

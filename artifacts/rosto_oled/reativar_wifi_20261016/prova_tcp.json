@@ -1,0 +1,171 @@
+{
+  "sincronizacoes": [
+    true,
+    true,
+    true
+  ],
+  "diagnostico": {
+    "configurado": true,
+    "conectado": true,
+    "sessao": "a4fa4c63",
+    "transporte": "tcp",
+    "modo_conexao": "rede",
+    "endpoint": "192.168.137.109:8765",
+    "porta_ativa": "192.168.137.109:8765",
+    "identidade_usb": {
+      "verificada": false,
+      "autoriza_execucao": false,
+      "prova_autenticidade_criptografica": false
+    },
+    "evidencia_recente": true,
+    "aplicacao_confirmada": true,
+    "estado": "disponivel",
+    "motivo": "frame_confirmado_pelo_esp",
+    "confirmado": [
+      0,
+      1,
+      0
+    ],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "sensores": {
+      "suportado": true,
+      "recente": true,
+      "consulta_id": 3,
+      "alerta_suportado": true,
+      "busca_renovada": false,
+      "leituras": {
+        "frente": {
+          "estado": "INVALIDA",
+          "mm": null,
+          "idade_ms": 114,
+          "status": 2
+        },
+        "borda": {
+          "estado": "INVALIDA",
+          "mm": null,
+          "idade_ms": 110,
+          "status": 4
+        }
+      },
+      "protecao": {
+        "incidente_id": 0,
+        "motor_origem_seq": 0,
+        "risco": "BORDA_SEM_RETORNO",
+        "fase": "PRONTA",
+        "reflexo_ativo": false,
+        "reacao_expressiva": "pavor",
+        "tentativa_busca": 0,
+        "vigia_ativa": false,
+        "limite_borda_mm": 130,
+        "limite_obstaculo_mm": 100,
+        "origem": "executor_protecao_esp",
+        "autoriza_execucao": false,
+        "rotacao_medida": false,
+        "cobertura": "frente_e_borda_dianteira",
+        "recente": true
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    },
+    "imu": {
+      "fase_manuseio": "TRANQUILA",
+      "evento_manuseio": 0,
+      "idade_fase_ms": 21865,
+      "repeticoes_manuseio": 0,
+      "estado": "PRONTA",
+      "idade_ms": 3,
+      "calibrada": true,
+      "modelo": "ICM20689_compativel",
+      "roll_graus": -0.83,
+      "pitch_graus": -4.74,
+      "yaw_relativo_graus": 0.23,
+      "velocidade_graus_s": 0.02,
+      "aceleracao_norma_g": 1.02,
+      "manuseio": "ESTAVEL",
+      "origem": "imu_esp",
+      "autoriza_execucao": false,
+      "prova_deslocamento": false,
+      "consulta_id": 3,
+      "suportado": true,
+      "recente": true,
+      "idade_host_ms": 278,
+      "bloqueio_manuseio": false
+    },
+    "saude": {
+      "dispositivo": "03d017988fdecda9",
+      "boot": "e1fa1431",
+      "motivo_boot": "usb",
+      "motivo_boot_codigo": 11,
+      "uptime_ms": 20595,
+      "heap_livre": 186120,
+      "heap_minimo": 179616,
+      "perdas_sessao": 0,
+      "motivo_perda_sessao": "NENHUMA",
+      "perda_sessao_em_ms": 0,
+      "origem": "executor_esp",
+      "autoriza_execucao": false,
+      "suportado": true,
+      "recente": true,
+      "reinicios_observados": 0
+    },
+    "expressao": {
+      "suportado": true,
+      "confirmada": false,
+      "motivo": "aguardando_evento",
+      "fase": [
+        0,
+        0,
+        0
+      ],
+      "evidencia": "eack_apos_render",
+      "prova_visual_humana": false,
+      "autoriza_execucao": false
+    },
+    "som": {
+      "resultados_pendentes": [],
+      "suportado": true,
+      "envio_suportado": true,
+      "solicitacao_confirmada": false,
+      "motivo": "ERROR 1 SOM_OCUPADO",
+      "prova_auditiva": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "hack": {
+      "suportado": true,
+      "aplicacao_confirmada": true,
+      "ativo": false,
+      "motivo": "overlay_confirmado_pelo_esp",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": true,
+      "aplicacao_confirmada": false,
+      "motivo": "aguardando_falha",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "rampa_suportada": true,
+      "duracao_maxima_ms": 5000,
+      "suportado": true,
+      "disponivel": true,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": false,
+      "motivo": "",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  },
+  "encerrado": true
+}

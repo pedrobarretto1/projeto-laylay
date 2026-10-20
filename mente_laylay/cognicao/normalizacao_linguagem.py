@@ -7,6 +7,15 @@ import unicodedata
 from typing import Any
 
 
+# Fronteira lexical compartilhada, sem atribuir intenção ou autoridade.
+# Consumir o operador inteiro antes das alternativas curtas evita deixar
+# "e" ou "depois" no núcleo cuja modalidade ainda será conferida pelo owner.
+PADRAO_COORDENACAO_OPERACIONAL = (
+    r"(?:e\s+(?:depois|em\s+seguida|ent[aã]o)|"
+    r"em\s+seguida|depois|ent[aã]o|e)"
+)
+
+
 def remover_conector_discursivo_inicial(texto: str) -> str:
     """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
 

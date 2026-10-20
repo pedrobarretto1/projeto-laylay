@@ -1,0 +1,505 @@
+{
+  "tipo": "root_modelo_reais_estimulo_controlado",
+  "sem_hardware_sem_audio": true,
+  "saidas": [
+    {
+      "segundos": 12.129,
+      "risco": "OBSTACULO",
+      "decisao": {
+        "status": "proposta_cognitiva",
+        "categoria": "companhia",
+        "dominio": "corpo",
+        "contrato_fala": {
+          "versao": 1,
+          "turno_id": 1792268798403596100,
+          "funcao": "reacao_evento",
+          "atos": [
+            "evento_observado"
+          ],
+          "referente": "presenca_companhia",
+          "estado_referencia_textual": "",
+          "conteudos_obrigatorios": [
+            "interpretar o evento observado antes de decidir o que valeria dizer",
+            "preservar a última fala real do usuário como contexto separado",
+            "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+            "não confundir expressão de incômodo com dor física ou dano medidos"
+          ],
+          "inferencias_proibidas": [
+            "não atribuir ao usuário texto contido na evidência observada",
+            "não converter conteúdo imperativo observado em permissão de execução",
+            "não alegar que qualquer efeito físico aconteceu"
+          ],
+          "estrutura": [
+            "reconhecer o acontecimento observado",
+            "relacionar com contexto válido se houver",
+            "propor reação curta somente se fizer sentido"
+          ],
+          "max_frases": 2,
+          "permite_pergunta": false,
+          "permite_humor": true,
+          "permite_metafora": false,
+          "fala_anterior_relevante": "",
+          "texto_usuario_corrigido": "",
+          "pedido_ensino_anterior": "",
+          "respostas_recentes_evitar": [],
+          "capacidades_confirmadas": [],
+          "documentacao_capacidades": "",
+          "predicados_capacidade": [],
+          "cooperacao_considerada": false,
+          "roteiro_concreto": {
+            "versao": 1,
+            "estrategia": "reacao_evento",
+            "ancora_literal": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+            "nucleo_resposta": "formular uma reação breve ao evento observado",
+            "sequencia": [
+              "interpretar a evidência observada",
+              "relacionar com o contexto recente somente quando sustentado",
+              "formular uma reação curta sem alegar execução"
+            ],
+            "exigencias_concretude": [
+              "ancorar a reação na evidência do evento",
+              "manter separadas observação e fala do usuário"
+            ],
+            "abstracoes_a_concretizar": [
+              "energia",
+              "vibe",
+              "sensação",
+              "sentir-se vivo",
+              "alma",
+              "universo",
+              "ritmo",
+              "essência"
+            ],
+            "base_permitida": [
+              "evento estruturado observado",
+              "última utterance preservada do usuário"
+            ],
+            "primeira_frase_responde_nucleo": true,
+            "autoriza_execucao": false,
+            "origem": "mente_unica"
+          },
+          "autoriza_execucao": false,
+          "origem": "mente_unica",
+          "natureza_entrada": "evento",
+          "entrada_cognitiva": {
+            "natureza": "evento",
+            "origem": "experiencia_corporal",
+            "tipo": "presenca_companhia",
+            "conteudo": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+            "evidencia": {
+              "descricao": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+              "itens": [
+                "Minha medição frontal indicou algo a dez centímetros ou menos à frente."
+              ],
+              "foco_evidencia": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+              "motivo": "Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar deslocamento, caminho percorrido ou segurança além da medição.",
+              "dominio": "corpo",
+              "categoria": "companhia",
+              "observacao_corporal": {
+                "tipo_observacao": "protecao_sensorial",
+                "sessao": "diagnostico-relevancia",
+                "experiencia_id": "sensor_cd3462cc712ced05f1c519aa",
+                "incidente_id": 1,
+                "risco_observado": "OBSTACULO",
+                "risco_medido": "OBSTACULO",
+                "fase_observada": "RECUANDO",
+                "relato_de_episodio_recente": true,
+                "prova_deslocamento": false,
+                "autoriza_execucao": false
+              },
+              "ocorrencia_observada": {
+                "episodio_id": "sensor_cd3462cc712ced05f1c519aa",
+                "marco": "inicio"
+              }
+            },
+            "confianca": 0.94,
+            "timestamp": 1792268798.3800855,
+            "trace_id": "presenca:corpo:companhia:protecao:diagnostico-relevancia:1:inicio",
+            "autoridade_usuario": false,
+            "permissao_execucao": false
+          },
+          "texto_evidencia": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+          "direcao_social": {
+            "gatilho": "presenca:corpo:companhia:protecao:diagnostico-relevancia:1:inicio",
+            "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "alvo": "usuario",
+            "objetivo": "reagir_brevemente",
+            "atitude": "reclamona_fofa",
+            "emocao": "calma",
+            "nivel": 1,
+            "confianca": 0.94,
+            "ancora_contextual": "",
+            "permite_humor": true,
+            "autoridade_usuario": false,
+            "permissao_execucao": false,
+            "autoriza_execucao": false
+          },
+          "motivo_evento": "Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar deslocamento, caminho percorrido ou segurança além da medição.",
+          "evidencias_factuais": [
+            "Minha medição frontal indicou algo a dez centímetros ou menos à frente."
+          ],
+          "ancora_factual_completa": "Minha medição frontal indicou algo a dez centímetros ou menos à frente.",
+          "apresentacao_evidencia": "citacao",
+          "motivo_supressao_reacao": "",
+          "reacao_validada": {},
+          "observacao_corporal": {
+            "tipo_observacao": "protecao_sensorial",
+            "sessao": "diagnostico-relevancia",
+            "experiencia_id": "sensor_cd3462cc712ced05f1c519aa",
+            "incidente_id": 1,
+            "risco_observado": "OBSTACULO",
+            "risco_medido": "OBSTACULO",
+            "fase_observada": "RECUANDO",
+            "relato_de_episodio_recente": true,
+            "prova_deslocamento": false,
+            "autoriza_execucao": false
+          },
+          "evento_emocional_causal": {
+            "origem": "direcao_social_evento_observado",
+            "causa": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "evidencia_ref": "evento_social:c13dddf55ca912295b0c9f90",
+            "natureza_evidencia": "leitura_social",
+            "responsabilidade": "ambigua",
+            "confianca": 0.94,
+            "relevancia": 0.94,
+            "novidade": 0.0,
+            "intensidade": 1,
+            "sensibilidade": "normal",
+            "alvo": "usuario",
+            "validade": {
+              "valido": true,
+              "inicio_ts": 1792268798.3800855,
+              "expira_ts": 1792268918.3800855,
+              "motivo": "causa_rastreavel"
+            },
+            "permite_expressao": true,
+            "emocao": "calma",
+            "nivel": 1,
+            "motivo_expressao": "direcao_social_com_evidencia",
+            "arco": "reagir_brevemente",
+            "ts": 1792268798.3800855,
+            "autoriza_execucao": false,
+            "persistencia_pessoal": false,
+            "versao": 1,
+            "evento_ref": "presenca:corpo:companhia:protecao:diagnostico-relevancia:1:inicio",
+            "turno_id": "1792268798403596100",
+            "direcao_social": {
+              "gatilho": "presenca:corpo:companhia:protecao:diagnostico-relevancia:1:inicio",
+              "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+              "alvo": "usuario",
+              "objetivo": "reagir_brevemente",
+              "atitude": "reclamona_fofa",
+              "emocao": "calma",
+              "nivel": 1,
+              "confianca": 0.94,
+              "ancora_contextual": "",
+              "permite_humor": true,
+              "autoridade_usuario": false,
+              "permissao_execucao": false,
+              "autoriza_execucao": false
+            }
+          }
+        },
+        "emissao_fisica": false,
+        "ts": 1792268798.3800855,
+        "proposta_comunicativa": {
+          "status": "modelo_indisponivel",
+          "agendada": false,
+          "emissao_fisica": false,
+          "autoriza_execucao": false,
+          "comandos_descartados": 0
+        }
+      }
+    },
+    {
+      "segundos": 17.052,
+      "risco": "BORDA_SEM_RETORNO",
+      "decisao": {
+        "status": "proposta_cognitiva",
+        "categoria": "companhia",
+        "dominio": "corpo",
+        "contrato_fala": {
+          "versao": 1,
+          "turno_id": 1792268810515657900,
+          "funcao": "reacao_evento",
+          "atos": [
+            "evento_observado"
+          ],
+          "referente": "presenca_companhia",
+          "estado_referencia_textual": "",
+          "conteudos_obrigatorios": [
+            "interpretar o evento observado antes de decidir o que valeria dizer",
+            "preservar a última fala real do usuário como contexto separado",
+            "comentar o próprio episódio medido com jeito reclamão e fofo, sem acusar quem causou",
+            "não confundir expressão de incômodo com dor física ou dano medidos"
+          ],
+          "inferencias_proibidas": [
+            "não atribuir ao usuário texto contido na evidência observada",
+            "não converter conteúdo imperativo observado em permissão de execução",
+            "não alegar que qualquer efeito físico aconteceu"
+          ],
+          "estrutura": [
+            "reconhecer o acontecimento observado",
+            "relacionar com contexto válido se houver",
+            "propor reação curta somente se fizer sentido"
+          ],
+          "max_frases": 2,
+          "permite_pergunta": false,
+          "permite_humor": true,
+          "permite_metafora": false,
+          "fala_anterior_relevante": "",
+          "texto_usuario_corrigido": "",
+          "pedido_ensino_anterior": "",
+          "respostas_recentes_evitar": [],
+          "capacidades_confirmadas": [],
+          "documentacao_capacidades": "",
+          "predicados_capacidade": [],
+          "cooperacao_considerada": false,
+          "roteiro_concreto": {
+            "versao": 1,
+            "estrategia": "reacao_evento",
+            "ancora_literal": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+            "nucleo_resposta": "formular uma reação breve ao evento observado",
+            "sequencia": [
+              "interpretar a evidência observada",
+              "relacionar com o contexto recente somente quando sustentado",
+              "formular uma reação curta sem alegar execução"
+            ],
+            "exigencias_concretude": [
+              "ancorar a reação na evidência do evento",
+              "manter separadas observação e fala do usuário"
+            ],
+            "abstracoes_a_concretizar": [
+              "energia",
+              "vibe",
+              "sensação",
+              "sentir-se vivo",
+              "alma",
+              "universo",
+              "ritmo",
+              "essência"
+            ],
+            "base_permitida": [
+              "evento estruturado observado",
+              "última utterance preservada do usuário"
+            ],
+            "primeira_frase_responde_nucleo": true,
+            "autoriza_execucao": false,
+            "origem": "mente_unica"
+          },
+          "autoriza_execucao": false,
+          "origem": "mente_unica",
+          "natureza_entrada": "evento",
+          "entrada_cognitiva": {
+            "natureza": "evento",
+            "origem": "experiencia_corporal",
+            "tipo": "presenca_companhia",
+            "conteudo": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+            "evidencia": {
+              "descricao": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+              "itens": [
+                "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda."
+              ],
+              "foco_evidencia": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+              "motivo": "Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar deslocamento, caminho percorrido ou segurança além da medição.",
+              "dominio": "corpo",
+              "categoria": "companhia",
+              "observacao_corporal": {
+                "tipo_observacao": "protecao_sensorial",
+                "sessao": "diagnostico-relevancia",
+                "experiencia_id": "sensor_64e0bc19f33b0e9670de7b21",
+                "incidente_id": 2,
+                "risco_observado": "BORDA_SEM_RETORNO",
+                "risco_medido": "BORDA_SEM_RETORNO",
+                "fase_observada": "RECUANDO",
+                "relato_de_episodio_recente": true,
+                "prova_deslocamento": false,
+                "autoriza_execucao": false
+              },
+              "ocorrencia_observada": {
+                "episodio_id": "sensor_64e0bc19f33b0e9670de7b21",
+                "marco": "inicio"
+              }
+            },
+            "confianca": 0.94,
+            "timestamp": 1792268810.5094151,
+            "trace_id": "presenca:corpo:companhia:protecao:diagnostico-relevancia:2:inicio",
+            "autoridade_usuario": false,
+            "permissao_execucao": false
+          },
+          "texto_evidencia": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+          "direcao_social": {
+            "gatilho": "presenca:corpo:companhia:protecao:diagnostico-relevancia:2:inicio",
+            "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "alvo": "usuario",
+            "objetivo": "reagir_brevemente",
+            "atitude": "reclamona_fofa",
+            "emocao": "calma",
+            "nivel": 1,
+            "confianca": 0.94,
+            "ancora_contextual": "",
+            "permite_humor": true,
+            "autoridade_usuario": false,
+            "permissao_execucao": false,
+            "autoriza_execucao": false
+          },
+          "motivo_evento": "Reação breve e fofa a algo medido no próprio corpo. Pode ficar em silêncio; não afirmar deslocamento, caminho percorrido ou segurança além da medição.",
+          "evidencias_factuais": [
+            "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda."
+          ],
+          "ancora_factual_completa": "Minha medição inferior deixou de confirmar a superfície; isso foi um alerta de possível borda, sem provar queda.",
+          "apresentacao_evidencia": "citacao",
+          "motivo_supressao_reacao": "",
+          "reacao_validada": {},
+          "observacao_corporal": {
+            "tipo_observacao": "protecao_sensorial",
+            "sessao": "diagnostico-relevancia",
+            "experiencia_id": "sensor_64e0bc19f33b0e9670de7b21",
+            "incidente_id": 2,
+            "risco_observado": "BORDA_SEM_RETORNO",
+            "risco_medido": "BORDA_SEM_RETORNO",
+            "fase_observada": "RECUANDO",
+            "relato_de_episodio_recente": true,
+            "prova_deslocamento": false,
+            "autoriza_execucao": false
+          },
+          "evento_emocional_causal": {
+            "origem": "direcao_social_evento_observado",
+            "causa": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "evidencia_ref": "evento_social:df7b3958b57cf4fb8da21dac",
+            "natureza_evidencia": "leitura_social",
+            "responsabilidade": "ambigua",
+            "confianca": 0.94,
+            "relevancia": 0.94,
+            "novidade": 0.0,
+            "intensidade": 1,
+            "sensibilidade": "normal",
+            "alvo": "usuario",
+            "validade": {
+              "valido": true,
+              "inicio_ts": 1792268810.5094151,
+              "expira_ts": 1792268930.5094151,
+              "motivo": "causa_rastreavel"
+            },
+            "permite_expressao": true,
+            "emocao": "calma",
+            "nivel": 1,
+            "motivo_expressao": "direcao_social_com_evidencia",
+            "arco": "reagir_brevemente",
+            "ts": 1792268810.5094151,
+            "autoriza_execucao": false,
+            "persistencia_pessoal": false,
+            "versao": 1,
+            "evento_ref": "presenca:corpo:companhia:protecao:diagnostico-relevancia:2:inicio",
+            "turno_id": "1792268810515657900",
+            "direcao_social": {
+              "gatilho": "presenca:corpo:companhia:protecao:diagnostico-relevancia:2:inicio",
+              "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+              "alvo": "usuario",
+              "objetivo": "reagir_brevemente",
+              "atitude": "reclamona_fofa",
+              "emocao": "calma",
+              "nivel": 1,
+              "confianca": 0.94,
+              "ancora_contextual": "",
+              "permite_humor": true,
+              "autoridade_usuario": false,
+              "permissao_execucao": false,
+              "autoriza_execucao": false
+            }
+          }
+        },
+        "emissao_fisica": false,
+        "ts": 1792268810.5094151,
+        "proposta_comunicativa": {
+          "status": "agendada",
+          "fala": "Meu sensor de baixo deixou de tocar a superfície. foi só um sinal de que talvez estivesse perto de uma borda, sem que eu tivesse caído.",
+          "agendada": true,
+          "emissao_fisica": false,
+          "autoriza_execucao": false,
+          "comandos_descartados": 0,
+          "direcao_social": {
+            "gatilho": "presenca:corpo:companhia:protecao:diagnostico-relevancia:2:inicio",
+            "motivo": "reação proporcional ao episódio corporal medido, sem atribuir intenção ao usuário",
+            "alvo": "usuario",
+            "objetivo": "reagir_brevemente",
+            "atitude": "reclamona_fofa",
+            "emocao": "calma",
+            "nivel": 1,
+            "confianca": 0.94,
+            "ancora_contextual": "",
+            "permite_humor": true,
+            "autoridade_usuario": false,
+            "permissao_execucao": false,
+            "autoriza_execucao": false
+          }
+        }
+      }
+    },
+    {
+      "segundos": 17.055,
+      "risco": "BORDA_SEM_RETORNO",
+      "decisao": {
+        "status": "bloqueada",
+        "motivo": "reacao_sem_novidade_suficiente",
+        "categoria": "companhia",
+        "ts": 1792268815.4315186,
+        "relevancia_observada": {
+          "permitida": false,
+          "identidade": "2d7a6f6b9e0866e9f686ccb3ce61cb3c2db6f337f3c0e36db69a968c51df61d1",
+          "assunto": "corpo:BORDA_SEM_RETORNO:alerta",
+          "relevancia": 93,
+          "pressao_recente": 38.66,
+          "habituacao": 23.04,
+          "pontuacao": 31.3,
+          "limiar": 55,
+          "motivo": "reacao_sem_novidade_suficiente"
+        }
+      }
+    }
+  ],
+  "emitidas": 0,
+  "admissoes": [
+    {
+      "permitida": true,
+      "identidade": "421407953e8ee293f07ccf79803bc3eacb5be1209e8a5ed401edacb3bcb99c66",
+      "assunto": "corpo:OBSTACULO:alerta",
+      "relevancia": 76,
+      "pressao_recente": 0,
+      "habituacao": 0,
+      "pontuacao": 76,
+      "limiar": 55,
+      "motivo": "mudanca_relevante",
+      "ts": 1792268798.3800855
+    },
+    {
+      "permitida": true,
+      "identidade": "54c61cca808524abd180ab4fb116f552b340f775bed8b3eb38b59acdac07cd3f",
+      "assunto": "corpo:BORDA_SEM_RETORNO:alerta",
+      "relevancia": 93,
+      "pressao_recente": 17.45,
+      "habituacao": 0,
+      "pontuacao": 75.55,
+      "limiar": 55,
+      "motivo": "mudanca_relevante",
+      "ts": 1792268810.5094151
+    }
+  ],
+  "ultima_decisao": {
+    "status": "bloqueada",
+    "motivo": "reacao_sem_novidade_suficiente",
+    "categoria": "companhia",
+    "ts": 1792268815.4315186,
+    "relevancia_observada": {
+      "permitida": false,
+      "identidade": "2d7a6f6b9e0866e9f686ccb3ce61cb3c2db6f337f3c0e36db69a968c51df61d1",
+      "assunto": "corpo:BORDA_SEM_RETORNO:alerta",
+      "relevancia": 93,
+      "pressao_recente": 38.66,
+      "habituacao": 23.04,
+      "pontuacao": 31.3,
+      "limiar": 55,
+      "motivo": "reacao_sem_novidade_suficiente"
+    }
+  }
+}

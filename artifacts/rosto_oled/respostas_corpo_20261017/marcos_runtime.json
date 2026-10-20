@@ -1,0 +1,3924 @@
+{
+  "tipo": "sonda_instalada_sensores_e_voz_reais",
+  "eventos_fabricados": false,
+  "amostras": [
+    {
+      "ts": 1792259016.5955808,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 1,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "EXPIRADA",
+            "mm": null,
+            "idade_ms": 344,
+            "status": 2
+          },
+          "borda": {
+            "estado": "EXPIRADA",
+            "mm": null,
+            "idade_ms": 345,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 426847,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.23,
+        "yaw_relativo_graus": -8.0,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.015,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 1,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 655,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259017.5612981,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 2,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 224,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 225,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 427904,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 5,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.27,
+        "yaw_relativo_graus": -8.0,
+        "velocidade_graus_s": 0.03,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 2,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 548,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259018.5276196,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 3,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 114,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 32,
+            "idade_ms": 120,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 428944,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.25,
+        "yaw_relativo_graus": -8.01,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 3,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259019.3910034,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 4,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 114,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 32,
+            "idade_ms": 121,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 429814,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.03,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.024,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 4,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259020.2462463,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 5,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 119,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 24,
+            "idade_ms": 127,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 430692,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.23,
+        "yaw_relativo_graus": -8.03,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.015,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 5,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 434,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259021.212943,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 6,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 122,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 113,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 431670,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 3,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.04,
+        "velocidade_graus_s": -0.04,
+        "aceleracao_norma_g": 1.016,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 6,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259022.0804536,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 7,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 119,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 112,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 432538,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.14,
+        "pitch_graus": -1.18,
+        "yaw_relativo_graus": -8.04,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.022,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 7,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259022.9426699,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 8,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 125,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 118,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 433400,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.05,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.022,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 8,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259023.910895,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 9,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 124,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 117,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 434319,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.15,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.05,
+        "velocidade_graus_s": 0.03,
+        "aceleracao_norma_g": 1.016,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 9,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 440,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259024.7659352,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 10,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 118,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 36,
+            "idade_ms": 113,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 435190,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.06,
+        "velocidade_graus_s": -0.06,
+        "aceleracao_norma_g": 1.024,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 10,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259025.6237319,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 11,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 127,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 125,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 436052,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 5,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.07,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.023,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 11,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259026.5907493,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 12,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 117,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 119,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 437033,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.18,
+        "yaw_relativo_graus": -8.08,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 12,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259027.4455855,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 13,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 118,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 31,
+            "idade_ms": 119,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 437889,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.1,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.015,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 13,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259028.3020747,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 14,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 115,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 30,
+            "idade_ms": 117,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 438756,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.11,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 14,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 434,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259029.2734182,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 15,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 118,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 121,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 439726,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.12,
+        "velocidade_graus_s": 0.05,
+        "aceleracao_norma_g": 1.022,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 15,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 442,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259030.1328187,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 16,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 114,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 30,
+            "idade_ms": 120,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 440595,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.15,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.13,
+        "velocidade_graus_s": -0.06,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 16,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259030.9870195,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 17,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 111,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 33,
+            "idade_ms": 120,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 441409,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.15,
+        "velocidade_graus_s": 0.05,
+        "aceleracao_norma_g": 1.027,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 17,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 434,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259031.9548235,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 18,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 119,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 23,
+            "idade_ms": 128,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 442379,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.16,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.019,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 18,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259032.8235607,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 19,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 125,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 117,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 443248,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.25,
+        "yaw_relativo_graus": -8.17,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.029,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 19,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259033.679632,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 20,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 116,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 129,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 444110,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.19,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 20,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259034.645193,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 21,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 111,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 25,
+            "idade_ms": 124,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 445092,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 11,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.48,
+        "yaw_relativo_graus": -8.19,
+        "velocidade_graus_s": 0.11,
+        "aceleracao_norma_g": 0.954,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 21,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259035.5016286,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 22,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 122,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 27,
+            "idade_ms": 118,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 445957,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.25,
+        "yaw_relativo_graus": -8.2,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.025,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 22,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259036.3593917,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 23,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 127,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 122,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 446772,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.14,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.21,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 23,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259037.328004,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 24,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 129,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 30,
+            "idade_ms": 127,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 447747,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.16,
+        "yaw_relativo_graus": -8.23,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.024,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 24,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 439,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259038.1857505,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 25,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 124,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 126,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 448616,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 3,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.16,
+        "yaw_relativo_graus": -8.24,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.044,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 25,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259039.0419066,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 26,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 112,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 31,
+            "idade_ms": 114,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 449475,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 5,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.27,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.017,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 26,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 435,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259040.0123627,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 27,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 117,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 27,
+            "idade_ms": 119,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 450441,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.28,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.03,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 27,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259040.8834867,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 28,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 128,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 23,
+            "idade_ms": 113,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 451310,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.29,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.007,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 28,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259041.7440193,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 29,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 120,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 125,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 452176,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.08,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.31,
+        "velocidade_graus_s": -0.06,
+        "aceleracao_norma_g": 1.019,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 29,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 439,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259042.711301,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 30,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 129,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 33,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 453154,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.32,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.008,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 30,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259043.5797281,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 31,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 121,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 112,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 454022,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.33,
+        "velocidade_graus_s": -0.04,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 31,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259044.4372113,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 32,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 122,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 115,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 454896,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.14,
+        "pitch_graus": -1.17,
+        "yaw_relativo_graus": -8.35,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.032,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 32,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259045.403563,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 33,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 126,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 455815,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.36,
+        "velocidade_graus_s": 0.02,
+        "aceleracao_norma_g": 1.008,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 33,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259046.272613,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 34,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 121,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 27,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 456737,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.36,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 34,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 435,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259047.1293452,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 35,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 121,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 26,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 457548,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.37,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 35,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259048.0970333,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 36,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 125,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 31,
+            "idade_ms": 123,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 458517,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.14,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.39,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.023,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 36,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259048.968152,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 37,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 114,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 459387,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.4,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.019,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 37,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 435,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259049.825725,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 38,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 116,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 118,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 460242,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.15,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.41,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.0,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 38,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259050.790797,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 39,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 122,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 125,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 461213,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 3,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.43,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.027,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 39,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 434,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259051.6591825,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 40,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 120,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 123,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 462124,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 2,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.43,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.021,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 40,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259052.5170364,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 41,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 126,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 111,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 462940,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 2,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.44,
+        "velocidade_graus_s": 0.02,
+        "aceleracao_norma_g": 1.035,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 41,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259053.4905202,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 42,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 126,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 114,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 463914,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.18,
+        "yaw_relativo_graus": -8.45,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.019,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 42,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259054.3477254,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 43,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 121,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 31,
+            "idade_ms": 111,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 464782,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.45,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.021,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 43,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259055.203033,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 44,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 127,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 25,
+            "idade_ms": 120,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 465644,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.18,
+        "yaw_relativo_graus": -8.45,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.024,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 44,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 434,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259056.1725836,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 45,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 124,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 116,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 466611,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.22,
+        "yaw_relativo_graus": -8.47,
+        "velocidade_graus_s": -0.04,
+        "aceleracao_norma_g": 0.998,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 45,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 440,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259057.0246818,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 46,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 126,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 29,
+            "idade_ms": 121,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 467486,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.1,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.48,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 46,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 435,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259057.8846433,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 47,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 118,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 28,
+            "idade_ms": 115,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 468347,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.14,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.49,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.021,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 47,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 438,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259058.8538237,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 48,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 116,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 32,
+            "idade_ms": 114,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 469275,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 6,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.5,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 48,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 439,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259059.7097166,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 49,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 122,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 30,
+            "idade_ms": 120,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 470134,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 3,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.5,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.024,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 49,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259060.564715,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 50,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 115,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 33,
+            "idade_ms": 117,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 471001,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 4,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.13,
+        "pitch_graus": -1.21,
+        "yaw_relativo_graus": -8.5,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.018,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 50,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 437,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259061.6379457,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 51,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 220,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 32,
+            "idade_ms": 222,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 471967,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 8,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.11,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.51,
+        "velocidade_graus_s": 0.0,
+        "aceleracao_norma_g": 1.023,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 51,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 545,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259062.6027036,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 52,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 238,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 30,
+            "idade_ms": 220,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 472937,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.52,
+        "velocidade_graus_s": -0.01,
+        "aceleracao_norma_g": 1.017,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 52,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 544,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259063.4608243,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 53,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 126,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 35,
+            "idade_ms": 113,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 473908,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 9,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.09,
+        "pitch_graus": -1.23,
+        "yaw_relativo_graus": -8.53,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.019,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 53,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 436,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259064.5360522,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 54,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 220,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 31,
+            "idade_ms": 228,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 474880,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 3,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.16,
+        "pitch_graus": -1.19,
+        "yaw_relativo_graus": -8.55,
+        "velocidade_graus_s": -0.03,
+        "aceleracao_norma_g": 1.02,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 54,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 544,
+        "bloqueio_manuseio": false
+      }
+    },
+    {
+      "ts": 1792259065.5021536,
+      "ok": true,
+      "motivo": "frame_confirmado_pelo_esp",
+      "sessao": "e816ddeb",
+      "sensores": {
+        "suportado": true,
+        "recente": true,
+        "consulta_id": 55,
+        "alerta_suportado": true,
+        "busca_renovada": false,
+        "leituras": {
+          "frente": {
+            "estado": "INVALIDA",
+            "mm": null,
+            "idade_ms": 223,
+            "status": 2
+          },
+          "borda": {
+            "estado": "VALIDA",
+            "mm": 27,
+            "idade_ms": 234,
+            "status": 0
+          }
+        },
+        "protecao": {
+          "incidente_id": 0,
+          "motor_origem_seq": 0,
+          "risco": "NENHUM",
+          "fase": "PRONTA",
+          "reflexo_ativo": false,
+          "reacao_expressiva": "nenhuma",
+          "tentativa_busca": 0,
+          "vigia_ativa": false,
+          "limite_borda_mm": 130,
+          "limite_obstaculo_mm": 100,
+          "origem": "executor_protecao_esp",
+          "autoriza_execucao": false,
+          "rotacao_medida": false,
+          "cobertura": "frente_e_borda_dianteira",
+          "recente": true
+        },
+        "origem": "owner_usb_dist_guard",
+        "autoriza_execucao": false
+      },
+      "imu": {
+        "fase_manuseio": "TRANQUILA",
+        "evento_manuseio": 0,
+        "idade_fase_ms": 475853,
+        "repeticoes_manuseio": 0,
+        "estado": "PRONTA",
+        "idade_ms": 7,
+        "calibrada": true,
+        "modelo": "ICM20689_compativel",
+        "roll_graus": 0.12,
+        "pitch_graus": -1.2,
+        "yaw_relativo_graus": -8.56,
+        "velocidade_graus_s": -0.06,
+        "aceleracao_norma_g": 1.021,
+        "manuseio": "ESTAVEL",
+        "origem": "imu_esp",
+        "autoriza_execucao": false,
+        "prova_deslocamento": false,
+        "consulta_id": 55,
+        "suportado": true,
+        "recente": true,
+        "idade_host_ms": 545,
+        "bloqueio_manuseio": false
+      }
+    }
+  ],
+  "decisoes": [],
+  "voz_diagnostico": [
+    {
+      "entregue": true,
+      "motivo": "Teste de voz da Laylay."
+    }
+  ],
+  "erros": [],
+  "comandos": [
+    "ACTIVITY",
+    "CAPS",
+    "DCAPS",
+    "DIST",
+    "ECAPS",
+    "EXPR",
+    "FACE",
+    "GCAPS",
+    "GOODNIGHT",
+    "GUARD",
+    "HEALTH",
+    "HELLO",
+    "ICAPS",
+    "IMU",
+    "LCAPS",
+    "MCAPS",
+    "PCAPS",
+    "RCAPS",
+    "SCAPS",
+    "SENCAPS",
+    "SENTRY",
+    "SOUND",
+    "STOP"
+  ],
+  "motores_enviados": 0,
+  "porta_produtor_instalada": true,
+  "presenca": {
+    "versao": 1,
+    "configuracao": {
+      "ativo": true,
+      "perfil": "adaptativo",
+      "motivo_perfil": "inicio",
+      "atualizado_ts": 0.0
+    },
+    "aprendizado": {
+      "categorias": {}
+    },
+    "historico": [],
+    "ultima_emissao": {},
+    "ultima_proposta_cognitiva": {},
+    "atividade": {
+      "chave": "",
+      "assunto": "",
+      "inicio_ts": 1792259058.8535664
+    },
+    "contadores": {
+      "recebidas": 0,
+      "emitidas": 0,
+      "propostas_cognitivas": 0,
+      "bloqueadas_contexto": 0,
+      "bloqueadas_orcamento": 0,
+      "bloqueadas_qualidade": 0,
+      "bloqueadas_variedade": 0,
+      "feedbacks": 0
+    }
+  },
+  "voice": "pt-BR-FranciscaNeural",
+  "ui_aberta": false,
+  "conexao_encerrada": true
+}

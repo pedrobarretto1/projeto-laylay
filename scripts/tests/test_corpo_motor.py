@@ -258,7 +258,9 @@ def test_composicao_instalada_resolve_executa_publica_e_conhece_corpo(monkeypatc
     ciclo = root._composicao_ciclo_comandos_runtime.ciclo
     assert root._composicao_ciclo_comandos_runtime.contexto.montar()["_corpo_motor_runtime"] is root._corpo_motor_runtime
     texto = "pode andar um pouquinho?"
-    root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+    # A publicação vinculada exige o mesmo frame que a entrada real instala:
+    # classificação isolada não cria identidade de turno/plano/retrato.
+    root._iniciar_planejamento_turno(texto, origem="teste_corpo")
     pedido, rota = ciclo.resolver_comando_natural(texto, "teste_corpo")
     assert pedido and pedido["intent"] == "CORPO_MOVER", rota
     assert not ponte.chamadas, "resolver não executa"
@@ -268,8 +270,8 @@ def test_composicao_instalada_resolve_executa_publica_e_conhece_corpo(monkeypatc
     assert retrato["intent"] == "CORPO_MOVER" and retrato["confirmado"] is True
     assert "pulso" in falas[-1][0].casefold()
     pergunta = "você consegue andar?"
-    turno = classificar_modalidade_turno(pergunta)
-    root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=turno)
+    root._iniciar_planejamento_turno(pergunta, origem="teste_capacidade_corpo")
+    turno = root._estado_compartilhado_runtime.obter_copia("mental", "turno_atual", {})
     assert "pulso" in root._mapa_habilidades_runtime.responder_pergunta_capacidade(pergunta, turno=turno)
     proposta, _ = ciclo.resolver_comando_natural(pergunta, "teste_corpo")
     assert proposta is None
@@ -280,7 +282,7 @@ def test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissa
     root, ponte, _falas = _root_instalado(monkeypatch, tmp_path)
     texto = "ande para frente"
     ciclo = root._composicao_ciclo_comandos_runtime.ciclo
-    root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+    root._iniciar_planejamento_turno(texto, origem="teste_aprendizado_corpo")
     pedido, _rota = ciclo.resolver_comando_natural(texto, "teste_aprendizado_corpo")
     assert pedido and pedido["intent"] == "CORPO_MOVER"
     assert ciclo.executar_intencao(pedido, texto)
@@ -296,7 +298,7 @@ def test_receipt_instalado_alimenta_aprendizado_compartilhado_sem_criar_permissa
     # Uma hipótese de confiabilidade não concede uma nova ação nem torna
     # uma pergunta sobre movimento em autorização.
     pergunta = "você consegue andar?"
-    root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(pergunta))
+    root._iniciar_planejamento_turno(pergunta, origem="teste_pergunta_sem_autorizacao")
     proposta, _rota = ciclo.resolver_comando_natural(pergunta, "teste_aprendizado_corpo")
     assert proposta is None and len(ponte.chamadas) == 1
 
@@ -329,7 +331,7 @@ def test_documentacao_corporal_chega_ao_prompt_instalado_com_disponibilidade_rea
 def test_cadeia_instalada_preserva_receipts_independentes_e_publica_falha_parcial(monkeypatch, tmp_path):
     root, ponte, falas = _root_instalado(monkeypatch, tmp_path)
     texto = "ande para frente e pare os motores"
-    root._estado_compartilhado_runtime.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+    root._iniciar_planejamento_turno(texto, origem="teste_corpo_composto")
     # O segundo efeito falha; não pode emprestar o MACK/SACK do primeiro.
     def parada_sem_receipt():
         ponte.chamadas.append("STOP")

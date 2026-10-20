@@ -102,6 +102,7 @@ class CompanhiaCorporalRuntime:
         self._ativacao_pendente = self._automatica_ao_iniciar
         self._retomada_pendente: dict[str, Any] | None = None
         self._reconexao_estavel: tuple[str, float] | None = None
+        self._falhas_tecnicas_consecutivas = 0
         self._motivo = "aguardando_ativacao_explicita"
         self._observado = (0, 1, 0)
         self._alternar = False
@@ -153,13 +154,24 @@ class CompanhiaCorporalRuntime:
             })
         self.corpo.observar_dev()
 
-    def _suspender_conexao(self, motivo: str) -> bool:
-        """Pedido do owner sobrevive; a concessão elétrica antiga termina."""
+    def _suspender_conexao(self, motivo: str, *, falha_tecnica: bool = False) -> bool:
+        """Pedido sobrevive à falha; a concessão elétrica antiga termina.
+
+        Suspender não é repetir nem conceder: a retomada identifica o mesmo
+        corpo, revalida prontidão e, nas falhas de gesto, exige STOP confirmado.
+        """
+        saude = (self.corpo.transporte.diagnostico().get("saude") or {}) if falha_tecnica else {}
         with self._lock:
             c=self._concessao
             if not c or self._revogada.is_set() or not c.get("dispositivo"):
                 return False
             self._retomada_pendente={k:c[k] for k in ("id","dispositivo","passeio","origem")}
+            if falha_tecnica:
+                self._falhas_tecnicas_consecutivas = min(8, self._falhas_tecnicas_consecutivas + 1)
+                pausa = (2, 5, 15, 30)[min(3, self._falhas_tecnicas_consecutivas - 1)]
+                self._retomada_pendente.update(motivo_suspensao=motivo,
+                    retomar_apos=self.monotonic()+pausa, exigir_parada=True,
+                    saude_consulta_id=saude.get("consulta_id", 0))
             self._revogada.set()
             self._concessao=None
             self._reconexao_estavel=None
@@ -170,18 +182,39 @@ class CompanhiaCorporalRuntime:
         self._publicar()
         return True
 
+    @staticmethod
+    def _canal_permitido(diag: Mapping[str, Any]) -> bool:
+        """USB ou TCP autenticado pelo owner; descoberta não concede movimento."""
+        return diag.get("transporte") == "serial" or (
+            diag.get("transporte") == "tcp" and diag.get("canal_autenticado") is True
+        )
+
     def _recuperar_conexao(self, diag: Mapping[str, Any]) -> dict[str, Any]:
         with self._lock:
             pedido=dict(self._retomada_pendente or {})
+        if not pedido:
+            return {"ok":False,"motivo":"retomada_revogada"}
         saude=diag.get("saude") or {}
         sensores=diag.get("sensores") or {}
-        if (diag.get("transporte")!="serial" or diag.get("aplicacao_confirmada") is not True
+        if (not self._canal_permitido(diag) or diag.get("aplicacao_confirmada") is not True
             or not saude.get("recente") or not saude.get("suportado")):
             self._reconexao_estavel=None
             return {"ok":False,"motivo":"aguardando_reconexao_identificada"}
         if saude.get("dispositivo")!=pedido.get("dispositivo"):
             self.revogar("corpo_diferente_na_reconexao")
             return {"ok":False,"motivo":"corpo_diferente_na_reconexao"}
+        if (diag.get("imu") or {}).get("bloqueio_manuseio") is True:
+            self._reconexao_estavel=None
+            return {"ok":False,"motivo":"manuseio_ou_calibracao_na_recuperacao"}
+        motor=diag.get("motor") or {}
+        if motor.get("disponivel") is not True or motor.get("em_andamento"):
+            self._reconexao_estavel=None
+            return {"ok":False,"motivo":"aguardando_motor_parado_na_recuperacao"}
+        if self.monotonic() < pedido.get("retomar_apos", 0):
+            return {"ok":False,"motivo":"pausa_apos_falha_tecnica"}
+        if (pedido.get("exigir_parada")
+                and saude.get("consulta_id", 0) <= pedido.get("saude_consulta_id", 0)):
+            return {"ok":False,"motivo":"aguardando_nova_saude_apos_falha"}
         if sensores.get("suportado") and (not sensores.get("recente") or
             any((sensores.get("leituras") or {}).get(n,{}).get("estado") not in {"VALIDA","INVALIDA"}
                 for n in ("frente","borda"))):
@@ -194,14 +227,30 @@ class CompanhiaCorporalRuntime:
                 return {"ok":False,"motivo":"confirmando_estabilidade_corporal"}
         if self.monotonic()-estavel[1]<1:
             return {"ok":False,"motivo":"confirmando_estabilidade_corporal"}
+        if pedido.get("exigir_parada"):
+            try:
+                parada = self.corpo.transporte.parar_corpo()
+            except Exception:
+                parada = {}
+            if parada.get("ok") is not True or parada.get("parada_confirmada") is not True:
+                with self._lock:
+                    if self._retomada_pendente == pedido:
+                        self._retomada_pendente["retomar_apos"] = self.monotonic()+2
+                        self._reconexao_estavel = None
+                        self._motivo = "parada_nao_confirmada_na_recuperacao"
+                self._publicar()
+                return {"ok":False,"motivo":"parada_nao_confirmada_na_recuperacao"}
         return self._ativar_sessao(passeio=pedido["passeio"],retomada=pedido)
 
     def diagnostico(self) -> dict[str, Any]:
         with self._lock:
             concessao = dict(self._concessao or {})
             ativa = bool(concessao and not self._revogada.is_set())
-            return {"ativa": ativa, "motivo": self._motivo, "transporte_exigido": "serial",
+            return {"ativa": ativa, "motivo": self._motivo, "transporte_exigido": "serial_ou_tcp_autenticado",
                     "recuperacao_pendente": bool(self._retomada_pendente),
+                    "motivo_suspensao": (self._retomada_pendente or {}).get("motivo_suspensao", ""),
+                    "falhas_tecnicas_consecutivas": self._falhas_tecnicas_consecutivas,
+                    "retomada_em_s": max(0.0, (self._retomada_pendente or {}).get("retomar_apos", 0) - self.monotonic()),
                     "ttl_maximo_s": None, "gestos_maximos": None, "gestos_emitidos": concessao.get("gestos", 0),
                     "intervalo_minimo_s": INTERVALO_GESTOS_S, "pwm_gestos": 230 if self.perfil_corporal == "rodas_suspensas" else 100,
                     "duracao_maxima_gesto_ms": 5000 if self.perfil_corporal == "rodas_suspensas" else DURACAO_MOTOR_GESTO_MS,
@@ -218,7 +267,7 @@ class CompanhiaCorporalRuntime:
                     "passeio_ativado": ativa and concessao.get("passeio") is True,
                     "comemoracoes_emitidas": self._comemoracoes, "passeios_emitidos": self._passeios,
                     "giro_360_calibrado": False,
-                    "restantes_s": None, "vigencia": "sessao_usb_atual_ate_revogacao",
+                    "restantes_s": None, "vigencia": "sessao_corporal_atual_ate_revogacao",
                     "origem": concessao.get("origem", "concessao_explicita_de_sessao"),
                     "ativacao_automatica_ao_iniciar": self._automatica_ao_iniciar,
                     "passeio_automatico_ao_iniciar": self._passeio_ao_iniciar,
@@ -246,14 +295,14 @@ class CompanhiaCorporalRuntime:
 
     def _ativar_sessao(self, *, passeio: bool = False, automatica: bool = False,
                       retomada: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        """Mesmo owner e contrato USB para pedido atual ou preferência explícita."""
+        """Mesmo owner de sessão para pedido atual ou preferência explícita."""
         diag = self.corpo.transporte.diagnostico()
-        if (diag.get("transporte") != "serial" or not diag.get("sessao")
+        if (not self._canal_permitido(diag) or not diag.get("sessao")
             or diag.get("aplicacao_confirmada") is not True
             or (diag.get("motor") or {}).get("disponivel") is not True
             or (diag.get("motor") or {}).get("em_andamento")
             or self.coordenador is None):
-            return {"ok": False, "motivo": "companhia_requer_sessao_usb_pronta"}
+            return {"ok": False, "motivo": "companhia_requer_sessao_corporal_pronta"}
         if self.perfil_corporal == "rodas_suspensas" and (diag.get("motor") or {}).get("duracao_maxima_ms", 500) < 5000:
             self._motivo = "rodas_suspensas_requer_firmware_longo"
             self._publicar()
@@ -275,13 +324,15 @@ class CompanhiaCorporalRuntime:
                               "perfil": self.perfil_corporal,
                               "ultimo_fim_gesto": self.monotonic(),
                               "proximo_passeio": self.monotonic() + 8}
+            if retomada is None:
+                self._falhas_tecnicas_consecutivas = 0
             self._ativacao_pendente = False
             self._retomada_pendente=None
             self._reconexao_estavel=None
             self._observado = retrato  # Não reproduz a emoção anterior à concessão.
             self._sucesso_observado = (self._sucesso() or (0, 0))[0]
             self._falha_observada = (projetar_falha_operacional(self._atividade(), agora=self.monotonic()) or (0, 0))[0]
-            self._motivo = "concessao_usb_renovada_apos_reconexao" if retomada else "concessao_usb_vigente"
+            self._motivo = "concessao_corporal_renovada_apos_reconexao" if retomada else "concessao_corporal_vigente"
             self._revogada.clear()
         self._publicar()
         return {"ok": True, "modo_ativado": True, "passeio_ativado": passeio,
@@ -306,7 +357,7 @@ class CompanhiaCorporalRuntime:
                         and c["sessao"] == diag.get("sessao")
                         and 0 <= agora - float(meta.get("proposto_em", -100)) <= (20 if c.get("perfil") == "rodas_suspensas" else 5)
                         and meta.get("perfil", "bancada") == c.get("perfil", "bancada")
-                        and diag.get("transporte") == "serial" and diag.get("aplicacao_confirmada") is True
+                        and self._canal_permitido(diag) and diag.get("aplicacao_confirmada") is True
                         and (diag.get("motor") or {}).get("disponivel") is True)
 
     def _aguardar_gesto(self, ms: int, validar: Callable[[], bool]) -> bool:
@@ -554,8 +605,8 @@ class CompanhiaCorporalRuntime:
                 return self._ativar_sessao(automatica=True, passeio=self._passeio_ao_iniciar)
             return {"ok": False, "motivo": "companhia_inativa"}
         if (diag.get("sessao") != c["sessao"] or diag.get("aplicacao_confirmada") is not True
-            or diag.get("transporte") != "serial" or (diag.get("motor") or {}).get("disponivel") is not True):
-            if not self._suspender_conexao("aguardando_recuperacao_usb"):
+            or not self._canal_permitido(diag) or (diag.get("motor") or {}).get("disponivel") is not True):
+            if not self._suspender_conexao("aguardando_recuperacao_corporal"):
                 self.revogar("concessao_expirada_ou_conexao_perdida")
             return {"ok": False, "motivo": self._motivo}
         if not self._olhos_confirmados(diag):
@@ -803,6 +854,10 @@ class CompanhiaCorporalRuntime:
                 conexao_perdida=(d.get("aplicacao_confirmada") is not True or d.get("sessao")!=c["sessao"])
                 if conexao_perdida and self._suspender_conexao("gesto_interrompido_por_desconexao"):
                     falha=falha_gesto=False
+                elif self._suspender_conexao(str(retorno.get("motivo") or "gesto_nao_confirmado"), falha_tecnica=True):
+                    # O gesto continua falho. Sua falha não revoga o pedido
+                    # humano que também autoriza a vigia dos sensores.
+                    pass
                 else:
                     self.revogar("gesto_nao_confirmado")
             else:
@@ -830,6 +885,7 @@ class CompanhiaCorporalRuntime:
                 if self._concessao and self._concessao["id"] == c["id"]:
                     self._concessao["ultimo_fim_gesto"] = self.monotonic()
                     self._concessao["proximo_passeio"] = self.monotonic() + PAUSAS_PASSEIO_S[self._passeios % len(PAUSAS_PASSEIO_S)]
+                    self._falhas_tecnicas_consecutivas = 0
         self._publicar()
         return retorno
 
@@ -839,7 +895,11 @@ class CompanhiaCorporalRuntime:
                 try:
                     self.processar()
                 except Exception:
-                    self.revogar("falha_presenca_corporal")
+                    if not self._suspender_conexao("falha_presenca_corporal", falha_tecnica=True):
+                        with self._lock:
+                            pendente = bool(self._retomada_pendente)
+                        if not pendente:
+                            self.revogar("falha_presenca_corporal")
                     self.corpo.transporte.parar_corpo()
                 if aguardar_fn(.2):
                     break

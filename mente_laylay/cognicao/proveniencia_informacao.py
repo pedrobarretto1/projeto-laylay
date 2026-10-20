@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import Any, Dict
 
 
-_STATUS_BLOQUEADOS = {"contestado", "corrigido", "incerto"}
+_STATUS_BLOQUEADOS = {"contestado", "corrigido", "incerto", "suporte_em_revisao", "suporte_interno_invalido"}
+
+
+def referencia_alegacao_da_fonte(fonte: Any) -> str:
+    """Identidade interna declarada, não uma relação inferida da linguagem."""
+    valor = fonte.strip() if isinstance(fonte, str) else ""
+    return valor if valor.startswith("alegacao:") else ""
 
 
 def classificar_proveniencia_informacao(
@@ -40,6 +46,7 @@ def classificar_proveniencia_informacao(
     )
     eh_externa = bool(
         fonte
+        and not referencia_alegacao_da_fonte(fonte)
         and (
             status == "confirmado_por_fonte"
             or contexto_norm == "fundamentacao_factual"
@@ -58,6 +65,14 @@ def classificar_proveniencia_informacao(
             "bloqueada": bloqueada,
             "pode_sustentar_fato_externo": False,
             "pode_sustentar_contexto_pessoal": eh_usuario and not bloqueada,
+        }
+
+    if referencia_alegacao_da_fonte(fonte) and not eh_usuario:
+        return {
+            "tipo": "derivacao_interna", "subtipo": "referencia_de_suporte_declarada",
+            "origem": fonte, "autor": autor or "laylay", "subjetiva": False,
+            "bloqueada": bloqueada, "pode_sustentar_fato_externo": False,
+            "pode_sustentar_contexto_pessoal": False,
         }
 
     if eh_externa:

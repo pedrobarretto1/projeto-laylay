@@ -1,0 +1,53 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:65522 | sessão=27ac1809 pid=25576
+🖥️ [TERMINAL 2] interface iniciada | sessão=27ac1809 pid=3504 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=27ac1809
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+⚠️ [TERMINAL 3:DASHBOARD] retrato indisponível | tipo=TimeoutError
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+
+💬 Você:
+> ╭─ ◕‿◕ Laylay: O corpo voltou a ficar estável, só que com um reclamão fofo que nem dá pra explicar.
+❌ [FALA] Erro no áudio: WSServerHandshakeError → 429, message='Invalid response status', url='wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?Ocp-Apim-Subscription-Key=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=6b2716c4673e4d91bf9618c81ffb489f&Sec-MS-GEC=15FA8331C5BCA74BA476FF4AE6B3643704A5BF29C081B57D797B8348E3FDCB40&Sec-MS-GEC-Version=1-143.0.3650.75'
+⚠️ [VOZ] texto preservado; não vou trocar a voz após a falha de áudio.
+
+💬 Você:
+> 💬 Você: 'anda para frente' | origem=desktop
+🎭 [EMOÇÃO:CAUSA] responsabilidade=sistema confiança=96% emoção=calma nível=1 repetições=1 expressão=False motivo=falha_sistema_isolada
+╭─ ◕‿◕ Laylay: Tentei executar isso em corpo, mas ele não respondeu como devia. Hmm, parece que o corpo tá com um pouco de fome de atenção, talvez precise de um pouquinho mais de carinho.
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '5dd8b1dc9da64eca9cb992fb1a4213c1', 'intent': 'CORPO_MOVER', 'alvo': 'corpo', 'status': 'falha_execucao', 'executou': False, 'confirmado': False, 'params': {'alvo': 'corpo', 'direcao': 'frente', 'pwm': 255, 'duracao_ms': 250}, 'origem': 'executor', 'detalhe': 'interrompido_por_protecao:BORDA_SEM_RETORNO', 'confirmacao_oferecida': 'estado_firmware', 'evidencia_confirmacao': 'sack'}] | erros=[]
+💬 Você: 'anda para frente' | origem=desktop
+🎭 [EMOÇÃO] irritada nível 1 | 2 falhas consecutivas do sistema em corpo
+🎭 [EMOÇÃO:CAUSA] responsabilidade=sistema confiança=96% emoção=irritada nível=1 repetições=2 expressão=True motivo=falha_sistema_repetida
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '56506344a81c4fdcaf18f2ff1f42b477', 'intent': 'CORPO_MOVER', 'alvo': 'corpo', 'status': 'falha_execucao', 'executou': False, 'confirmado': False, 'params': {'alvo': 'corpo', 'direcao': 'frente', 'pwm': 255, 'duracao_ms': 250}, 'origem': 'executor', 'detalhe': 'interrompido_por_protecao:BORDA_SEM_RETORNO', 'confirmacao_oferecida': 'estado_firmware', 'evidencia_confirmacao': 'sack'}] | erros=[]
+╭─ (╬ಠ益ಠ) Laylay: Eu tentei, mas corpo não colaborou. Não vou fingir que deu certo.
+
+💬 Você:
+> 💬 Você: 'anda para tras' | origem=desktop
+🎭 [EMOÇÃO] acalmando-se nível 1 | sucesso após 2 falhas consecutivas
+╭─ ◕ᴗ◕ Laylay: Acionei um pulso para tras, limitado a até 250 milissegundos. A ponte confirmou a parada.
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': 'f8f59f1ce1824fb6a4aa7efe2d6213db', 'intent': 'CORPO_MOVER', 'alvo': 'corpo', 'status': 'pulso_corporal_confirmado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'corpo', 'direcao': 'tras', 'pwm': 255, 'duracao_ms': 250}, 'origem': 'executor', 'detalhe': 'estado do firmware confirmado; sem medida de giro ou deslocamento', 'confirmacao_oferecida': 'estado_firmware', 'evidencia_confirmacao': 'mack_pwm_e_sack'}] | erros=[]
+❌ [FALA] Erro no áudio: WSServerHandshakeError → 429, message='Invalid response status', url='wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1?Ocp-Apim-Subscription-Key=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=3a8343086d464806ada2d80f56787333&Sec-MS-GEC=15FA8331C5BCA74BA476FF4AE6B3643704A5BF29C081B57D797B8348E3FDCB40&Sec-MS-GEC-Version=1-143.0.3650.75'
+⚠️ [VOZ] texto preservado; não vou trocar a voz após a falha de áudio.
+
+💬 Você:
+> ⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror
+💬 Você: 'anda para frente' | origem=desktop
+╭─ ◕ᴗ◕ Laylay: Acionei um pulso para frente, limitado a até 250 milissegundos. A ponte confirmou a parada.
+🧠 [PLANO:FASE] fase=tratado_prioritario | comandos=[{'id_solicitacao': '67193a57cd9f436aababb7247c69219b', 'intent': 'CORPO_MOVER', 'alvo': 'corpo', 'status': 'pulso_corporal_confirmado', 'executou': True, 'confirmado': True, 'params': {'alvo': 'corpo', 'direcao': 'frente', 'pwm': 255, 'duracao_ms': 250}, 'origem': 'executor', 'detalhe': 'estado do firmware confirmado; sem medida de giro ou deslocamento', 'confirmacao_oferecida': 'estado_firmware', 'evidencia_confirmacao': 'mack_pwm_e_sack'}] | erros=[]
+
+💬 Você:
+> 🖥️ [TERMINAL 2:CLIENTE] snapshot autenticado | sessão=27ac1809
+🖥️ [TERMINAL 2:CLIENTE] mensagem confirmada | id=e848ab6956b9 aceito=True
+🖥️ [TERMINAL 2:CLIENTE] mensagem confirmada | id=5620ed182484 aceito=True
+🖥️ [TERMINAL 2:CLIENTE] mensagem confirmada | id=2cafdf840d02 aceito=True
+🖥️ [TERMINAL 2:CLIENTE] mensagem confirmada | id=6cb2a0b9ffad aceito=True

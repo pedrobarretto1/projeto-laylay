@@ -1,4 +1,4 @@
-param([ValidatePattern('^(COM[0-9]+|AUTO|off)$')][string]$Porta = 'AUTO', [switch]$HotspotLocal)
+param([ValidatePattern('^(COM[0-9]+|AUTO|WIFI|off)$')][string]$Porta = 'AUTO', [switch]$HotspotLocal)
 $ErrorActionPreference = 'Stop'
 $raizLaylay = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $pythonLaylay = Join-Path $raizLaylay '.venv314\Scripts\python.exe'
@@ -8,7 +8,7 @@ $processoHotspotCorpo = $null
 Push-Location -LiteralPath $raizLaylay
 try {
     if ($HotspotLocal) {
-        if ($Porta -ne 'AUTO') { throw 'HotspotLocal requer modo AUTO.' }
+        if ($Porta -notin @('AUTO','WIFI')) { throw 'HotspotLocal requer modo AUTO ou WIFI.' }
         if (-not (Test-Path -LiteralPath (Join-Path $raizLaylay 'memoria\corpo_wifi.json')) -or
             -not (Test-Path -LiteralPath (Join-Path $raizLaylay 'memoria\corpo_hotspot_windows.json'))) {
             throw 'Configure e confirme o corpo na rede local antes de iniciar.'

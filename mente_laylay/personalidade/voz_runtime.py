@@ -1233,6 +1233,8 @@ class VozRuntime:
                         self._ultima_fala_normal_ts or 0.0
                     ),
                 }
+                if item.get("admissao_observada") is not None:
+                    kwargs_revalidacao["admissao_observada"] = item["admissao_observada"]
 
                 try:
                     try:
@@ -1241,6 +1243,8 @@ class VozRuntime:
                             revalidacao_entrega=True,
                         ) or {}
                     except TypeError:
+                        if item.get("admissao_observada") is not None:
+                            raise
                         # Compatibilidade com adaptadores antigos.
                         decisao_entrega = self.avaliar_proatividade_cb(
                             **kwargs_revalidacao
@@ -1530,6 +1534,7 @@ class VozRuntime:
         preservar_ate_entrega: bool = False,
         preparar_entrega_cb: Callable[[], dict[str, Any] | None] | None = None,
         validar_vigencia: Callable[[], bool] | None = None,
+        admissao_observada: Any = None,
     ):
         tipo_norm = str(tipo or "").strip().lower()
         texto_limpo = str(texto or "").strip()
@@ -1538,6 +1543,13 @@ class VozRuntime:
             if callable(ao_concluir):
                 ao_concluir(False, "item_vazio")
             return False
+        if admissao_observada is not None:
+            from mente_laylay.autonomia.ocorrencia_observada import AdmissaoReacaoObservada
+            if (not isinstance(admissao_observada,AdmissaoReacaoObservada)
+                    or not admissao_observada.vigente() or not callable(self.avaliar_proatividade_cb)):
+                if callable(ao_concluir):
+                    ao_concluir(False,"admissao_observada_invalida")
+                return False
         inicio_forcado = bool(forcar_inicio) and (
             time.time() - self.proativa_inicio_sistema <= self.proativa_janela_startup + 5.0
         )
@@ -1545,6 +1557,8 @@ class VozRuntime:
             turno_ativo = self._turno_resposta_ativo
             chave_turno = self._chave_turno_ativo
         politica = {}
+        opcoes_admissao = ({"admissao_observada":admissao_observada}
+            if admissao_observada is not None else {})
         if callable(self.avaliar_proatividade_cb):
             try:
                 politica = self.avaliar_proatividade_cb(
@@ -1554,6 +1568,7 @@ class VozRuntime:
                     mesclar_turno=bool(mesclar_turno),
                     inicio_forcado=inicio_forcado,
                     ultima_fala_normal_ts=float(self._ultima_fala_normal_ts or 0.0),
+                    **opcoes_admissao,
                 ) or {}
             except Exception as erro:
                 self.log(f"⚠️ [FALA PROATIVA] porteiro falhou: {erro}")
@@ -1564,6 +1579,10 @@ class VozRuntime:
                     fallback="politica_compatibilidade",
                     fase="agendar_fala_proativa",
                 )
+                if admissao_observada is not None:
+                    if callable(ao_concluir):
+                        ao_concluir(False,"falha_porteiro")
+                    return False
                 politica = {}
         acao_politica = str(politica.get("acao") or "").strip().lower()
         if preservar_ate_entrega:
@@ -1632,6 +1651,7 @@ class VozRuntime:
             "ao_concluir": ao_concluir,
             "preparar_entrega_cb": preparar_entrega_cb,
             "validar_vigencia": validar_vigencia,
+            "admissao_observada": admissao_observada,
             "forcar_inicio": inicio_forcado,
             "preservar_ate_entrega": bool(preservar_ate_entrega),
             "mesclar_turno": reservar_para_turno,

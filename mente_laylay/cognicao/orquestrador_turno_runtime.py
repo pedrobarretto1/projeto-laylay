@@ -1403,7 +1403,9 @@ def _iniciar_planejamento_turno(
     if (callable(recuperar_explicacao) and turno.get('autoriza_execucao') is False
             and turno.get('modalidade') in {'pergunta', 'deliberacao'}
             and not plano.get('requer_execucao') and not plano.get('comandos')):
-        explicacao_ocorrencia = recuperar_explicacao(texto, turno=turno)
+        from mente_laylay.cognicao.explicacao_fala_historica import consulta_historica_multipla
+        if not consulta_historica_multipla(turno):
+            explicacao_ocorrencia = recuperar_explicacao(texto, turno=turno)
     contrato_fala = construir_contrato_semantico_fala(
         texto,
         turno=turno,
@@ -1412,6 +1414,7 @@ def _iniciar_planejamento_turno(
         mente=mente_antes_turno,
         falas_recentes=falas_recentes,
         explicacao_ocorrencia=explicacao_ocorrencia,
+        recuperar_explicacao_ocorrencia=recuperar_explicacao,
     )
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
@@ -1577,6 +1580,7 @@ def atualizar_planejamento_turno(
     namespace_getter, fase: str, *, comandos=(), erros=(), fala: str='',
     proposta_principal: Any = _PROPOSTA_NAO_INFORMADA,
     ocorrencia_turno: Any = _OCORRENCIA_NAO_INFORMADA,
+    autoria_revisada_proposta: Any = None,
 ) -> dict:
     ns = namespace_getter()
     estado = ns['_estado_compartilhado_runtime']
@@ -1616,6 +1620,30 @@ def atualizar_planejamento_turno(
                 return mental
         novo = ns['_atualizar_plano_turno_mente'](atual, fase=fase, comandos=comandos_finais, erros=erros, fala=fala)
         if vinculada and fase == 'resposta_planejada':
+            novo.pop('autoria_revisada_proposta', None)
+            from mente_laylay.cognicao.suporte_autoria import capturar_suporte_autoria_obrigatoria
+            registro = mental.get('registro_semantico') or {}
+            fontes = tuple(str(i.get('id')) for i in registro.get('alegacoes', ()) if isinstance(i, dict) and i.get('id'))
+            fundamentacao_contextual = dict(mental.get('fundamentacao_factual_turno') or {})
+            fonte_contextual = str(fundamentacao_contextual.get('fonte') or '')
+            fontes_individuais = tuple(f['url'] for f in (fundamentacao_contextual.get('fontes') or [])[:5]
+                if isinstance(f, dict) and type(f.get('url')) is str and f['url'])
+            suporte = capturar_suporte_autoria_obrigatoria(proposta_principal,
+                fontes_no_contexto=fontes + fontes_individuais + ((fonte_contextual,) if fonte_contextual else ()))
+            if suporte is not None:
+                novo['suporte_autoria_proposto'] = suporte
+            if autoria_revisada_proposta is not None:
+                import hashlib
+                from mente_laylay.cognicao.suporte_autoria import AutoriaRevisadaProposta
+                revisada = autoria_revisada_proposta
+                if (type(revisada) is not AutoriaRevisadaProposta
+                    or revisada.turno_id != str(atual.get('id') or '')
+                    or revisada.texto_usuario != atual.get('texto_usuario')
+                    or revisada.fala_original != fala
+                    or revisada.principal_sha256 != hashlib.sha256(
+                        str(proposta_principal.resposta_bruta).encode('utf-8')).hexdigest()):
+                    return mental
+                novo['autoria_revisada_proposta'] = revisada
             from mente_laylay.cognicao.modelo_corporal import vincular_intencao_corporal
             intencao_corporal = vincular_intencao_corporal(atual, proposta_principal)
             if intencao_corporal:

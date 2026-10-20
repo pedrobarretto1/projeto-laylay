@@ -31,7 +31,7 @@ from mente_laylay.cognicao.modelo_corporal import formatar_realidade_corporal
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
-    montar_mensagens_reparo_comunicacao,
+    montar_pacote_reparo_comunicacao,
     compor_reparo_comunicacao,
     remover_autopercepcao_emocional_sem_evento,
 )
@@ -471,10 +471,34 @@ def preparar_resposta_para_execucao(
         enviar_mensagem=enviar_mensagem_cb,
     )
     contexto_com = dict(contexto_comunicacao or {})
+    plano_autoria = dict(contexto_com.get("plano_turno") or {})
+    if (callable(enviar_mensagem_cb) and plano_autoria.get("id")
+        and plano_autoria.get("texto_usuario") == str(texto_usuario or "").strip()
+        and plano_autoria.get("fundamentacao_factual")):
+        from mente_laylay.autonomia.contexto_resposta_ia import negociar_autoria_com_fontes
+        from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+        enviar_autoria_original = enviar_mensagem_cb
+
+        def enviar_com_fontes(mensagens: list[Mapping[str, Any]], **kwargs: Any) -> Any:
+            pacote = negociar_autoria_com_fontes(PacotePrompt(
+                tuple(dict(m) for m in mensagens),
+                contexto_fechado=bool(kwargs.get("_contexto_fechado")),
+                contrato_saida=kwargs.get("_contrato_saida")),
+                dict(plano_autoria["fundamentacao_factual"]), incluir_evidencia=True, plano_autoria=plano_autoria)
+            if pacote.contrato_saida.nome not in {"autoria_referenciada_v3", "autoria_por_ato_v4"}:
+                return enviar_autoria_original(mensagens, **kwargs)
+            kwargs["_contrato_saida"] = pacote.contrato_saida
+            kwargs["_reserva_saida_tokens"] = pacote.reserva_saida_tokens
+            kwargs["max_tokens"] = max(int(kwargs.get("max_tokens") or 0), pacote.reserva_saida_tokens)
+            return enviar_autoria_original(list(pacote.mensagens), **kwargs)
+
+        enviar_mensagem_cb = enviar_com_fontes
     realidade_corporal = formatar_realidade_corporal(contexto_com.get("modelo_corporal"))
     if realidade_corporal and callable(enviar_mensagem_cb):
         enviar_original = enviar_mensagem_cb
         def enviar_com_realidade_corporal(mensagens: list[Mapping[str, Any]], **kwargs: Any) -> Any:
+            if kwargs.get("_contexto_fechado"):
+                return enviar_original(mensagens, **kwargs)
             # Todas as reescritas consomem a mesma observação do host. Não
             # recuperam a proposta corporal nem escolhem outra intenção.
             mensagens = [dict(m) for m in mensagens]
@@ -487,6 +511,36 @@ def preparar_resposta_para_execucao(
         enviar_mensagem_cb = enviar_com_realidade_corporal
     registrar_log = log or print
     texto = str(texto_usuario or "").strip()
+    from mente_laylay.cognicao.suporte_autoria import (
+        capturar_autoria_revisada, montar_autoria_revisada,
+    )
+    captura_turno = (str(plano_autoria.get("id") or "")
+                     if plano_autoria.get("texto_usuario") == texto else "")
+    suporte_inicial = capturar_autoria_revisada(resposta_bruta, turno_id=captura_turno, texto_usuario=texto)
+    autoria_atual = (montar_autoria_revisada(resposta_bruta, suporte_inicial.fala_original, (suporte_inicial,))
+                     if suporte_inicial is not None else None)
+    ultima_autoria = None
+    reescrita_aceita = False
+    if captura_turno and callable(enviar_mensagem_cb):
+        enviar_capturado = enviar_mensagem_cb
+
+        def enviar_com_captura(mensagens: list[Mapping[str, Any]], **kwargs: Any) -> Any:
+            nonlocal ultima_autoria
+            ultima_autoria = None
+            bruto = enviar_capturado(mensagens, **kwargs)
+            ultima_autoria = capturar_autoria_revisada(bruto, turno_id=captura_turno, texto_usuario=texto)
+            return bruto
+
+        enviar_mensagem_cb = enviar_com_captura
+
+    def selecionar_autoria(fala: str, *, anterior: Any = None) -> None:
+        nonlocal autoria_atual, reescrita_aceita
+        partes = (ultima_autoria,)
+        if anterior is not None:
+            partes += anterior.partes
+        autoria_atual = montar_autoria_revisada(resposta_bruta, fala, partes)
+        reescrita_aceita = True
+
     bot_raw = resposta_bruta
     decodificacao_original = decodificar_resposta_da_ia(
         bot_raw, limpar_texto_fala_cb=limpar_texto_fala_cb,
@@ -588,6 +642,7 @@ def preparar_resposta_para_execucao(
             bot_raw, limpar_texto_fala_cb=limpar_texto_fala_cb,
             fallback_fala=fallback_fala,
         )
+        selecionar_autoria(fala_limpa)
     else:
         fala_limpa, comandos = decodificacao_original.como_legado()
     plano_comunicacao = dict(contexto_com.get("plano_turno") or {})
@@ -668,6 +723,7 @@ def preparar_resposta_para_execucao(
             )
             ainda_invalida = detectar_experiencia_pessoal_inventada(fala_reparada)
             if fala_reparada and not comandos_reparados and not ainda_invalida:
+                selecionar_autoria(fala_reparada)
                 fala_limpa = fala_reparada
                 bot_raw = json.dumps(
                     {"fala": fala_reparada, "comandos": []}, ensure_ascii=False,
@@ -892,13 +948,11 @@ def preparar_resposta_para_execucao(
         motivo_falha_reparo = "reparo_rejeitado"
         if not somente_consultiva and callable(enviar_mensagem_cb):
             try:
+                pacote_reparo = montar_pacote_reparo_comunicacao(
+                    texto, fala_limpa, avaliacao_comunicacao,
+                    plano=plano_comunicacao, mensagens=mensagens_comunicacao)
                 reparada_raw = enviar_mensagem_cb(
-                    montar_mensagens_reparo_comunicacao(
-                        texto,
-                        fala_limpa,
-                        avaliacao_comunicacao,
-                        mensagens=mensagens_comunicacao,
-                    ),
+                    list(pacote_reparo.mensagens),
                     _com_tools=False,
                     max_tokens=360,
                     modo_rapido=True,
@@ -906,6 +960,8 @@ def preparar_resposta_para_execucao(
                     _prioridade_interativa=True,
                     _tipo_chamada="reparo_comunicacao",
                     _classe_timeout="rapida",
+                    _contexto_fechado=pacote_reparo.contexto_fechado,
+                    _contrato_saida=pacote_reparo.contrato_saida,
                 )
                 reparo_modelo_indisponivel = _fala_representa_falha_tecnica_llm(
                     reparada_raw
@@ -917,6 +973,8 @@ def preparar_resposta_para_execucao(
                     limpar_texto_fala_cb=limpar_texto_fala_cb,
                     fallback_fala=fallback_fala,
                 )
+                candidata_autoral = candidata
+                autoria_anterior = autoria_atual if autoria_atual is not None and autoria_atual.fala_original == fala_limpa else None
                 candidata = compor_reparo_comunicacao(
                     fala_limpa, candidata, avaliacao_comunicacao,
                     plano=plano_comunicacao,
@@ -935,6 +993,13 @@ def preparar_resposta_para_execucao(
                     and segunda_avaliacao.get("aceita")
                 ):
                     fala_reparada = candidata
+                    if candidata == candidata_autoral:
+                        selecionar_autoria(candidata)
+                    elif (autoria_anterior is not None
+                          and candidata == candidata_autoral.strip() + " " + autoria_anterior.fala_original):
+                        selecionar_autoria(candidata, anterior=autoria_anterior)
+                    else:
+                        autoria_atual = None
                 elif candidata:
                     registrar_log(
                         "🧭 [COMUNICAÇÃO] reparo rejeitado | "
@@ -991,6 +1056,7 @@ def preparar_resposta_para_execucao(
                     entrada_usuario_repetida=entrada_usuario_repetida,
                 )
                 if avaliacao_autoral.get("aceita"):
+                    selecionar_autoria(autoria.fala)
                     fala_limpa = autoria.fala
                     comunicacao_autocorrigida = True
                     registrar_log(
@@ -1063,6 +1129,7 @@ def preparar_resposta_para_execucao(
             fallback_fala=fallback_fala,
         )
         if recuperacao.fala:
+            selecionar_autoria(recuperacao.fala)
             fala_limpa = recuperacao.fala
             registrar_log("🛟 [IA] Resposta refeita e concluída no mesmo turno.")
         else:
@@ -1117,4 +1184,6 @@ def preparar_resposta_para_execucao(
         emocao=emocao_resposta,
         nivel_emocao=nivel_emocao_resposta,
         extracao_original=decodificacao_original.extracao,
+        autoria_revisada_proposta=(autoria_atual if reescrita_aceita and autoria_atual is not None
+                                   and autoria_atual.fala_original == fala_limpa else None),
     ).como_dict()

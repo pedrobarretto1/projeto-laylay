@@ -154,6 +154,10 @@ class CoordenadorOportunidadesRuntime:
 
     @staticmethod
     def _assinatura_semantica(dados: Mapping[str, Any]) -> str:
+        from mente_laylay.autonomia.ocorrencia_observada import identidade_ocorrencia
+        ocorrencia = identidade_ocorrencia(dados)
+        if ocorrencia:
+            return f"{_codigo(dados.get('dominio'), 32)}:ocorrencia:{ocorrencia}"
         acao = dados.get("acao_proposta")
         if isinstance(acao, Mapping):
             intent = _codigo(acao.get("intent"), 48)

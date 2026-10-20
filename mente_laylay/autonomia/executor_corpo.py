@@ -7,12 +7,14 @@ from typing import Any, Callable
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
 from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
+from mente_laylay.memoria_mental.resultado_acao import AspectoResultado
 
 
 @dataclass(frozen=True, slots=True)
 class DependenciasExecutorCorpo:
     marcar_resultado: Callable[..., Any]
     falar_por_status: Callable[..., Any]
+    id_solicitacao: str = ""
 
 
 def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original: str,
@@ -22,10 +24,18 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
 
     def concluir(status: str, *, ok: bool, detalhe: str, fala: str, receipt: dict[str, Any] | None = None) -> ResultadoDespacho:
         executou = ok or (receipt or {}).get("aplicacao_pwm_confirmada") is True
+        aspectos = ()
+        if status == "falha_execucao" and receipt is not None and deps.id_solicitacao:
+            # O executor adapta campos observados; o verbalizador compartilhado
+            # não conhece protocolo corporal nem infere aspectos pelo texto.
+            aspectos = tuple(AspectoResultado(deps.id_solicitacao, escopo, receipt[chave],
+                f"receipt_corpo.{chave}") for chave, escopo in (
+                    ("aplicacao_pwm_confirmada", "comando elétrico dos motores"),
+                    ("parada_confirmada", "parada elétrica")) if type(receipt.get(chave)) is bool)
         deps.marcar_resultado(status, executou=executou, confirmado=ok, detalhe=detalhe,
             alvo_resolvido="corpo", params_resolvidos=params,
             contexto_resultado={"receipt_corpo": dict(receipt or {}), "prova_deslocamento": False},
-            evidencia_confirmacao=str((receipt or {}).get("evidencia") or ""))
+            evidencia_confirmacao=str((receipt or {}).get("evidencia") or ""), aspectos=aspectos)
         deps.falar_por_status(status, fala, alvo="corpo", executou=executou, confirmado=ok, detalhe=detalhe)
         return ResultadoDespacho.concluido(ok)
 

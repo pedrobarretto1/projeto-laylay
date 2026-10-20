@@ -26,7 +26,7 @@ from mente_laylay.personalidade.confirmacao_llm import (
     INTENTS_INFORMATIVOS, personalizar_confirmacao_composta_llm,
 )
 from mente_laylay.personalidade.planejador_resposta import (
-    classificar_resultado, fala_factual_resultados_compostos,
+    classificar_resultado, fala_factual_resultados_compostos, fala_resultado_por_aspectos,
 )
 
 
@@ -135,8 +135,9 @@ class OrquestradorFalaRuntime:
             # apresentação segue o snapshot mais recente do publicador.
             lote.resultados[indice] = receipt
         lote.contexto.update(dict(contexto or {}))
-        if receipt.intent in INTENTS_INFORMATIVOS:
-            lote.informacoes[receipt.id_solicitacao] = str(texto or "").strip()
+        if receipt.intent in INTENTS_INFORMATIVOS or receipt.aspectos:
+            lote.informacoes[receipt.id_solicitacao] = (fala_resultado_por_aspectos(receipt)
+                if receipt.aspectos else str(texto or "").strip())
         else:
             lote.informacoes.pop(receipt.id_solicitacao, None)
         return True
@@ -401,6 +402,8 @@ class OrquestradorFalaRuntime:
         nivel: int = 1,
     ) -> bool:
         """Entrega no máximo uma confirmação para o mesmo resultado do turno."""
+        if isinstance(resultado, ResultadoAcao) and resultado.aspectos:
+            texto = fala_resultado_por_aspectos(resultado)
         if self.acumular_resultado_operacional(resultado, texto, emocao, nivel):
             return True
         ns = self._ns()

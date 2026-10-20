@@ -1,0 +1,19 @@
+.F.                                                                      [100%]
+================================== FAILURES ===================================
+__________________ test_auto_sem_usb_usa_mesmo_corpo_na_rede __________________
+
+tmp_path = WindowsPath('C:/Users/pbarr/AppData/Local/Temp/pytest-of-pbarr/pytest-4031/test_auto_sem_usb_usa_mesmo_co0')
+
+    def test_auto_sem_usb_usa_mesmo_corpo_na_rede(tmp_path):
+        r = montar(tmp_path, {}, placa())
+        try:
+>           assert r.sincronizar(), r.diagnostico()
+E           AssertionError: {'configurado': True, 'conectado': False, 'sessao': '', 'transporte': 'serial', ...}
+E           assert False
+E            +  where False = sincronizar()
+E            +    where sincronizar = <mente_laylay.especialistas.rosto_oled_runtime.RostoOledRuntime object at 0x000001477D6CC980>.sincronizar
+
+scripts\tests\test_corpo_selecao_automatica.py:31: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_corpo_selecao_automatica.py::test_auto_sem_usb_usa_mesmo_corpo_na_rede
+1 failed, 2 passed in 1.11s

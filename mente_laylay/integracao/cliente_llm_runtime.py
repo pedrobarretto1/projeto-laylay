@@ -283,6 +283,22 @@ class ServicoModeloLLMRuntime:
         self.cliente = cliente
 
     def executar(self, pedido: PedidoModelo) -> ResultadoModelo:
+        # Essas rotas publicam redação para a pessoa, inclusive depois de uma
+        # rejeição principal. O tipo é contrato do chamador host; texto da IA
+        # não negocia formato nem transforma interpretação interna em autoria.
+        autoral_auxiliar = pedido.tipo_chamada in {
+            "reparo_comunicacao", "reparo_factual", "reparo_json", "autoria_operacional", "presenca_evento",
+        } or (pedido.tipo_chamada == "continuacao" and pedido.prioridade_interativa)
+        if autoral_auxiliar:
+            from dataclasses import replace
+            from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
+            from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+            pacote = exigir_suporte_no_pacote_autoral(PacotePrompt(
+                mensagens=pedido.mensagens, contexto_fechado=pedido.contexto_fechado,
+                reserva_saida_tokens=pedido.reserva_saida_tokens, contrato_saida=pedido.contrato_saida))
+            pedido = replace(pedido, mensagens=pacote.mensagens,
+                contrato_saida=pacote.contrato_saida, reserva_saida_tokens=pacote.reserva_saida_tokens,
+                max_tokens=max(pedido.max_tokens, pacote.reserva_saida_tokens))
         resultado = self.cliente.executar(self.preparador.preparar(pedido))
         if pedido.contrato_saida is None:
             return resultado

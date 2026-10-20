@@ -59,8 +59,15 @@ def test_instrucao_operacional_nao_vaza_para_conversa_ou_frame_alheio(controle):
         estado.clear()
     mensagens = [{"role": "user", "content": texto}]
     pacote = runtime.preparar_envio_modelo(mensagens, turno_id=turno_id)
-    assert list(pacote.mensagens) == mensagens
-    assert getattr(pacote, "reserva_saida_tokens", 0) == 0
+    if controle == "conversa":
+        # A autoria agora exige suporte também em conversa; o contrato de
+        # interpretação operacional continua sem vazar para este caso.
+        assert not any("INTERPRETAÇÃO POR ATO" in m.get("content", "") for m in pacote.mensagens)
+        assert pacote.mensagens[-1] == mensagens[-1]
+        assert "suporte_proposicoes" in pacote.contrato_saida.response_format["json_schema"]["schema"]["required"]
+    else:
+        assert list(pacote.mensagens) == mensagens
+        assert getattr(pacote, "reserva_saida_tokens", 0) == 0
 
 
 def test_candidato_de_emissao_nao_altera_protocolo_diario_por_padrao():
@@ -68,8 +75,10 @@ def test_candidato_de_emissao_nao_altera_protocolo_diario_por_padrao():
     runtime, estado = _prompt_para_turno(texto, candidato=False)
     mensagens = [{"role": "user", "content": texto}]
     pacote = runtime.preparar_envio_modelo(mensagens, turno_id=estado["turno_atual"]["id"])
-    assert list(pacote.mensagens) == mensagens
-    assert pacote.reserva_saida_tokens == 0
+    assert pacote.mensagens[-1] == mensagens[-1]
+    assert not any("INTERPRETAÇÃO POR ATO" in m.get("content", "") for m in pacote.mensagens)
+    assert "leitura_turno" not in pacote.contrato_saida.response_format["json_schema"]["schema"]["required"]
+    assert "suporte_proposicoes" in pacote.contrato_saida.response_format["json_schema"]["schema"]["required"]
 
 
 def proposta_ato(texto, trecho, *, operacao="abrir", tipo="app", alvo="Calculadora", dependencias=()):

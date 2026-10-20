@@ -139,6 +139,7 @@ class RespostaEventoRuntime:
         ao_concluir: Callable[[bool, str], Any] | None = None,
         ao_materializar_fala: Callable[[str], Any] | None = None,
         validar_vigencia: Callable[[], bool] | None = None,
+        admissao_observada: Any = None,
         **_contexto: Any,
     ) -> dict[str, Any]:
         leitura = dict(turno or {})
@@ -334,6 +335,13 @@ class RespostaEventoRuntime:
             opcoes_voz["preservar_ate_entrega"] = True
         elif contrato_fala.get("observacao_corporal"):
             tipo_porteiro = "presenca_corporal"
+            if admissao_observada is not None:
+                from mente_laylay.autonomia.ocorrencia_observada import AdmissaoReacaoObservada
+                if (not isinstance(admissao_observada,AdmissaoReacaoObservada)
+                        or admissao_observada.trace_id != evento_validado.get("trace_id")
+                        or not admissao_observada.vigente()):
+                    return {"status":"admissao_observada_invalida", "agendada":False,"autoriza_execucao":False}
+                opcoes_voz["admissao_observada"] = admissao_observada
         else:
             tipo_porteiro = (
                 "presenca_jogo"

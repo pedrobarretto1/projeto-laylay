@@ -1,0 +1,19 @@
+........................................................F............... [ 23%]
+........................................................................ [ 46%]
+........................................................................ [ 69%]
+........................................................................ [ 92%]
+........................                                                 [100%]
+================================== FAILURES ===================================
+___ test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo ___
+scripts\tests\test_companhia_corporal.py:235: in test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+    assert receipt["intent"] == "CORPO_COMPANHIA" and receipt["confirmado"] is True
+           ^^^^^^^^^^^^^^^^^
+E   KeyError: 'intent'
+---------------------------- Captured stdout call -----------------------------
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+⚠️ [FALA:AUTORIA] fallback local | motivo=modelo_sem_callback status=companhia_ativada
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_companhia_corporal.py::test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo
+1 failed, 311 passed in 112.90s (0:01:52)

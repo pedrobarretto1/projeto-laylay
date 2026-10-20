@@ -13,7 +13,7 @@ import json
 import re
 import time
 import unicodedata
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
 from mente_laylay.cognicao.geracao_concreta import (
@@ -650,6 +650,7 @@ def construir_contrato_semantico_fala(
     mente: Mapping[str, Any] | None = None,
     falas_recentes: Iterable[str] = (),
     explicacao_ocorrencia: Any = None,
+    recuperar_explicacao_ocorrencia: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Consolida contexto, continuidade e pareceres num contrato de fala."""
     leitura = dict(turno or {})
@@ -1075,14 +1076,29 @@ def construir_contrato_semantico_fala(
     if (leitura.get("modalidade") in {"deliberacao", "pergunta"}
         and leitura.get("autoriza_execucao") is False
         and not planejamento.get("requer_execucao") and not planejamento.get("comandos")):
+        from mente_laylay.memoria_mental.registro_semantico import recuperar_revisao_alegacao
+        if not metalinguagem and len(leitura.get("segmentos") or ()) <= 1:
+            revisao = recuperar_revisao_alegacao(estado.get("registro_semantico"), texto,
+                                               turno_id=str(resultado.get("turno_id") or ""))
+            if revisao is not None:
+                resultado["revisao_alegacao"] = revisao
+                return resultado
         from mente_laylay.memoria_mental.decisao_observada import ExplicacaoOcorrencia
         from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
-        from mente_laylay.cognicao.referencias_linguagem import referencia_explicacao_propria
-        referente_explicativo = referencia_explicacao_propria(texto)
+        from mente_laylay.cognicao.referencias_linguagem import referencia_explicacao_historica
+        referente_explicativo = referencia_explicacao_historica(texto)
         evidencia = recuperar_evidencia_da_fala(texto, estado)
         citacao_literal = any(len(_normalizar(f.get("fala", ""))) >= 8
             and _normalizar(f.get("fala", "")) in _normalizar(str(texto)) for f in evidencia.get("falas", []))
-        if evidencia and (citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia")):
+        from mente_laylay.cognicao.explicacao_fala_historica import consulta_historica_multipla
+        if consulta_historica_multipla(leitura,
+                fonte_identificada=explicacao_ocorrencia is not None or bool(evidencia)):
+            # A fonte do texto inteiro não prova cobertura de cada ato.
+            from mente_laylay.cognicao.explicacao_fala_historica import vincular_explicacoes_por_ato
+            resultado["explicacoes_historicas_por_ato"] = vincular_explicacoes_por_ato(
+                texto, turno=leitura, mente=estado, recuperar_ocorrencia=recuperar_explicacao_ocorrencia)
+        elif evidencia and referente_explicativo != "outro_agente" and (
+                citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia")):
             resultado["evidencia_fala_historica"] = evidencia
             resultado["texto_consulta_historica"] = str(texto or "").strip()
         elif explicacao_ocorrencia is not None:
@@ -1144,6 +1160,12 @@ def formatar_contrato_fala_para_prompt(
     dados = dict(contrato or {})
     if not dados:
         return ""
+    if "revisao_alegacao" in dados:
+        from mente_laylay.cognicao.explicacao_fala_historica import formatar_revisao_alegacao
+        return formatar_revisao_alegacao(dados)
+    if "explicacoes_historicas_por_ato" in dados:
+        from mente_laylay.cognicao.explicacao_fala_historica import formatar_explicacoes_por_ato
+        return formatar_explicacoes_por_ato(dados)
     if "explicacao_ocorrencia" in dados:
         from mente_laylay.cognicao.explicacao_fala_historica import formatar_explicacao_ocorrencia
         return formatar_explicacao_ocorrencia(dados)

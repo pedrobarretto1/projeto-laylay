@@ -355,6 +355,31 @@ def verificar_fala_turno(
     ultima_resposta: str = "",
     origem: str = "conversa",
 ) -> Dict[str, Any]:
+    """O mesmo juiz consome suporte declarado e mantém as demais guardas."""
+    from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
+
+    revisao = revisar_suporte_autoria(fala, plano=dict(plano or {}))
+    candidata = revisao.fala_realizada if revisao is not None and revisao.aplicar_limite else fala
+    resultado = _verificar_fala_turno_base(candidata, plano=plano, periodo=periodo,
+        ultima_resposta=ultima_resposta, origem=origem)
+    if revisao is not None:
+        resultado["revisao_suporte_autoria"] = revisao.como_dict()
+        if revisao.aplicar_limite:
+            resultado["problemas"] = list(dict.fromkeys([
+                *resultado.get("problemas", []), "suporte_declarado_sem_prova_semantica"]))
+            if resultado.get("aceita"):
+                resultado["acao"] = "ajustada"
+    return resultado
+
+
+def _verificar_fala_turno_base(
+    fala: str,
+    *,
+    plano: Dict[str, Any] | None,
+    periodo: str = "",
+    ultima_resposta: str = "",
+    origem: str = "conversa",
+) -> Dict[str, Any]:
     """Valida segurança e restringe a resposta ao alcance da evidência do turno."""
     contrato = dict(plano or {})
     texto_usuario = str(contrato.get("texto_usuario") or "")

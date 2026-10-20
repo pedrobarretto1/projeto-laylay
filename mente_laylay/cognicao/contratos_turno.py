@@ -288,6 +288,7 @@ class RespostaPreparadaTurnoDict(TypedDict, total=False):
     nivel_emocao: int
     proposta_principal: ContratoPropostaPrincipal
     extracao_original: ExtracaoRespostaIA
+    autoria_revisada_proposta: Any
 
 
 _CAMPOS_DECISAO = {
@@ -697,9 +698,14 @@ class ContratoRespostaTurno:
     nivel_emocao: int = 0
     proposta_principal: ContratoPropostaPrincipal | None = None
     extracao_original: ExtracaoRespostaIA | None = None
+    autoria_revisada_proposta: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fala", str(self.fala or "").strip())
+        from mente_laylay.cognicao.suporte_autoria import AutoriaRevisadaProposta
+        if (type(self.autoria_revisada_proposta) is not AutoriaRevisadaProposta
+            or self.autoria_revisada_proposta.fala_original != self.fala):
+            object.__setattr__(self, "autoria_revisada_proposta", None)
         object.__setattr__(self, "comandos", tuple(
             dict(item) for item in (self.comandos or ()) if isinstance(item, dict)
         ))
@@ -752,6 +758,8 @@ class ContratoRespostaTurno:
             dados["proposta_principal"] = self.proposta_principal
         if self.extracao_original is not None:
             dados["extracao_original"] = self.extracao_original
+        if self.autoria_revisada_proposta is not None:
+            dados["autoria_revisada_proposta"] = self.autoria_revisada_proposta
         if self.leitura_semantica_reparada:
             dados["leitura_semantica_reparada"] = deepcopy(dict(self.leitura_semantica_reparada))
         return dados
@@ -796,4 +804,5 @@ def normalizar_resposta_preparada(
         nivel_emocao=origem.get("nivel_emocao", 0),
         proposta_principal=origem.get("proposta_principal"),
         extracao_original=origem.get("extracao_original"),
+        autoria_revisada_proposta=origem.get("autoria_revisada_proposta"),
     )

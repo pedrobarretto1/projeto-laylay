@@ -1,0 +1,160 @@
+13:47:39.279  [SYSTEM]  Mente conectada  A interface e o núcleo estão sincronizados.
+13:47:35.841  [SYSTEM]  ╔══════════════════════════════════════╗
+13:47:35.842  [SYSTEM]  ║  ◕‿◕ Laylay inicializando          ║
+13:47:35.842  [SYSTEM]  ╚══════════════════════════════════════╝
+13:47:35.842  [SYSTEM]  🧠 [BUILD:MENTE] continuidade=pendencia-canonica-v1 arquivo=%USERPROFILE%\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\laylay.py
+13:47:35.842  [IA]  🧠 [VOZ ÚNICA] LLM autora da conversa | ativa=True
+13:47:36.096  [SYSTEM]  ✅ AppOpener carregado — abertura rápida de programas ativada!
+13:47:36.096  [SYSTEM]  🧠 [MENTE:CONEXOES] dominios compartilhados conectados
+13:47:36.103  [IA]  [VISÃO:GEMINI] modelo=gemini-3.1-flash-lite disponível=True
+13:47:36.206  [AUTONOMY]  🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+13:47:36.206  [AUTONOMY]  🧠 [IOT:MENTE] consulta_lista=prioritaria dispositivos=lampada_quarto,tomada_ventilador
+13:47:36.220  [SYSTEM]  [SERVICOS] Laylay-Preaquecimento-Neural-Comandos conectado a mente.
+13:47:36.220  [SYSTEM]  [SERVICOS] Laylay-Preaquecimento-LLM conectado a mente.
+13:47:36.223  [SYSTEM]  🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:60864 | sessão=ba710e67 pid=15072
+13:47:36.231  [SYSTEM]  🖥️ [TERMINAL 2] interface iniciada | sessão=ba710e67 pid=22092 python=python.exe arquivo=%USERPROFILE%\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+13:47:36.251  [IA]  🩺 [MENTE:SAUDE] agenda=saudavel | area_transferencia=saudavel | avatar=degradado faltando=processo_ou_widget_avatar | caixa_entrada=saudavel | central_notificacoes=saudavel | chrome_contexto=saudavel | ciclo_comandos=saudavel | estado_compartilhado=saudavel | execucao_intencao=saudavel | gmail=saudavel | iot=saudavel | llm=saudavel | memoria=saudavel | memoria_pessoas=saudavel | navegador=degradado faltando=chrome_ws_conectado | navegador_tipado=degradado faltando=chrome_ws_conectado | observador_area_transferencia=saudavel | orquestracao_cooperativa=saudavel | voz=saudavel
+13:47:36.290  [SYSTEM]  🧹 [SESSÃO] contexto transitório renovado | motivo=inicio_programa | ativa=True
+13:47:36.300  [SYSTEM]  🎵 [PLAYLISTS] Playlists carregadas: ['musica brasileira', 'anime', 'rock', 'persona', 'sofrencia brasileira', 'brisa da madrugada', 'kamaitachi', 'trap', 'devaneios', 'synthwave', 'classicos', 'vibes', 'alternativo', 'hip hop', 'terno rei', 'sendo sendo', 'rei do pop', 'favoritas', 'VMZ', 'yago', 'piano', 'novidades']
+13:47:36.301  [SYSTEM]  [SERVICOS] Laylay-SpeechQueue conectado a mente.
+13:47:36.433  [IA]  ⌨️ [CHAT] Hotkeys registradas: ctrl+shift+z (liga) | ctrl+f9 (desliga)
+13:47:36.512  [SYSTEM]  ⌨️ [BARRA] Atalho nativo registrado sem repassar ao jogo: f10
+13:47:36.513  [SYSTEM]  [SERVICOS] Laylay-WS conectado a mente.
+13:47:36.513  [SYSTEM]  [SERVICOS] Laylay-Gmail conectado a mente.
+13:47:36.514  [SYSTEM]  ⏰ [AGENDA] Thread de agendamentos iniciada.
+13:47:36.514  [SYSTEM]  [SERVICOS] Laylay-Agenda conectado a mente.
+13:47:36.514  [SYSTEM]  [ROTINA] Aprendizado de rotina iniciado - vai aprender em 7 dias
+13:47:36.515  [SYSTEM]  [SERVICOS] Laylay-Rotina conectado a mente.
+13:47:36.515  [SYSTEM]  📚 [ROTINA] 14 horários já aprendidos
+13:47:36.516  [SYSTEM]  [SERVICOS] Laylay-Porteiro conectado a mente.
+13:47:36.516  [SYSTEM]  🩺 [SAÚDE] Monitor de saúde iniciado (CPU/RAM/Temp + anti-falso-positivo)
+13:47:36.516  [SYSTEM]  [SERVICOS] Laylay-Saude conectado a mente.
+13:47:36.517  [SYSTEM]  [SERVICOS] Laylay-Ouvido conectado a mente.
+13:47:36.517  [SYSTEM]  [FEEDBACK ROTINA] 3 peso(s) carregado(s)
+13:47:36.517  [SYSTEM]  [SERVICOS] Laylay-Observador-Inventário-Jogo conectado a mente.
+13:47:36.518  [PRESENCE]  [SERVICOS] Laylay-Observador-Presença-Jogo conectado a mente.
+13:47:36.520  [PRESENCE]  [SERVICOS] Laylay-Diretor-Presença conectado a mente.
+13:47:36.520  [SYSTEM]  [SERVICOS] Laylay-Observador-Área-Transferência conectado a mente.
+13:47:36.521  [SYSTEM]  📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+13:47:36.522  [SYSTEM]  [SERVICOS] Laylay-Chat-Terminal conectado a mente.
+13:47:36.522  [SYSTEM]  [SERVICOS] Laylay-Monitor-Janelas conectado a mente.
+13:47:36.523  [SYSTEM]  [SERVICOS] Laylay-Companhia-Corporal conectado a mente.
+13:47:36.524  [SYSTEM]  [SERVICOS] Laylay-Rosto-OLED conectado a mente.
+13:47:36.524  [SYSTEM]  [SERVICOS] Laylay-Ritmo-Circadiano conectado a mente.
+13:47:36.525  [SYSTEM]  [SERVICOS] Laylay-Consciência-Temporal conectado a mente.
+13:47:36.525  [SYSTEM]  [SERVICOS] Laylay-Aprendizado conectado a mente.
+13:47:36.526  [SYSTEM]  ⚡ [INICIALIZAÇÃO] chat pronto em 275ms
+13:47:36.526  [SYSTEM]  [SERVICOS] Laylay-Inicializacao-Diferida conectado a mente.
+13:47:36.527  [SYSTEM]  📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+13:47:36.527  [SYSTEM]  🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+13:47:36.529  [SYSTEM]  🎮 [GAME BAR] ponte local aguardando o widget em 127.0.0.1:18766
+13:47:36.549  [SYSTEM]  🧠 [APRENDIZADO] chave=rotina_observada:13:00:laylay py - laylay - visual studio code | confiança=0.54 | status=candidata | contradições=0
+13:47:36.550  [SYSTEM]  ✨ [AVATAR] Laylay apareceu no canto da tela.
+13:47:36.551  [SYSTEM]  ✅ [INICIALIZAÇÃO] serviços completos em 300ms
+13:47:36.581  [SYSTEM]  🚀 WebSocket Server Chrome rodando em http://localhost:8080
+13:47:36.662  [SYSTEM]  🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+13:47:37.551  [SYSTEM]  🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+13:47:39.275  [SYSTEM]  🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=ba710e67
+13:47:40.564  [SYSTEM]  🧹 [SESSÃO] contexto transitório renovado | motivo=ativacao_chat | ativa=True
+13:47:40.564  [IA]  🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+13:47:40.628  [SYSTEM]  🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+13:47:42.360  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.95 | status=ativa | contradições=0
+13:47:43.365  [IA]  [turno-.]  🧠 [IA:PREAQUECIMENTO] modelo local pronto para o primeiro turno.
+13:47:44.517  [SYSTEM]  📧 [Gmail] Daemon iniciado — verificando a cada 1min
+13:47:44.517  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:47:51.566  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_bloqueada | confiança=0.56 | status=candidata | contradições=0
+13:47:51.601  [ROUTER]  🧠 [PLANO:EVENTO] tipo=presenca_companhia | execucao=False | proposta_comunicativa=True
+13:47:51.609  [SYSTEM]  🧠 [SELETOR:CONTEXTO] dominio=conversa | selecionados=[] | rejeitados=[]
+13:47:51.682  [IA]  🧠 [IA:PAYLOAD] mensagens=2 caracteres=6887 max_tokens=180 interativo=False
+13:47:55.430  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.95 | status=ativa | contradições=0
+13:47:56.124  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:47:57.122  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_rearmada | confiança=0.90 | status=ativa | contradições=0
+13:47:58.918  [IA]  🧠 [FALA PROATIVA] decisão do porteiro | tipo=presenca_corporal | acao=emitir | pontos=72
+13:47:58.918  [PRESENCE]  🧠 [PRESENÇA:EVENTO] status=agendada comandos_descartados=0
+13:47:58.919  [ROUTER]  🧠 [PLANO:EVENTO] fase=evento_concluido | resultado=agendada | plano_id=1792255671593548300
+13:47:58.919  [PRESENCE]  🧠 [PRESENÇA:PROPOSTA] dominio=corpo categoria=companhia status=agendada agendada=True emissao_confirmada=False
+13:48:00.050  [IA]  Resposta entregue  A fala final chegou à conversa.
+13:48:00.162  [IA]  Falando  Estado da mente · emoção calma.
+13:48:00.049  [IA]  ╭─ ◕‿◕ Laylay: Meu sensor frontal acabou de sentir algo a menos de 10 centímetros e não foi nada divertido.
+13:48:00.051  [IA]  ℹ️ [VOZ] Transporte neural atualizado para o endpoint atual da Microsoft.
+13:48:00.463  [IA]  ❌ [FALA] Erro no áudio: WSServerHandshakeError → 429, message='Invalid response status', url='[URL TTS omitida]'
+13:48:00.464  [IA]  ⚠️ [VOZ] texto preservado; não vou trocar a voz após a falha de áudio.
+13:48:00.745  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_bloqueada | confiança=0.91 | status=ativa | contradições=0
+13:48:03.530  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_rearmada | confiança=0.98 | status=ativa | contradições=0
+13:48:08.799  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:BORDA_SEM_RETORNO:protecao_rearmada | confiança=0.99 | status=ativa | contradições=0
+13:48:12.520  [SYSTEM]  🧠 [APRENDIZADO] chave=cooperacao:rosto_oled:corpo_motor | confiança=0.05 | status=enfraquecida | contradições=0
+13:48:12.568  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_execucao:rodas_suspensas:exploracao_avanco_suspensa_v1:0 | confiança=0.46 | status=candidata | contradições=0
+13:48:14.301  [ROUTER]  🧠 [PLANO:EVENTO] tipo=presenca_companhia | execucao=False | proposta_comunicativa=True
+13:48:14.310  [SYSTEM]  🧠 [SELETOR:CONTEXTO] dominio=conversa | selecionados=[] | rejeitados=[]
+13:48:14.378  [IA]  🧠 [IA:PAYLOAD] mensagens=2 caracteres=7102 max_tokens=180 interativo=False
+13:48:17.196  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_rearmada | confiança=0.91 | status=ativa | contradições=0
+13:48:20.196  [IA]  🧠 [FALA PROATIVA] descartada pelo porteiro | tipo=presenca_corporal | pontos=37 | motivos=['utilidade base 72', 'intervalo adaptativo de 120 segundos ainda ativo']
+13:48:20.196  [PRESENCE]  🧠 [PRESENÇA:EVENTO] status=bloqueada_porteiro comandos_descartados=0
+13:48:20.196  [ROUTER]  🧠 [PLANO:EVENTO] fase=evento_concluido | resultado=bloqueada_porteiro | plano_id=1792255694288798600
+13:48:20.197  [PRESENCE]  🧠 [PRESENÇA:PROPOSTA] dominio=corpo categoria=companhia status=bloqueada_porteiro agendada=False emissao_confirmada=False
+13:48:20.216  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.96 | status=ativa | contradições=0
+13:48:21.968  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_rearmada | confiança=0.92 | status=ativa | contradições=0
+13:48:34.312  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.96 | status=ativa | contradições=0
+13:48:40.417  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.97 | status=ativa | contradições=0
+13:48:46.274  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.97 | status=ativa | contradições=0
+13:48:52.228  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.97 | status=ativa | contradições=0
+13:48:56.131  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:48:58.803  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:busca_em_espera | confiança=0.98 | status=ativa | contradições=0
+13:48:59.806  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_sensorial:rodas_suspensas:OBSTACULO:protecao_rearmada | confiança=0.93 | status=ativa | contradições=0
+13:49:06.517  [SYSTEM]  [PORTEIRO] Thread do Porteiro do Chrome iniciada.
+13:49:07.727  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:49:18.688  [SYSTEM]  🧠 [APRENDIZADO] chave=cooperacao:rosto_oled:corpo_motor | confiança=0.05 | status=enfraquecida | contradições=0
+13:49:18.740  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_execucao:rodas_suspensas:exploracao_curva_suspensa_v2:1 | confiança=0.62 | status=candidata | contradições=0
+13:50:07.742  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:50:13.432  [SYSTEM]  🧠 [APRENDIZADO] chave=cooperacao:rosto_oled:corpo_motor | confiança=0.05 | status=enfraquecida | contradições=0
+13:50:14.155  [SYSTEM]  ⚠️ [MENTE:FALHA] corpo_motor:gesto_nao_confirmado | classe=defeito | impacto=servico
+13:50:14.180  [SYSTEM]  🧠 [APRENDIZADO] chave=corpo_execucao:rodas_suspensas:explorar_frase_v3:2 | confiança=0.77 | status=ativa | contradições=0
+13:50:17.462  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:51:17.484  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:51:27.187  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:52:27.201  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:52:36.655  [SYSTEM]  🧠 [APRENDIZADO] chave=rotina_observada:13:00:chatgpt | confiança=0.79 | status=ativa | contradições=0
+13:52:36.826  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:53:36.853  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:53:46.949  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:53:47.688  [AUTONOMY]  [Chrome] Extensao conectada! Total: 1
+13:53:47.689  [SYSTEM]  📥 [DEBUG Chrome] tipo=EXTENSION_HELLO action=
+13:53:47.694  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:47.694  [SYSTEM]  🧠 [CTX] Aba Ativa -> [Prime Video: assista a filmes, séries, esportes e TV ao vivo] https://www.primevideo.com/storefront
+13:53:47.709  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:48.020  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:48.299  [SYSTEM]  🧠 [CTX] Navegação: Abrir o ChatGPT para desktop | https://chatgpt.com/codex/open-app
+13:53:48.988  [SYSTEM]  🧠 [CTX] Navegação: WhatsApp Web | https://web.whatsapp.com
+13:53:50.336  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:50.336  [SYSTEM]  🧠 [CTX] Aba Ativa -> [YouTube] https://www.youtube.com
+13:53:50.768  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:51.321  [SYSTEM]  🧠 [CTX] Navegação: Prime Video: assista a filmes, séries, esportes e TV ao vivo | https://www.primevideo.com/storefront
+13:53:52.952  [SYSTEM]  🧠 [CTX] Navegação: YouTube | https://www.youtube.com
+13:53:53.153  [SYSTEM]  🧠 [CTX] Navegação: Abrir o ChatGPT para desktop | https://chatgpt.com/codex/open-app
+13:53:54.543  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:54.547  [SYSTEM]  🧠 [CTX] Aba Ativa -> [YouTube] https://www.youtube.com
+13:53:54.696  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:54.697  [SYSTEM]  🧠 [CTX] Aba Ativa -> [(1900) YouTube] https://www.youtube.com
+13:53:56.545  [SYSTEM]  🧠 [CTX] Navegação: Abrir o ChatGPT para desktop | https://chatgpt.com/codex/open-app
+13:53:56.562  [SYSTEM]  🧠 [CTX] Navegação: ChatGPT | https://chatgpt.com/settings/billing
+13:53:56.962  [SYSTEM]  🧠 [CTX] Clique: video
+13:53:57.006  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:57.006  [SYSTEM]  🧠 [CTX] Aba Ativa -> [(1900) YouTube] https://www.youtube.com/watch
+13:53:59.069  [SYSTEM]  📥 [DEBUG Chrome] tipo= action=active_tab_changed
+13:53:59.069  [SYSTEM]  🧠 [CTX] Aba Ativa -> [(1900) Falling In Reverse - "Carry On" - YouTube] https://www.youtube.com/watch
+13:54:03.896  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:54:36.063  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:54:46.957  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:54:57.940  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:55:00.795  [SYSTEM]  🧠 [CTX] idle: {'idleMs': 63829, 'url': 'https://www.youtube.com/watch?v=AKHSWvmiwP8&list=RDAKHSWvmiwP8&start_radio=1', 'title': '(1900) Falling In Reverse - "Carry On" - YouTube'}
+13:55:08.947  [SYSTEM]  ⚠️ [LETRAS:LRCLIB] consulta indisponível | tipo=HTTPError
+13:55:47.181  [SYSTEM]  🧠 [CTX] idle: {'idleMs': 113758, 'url': 'https://chatgpt.com/settings/billing', 'title': 'Configurações'}
+13:55:47.187  [SYSTEM]  🧠 [CTX] idle: {'idleMs': 119402, 'url': 'https://chatgpt.com/codex/open-app?source=login&app_brand=chatgpt', 'title': 'Abrir o ChatGPT para desktop'}
+13:55:47.192  [SYSTEM]  🧠 [CTX] idle: {'idleMs': 118970, 'url': 'https://web.whatsapp.com/', 'title': '(1) WhatsApp'}
+13:55:47.197  [SYSTEM]  🧠 [CTX] idle: {'idleMs': 111821, 'url': 'https://chatgpt.com/codex/open-app', 'title': 'Abrir o ChatGPT para desktop'}
+13:55:57.962  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:55:59.460  [SYSTEM]  ⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror
+13:56:08.810  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:57:08.827  [SYSTEM]  📧 [Gmail] Verificando caixa de entrada...
+13:57:19.019  [SYSTEM]  📧 [Gmail] 20 não lidos, nenhum novo para anunciar
+13:57:36.736  [SYSTEM]  🧠 [APRENDIZADO] chave=rotina_observada:13:00:laylay terminal 3 0 ba710e67 | confiança=0.54 | status=candidata | contradições=0

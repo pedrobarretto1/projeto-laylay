@@ -28,6 +28,7 @@ from mente_laylay.arquivos.nome_natural import (
 )
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
+    PADRAO_COORDENACAO_OPERACIONAL,
     corrigir_erros_portugues_operacionais,
     remover_conector_discursivo_inicial,
     texto_discute_evidencia_textual,
@@ -74,7 +75,10 @@ def _condicoes_nao_verificadas(texto: str) -> tuple[re.Match[str], ...]:
             anterior = texto[:m.start()].rstrip()
             if anterior and not (
                 anterior[-1] in ",;.!"
-                or re.search(r"\b(?:e|mas|ent[aã]o)$", anterior, re.IGNORECASE)
+                or re.search(
+                    rf"\b(?:{PADRAO_COORDENACAO_OPERACIONAL}|mas)$",
+                    anterior, re.IGNORECASE,
+                )
             ):
                 continue
         if not any(inicio < m.start() < fim for inicio, fim in pares.items()):
@@ -1721,7 +1725,7 @@ def _segmentar_turno_misto(
             corte = None
             pares_aspas = mapear_pares_aspas_globais(atual) or {}
             for m in re.finditer(
-                r"\s+(?P<conj>e|mas|entao)\s+",
+                rf"\s+(?P<conj>{PADRAO_COORDENACAO_OPERACIONAL}|mas)\s+",
                 atual,
                 flags=re.IGNORECASE,
             ):

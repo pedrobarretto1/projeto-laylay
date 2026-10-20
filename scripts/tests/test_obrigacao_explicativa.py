@@ -98,7 +98,16 @@ def test_obrigacao_independe_de_habilidade_referente_ou_receipt_recente(texto):
     "Explique por que o arquivo não abriu.", "Qual música você escolhe?",
 ])
 def test_pergunta_geral_outro_ator_hipotese_futuro_ou_citacao_preserva_contrato(texto):
-    assert "explicacao_ocorrencia" not in contrato_sem_fonte(texto)["contrato_fala"]
+    p = contrato_sem_fonte(texto)
+    if texto in {"Por que eu apaguei esse arquivo?", "Por que ela reagiu daquele jeito?", "O que me levou a fazer isso?"}:
+        # O contrato novo conserva a pergunta sobre outro agente sem torná-la
+        # autobiografia da Laylay. Ausência de obrigação não era a proteção.
+        f = p["contrato_fala"]["explicacao_ocorrencia"]
+        assert f.referencia == "ausente" and not f.episodios
+        a = avaliar_fala_historica("Eu fiz isso por uma rotina.", plano=p)
+        assert "outra pessoa ou de um grupo" in a["fala"] and a["autoriza_execucao"] is False
+    else:
+        assert "explicacao_ocorrencia" not in p["contrato_fala"]
 
 
 @pytest.mark.parametrize("modalidade,autoriza,comandos", [

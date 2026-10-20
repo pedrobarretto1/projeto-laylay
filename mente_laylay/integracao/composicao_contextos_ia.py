@@ -7,6 +7,7 @@ import urllib.parse
 from typing import Any, Callable, Mapping
 
 from mente_laylay.autonomia.contexto_resposta_ia import criar_contexto_prompt_runtime
+from mente_laylay.memoria_mental.registro_semantico import formatar_revisoes_alegacoes
 from mente_laylay.autonomia.execucao_ia import criar_contexto_exec_runtime
 from mente_laylay.integracao.contexto_execucao_ia import (
     criar_contexto_dispatcher_runtime,
@@ -246,12 +247,14 @@ class ComposicaoContextosIARuntime:
             "aba_url_atual": url,
             "turno_atual": dict(mente.get("turno_atual") or {}),
             "contrato_fala_atual": dict(mente.get("contrato_fala_atual") or {}),
+            "plano_turno_atual": dict(mente.get("plano_turno_atual") or {}),
             # Mesma fonte histórica do prompt normal, sem expor a memória
             # inteira ou usar o último receipt como prova da fala anterior.
             "registro_semantico": {"falas_observadas": list(
                 dict(mente.get("registro_semantico") or {}).get("falas_observadas") or []
             )},
             "ultima_resposta": str(mente.get("ultima_resposta") or ""),
+            "revisoes_alegacoes_prompt": formatar_revisoes_alegacoes(mente),
             "continuidade_fala_ts": mente.get("continuidade_fala_ts"),
             "fundamentacao_factual_turno": dict(
                 mente.get("fundamentacao_factual_turno") or {}

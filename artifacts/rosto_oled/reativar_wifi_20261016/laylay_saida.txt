@@ -1,0 +1,24 @@
+  ║  ◕‿◕ Laylay inicializando          ║
+✅ AppOpener carregado — abertura rápida de programas ativada!
+🏠 [IOT:INICIO] modo=tuya dispositivos=tomada_ventilador,lampada_quarto
+🖥️ [TERMINAL 2] ponte ativa em 127.0.0.1:64862 | sessão=9a27dd21 pid=26844
+🖥️ [TERMINAL 2] interface iniciada | sessão=9a27dd21 pid=8296 python=python.exe arquivo=C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\cliente\terminal_laylay_2.py
+📋 [CLIPBOARD:OBSERVADOR] ativo | modo=sugestao intervalo=1s estabilidade=3s
+🧠 [REDE ASSOCIATIVA] modo=continuidade | influência=continuidade
+📋 [CLIPBOARD:INÍCIO] serviço=ativo modo=sugestao
+🚀 WebSocket Server Chrome rodando em http://localhost:8080
+🎙️ [OUVIDO] Calibrando o ruído ambiente por 1.0 segundo...
+🎙️ [OUVIDO:NÍVEL] calibrado ruído=0.0001 início_de_fala=0.0120
+🖥️ [TERMINAL 2:PONTE] sessão autenticada | sessão=9a27dd21
+🗨️ [CHAT] conversa aberta sem repetir a saudação recente | origem=terminal_2
+🎙️ [OUVIDO] Pausado enquanto o modo chat está ativo.
+
+💬 Você:
+> 🖥️ [TERMINAL 2:CLIENTE] snapshot autenticado | sessão=9a27dd21
+⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror
+⚠️ [MENTE:FALHA] rosto_oled:sincronizacao_tcp | classe=degradacao | impacto=servico | tipo=timeouterror | 1 repetição(ões) anterior(es) suprimida(s)
+⚠️ [AVATAR] A janela foi fechada; a Laylay continua funcionando.
+╭─ ◕‿◕ Laylay: Teus emails estão pedindo um ritmo mais leve: chegou um aviso importante de LinkedIn: Você tem 2 mensagens novas.
+
+💬 Você:
+> 

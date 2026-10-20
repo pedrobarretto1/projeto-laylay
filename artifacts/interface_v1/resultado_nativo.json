@@ -1,0 +1,68 @@
+{
+  "plataforma": "windows",
+  "capturas": [
+    {
+      "arquivo": "inicio-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "musica-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "sistema-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "configuracoes-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "memoria-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "automacao-nativo.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "ilha-nativa.png",
+      "largura": 302,
+      "altura": 76
+    },
+    {
+      "arquivo": "painel-nativo.png",
+      "largura": 450,
+      "altura": 700
+    },
+    {
+      "arquivo": "conversa-nativa.png",
+      "largura": 1440,
+      "altura": 900
+    },
+    {
+      "arquivo": "conversa-768.png",
+      "largura": 768,
+      "altura": 800
+    },
+    {
+      "arquivo": "conversa-375.png",
+      "largura": 375,
+      "altura": 667
+    }
+  ],
+  "ponte_autenticada": true,
+  "dashboard_real_psutil": true,
+  "mente_iniciada": false,
+  "microfone_iniciado": false,
+  "efeitos_externos": false,
+  "envios_texto": 1,
+  "erros_qt": [],
+  "preferencias_pessoais_alteradas": false
+}

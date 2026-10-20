@@ -975,7 +975,7 @@ def personalizar_confirmacao_composta_llm(
     )
     from mente_laylay.cognicao.validacao_contrato_fala import validar_aderencia_contrato_fala
     from mente_laylay.personalidade.planejador_resposta import (
-        classificar_resultado, fala_factual_resultados_compostos,
+        classificar_resultado, fala_factual_resultados_compostos, fala_resultado_por_aspectos,
     )
 
     itens = tuple(resultados)
@@ -1001,6 +1001,9 @@ def personalizar_confirmacao_composta_llm(
         return _com_motivo_fallback(fallback, "nucleo_sem_verificador")
     retrato = dict(contexto or {})
     informacoes = dict(informacoes or {})
+    for item in itens:
+        if item.aspectos:
+            informacoes[item.id_solicitacao] = fala_resultado_por_aspectos(item)
     if humor_bloqueado_por_preferencia(retrato) and not conversa:
         return fallback
     if not callable(enviar_mensagem) or (not conversa and (not _ativada() or retrato.get("modo_jogo_ativo"))):
@@ -1204,7 +1207,10 @@ def personalizar_confirmacao_composta_llm(
                 if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
                     return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
             literal = informacoes.get(identidade, "")
+            if item.aspectos and trecho.rstrip(" .;") != fala_resultado_por_aspectos(item).rstrip(" .;"):
+                return _com_motivo_fallback(fallback, "aspectos_compostos_alterados")
             motivo = (
+                "" if item.aspectos else
                 "informacao_composta_omitida" if literal and literal not in trecho else
                 "" if literal else _motivo_contrato_invalido(
                     trecho, resultado=item, classe=classe,

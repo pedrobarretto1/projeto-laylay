@@ -44,6 +44,7 @@ from cliente.terminal_2.acabamento import (
 from cliente.terminal_2.playlist_detalhe import PlaylistDetalhe
 from cliente.terminal_2.sistema_compacto import CardSistemaCompacto
 from cliente.terminal_2.theme import qss_music_preset
+from cliente.terminal_2.theme.v1 import qss_pagina_v1
 
 
 def _tempo(segundos: object) -> str:
@@ -329,7 +330,7 @@ class CartaoPlaylist(QFrame):
         layout.addWidget(self.play)
         self.corpo.clicked.connect(self.abrir_solicitado)
         self.play.clicked.connect(self.tocar_solicitado)
-        self.setStyleSheet(qss_music_preset())
+        self.setStyleSheet(qss_music_preset() + qss_pagina_v1("musica"))
 
     def click(self) -> None:
         """Compatibilidade de automação: click programático continua sendo Play."""
@@ -1473,6 +1474,10 @@ class PaginaMusicaM1(QWidget):
         # SISTEMA
         # =========================================================
         self.sistema = CardSistemaCompacto(legado="musica")
+        # Compatibilidade da projeção de telemetria, fora da apresentação musical.
+        # O parent explícito evita uma janela órfã ao retirar o card do layout.
+        self.sistema.setParent(self.barra_lateral)
+        self.sistema.hide()
         self.sistema_valores = self.sistema.sistema_valores
         self.sistema_barras = self.sistema.sistema_barras
 
@@ -1764,7 +1769,6 @@ class PaginaMusicaM1(QWidget):
         # ADICIONA NO PAINEL
         # =========================================================
         for cartao in (
-            self.sistema,
             self.audicao,
             self.rotinas,
             self.luzes,

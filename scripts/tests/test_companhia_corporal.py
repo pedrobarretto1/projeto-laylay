@@ -225,10 +225,13 @@ def test_composicao_instalada_ativa_por_fala_aprende_receipt_e_conhece_modo(monk
     assert target.func.__self__ is corpo.companhia
     ciclo = root._composicao_ciclo_comandos_runtime.ciclo
     texto = "ative modo companhia na bancada"
-    estado.atualizar_campos("mental", turno_atual=classificar_modalidade_turno(texto))
+    root._iniciar_planejamento_turno(texto, origem="teste_companhia")
     pedido, rota = ciclo.resolver_comando_natural(texto, "teste_companhia")
     assert pedido and pedido["intent"] == "CORPO_COMPANHIA", rota
     assert not corpo.diagnostico()["autonomia_ativada"]
+    # Esta fixture não inicia o heartbeat contínuo do transporte. A sessão
+    # deve ter um ACK real recente depois do preparo completo do turno.
+    assert rosto.sincronizar()
     assert ciclo.executar_intencao(pedido, texto)
     assert corpo.diagnostico()["autonomia_ativada"] and not motores(esp)
     receipt = estado.obter_copia("mental", "ultima_acao_contrato", {})
