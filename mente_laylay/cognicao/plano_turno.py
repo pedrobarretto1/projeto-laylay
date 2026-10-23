@@ -356,6 +356,16 @@ def verificar_fala_turno(
     origem: str = "conversa",
 ) -> Dict[str, Any]:
     """O mesmo juiz consome suporte declarado e mantém as demais guardas."""
+    from mente_laylay.cognicao.estado_tecnico_llm import realizacao_falha_principal, realizacao_falha_resposta
+    falha_secundaria = realizacao_falha_resposta(plano)
+    falha = falha_secundaria or realizacao_falha_principal(plano)
+    if falha and str(fala or "").strip() == falha:
+        # Esta realização exata descreve a emissão negativa do serviço. Não é
+        # uma resposta opinativa da IA para rever, nem uma ação para confirmar.
+        return {"aceita": True, "fala": falha, "acao": "aceita", "problemas": [],
+                "pontuacao": 1.0, "autoriza_execucao": False,
+                "conclusao": ("falha_resposta_observada_verificada" if falha_secundaria
+                              else "falha_geracao_principal_verificada")}
     from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
 
     revisao = revisar_suporte_autoria(fala, plano=dict(plano or {}))

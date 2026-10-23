@@ -26,8 +26,13 @@ from mente_laylay.autonomia.governanca_cooperacao import GovernancaPlanoCooperat
 
 
 from mente_laylay.autonomia.executor_cooperacao import ExecutorPlanoCooperativoRuntime
+from mente_laylay.cognicao.contratos_turno import ContratoOcorrenciaTurno
+from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_turno
+from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
 from mente_laylay.memoria_mental.resultado_acao import (
     interpretar_tratamento_operacional,
+    ResultadoAcao,
+    normalizar_resultado_acao,
 )
 
 
@@ -57,6 +62,9 @@ class OrquestradorCooperativoRuntime:
         registrar_continuidade: Callable[[Mapping[str, Any], str], Any] | None = None,
         autorizar_acao: Callable[..., Mapping[str, Any]] | None = None,
         executor_plano: ExecutorPlanoCooperativoRuntime | None = None,
+        anunciar_etapa: Callable[..., Any] | None = None,
+        executar_intencao_observando: Callable[..., ExecucaoObservada] | None = None,
+        publicar_resultado: Callable[[ResultadoAcao, str], Any] | None = None,
         log: Callable[[str], Any] = print,
     ) -> None:
         self.quadro = quadro
@@ -69,6 +77,9 @@ class OrquestradorCooperativoRuntime:
         self.planejar_layout = planejar_layout
         self.detectar_visao_jogo = detectar_visao_jogo
         self.estado_getter = estado_getter
+        self.anunciar_etapa = anunciar_etapa
+        self.executar_intencao_observando = executar_intencao_observando
+        self.publicar_resultado = publicar_resultado
         self.pendencia_runtime = pendencia_runtime
         self.classificar_confirmacao_contextual = classificar_confirmacao_contextual
         self.registrar_aprendizado = registrar_aprendizado
@@ -1019,6 +1030,30 @@ class OrquestradorCooperativoRuntime:
         hash_conteudo = str(metadados.get("hash_conteudo") or "")
         nome = str(metadados.get("nome") or "")
         pasta = str(metadados.get("pasta") or "")
+        estado_inicial = dict(self.estado_getter() or {})
+        ocorrencia = ContratoOcorrenciaTurno(
+            (estado_inicial.get("turno_atual") or {}).get("id"), texto,
+        )
+        receipts_finais: list[ResultadoAcao] = []
+
+        def ocorrencia_vigente() -> bool:
+            estado = dict(self.estado_getter() or {})
+            return not motivo_divergencia_ocorrencia_turno(
+                ocorrencia, turno=estado.get("turno_atual"),
+                plano=estado.get("plano_turno_atual"), retrato=estado.get("retrato_turno_atual"),
+            )
+
+        def vigente() -> bool:
+            atual = self.quadro.obter_plano(plano_id) or {}
+            return (ocorrencia_vigente() and atual.get("estado") == "executando"
+                    and not atual.get("cancelamento_solicitado"))
+
+        def anunciar(plano_atual: Mapping[str, Any], etapa: Mapping[str, Any]) -> None:
+            if callable(self.anunciar_etapa):
+                self.anunciar_etapa(plano_atual, {
+                    **etapa, "descricao_progresso": "Vou preparar um arquivo com o texto copiado e conferir o conteúdo.",
+                }, vigente=vigente)
+
         def executar_arquivo(
             _etapa: Mapping[str, Any], _plano_atual: Mapping[str, Any],
         ) -> Mapping[str, Any]:
@@ -1044,6 +1079,27 @@ class OrquestradorCooperativoRuntime:
                     "plano_cooperativo_id": plano_id,
                 },
             }
+            if callable(self.executar_intencao_observando):
+                if callable(self.publicar_resultado):
+                    # A mesma porta canônica usada por ações com apresentação
+                    # coordenada: efeito publica receipt, coordenador conclui.
+                    resultado["params"]["_execucao_silenciosa"] = True
+                observada = self.executar_intencao_observando(resultado, texto)
+                receipts = ([p.como_dict() for p in observada.publicacoes]
+                            if type(observada) is ExecucaoObservada
+                            and observada.turno_id == ocorrencia.turno_id
+                            and observada.publicacao_recente() else [])
+                receipt = next((r for r in reversed(receipts)
+                    if r.get("intent") == "CREATE_FILE"
+                    and (r.get("params") or {}).get("plano_cooperativo_id") == plano_id), {})
+                confirmou = (receipt.get("confirmado") is True
+                    and receipt.get("status") == "arquivo_criado"
+                    and self._hash_arquivo(str(metadados.get("caminho") or "")) == hash_conteudo)
+                if receipt:
+                    receipts_finais.append(normalizar_resultado_acao(receipt))
+                return {"ok": confirmou, "confirmado": confirmou,
+                    "status": str(receipt.get("status") or "receipt_da_invocacao_ausente"),
+                    "evidencia": "arquivo_existente_e_hash_confirmado" if confirmou else ""}
             retorno = self.executar_intencao(resultado, texto)
             tratado = interpretar_tratamento_operacional(
                 resultado,
@@ -1068,18 +1124,29 @@ class OrquestradorCooperativoRuntime:
             plano_id,
             {"criar_arquivo": executar_arquivo},
             contexto_execucao={"texto": texto, "confirmado": bool(sobrescrever)},
+            antes_da_etapa=anunciar if callable(self.anunciar_etapa) else None,
+            etapa_vigente=vigente if callable(self.anunciar_etapa) else None,
         )
         plano_final = self.quadro.obter_plano(plano_id) or plano
         if resumo.get("ok"):
             self._consumir_referencia_plano(plano_final)
+            if callable(self.publicar_resultado) and receipts_finais and ocorrencia_vigente():
+                self.publicar_resultado(receipts_finais[-1], "Criei o arquivo com o texto copiado e conferi o conteúdo.")
         else:
             status = str(resumo.get("status") or "nao_confirmado")
             if resumo.get("estado") == "expirado":
                 self._consumir_referencia_plano(plano_final)
-                self.falar(
-                    "A referência temporária ao texto expirou. Copie novamente antes de eu criar o arquivo.",
-                    "calma", 1,
-                )
+            if not callable(self.anunciar_etapa) or ocorrencia_vigente():
+                mensagem = ("O objetivo foi cancelado. A gravação já iniciada foi confirmada."
+                    if resumo.get("estado") == "cancelado" and receipts_finais
+                    and receipts_finais[-1].confirmado is True else
+                    "O objetivo foi cancelado. Não confirmei a gravação do arquivo."
+                    if resumo.get("estado") == "cancelado" else
+                    "Não consegui concluir a gravação e conferência do arquivo.")
+                if callable(self.publicar_resultado) and receipts_finais and receipts_finais[-1].confirmado is False:
+                    self.publicar_resultado(receipts_finais[-1], mensagem)
+                else:
+                    self.falar(mensagem, "calma", 1)
         return True
 
     def _processar_pendencia(self, texto: str) -> bool:
@@ -1210,7 +1277,8 @@ class OrquestradorCooperativoRuntime:
                 {
                     "ordem": 2, "habilidade": "arquivos", "acao": "criar_arquivo",
                     "intent": "CREATE_FILE",
-                    "depende_de": [1], "estado": "proposto", "orcamento_ms": 5_000,
+                    "depende_de": [1], "estado": "proposto",
+                    "orcamento_ms": 20_000 if callable(self.anunciar_etapa) else 5_000,
                     "idempotente": True, "politica_falha": "interromper",
                     "evidencia_esperada": "arquivo_existente_e_hash_confirmado",
                 },
@@ -1218,7 +1286,7 @@ class OrquestradorCooperativoRuntime:
             confianca=float(intencao.get("confianca") or 0.0),
             risco="baixo",
             autorizacao="explicita_no_pedido",
-            orcamento_total_ms=8_000,
+            orcamento_total_ms=20_000 if callable(self.anunciar_etapa) else 8_000,
             politica_falha_parcial="interromper",
             metadados={
                 "fluxo": "clipboard_para_arquivo",

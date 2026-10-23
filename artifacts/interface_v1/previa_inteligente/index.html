@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; media-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Laylay · Prévia do Início inteligente</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='4' width='26' height='25' rx='10' fill='%23c1a3f2'/%3E%3Cpath d='M10 14v4m12-4v4' stroke='%233a2454' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css"><link rel="stylesheet" href="assets/mascote.css">
+<link rel="stylesheet" href="assets/readability.css">
+</head>
+<body>
+<header class="bench"><a href="#" class="bench-brand">laylay <span>estúdio de interface</span></a><div class="preview-badge"><i></i> Prévia · dados de exemplo</div><div class="bench-actions"><button id="replay">Rever entrada</button><button id="explore">Explorar abas <span>↗</span></button></div></header>
+<main id="desktop" aria-label="Área de demonstração da ilha">
+<div class="desktop-caption"><span>UMA PRESENÇA MAIS SUA</span><h1>Por perto.<br>Do seu jeito.</h1><p>Um Início que acompanha seus hábitos.<br>Uma Laylay mais agradável em cada detalhe.</p></div>
+<section id="island" class="island compact entering" aria-label="Janela de prévia da Laylay">
+<button id="compact" class="compact-body" aria-label="Expandir a ilha da Laylay"><span id="compact-mascot"></span><strong>Laylay</strong><span class="compact-state">Por aqui</span><i class="live-dot"></i><span class="chevron">⌄</span></button>
+<div id="expanded" hidden>
+<header class="window-head" id="drag-handle"><div class="wordmark">laylay <span>por perto</span></div><div class="head-right"><span class="demo-label">PRÉVIA</span><button class="icon-button" id="collapse" title="Recolher ilha" aria-label="Recolher ilha">−</button></div></header>
+<div class="window-body"><nav id="navigation" aria-label="Abas da Laylay"></nav><div class="main-column"><div class="context-bar"><span id="breadcrumb">Laylay <b>›</b> Início</span><span class="context-state"><i class="live-dot"></i> Demonstração local</span></div><div id="page" tabindex="-1"></div><footer class="window-foot"><span>Seu espaço, no seu tempo.</span><span>Sem conexão com a Laylay real</span></footer></div></div>
+</div>
+</section>
+<div class="desktop-hint" id="desktop-hint">Clique para abrir · arraste para experimentar outra posição</div>
+</main>
+<footer class="controls"><label class="check"><input id="stay-open" type="checkbox" checked> Manter aberta na prévia</label><label class="check"><input id="reduce-motion" type="checkbox"> Reduzir movimento</label><span>Tudo aqui é demonstrativo. Sua interface oficial permanece intacta.</span></footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<dialog id="reason"><form method="dialog"><span class="eyebrow">TRANSPARÊNCIA</span><h2>Por que apareceu?</h2><p id="reason-copy"></p><button class="primary">Entendi</button></form></dialog>
+<script src="assets/preview.js"></script>
+</body></html>

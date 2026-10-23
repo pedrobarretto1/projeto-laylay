@@ -9,13 +9,15 @@ from __future__ import annotations
 import json
 import math
 import time
-from typing import Any, Callable, Mapping, TYPE_CHECKING
+from typing import Any, Callable, Mapping, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+    from mente_laylay.memoria_mental.registro_semantico import RevisaoAlegacaoConsulta
 
 from mente_laylay.memoria_mental.decisao_observada import (
-    ExplicacaoOcorrencia, ExplicacaoHistoricaAto, ExplicacoesHistoricasPorAto,
+    ExplicacaoOcorrencia, ExplicacaoHistoricaAto, ExplicacoesHistoricasPorAto, MedicaoObservada,
+    avaliar_comparacoes_resultado, NaoQualificacaoMedicao, ExpectativaResultado, AvaliacaoComparacaoResultado, FontesComparacaoResultado,
 )
 from mente_laylay.cognicao.contratos_turno import ContratoExplicativoAto, SnapshotComandoIA
 
@@ -49,7 +51,7 @@ def vincular_explicacoes_por_ato(
     """
     from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
     from mente_laylay.cognicao.referencias_linguagem import referencia_explicacao_historica
-    from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
+    from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala, vincular_revisoes_explicacao_ocorrencia
 
     segmentos = turno.get("segmentos")
     if (not turno.get("id") or turno.get("autoriza_execucao") is not False
@@ -77,6 +79,9 @@ def vincular_explicacoes_por_ato(
             if ocorrencia is not None and (type(ocorrencia) is not ExplicacaoOcorrencia
                     or ocorrencia.turno_consulta != str(turno["id"]) or ocorrencia.texto_consulta != literal):
                 ocorrencia, falha_fonte = None, True
+            elif ocorrencia is not None:
+                ocorrencia = vincular_revisoes_explicacao_ocorrencia(mente.get("registro_semantico"),ocorrencia)
+                falha_fonte = ocorrencia is None
         if referencia or ocorrencia is not None or falha_fonte:
             evidencia = recuperar_evidencia_da_fala(literal, mente) if not falha_fonte else {}
             normal = lambda s: " ".join(str(s).casefold().split())
@@ -162,11 +167,125 @@ def realizacoes_explicacao_ocorrencia(fonte: ExplicacaoOcorrencia, *, agora: flo
         decisao = "o motivo da escolha não foi registrado nesta fonte; não vou reconstruí-lo pelo resultado ou pelo estado atual."
     confirmacao = {True: "confirmação registrada", False: "sem confirmação", None: "confirmação desconhecida"}[episodio.confirmado]
     resultado = f"Há tentativa registrada, {confirmacao} no escopo {json.dumps(episodio.escopo_confirmacao, ensure_ascii=False)}."
-    for medida in episodio.medicoes:
-        resultado += (f" Medição registrada de {json.dumps(medida.grandeza, ensure_ascii=False)}: "
-            f"{json.dumps(medida.valor, allow_nan=False)} {json.dumps(medida.unidade, ensure_ascii=False)}. "
-            f"{medida.limite_observacao}")
+    if fonte.revisoes_proposicoes:
+        partes = proposicoes_resultado_comparado(FontesComparacaoResultado(episodio.id,
+            episodio.expectativas,episodio.medicoes,episodio.iniciada_em))
+        revisoes = dict(fonte.revisoes_proposicoes)
+        por_chave = {p["chave"]:p for p in partes}
+        if any(k not in por_chave or r.texto_original!=por_chave[k]["texto"] for k,r in revisoes.items()):
+            return ()
+        resultado += " " + " ".join(realizacao_revisao_alegacao(revisoes[p["chave"]])
+            if p["chave"] in revisoes else p["texto"] for p in partes if p["tipo"]!="comparacao")
+        resultado += " " + realizar_comparacoes_resultado(avaliar_comparacoes_resultado(episodio),
+            revisoes_proposicoes=revisoes)
+    else:
+        if episodio.expectativas:
+            resultado += " " + realizar_expectativas_resultado(episodio.expectativas)
+        if episodio.medicoes:
+            resultado += " " + realizar_medicoes_observadas(episodio.medicoes)
+        resultado += " " + realizar_comparacoes_resultado(avaliar_comparacoes_resultado(episodio))
+    if episodio.nao_qualificacoes_medicao:
+        resultado += " " + realizar_nao_qualificacoes_medicao(episodio.nao_qualificacoes_medicao)
     return (f"{identificacao}, {decisao} {resultado} {episodio.limite_observacao} O estado atual é uma informação separada.",)
+
+
+def realizar_expectativas_resultado(expectativas: Sequence[ExpectativaResultado]) -> str:
+    """Meta prévia, sem inferir efeito nem reconstruir o pedido."""
+    return " ".join(
+        f"Valor solicitado de {json.dumps(e.grandeza, ensure_ascii=False)}: "
+        f"{json.dumps(e.valor, allow_nan=False)} {json.dumps(e.unidade, ensure_ascii=False)}. "
+        "A meta registrada não comprova que a operação foi concluída." for e in expectativas)
+
+
+def proposicoes_resultado_comparado(fontes: FontesComparacaoResultado) -> tuple[dict[str, Any], ...]:
+    """Proposições do owner e apoios exatos, sem analisar prosa da autora."""
+    if type(fontes) is not FontesComparacaoResultado:
+        return ()
+    from dataclasses import asdict
+    partes = []
+    for i, meta in enumerate(fontes.expectativas):
+        partes.append({"chave": f"meta:{i}", "tipo": "meta", "texto": realizar_expectativas_resultado((meta,)),
+            "dados": asdict(meta), "apoios": ()})
+    for i, medicao in enumerate(fontes.medicoes):
+        partes.append({"chave": f"medicao:{i}", "tipo": "medicao", "texto": realizar_medicoes_observadas((medicao,)),
+            "dados": asdict(medicao), "apoios": ()})
+    for i, avaliacao in enumerate(avaliar_comparacoes_resultado(fontes)):
+        comparacao = avaliacao.comparacao
+        if comparacao is None:
+            continue
+        meta_i = next(n for n,m in enumerate(fontes.expectativas) if m is comparacao.expectativa)
+        med_i = next(n for n,m in enumerate(fontes.medicoes) if m is comparacao.medicao)
+        partes.append({"chave": f"comparacao:{i}", "tipo": "comparacao",
+            "texto": realizar_comparacoes_resultado((avaliacao,)), "dados": asdict(comparacao),
+            "apoios": (f"meta:{meta_i}", f"medicao:{med_i}")})
+    return tuple(partes)
+
+
+def realizar_comparacoes_resultado(
+    avaliacoes: Sequence[AvaliacaoComparacaoResultado], *,
+    revisoes_proposicoes: Mapping[str, RevisaoAlegacaoConsulta] | None = None,
+) -> str:
+    """Relata a mesma derivação e limites na história e no resultado imediato."""
+    partes = []
+    for i, avaliacao in enumerate(avaliacoes):
+        if len(avaliacoes) > 1:
+            partes.append(f"Comparação de {json.dumps(avaliacao.expectativa.grandeza, ensure_ascii=False)} "
+                f"em {json.dumps(avaliacao.expectativa.unidade, ensure_ascii=False)}:")
+        revisao = (revisoes_proposicoes or {}).get(f"comparacao:{i}")
+        if revisao is not None:
+            partes.append(realizacao_revisao_alegacao(revisao))
+            continue
+        comparacao = avaliacao.comparacao
+        if comparacao is None:
+            partes.append(_LIMITES_COMPARACAO_RESULTADO[avaliacao.estado])
+            continue
+        diferenca = comparacao.diferenca
+        numero = format(diferenca, "f") if diferenca else "0"
+        partes.append(f"Diferença aritmética (medido menos solicitado): {numero} "
+            f"{json.dumps(comparacao.medicao.unidade, ensure_ascii=False)}. "
+            "Esta diferença não comprova conclusão nem explica a causa do resultado.")
+    return " ".join(partes)
+
+
+def realizar_nao_qualificacoes_medicao(observacoes: Sequence[NaoQualificacaoMedicao]) -> str:
+    """Mesmo relato de fonte e limite na história, publicação imediata e composto."""
+    partes = []
+    for observacao in observacoes:
+        criterio = {
+            "fonte_nao_correlacionada": "Não há encerramento correlacionado admitido para qualificar esta leitura.",
+            "contexto_alterado": "O contexto da execução mudou; esta leitura não foi admitida para a ocorrência.",
+            "valor_nao_admitido": "O valor recebido não foi admitido como número finito para a medição.",
+            "criterio_da_fonte_nao_atendido": "O critério de qualificação da fonte não foi atendido.",
+        }[observacao.criterio]
+        relato = (f"Critério registrado de não qualificação de {json.dumps(observacao.grandeza, ensure_ascii=False)}: "
+            f"{criterio}")
+        if observacao.codigo:
+            relato += f" O encerramento foi registrado com código {json.dumps(observacao.codigo, ensure_ascii=False)}."
+        partes.append(relato + " Isso relata o critério registrado; não identifica uma causa física.")
+    return " ".join(partes)
+
+
+_LIMITES_COMPARACAO_RESULTADO = {
+    "fontes_ausentes": "Não há valor solicitado nem medição qualificada nesta fonte para comparação.",
+    "meta_ausente": "Não há valor solicitado registrado nesta fonte para comparação.",
+    "medicao_ausente": "Não há medição qualificada nesta fonte para comparar com o valor solicitado.",
+    "owner_distinto": "Não há medição do mesmo owner da meta para comparação.",
+    "grandeza_sem_correspondencia": "Não há medição da mesma grandeza da meta para comparação.",
+    "unidade_distinta": "Não há medição na mesma unidade da meta; não vou converter as unidades para comparar.",
+    "referencial_meta_ausente": "A meta não tem referencial registrado para comparação.",
+    "referencial_medicao_ausente": "Não há medição com o referencial da meta; há medição sem referencial registrado.",
+    "referencial_distinto": "Meta e medições não têm um referencial comum registrado para comparação.",
+    "medicao_ambigua": "Há mais de uma medição compatível; esta fonte não define qual usar na comparação.",
+}
+
+
+def realizar_medicoes_observadas(medicoes: Sequence[MedicaoObservada]) -> str:
+    """Preserva valor, sinal, unidade e limite, sem certificar a fonte."""
+    return " ".join(
+        f"Medição registrada de {json.dumps(m.grandeza, ensure_ascii=False)}: "
+        f"{json.dumps(m.valor, allow_nan=False)} {json.dumps(m.unidade, ensure_ascii=False)}. "
+        f"{m.limite_observacao}" for m in medicoes
+    )
 
 
 def formatar_explicacao_ocorrencia(contrato: Mapping[str, Any]) -> str:
@@ -344,8 +463,36 @@ def montar_pacote_explicacao_historica(plano: Mapping[str, Any]) -> PacotePrompt
         contexto_fechado=True, contrato_saida=codec)
 
 
+def realizacao_opcoes_proposicao(
+    qualificadores: tuple[tuple[str,str,str], ...], *, sem_correspondencia: bool = False,
+) -> str:
+    """Opções integrais no orçamento da pendência; excesso não vira opção truncada."""
+    from mente_laylay.memoria_mental.pendencia import LIMITE_CONTEUDO_PENDENCIA
+    if not qualificadores:return ""
+    opcoes=[]
+    for _ident,metodo,referencial in qualificadores:
+        campos=[]
+        if metodo:campos.append('pelo método '+json.dumps(metodo,ensure_ascii=False))
+        if referencial:campos.append('no referencial '+json.dumps(referencial,ensure_ascii=False))
+        opcoes.append(' e '.join(campos))
+    limite=('Não identifiquei uma afirmação entregue para essa referência.' if sem_correspondencia else
+        'Há mais de uma afirmação possível nessa referência.')
+    texto=(limite+' Qual afirmação você quer revisar? '
+        +'Opções de medição: '+'; '.join(opcoes)+'. '
+        +'Cite a afirmação ou seu ID se essas opções não distinguirem. '
+        +'A referência não comprova fatos nem autoriza ações.')
+    return texto if len(texto)<=LIMITE_CONTEUDO_PENDENCIA else ""
+
+
 def realizacao_revisao_alegacao(fonte: Any) -> str:
-    from mente_laylay.memoria_mental.registro_semantico import RevisaoAlegacaoConsulta
+    from mente_laylay.memoria_mental.registro_semantico import RevisaoAlegacaoConsulta, ReferenciaProposicaoPendente
+    if type(fonte) is ReferenciaProposicaoPendente:
+        if opcoes:=realizacao_opcoes_proposicao(fonte.qualificadores,
+                sem_correspondencia=fonte.referencia=='ausente'):return opcoes
+        limite = ("Há mais de uma afirmação possível nessa referência." if fonte.referencia=="ambigua" else
+                  "Não identifiquei uma afirmação entregue para essa referência.")
+        return (limite + " Qual afirmação você quer revisar? Cite a afirmação ou seu ID. "
+                "Preciso identificar a afirmação antes de revisá-la; essa referência não comprova fatos nem autoriza ações.")
     if type(fonte) is not RevisaoAlegacaoConsulta:
         return ""
     if fonte.status in {"suporte_em_revisao", "suporte_interno_invalido"}:
@@ -364,10 +511,10 @@ def realizacao_revisao_alegacao(fonte: Any) -> str:
 
 
 def _avaliar_revisao_alegacao(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any]:
-    from mente_laylay.memoria_mental.registro_semantico import RevisaoAlegacaoConsulta
+    from mente_laylay.memoria_mental.registro_semantico import RevisaoAlegacaoConsulta, ReferenciaProposicaoPendente
     contrato = plano["contrato_fala"]
     fonte = contrato["revisao_alegacao"]
-    valida = bool(type(fonte) is RevisaoAlegacaoConsulta
+    valida = bool(type(fonte) in (RevisaoAlegacaoConsulta,ReferenciaProposicaoPendente)
         and contrato.get("origem") == "mente_unica" and contrato.get("autoriza_execucao") is False
         and str(contrato.get("turno_id")) == str(plano.get("id")) == fonte.turno_consulta
         and plano.get("id") and fonte.texto_consulta == plano.get("texto_usuario")

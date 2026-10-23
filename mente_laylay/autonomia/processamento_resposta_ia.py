@@ -521,6 +521,7 @@ def preparar_resposta_para_execucao(
                      if suporte_inicial is not None else None)
     ultima_autoria = None
     reescrita_aceita = False
+    falhas_resposta_observadas = []
     if captura_turno and callable(enviar_mensagem_cb):
         enviar_capturado = enviar_mensagem_cb
 
@@ -528,6 +529,13 @@ def preparar_resposta_para_execucao(
             nonlocal ultima_autoria
             ultima_autoria = None
             bruto = enviar_capturado(mensagens, **kwargs)
+            if categoria_estado_tecnico_llm(bruto):
+                import hashlib
+                from mente_laylay.cognicao.estado_tecnico_llm import FalhaRespostaObservada
+                falhas_resposta_observadas.append(FalhaRespostaObservada(
+                    turno_id=captura_turno, texto_usuario=texto,
+                    principal_sha256=hashlib.sha256(str(resposta_bruta).encode("utf8")).hexdigest(),
+                    etapa=str(kwargs.get("_tipo_chamada") or ""), estado_tecnico=str(bruto)))
             ultima_autoria = capturar_autoria_revisada(bruto, turno_id=captura_turno, texto_usuario=texto)
             return bruto
 
@@ -861,11 +869,11 @@ def preparar_resposta_para_execucao(
         in avaliacao_comunicacao.get("problemas_bloqueantes", ())
         and not comandos
     ):
-        enviar_mensagem_cb = None
         fala_local = contingencia_comunicacao(
             texto,
             falas_evitar=falas_recentes_comunicacao,
             motivo_falha="conquista_minimizada_sem_base",
+            somente_realizacao_contextual=True,
         )
         if fala_local:
             avaliacao_local = avaliar_qualidade_comunicacao(
@@ -873,7 +881,9 @@ def preparar_resposta_para_execucao(
                 ultima_resposta=ultima_resposta_comunicacao,
                 entrada_usuario_repetida=entrada_usuario_repetida,
             )
-            if avaliacao_local.get("aceita"):
+            if fala_local and avaliacao_local.get("aceita"):
+                # Só uma realização local válida substitui o reparo.
+                enviar_mensagem_cb = None
                 fala_limpa = fala_local
                 bot_raw = json.dumps(
                     {"fala": fala_local, "comandos": []}, ensure_ascii=False,
@@ -1024,6 +1034,15 @@ def preparar_resposta_para_execucao(
             registrar_log("🧭 [COMUNICAÇÃO] resposta reparada antes da fala e da memória.")
         else:
             registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={motivo_falha_reparo} etapa=reparo")
+            problemas_observados = tuple(avaliacao_comunicacao.get("problemas_bloqueantes") or ())
+            if (captura_turno and motivo_falha_reparo == "reparo_rejeitado"
+                and avaliacao_comunicacao.get("aceita") is False and problemas_observados):
+                import hashlib
+                from mente_laylay.cognicao.estado_tecnico_llm import FalhaRespostaObservada
+                falhas_resposta_observadas.append(FalhaRespostaObservada(
+                    turno_id=captura_turno, texto_usuario=texto,
+                    principal_sha256=hashlib.sha256(str(resposta_bruta).encode("utf8")).hexdigest(),
+                    etapa="revisao_comunicacao", estado_tecnico="", problemas_revisao=problemas_observados))
             fala_segura = contingencia_comunicacao(
                 texto,
                 foco=avaliacao_comunicacao.get("foco"),
@@ -1168,6 +1187,9 @@ def preparar_resposta_para_execucao(
             f"{bloqueados_sem_pedido}"
         )
 
+    from mente_laylay.cognicao.estado_tecnico_llm import realizacao_falha_resposta
+    falha_observada = next((f for f in reversed(falhas_resposta_observadas)
+        if realizacao_falha_resposta({**plano_autoria, "falha_resposta_observada": f}) == fala_limpa), None)
     return ContratoRespostaTurno(
         resposta_bruta=bot_raw,
         fala=fala_limpa,
@@ -1184,6 +1206,7 @@ def preparar_resposta_para_execucao(
         emocao=emocao_resposta,
         nivel_emocao=nivel_emocao_resposta,
         extracao_original=decodificacao_original.extracao,
+        falha_resposta_observada=falha_observada,
         autoria_revisada_proposta=(autoria_atual if reescrita_aceita and autoria_atual is not None
                                    and autoria_atual.fala_original == fala_limpa else None),
     ).como_dict()

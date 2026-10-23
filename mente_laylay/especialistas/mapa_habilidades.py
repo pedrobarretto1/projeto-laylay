@@ -193,14 +193,20 @@ _DESCRICAO_DOMINIO = {
     "memoria": (
         "consultar aprendizados persistentes e locais sobre o usuário; distinguir o que foi "
         "confirmado diretamente, o que é apenas um padrão maduro e o que veio de registros "
-        "antigos; omitir hipóteses fracas, contraditas ou não verificadas"
+        "antigos; omitir hipóteses fracas, contraditas ou não verificadas. "
+        "Na interface ativa, o Início inteligente organiza uso confirmado de 7 ou 30 dias; "
+        "sem histórico não inventa frequências. Playlists contam reproduções iniciadas "
+        "confirmadas, não tempo ouvido ou faixas completas. Fixar um atalho não autoriza "
+        "execução. Esta apresentação na interface não implica consulta desses rankings pelo chat"
     ),
     "cooperacao": (
         "combinar habilidades por um plano único; compartilhar referências temporárias sem "
         "expor o conteúdo bruto; executar cada etapa pelos porteiros normais e confirmar o "
         "resultado final. Os fluxos ativos cobrem texto copiado em arquivo, organização "
         "inteligente de janelas, avaliação contextual de itens no jogo e curadoria musical "
-        "que relaciona playlists reais ao histórico confirmado"
+        "que relaciona playlists reais ao histórico confirmado. No fluxo texto copiado para arquivo, "
+        "progresso e conclusão são separados: grava durante o anúncio se houver áudio disponível; "
+        "falha da voz não confirma nem bloqueia o efeito"
     ),
     "avatar": (
         "possuir um avatar visual com emoções e animações; conversar sobre skins e designs. "
@@ -269,11 +275,16 @@ _TERMOS_DOMINIO = {
         "aprendeu sobre mim", "guardou sobre mim", "lembra sobre mim",
         "lembra que eu", "o que eu te ensinei", "o que eu te contei",
         "seus aprendizados", "aprendizados sobre mim",
+        "inicio inteligente", "início inteligente", "acoes frequentes", "ações frequentes",
+        "playlists mais ouvidas", "trilha favorita",
     ),
     "cooperacao": (
         "combinar habilidades", "usar habilidades juntas", "orquestracao",
         "texto copiado em arquivo", "conteudo copiado em arquivo",
         "o que copiei em um arquivo",
+        "executar enquanto fala", "agir enquanto fala", "executar enquanto voce fala",
+        "executar enquanto você fala", "acoes enquanto fala", "ações enquanto fala",
+        "enquanto voce fala", "enquanto você fala",
     ),
     "avatar": ("avatar", "skin", "skins", "png", "emocao visual", "animação do avatar"),
     "personalidade": (
@@ -1375,6 +1386,8 @@ class MapaHabilidadesRuntime:
                 "referência temporária ao texto copiado para criar um arquivo, sem guardar o texto no "
                 "plano, e só digo que terminou depois de reler o arquivo. Cada etapa tem dependências, "
                 "orçamento de tempo, cancelamento, evidência e uma política segura para falhas parciais. "
+                "Nesse fluxo posso anunciar o progresso e gravar enquanto o áudio toca, quando a voz "
+                "está disponível. O anúncio não confirma o resultado e a falha da voz não impede a ação. "
                 "Sobrescrita pede confirmação."
             )
         if "avatar" in dominios:

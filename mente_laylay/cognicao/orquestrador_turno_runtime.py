@@ -1102,6 +1102,15 @@ def _iniciar_planejamento_turno(
         limpeza_pergunta_turno = {chave: mente_limpa.get(chave) for chave in chaves_limpeza if chave in mente_limpa}
         mente_antes_turno = mente_limpa
     registro_semantico = ns['_atualizar_registro_turno_mente'](mente_antes_turno.get('registro_semantico'), texto, retrato=retrato_turno, funcao=funcao_atual, encerramento=encerramento_assunto)
+    from mente_laylay.memoria_mental.registro_semantico import consumir_esclarecimento_proposicao
+    mente_esclarecida = consumir_esclarecimento_proposicao(
+        {**mente_antes_turno,'registro_semantico':registro_semantico},texto,turno=turno,
+    )
+    registro_semantico = mente_esclarecida['registro_semantico']
+    for chave in ('pendencia_atual','ultima_pendencia_encerrada','continuidade_geral'):
+        if mente_esclarecida.get(chave)!=mente_antes_turno.get(chave):
+            limpeza_pergunta_turno[chave]=mente_esclarecida.get(chave)
+    mente_antes_turno = mente_esclarecida
     campos_cenario_didatico = {}
     try:
         origem_cenario = (
@@ -1581,6 +1590,7 @@ def atualizar_planejamento_turno(
     proposta_principal: Any = _PROPOSTA_NAO_INFORMADA,
     ocorrencia_turno: Any = _OCORRENCIA_NAO_INFORMADA,
     autoria_revisada_proposta: Any = None,
+    falha_resposta_observada: Any = None,
 ) -> dict:
     ns = namespace_getter()
     estado = ns['_estado_compartilhado_runtime']
@@ -1621,6 +1631,22 @@ def atualizar_planejamento_turno(
         novo = ns['_atualizar_plano_turno_mente'](atual, fase=fase, comandos=comandos_finais, erros=erros, fala=fala)
         if vinculada and fase == 'resposta_planejada':
             novo.pop('autoria_revisada_proposta', None)
+            novo.pop('falha_resposta_observada', None)
+            if falha_resposta_observada is not None:
+                import hashlib
+                from mente_laylay.cognicao.estado_tecnico_llm import FalhaRespostaObservada, realizacao_falha_resposta
+                fonte = falha_resposta_observada
+                if (type(fonte) is FalhaRespostaObservada
+                    and fonte.principal_sha256 == hashlib.sha256(
+                        str(proposta_principal.resposta_bruta).encode('utf8')).hexdigest()
+                    and realizacao_falha_resposta({**novo, 'falha_resposta_observada': fonte}) == fala):
+                    novo['falha_resposta_observada'] = fonte
+            novo.pop('falha_geracao_principal', None)
+            from mente_laylay.cognicao.estado_tecnico_llm import realizacao_falha_principal
+            novo['falha_geracao_principal'] = proposta_principal
+            realizacao_falha = realizacao_falha_principal(novo)
+            if not realizacao_falha or realizacao_falha != fala:
+                novo.pop('falha_geracao_principal', None)
             from mente_laylay.cognicao.suporte_autoria import capturar_suporte_autoria_obrigatoria
             registro = mental.get('registro_semantico') or {}
             fontes = tuple(str(i.get('id')) for i in registro.get('alegacoes', ()) if isinstance(i, dict) and i.get('id'))

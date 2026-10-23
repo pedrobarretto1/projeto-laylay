@@ -32,6 +32,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
     remover_conector_discursivo_inicial,
     texto_discute_evidencia_textual,
+    texto_e_citacao_integral,
     tipo_transformacao_conversacional,
 )
 from mente_laylay.cognicao.gramatica_musical import (
@@ -142,6 +143,13 @@ def analisar_protecao_operacional(
     }
     if not t:
         return neutra
+    if texto_e_citacao_integral(texto):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "conversa",
+            "natureza_acao": "mencao_operacional",
+            "motivo": "citação integral é conteúdo mencionado, não pedido de execução",
+        }
     if tipo_transformacao_conversacional(texto):
         return {
             "bloqueia_execucao": True,
@@ -1211,6 +1219,11 @@ def _classificar_ato_estrutural(
     # O conector liga este ato ao discurso, não muda sua modalidade. O caller
     # conserva o trecho completo no segmento e no mapa de fontes originais.
     texto_estrutural = remover_conector_discursivo_inicial(texto_estrutural)
+    if texto_e_citacao_integral(texto_estrutural):
+        protecao=analisar_protecao_operacional(texto_estrutural)
+        return aplicar_veto_canonico({},texto=texto_estrutural,
+            modalidade=protecao['modalidade'],natureza=protecao['natureza_acao'],
+            motivo=protecao['motivo'],requer_esclarecimento=False,origem_veto='citacao_integral')
     # Nenhum owner de domínio pode converter a consequência em pedido direto
     # ignorando a condição que o owner geral preservou no mesmo átomo.
     if (
@@ -1837,7 +1850,9 @@ def _classificar_modalidade_turno_composta_base(
     )
     estrutural = re.sub(r"\s+", " ", str(estrutural or "")).strip()
 
-    segmentos_texto = _segmentar_turno_misto(
+    # Um literal integral é um só objeto mencionado. A projeção normal do
+    # turno conserva identidade/texto; seus verbos internos não viram atos.
+    segmentos_texto = [bruto] if texto_e_citacao_integral(bruto) else _segmentar_turno_misto(
         estrutural,
         normalizar_texto=normalizar_texto,
     )

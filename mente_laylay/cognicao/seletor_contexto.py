@@ -36,8 +36,12 @@ def _tokens(texto: str) -> set[str]:
     return {t for t in re.findall(r"[a-z0-9_]{3,}", _normalizar(texto)) if t not in stop}
 
 
-def _sobreposicao(a: str, b: str) -> float:
+def _sobreposicao(a: str, b: str, *, somente_conteudo: bool = False) -> float:
     ta, tb = _tokens(a), _tokens(b)
+    if somente_conteudo:
+        # Formas de pergunta e cópula não identificam o assunto compartilhado.
+        gramaticais = {"como", "esta", "estao", "estou", "foi", "era", "ser", "estar", "fazer", "fazendo"}
+        ta, tb = ta - gramaticais, tb - gramaticais
     if not ta or not tb:
         return 0.0
     return len(ta & tb) / max(1, min(len(ta), len(tb)))
@@ -81,7 +85,8 @@ def selecionar_contexto_turno(
     texto = str(texto_usuario or turno.get("texto") or "").strip()
     modalidade = str(turno.get("modalidade") or "conversa").lower()
     dominio_atual = _dominio_texto(str(turno.get("texto_operacional") or texto))
-    referencia = bool(re.search(
+    from mente_laylay.personalidade.continuidade_conversa_natural import _pede_explicacao_da_fala_anterior
+    referencia = _pede_explicacao_da_fala_anterior(_normalizar(texto)) or bool(re.search(
         # P0_NAVEGADOR_SUBTIPO_V3_1_20260815
         r"\b(?:ele|ela|isso|esse|essa|dele|dela|anterior|de antes|como assim|o que aconteceu|tipo o que|e depois|"
         r"tem certeza|entao voce|então você|mas voce|mas você)\b",
@@ -166,12 +171,18 @@ def selecionar_contexto_turno(
             score -= 0.30
         score = max(0.0, min(1.0, score))
         limiar = 0.52 if origem in {"pergunta_aberta", "promessa", "ultima_fala"} else 0.58
-        aceito = score >= limiar and dominio_ok
+        # Conteúdo compartilhado pode sustentar continuidade sem pronome.
+        # A recência, sozinha, não deve fazer essa fonte cruzar o limiar.
+        overlap_conteudo = _sobreposicao(texto, conteudo, somente_conteudo=True)
+        forca_lexical = base + min(0.25, overlap_conteudo * 0.35)
+        fala_sem_vinculo = novo_assunto and origem == "ultima_fala" and forca_lexical < limiar
+        aceito = score >= limiar and dominio_ok and not fala_sem_vinculo
         evidencia = (
             f"base={base:.2f}; recencia={recencia:.2f}; sobreposicao={overlap:.2f}; "
             f"dominio={'ok' if dominio_ok else 'incompativel'}; "
             f"turno={'novo' if novo_assunto else 'continuacao'}; "
-            f"associacao={reforco_associativo:.2f}"
+            f"associacao={reforco_associativo:.2f}; "
+            f"fala_sem_vinculo={fala_sem_vinculo}"
         )
         candidatos.append(ContextoCandidato(
             origem, dominio, conteudo[:500], idade_s, relacao,

@@ -4898,7 +4898,12 @@ def main() -> int:
     janela = JanelaInterfaceWebV1(
         worker, raiz, session_id=session_id, parent_pid=parent_pid,
     )
-    janela.show()
+    # Qt.Tool não é uma janela primária: seu fechamento pode não emitir
+    # lastWindowClosed. O entrypoint é o owner do event loop da aplicação.
+    janela.encerrada.connect(app.quit)
+    if janela.preferencias_publicas()['desktop_start']:
+        janela.apresentar('desktop')
+    janela.iniciar_apresentacao()
     monitor_pai = QTimer(app)
     monitor_pai.setInterval(1_500)
 

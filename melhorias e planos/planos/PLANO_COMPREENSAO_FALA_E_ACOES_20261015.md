@@ -1913,3 +1913,1008 @@ Próxima candidata: medidas qualificadas na resposta imediata, distintas dos
 aspectos de confirmação e da recuperação histórica já validados.
 Contratos, responsáveis, baselines, diffs, XMLs, brutos e limites:
 `resultados_testes/compreensao_fala_acao_20261019/atomizacao_compostos/RELATORIO.md`.
+
+## 48. C5 — medida qualificada atravessa o resultado imediato
+
+20/10/2026. Retomada autorizada por Pedro; hardware continua adiado. HEAD
+b128f4e48b774352846a40672de493d19c30f109, main e worktree preservados.
+A base anterior de 19/10 foi conservada:15/16 fontes idênticas, diferença no
+estado visual do terminal em laylay.py. Nova base congelada sem reescrever a
+antiga. RED atual confirma os nove anteriores, com cinco controles e zero erros.
+
+Raiz demonstrada: receipt contém número qualificado e histórico o recupera,
+mas adaptação para ResultadoAcao só oferece confirmação global/aspectos.
+Primeira perda na projeção imediata, antes da LLM/entrega. Não é falta de
+medição ou autorização, nem reabertura da validade da IMU/coordenação lexical.
+
+Contrato reutiliza MedicaoObservada em ResultadoAcao.medicoes:tupla limitada,
+tipo exato, origem executor e vínculo ao ID atual. Qualificador extraído da
+recuperação existente atende os dois caminhos; realizador numérico também
+reutilizado. Valor, sinal, unidade, método e limite ficam ligados à observação.
+Tipo não certifica aferição; observação não altera conclusão global ou autoridade.
+JSON/nova proposta não reidratam captura, e outra solicitação não a herda.
+
+| Responsável | Obrigação | Critério |
+| --- | --- | --- |
+| Owner corporal/qualificador | Adaptar retorno da própria execução | Método e validade qualificados; finitude; zero/sinal; sem completar pela intenção/histórico vivo. |
+| Resultado/adaptador | Conservar somente publicação atual aceita | ID/tipo/origem/limite; recusa, outra ocorrência e nova tentativa sem empréstimo. |
+| Realizador compartilhado | Declarar observação e conclusão separadamente | Corpo, tamanho de arquivo e volume em três certezas globais; controles fora do corpo são contratuais. |
+| Orquestrador/autoria | Preservar medida e ressalva na entrega | Direto/status/composto; número,sinal,unidade,limite e causa adulterados recusados. |
+| Demais habilidades | Qualificar fonte própria antes da adoção | Contrato genérico disponível, sem ativar produtores/efeitos ou conceder autonomia. |
+
+Oito produções:resultado_acao, adaptador_resultado, executor_corpo,
+experiencia_corporal_runtime, explicacao_fala_historica, planejador_resposta,
+orquestrador_fala_runtime e confirmacao_llm. Tipo de medição/transporte/corpo/
+gramáticas/autorizações/composition root preservados. Fixture estendida;
+nenhum commit/modelo/voz ou ativação diária. Registro histórico não fornece
+o número à resposta imediata, que usa o receipt da própria chamada.
+
+Primeiro GREEN:119 aprovados/um skip. Contratos ampliados:59 aprovados.
+Foco de sete módulos:406 aprovados/três skips/zero erros. Controle de retirada
+da ressalva reforçado para comprovar alteração real da proposta; seis compostos
+adversariais/fiel revalidados. Módulo final tem62 casos. Replays anteriores em
+memória retomam quatro REDs do produtor e nove do realizador. As seis pendências
+amplas anteriores também reproduzem com oito fontes antigas completas.
+Primeira regressão81 módulos:2798 aprovados/34 skips/oito subtestes/nove falhas/
+zero erros. Seis pendências antigas; três expectativas de IMU exigiam a frase
+anterior. Reprodução isolada confirma falha só nessa frase; expectativa trocada
+por ID/valor do receipt/sinal/unidade/método/ressalva, preservando autoridade e
+efeitos. Módulo IMU inteiro:20 aprovados. Regressão final81 módulos:2801
+aprovados/34 skips/oito subtestes/seis falhas/zero erros,456,22s.62 novos casos
+GREEN; seis falhas idênticas às da base antiga, nenhuma das três expectativas
+de frase pendente. Suíte ampla não GREEN; produção não foi alterada para repetir
+frase. Sete fontes de controle intactas e fontes da regressão final estáveis.
+
+Composição instalada, persistência isolada e folhas janela/serial/geração
+controladas. Medidas parciais, zero, divergência, ultrapassagem e parada não
+confirmada; giros concluídos e seis compostos com um TURN/uma publicação.
+Sem aferição física, áudio, main diário ou nova inferência real ao Qwen.
+Princípio global: observação qualificada deve atravessar publicação/autoria/
+entrega conservando vínculo e limites; não vira prova de conclusão nem permissão.
+C5/F1/C7 gerais abertos. Contratos,responsáveis,baselines,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/medidas_imediatas/RELATORIO.md`.
+
+## 49. C5 — meta original capturada antes do efeito
+
+20/10/2026. Continuação autorizada; hardware adiado. HEAD b128f4e48b774352846a40672de493d19c30f109,
+main e worktree preservados. Primeira perda demonstrada: CorpoMotorRuntime já
+possui ângulo validado, mas inicia ocorrência sem o número solicitado. Duas
+metas90/180 com a mesma leitura23.75 tornam-se indistinguíveis na fonte histórica.
+Não é omissão exclusiva da LLM ou persistência: falta já no snapshot pré-efeito.
+Receipt/nome/consulta posterior não são reconstrução válida da meta original.
+
+Contrato compartilhado ExpectativaResultado, separado de MedicaoObservada:
+owner/ID/grandeza/valor/unidade/fonte/instante, imutável, sem permissão ou prova
+de efeito. Episódio exige vínculo anterior, tupla limitada e unicidade. Owner
+captura o mesmo ângulo assinado usado no transporte; registro/aprendizado
+conservam-no; recuperação confere fonte própria; realizador apresenta meta e
+leitura separadamente. Legado não ganha meta inferida; meta inválida não apaga
+medição válida. Não calcula diferença/conversão nem causa física.
+
+| Responsável | Obrigação | Validação |
+| --- | --- | --- |
+| Runtime corporal | Capturar parâmetro validado antes do efeito | 90/180/-90;45 sem leitura válida; pulso sem meta angular. |
+| Tipo/episódio compartilhados | Preservar vínculo e independência da confirmação | Finitude,ID/owner/tempo,limite8,duplicação e imutabilidade. |
+| Experiência/recuperação | Manter origem histórica própria | Snapshot,registro,aprendizado e fonte iguais; retorno180/consulta999 não substituem captura90. |
+| Realizador/autoria/entrega | Preservar meta e limites nas rotas existentes | Corpo/volume/arquivo contratuais; normal/rápida instaladas,codec integral,sem novos efeitos. |
+
+Quatro produções:decisao_observada,experiencia_corporal_runtime,
+corpo_motor_runtime e explicacao_fala_historica. Uma fixture estendida e novo
+módulo43 casos. Oito controles idênticos; contrato imediato/composition root/
+autoridade preservados. Nenhum commit ou novo shutdown.5 REDs/1 controle antes;
+80 aprovados/1 skip iniciais; foco188 aprovados/1 skip. Regressão82 módulos:
+2844 aprovados/34 skips/8 subtestes/6 falhas/zero erros,453.13s.43 novos GREEN.
+Mesmas seis pendências anteriores; suíte ampla continua não GREEN.
+
+Contraprova inicial inesperadamente GREEN revelou substituição só no pytest,
+sem atingir o subprocesso da fixture. Corrigida em memória, com PID/hash da
+fonte no filho:cinco REDs/um controle em cada retirada de captura,recuperação
+e realização. Quatro fontes antigas completas no filho reproduzem as seis
+pendências. Qualificação da seção48: replay restrito ao pai não comprova troca
+de oito fontes no filho; provas locais são distintas. Artefatos antigos
+preservados; a prova atual cobre quatro owners,sem replay integral da árvore.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados;
+94 fontes estáveis durante a regressão. Sem main diário,hardware,áudio ou nova
+inferência real Qwen. Princípio global:meta anterior e observação posterior
+da mesma ocorrência não substituem confirmação/autoridade. C5/F1/C7 gerais
+abertos. Próxima candidata:condições para relação quantitativa verificável.
+Contratos,responsáveis,diffs,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/expectativa_ocorrencia/RELATORIO.md`.
+
+## 50. C5 — diferença derivada com compatibilidade explícita
+
+20/10/2026. Autorizado por Pedro; hardware adiado. HEAD b128f4e48b774352846a40672de493d19c30f109,
+main/worktree preservados. Continuação da relação quantitativa indicada na
+seção49, sem criar raiz por ângulo/domínio. Fontes conservam meta e medição,
+mas não declaravam referencial de comparação nem realizavam uma diferença.
+Firmware calcula yaw final menos início do mesmo giro; transporte qualifica
+sessão/sequência. Falsificadas falta de valores e omissão exclusiva da LLM;
+mesma unidade sozinha não demonstra compatibilidade.
+
+Contrato compartilhado acrescenta referencial opcional à meta/medição;
+ComparacaoResultado exige fontes tipadas do mesmo ID/owner/grandeza/unidade/
+referencial explícito. Conserva operandos e deriva medido menos solicitado,
+com aritmética decimal dos valores registrados. Não aumenta precisão física,
+converte unidades,infere causa,tolerância,conclusão ou nova autorização.
+Ausência/legado ou duas leituras compatíveis concorrentes não geram cálculo.
+Recuperação não completa referencial da meta pelo método/estado atual.
+
+| Responsável | Obrigação | Validação |
+| --- | --- | --- |
+| Owner/qualificador | Declarar referencial do protocolo nas fontes próprias | Captura pré-efeito e leitura qualificada com mesmo ID/convenção. |
+| Tipos/comparação compartilhados | Preservar operandos e compatibilidade | ID/owner/grandeza/unidade/referencial; JSON,legado,ausência e ambiguidade sem derivação. |
+| Realizador histórico | Expor operação e limite sem converter diferença em causa | Sinal,zero,divergência,ultrapassagem e igualdade sem alterar receipt. |
+| Autoria/revisão/entrega | Conservar realização sustentada | Cinco adulterações:normal recusa proposta bruta; rápida preserva fonte sem nova geração. |
+| Outros produtores | Qualificar seus próprios referenciais | Corpo/volume/arquivo contratuais,sem ativar produtores novos. |
+
+Três produções:decisao_observada,experiencia_corporal_runtime e
+explicacao_fala_historica. Novo módulo63 casos,13 controles idênticos dos16
+congelados; fixture/transporte/firmware/autoridade/composition root intactos.
+Sem comparação imediata,novo comando,commit ou shutdown.3 REDs/2 controles
+antes do candidato; coletor inicialmente falhou ao salvar pasta inexistente,
+erro preservado e separado do RED causal. Primeiro GREEN5; foco240 aprovados/
+2 skips. Retirada em memória da captura do referencial ou do realizador no
+subprocesso volta a3 REDs/2 controles,com PID/hash das fontes no filho.
+Três fontes antigas completas reproduzem as seis pendências anteriores.
+Cinco rodadas adversariais de composição:5 aprovados cada,com captura das
+propostas efetivamente oferecidas. Regressão83 módulos:2907 aprovados/34 skips/
+8 subtestes/6 falhas/zero erros,452.57s.63 novos GREEN; mesmos seis IDs da
+contraprova anterior,suíte ampla não GREEN. Fontes estáveis durante a rodada.
+
+Composição instalada com serial/janela/geração controlados,persistência
+isolada. Sem main diário,hardware,áudio ou nova inferência Qwen. Referencial
+declara o contrato de software,sem certificar instalação física do sensor.
+Princípio global:relações derivadas conservam fontes e condições de
+compatibilidade; não substituem confirmação/autoridade. C5/F1/C7 gerais abertos.
+Próxima candidata:como explicar ausência ou ambiguidade de comparação sem
+completar premissas nem atribuir a diferença a uma causa física.
+Contratos,responsáveis,baselines,replays,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/comparacao_resultado/RELATORIO.md`.
+
+## 51. C5 — indisponibilidade da comparação conserva motivo e fontes
+
+20/10/2026. Pedro autorizou seguir;hardware adiado. HEAD b128f4e48b774352846a40672de493d19c30f109,
+main e worktree preservados. Continuação da seção50,sem raiz por estado/frase.
+Primeira perda demonstrada no seletor:ausência,incompatibilidade e leituras
+concorrentes retornam a mesma tupla vazia. Proteção funciona,mas descarta o
+motivo antes da fala. Fontes/valores chegam;omissão já no realizador do host,
+não exclusiva da LLM. Medição não qualificada não prova falha de sensor.
+
+AvaliacaoComparacaoResultado conserva episódio e própria meta admitida.
+Estado/comparação são derivados,sem campo autorável. Owner único avalia
+fontes,grandeza,unidade,referencial e unicidade. Facade antiga consome essa
+avaliação;realizador declara limite por meta,sem refazer seleção por prosa.
+Meta ausente mantém declaração anterior;sem fonte qualificada não inventa
+motivo físico. Confirmação,permissão e aritmética válida preservadas.
+
+| Responsável | Obrigação | Validação |
+| --- | --- | --- |
+| Avaliação compartilhada | Conservar a primeira premissa necessária ausente | Dez estados em corpo/arquivo/volume;tipo/origem/imutabilidade,sem estado fornecido pela IA. |
+| Facade de comparação | Usar o mesmo owner da elegibilidade | Saídas anteriores preservadas;leituras concorrentes sem escolha;extra incompatível não apaga única compatível. |
+| Realizador | Declarar limite demonstrado e vincular cada meta | Ausência,grandeza,unidade,referencial e ambiguidade sem causa física;metas distintas sem empréstimo. |
+| Autoria/revisão/entrega | Preservar declaração sustentada | Motivo trocado/removido,causa e cálculo sem fonte recusados;normal/rápida sem efeitos. |
+| Outros produtores | Reusar contrato com fontes qualificadas próprias | Controles genéricos;sem criar produtores ou conceder autoridade. |
+
+Somente duas produções:decisao_observada e explicacao_fala_historica.
+Uma fixture estendida por flag;novo módulo103 casos.14 controles idênticos
+dos17 congelados;experiência/qualificador/transporte/firmware/resultado imediato/
+executor/revisão/composition root preservados. Nenhum commit ou shutdown.
+6 REDs/2 controles antes;8 GREEN iniciais;foco281 aprovados/2 skips. Realizador
+anterior no subprocesso retoma6 REDs/2 controles;dois arquivos antigos completos
+retomam as seis pendências amplas,com PID/hash no filho. Quatro adversariais
+instalados:8 aprovados cada,propostas brutas alteradas na normal;rápida conserva
+literal sem nova geração. Regressão84 módulos:3010 aprovados/34 skips/8
+subtestes/6 falhas/zero erros,464.64s.103 novos GREEN;exatamente os seis IDs
+da contraprova,suíte ampla não GREEN.98 fontes estáveis durante a rodada.
+
+Composição instalada,serial/janela/geração controlados,persistência isolada.
+Metadados históricos controlados simulam legado/incompatibilidade antes da
+consulta,sem reescrever snapshot,receipt ou aprendizado persistido. Não prova
+que essas alterações ocorreram espontaneamente no uso diário. Ambiguidade de
+duas medições só contratual:produtor corporal atual oferece uma leitura por
+ocorrência. Arquivo/volume também são controles contratuais. Sem hardware,
+main diário,áudio ou nova inferência Qwen. C5/F1/C7 gerais abertos.
+Princípio global:decisão negativa conserva sua base/limite,sem a LLM completar
+o motivo descartado. Próxima candidata:origem da não qualificação quando houver
+evidência registrada,sem transformá-la em causa física. Outra fronteira ainda
+não corrigida. Contratos,responsáveis,baselines,replays,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/limites_comparacao/RELATORIO.md`.
+
+## 52. C5 — proveniência da não qualificação conservada na ocorrência
+
+20/10/2026. Continuação autorizada;hardware adiado. HEAD b128f4e48b774352846a40672de493d19c30f109,
+main/worktree preservados. Primeira perda no transporte:owner conhece os
+critérios de validade,mas projeta só booleano/código bruto. Registro também
+não conserva a proveniência da decisão.9 REDs/3 controles antes do candidato.
+Número23.75 chega,zero qualificado é válido;omissão antecede LLM/histórico.
+Código/motivo soltos e estado atual não justificam a não qualificação.
+
+Transporte publica decisão explícita usando as mesmas variáveis da validade,
+sem alterar parser/critério/efeito. NaoQualificacaoMedicao compartilhada liga
+ID/owner/grandeza/unidade/critério/fonte/código à ocorrência,sem valor medido,
+permissão ou confirmação. Envelope reconhecido da chamada atual atravessa
+registro/aprendizado/recuperação;legado não é completado por código/motivo.
+Outra identidade explícita é recusada;coleção inválida/ambígua não apaga
+tentativa/meta. Realizador relata o critério,sem identificar causa física.
+IMU_OU_SESSAO não escolhe sensor ou sessão como causa;pacote não admitido
+não empresta código à ocorrência atual.
+
+| Responsável | Obrigação | Validação |
+| --- | --- | --- |
+| Transporte | Publicar critério já decidido e código vinculado | Quatro encerramentos não qualificadores;sem correlação/contexto preservado não importar código externo. |
+| Tipo/episódio compartilhados | Preservar fonte/vínculo/limites | Imutabilidade,tipo,ID/owner,tupla limitada e flags falsas;corpo/arquivo/volume contratuais. |
+| Adaptador/registro/aprendizado | Conservar observação da chamada atual | Fonte/critério/código/identidade inválidos recusados;receipt,histórico e evento persistido iguais. |
+| Recuperação | Ler captura própria sem reconstrução | Legado/corrupção/duplicação não apagam tentativa/meta;estado vivo não completa evidência. |
+| Realizador/revisão/entrega | Conservar relato sem causa física | Código,causa,ressalva e omissão adulterados recusados;normal/rápida sem novos efeitos. |
+
+Quatro produções:rosto_oled_runtime,decisao_observada,experiencia_corporal_runtime
+e explicacao_fala_historica. Novo módulo93 casos;14 controles idênticos dos18
+congelados. Fixture,firmware,executor,ResultadoAcao,revisão,gramáticas e
+composition root preservados. Sem commit/shutdown ou projeção imediata tipada.
+Primeiro GREEN12;foco inicial390 aprovados/2 skips,antes da guarda adicional
+de identidade. Essa guarda teve4 REDs/4 GREEN;contrato final93 aprovados.
+Replays no filho com PID/hash:transporte anterior9 REDs/3 controles;registro,
+recuperação ou realização anteriores5 REDs/7 controles,cada fronteira em ordem.
+Quatro arquivos antigos completos retomam as seis pendências amplas.
+Quatro adversariais instalados:8 GREEN cada;cinco propostas brutas alteradas
+na normal,rápida sem nova geração. Regressão85 módulos:3103 aprovados/34 skips/
+8 subtestes/6 falhas/zero erros,497.67s.93 novos GREEN;mesmos seis IDs da
+contraprova,suíte ampla não GREEN.99 fontes estáveis durante a rodada.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados;
+sem alterar histórico para forçar esses casos. Ausência de pacote e outra
+sessão/sequência também testadas no transporte. Contexto alterado e número
+não admitido apenas contratuais,não cadeias seriais correspondentes provadas.
+Arquivo/volume são controles genéricos. Sem hardware,aferição física,main
+diário,áudio ou nova inferência Qwen. C5/F1/C7 gerais permanecem abertos.
+Princípio global:qualificação negativa conserva proveniência na ocorrência,
+sem a LLM reconstruir causa. Próxima candidata:esse critério na resposta
+imediata e nos compostos,sem reinterpretar receipt. Outra fronteira não
+corrigida aqui. Contratos,responsáveis,baselines,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/qualificacao_medicao/RELATORIO.md`.
+
+## 53. C5 — não qualificação atravessa a resposta imediata e composta
+
+20/10/2026. Continuação autorizada da seção52,hardware adiado. HEAD
+b128f4e48b774352846a40672de493d19c30f109,main/worktree preservados.
+Primeira perda demonstrada:executor adapta receipt para ResultadoAcao sem
+transportar critério negativo já registrado. O contrato/consumidores também
+não reconhecem essa fonte própria.9 REDs/3 controles antes do candidato;
+receipt/histórico contêm o dado e a fonte da autoria já o omite. Falsificadas
+ausência do dado e culpa exclusiva da Qwen. Sem diagnóstico físico inferido.
+
+ResultadoAcao conserva NaoQualificacaoMedicao tipada da solicitação atual;
+propriedade calculada reconhece observações sem criar autoridade/efeito.
+Executor reutiliza o qualificador existente. Adaptador só entrega captura
+publicada/aceita/atual. Relato histórico extraído para realização compartilhada;
+planejador/orquestrador/revisão conservam critério/código/limite no composto,
+mesmo sem aspecto/medição positiva. JSON/nova proposta não recriam fonte.
+Identidade imediata e identidade corporal histórica mantêm vínculos próprios.
+
+| Responsável | Obrigação | Critério de validação |
+| --- | --- | --- |
+| Executor/ResultadoAcao | Preservar fonte da invocação | Tipo,tupla,ID/origem/limite/duplicata;cinco negativas e três leituras qualificadas. |
+| Adaptador | Entregar somente publicação aceita atual | Status/direta,recusa,outra ocorrência e nova tentativa. |
+| Realizador/planejador | Relatar critério sem causa física | Quatro critérios,confirmação independente;fonte sozinha,corpo/arquivo/volume contratuais. |
+| Orquestrador/autoria/revisão | Preservar fonte e resultados independentes | 24 compostos instalados:4 fiéis/20 adulterados;uma entrega/um TURN,sem sucesso global emprestado. |
+
+Sete produções:resultado_acao,executor_corpo,adaptador_resultado,
+explicacao_fala_historica,planejador_resposta,orquestrador_fala_runtime e
+confirmacao_llm. Fixture existente ampliada e novo módulo91 casos.
+Onze controles dos19 congelados idênticos. Qualificador/transporte/tipo
+negativo/registro/aprendizado/recuperação,gramáticas,firmware e composition
+root preservados neste candidato. Sem commit,shutdown ou nova habilidade.
+
+12 GREEN iniciais;contrato final91 aprovados/zero erros,27.58s. Foco450
+aprovados/2 falhas conhecidas/zero erros,120.58s. Replays em memória no filho
+com PID/hash:executor anterior9 REDs/3 controles na publicação;realizador
+anterior9 REDs/3 controles na fala. Porta final anterior1 RED com fonte
+negativa sozinha. Sete fontes antigas completas retomam seis pendências.
+Regressão86 módulos:3194 aprovados/34 skips/8 subtestes/6 falhas/zero erros,
+527.99s.91 novos GREEN também nessa rodada;mesmos seis IDs da contraprova,
+suíte ampla não GREEN.100 fontes estáveis,sem reduzir raízes/pendências.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados.
+Arquivo/volume e fonte negativa sozinha são controles contratuais;produtor
+corporal também fornece aspectos. Contexto alterado/valor não admitido não
+têm cadeia serial correspondente provada aqui. Sem hardware,aferição física,
+áudio,main diário ou nova inferência Qwen. C5/F1/C7 gerais abertos.
+Princípio global:decisão negativa conserva base e limite até a entrega,sem
+a IA inventar causa ou emprestar sucesso. Próxima candidata de estudo:
+meta/comparação na resposta imediata/composta,com fontes próprias. Outra
+fronteira ainda não investigada/corrigida. Contratos,owners,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/nao_qualificacao_imediata/RELATORIO.md`.
+
+## 54. C5 — meta e comparação atravessam resultado imediato e composto
+
+Investigação20–21/10/2026,continuação autorizada da seção53,hardware adiado.
+HEAD b128f4e48b774352846a40672de493d19c30f109,main/worktree preservados.
+Primeira perda:owner captura meta antes do efeito,mas retorno devolve só
+receipt;executor/ResultadoAcao não conservam a fonte.5 REDs/1 controle antes.
+Metas90/180/-90,45 sem leitura e histórico existem;omissão antecede autoria.
+Falsificadas ausência do parâmetro/snapshot e culpa exclusiva da LLM.
+
+FontesComparacaoResultado conserva captura local anterior,sem fabricar
+episódio histórico. Executor a vincula à solicitação atual;ResultadoAcao
+preserva expectativas/inicio_execucao. Adaptador exige publicação aceita
+atual. Avaliador e realizadores históricos compartilhados conservam meta,
+medição,diferença decimal ou motivo de indisponibilidade. Outro owner,
+grandeza/unidade/referencial incompatível ou ambiguidade não geram cálculo.
+JSON,nova proposta,receipt posterior e estado vivo não recriam fonte.
+Diferença não implica causa física,confirmação,tolerância ou autorização.
+
+Ampliação comprovou perda na saída de exceção:histórico conserva meta90,
+publicação não.1 RED/1 controle antes do complemento,baseline adicional
+preservado. FalhaExecucaoComFontes carrega a captura da chamada atual no
+raise e conserva a exceção original como causa técnica. Executor publica
+falha com meta,sem fabricar receipt ou leitura;fonte de exceção alheia não
+substitui a captura local. Sem retry ou novo efeito autorizado.
+
+| Responsável | Obrigação | Critério de validação |
+| --- | --- | --- |
+| Runtime/adaptador de captura | Preservar fonte antes do efeito no retorno e no raise | Meta90 não vira retorno180 ou mutação999;transporte/exceção não fornecem envelope certificado. |
+| ResultadoAcao/FontesComparacaoResultado | Preservar vínculo e instante | Tipo/tupla/ID/origem/limite/duplicata/tempo;JSON/nova proposta sem reidratação. |
+| Executor/AdaptadorResultadoOperacional | Publicar e entregar captura aceita atual | Status/direta,recusa,outra ocorrência e nova tentativa;ID corporal e imediato próprios. |
+| Avaliação/realização compartilhadas | Derivar só de fontes compatíveis | Mesmo owner/grandeza/unidade/referencial;ausência/ambiguidade sem cálculo,confirmação independente. |
+| Orquestração/revisão existentes | Preservar integralmente operandos e limites |20 compostos por rota:3 fiéis/17 adulterados;falha parcial,uma entrega e uma tentativa,sem sucesso emprestado. |
+
+Oito produções:decisao_observada,experiencia_corporal_runtime,
+corpo_motor_runtime,executor_corpo,resultado_acao,adaptador_resultado,
+explicacao_fala_historica e planejador_resposta. Fixture ampliada,novo módulo.
+11 dos20 congelados idênticos;transporte/qualificador serial,firmware,
+gramáticas,autorização,orquestrador,revisão e composition root preservados.
+Nenhum commit/shutdown ou produtor novo de arquivo/volume.
+
+6 GREEN iniciais;contrato intermediário92,antes da exceção. Foco inicial594
+aprovados/2 falhas conhecidas. Após1 RED/1 controle na exceção,2 GREEN focados;
+contrato final101 aprovados/zero erros,22.97s. Instrumentações que não
+adulteravam proposta e expectativa decimal incorreta foram corrigidas com
+evidências preservadas,sem mudar produção para esconder esses sintomas.
+Replays no filho com PID/hash:captura/publicação/avaliação/realização antigas
+5 REDs/1 controle cada;saída de exceção anterior7 REDs/1 controle;8 fontes
+completas anteriores retomam seis pendências. Variante "e depois" final20
+aprovados/zero erros,26.76s. Rodada ampla inicial3286 aprovados/34 skips/
+8 subtestes/6 falhas/zero erros,548.40s,intermediária antes do complemento.
+Foco final603 aprovados/2 falhas conhecidas/zero erros,125.80s.
+Regressão final87 módulos:3295 aprovados/34 skips/8 subtestes/6 falhas/zero erros,
+584.01s.101 novos GREEN também na ampla;mesmos seis IDs da contraprova,
+suíte ampla não GREEN.101 fontes estáveis,sem reduzir raízes/pendências.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados.
+Exceção de folha controlada produz uma chamada/zero TURN;receipts normais,
+um TURN. Arquivo/volume,meta sozinha e fontes incompatíveis/ambíguas/outro
+owner só contratuais. Sem hardware,aferição física,áudio,main diário ou nova
+inferência Qwen. C5/F1/C7 gerais abertos. Princípio:derivação conserva fontes,
+compatibilidade e limite até entrega,inclusive na falha. Próxima candidata:
+contestação de meta/leitura e efeito sobre a comparação,sem reescrever
+receipt histórico ou autorizar repetição. Outra fronteira não investigada.
+Contratos,owners,baselines,XMLs,brutos e limites:
+`resultados_testes/compreensao_fala_acao_20261020/comparacao_imediata/RELATORIO.md`.
+
+## 55. C5 — revisão de operando suspende suporte da comparação entregue
+
+21/10/2026. Continuação autorizada da seção54,hardware adiado. HEAD
+b128f4e48b774352846a40672de493d19c30f109,main/worktree preservados.
+Primeira perda:entrega recebe meta/medição tipadas e diferença correta,mas
+registro conserva só fala/cabeçalho dos receipts,sem proposições revisáveis.
+Fonte singular também não representa apoio necessário dos dois operandos.
+5 REDs antes do candidato. Falsificadas ausência das fontes/aritmética e
+culpa exclusiva da LLM;revisão dirigida de fonte única continua como controle.
+
+Realizador compartilhado expõe componentes próprios;registro captura somente
+literais integrais entregues,com ID estável por solicitação/tipo/fonte.
+Comparação declara os dois apoios;avaliador/proveniência comuns respeitam
+AND,sem prova de implicação,confirmação externa ou autoridade. Revisão altera
+o operando selecionado e bloqueia suporte projetado da conclusão,conservando
+alegação derivada original,receipt e histórico. Nova proposta/JSON não são
+fonte;mesmos valores em outra invocação não herdam a contestação.
+
+| Responsável | Obrigação | Critério de validação |
+| --- | --- | --- |
+| Realizador compartilhado | Declarar proposições/apoios próprios | Reuso do cálculo/realização existentes,sem parser da prosa da IA. |
+| Registro da entrega | Preservar vínculo,identidade e estado revisável | Sem receipt tipado/literal completo não registra apoio;reentrega não cria prova. |
+| Avaliador/proveniência | Todos os apoios internos necessários | Segundo ramo,diamante,ciclo,ausência,duplicação e envelope inválido;sem promoção externa. |
+| Diário de revisão | Conservar contestação após evicção | Quatro REDs/quatro GREEN,mesmo ID/timestamp,sem nova revisão. |
+| Planejamento/revisor/entrega existentes | Comunicar revisão sem refazer execução |12 ciclos instalados:2 operandos ×2 rotas ×3 propostas adulteradas;uma resposta/zero novos efeitos. |
+
+Três produções:explicacao_fala_historica,registro_semantico e
+proveniencia_informacao. Fixture ampliada sob flag;novo módulo50 casos.
+23 dos27 controles congelados idênticos. Executor,ResultadoAcao,transporte,
+firmware,orquestrador,revisor,seletor e composition root preservados neste
+candidato. Nenhum commit/shutdown ou novo produtor de arquivo/volume.
+
+5 GREEN iniciais;46 GREEN ampliados. Retenção controlada encontrou4 REDs no
+candidato;complemento restaura revisão do diário,sem nova prova/evento.
+4 GREEN;contrato final50 aprovados/zero erros,30.06s. Foco final274 aprovados/
+4 skips/zero falhas/zero erros,67.84s. Retiradas em memória:publicação anterior
+4 REDs/1 controle;avaliador anterior5 REDs,com proposições presentes. PID/hash
+locais e do filho registrados. Proveniência anterior1 RED contratual;
+retenção anterior4 REDs contratuais. Três fontes antigas completas retomam
+seis pendências conhecidas. Instrumentações intermediárias com palavras/rota
+presumidas foram corrigidas pelos brutos,sem patch adicional de produção.
+Regressão88 módulos:3345 aprovados/34 skips/8 subtestes/6 falhas/zero erros,
+612.84s.50 novos GREEN também na ampla;mesmos seis IDs da contraprova,
+106 fontes estáveis. Suíte ampla não GREEN,sem reduzir raízes/pendências.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados.
+Ramos e consultas isolados pelo mesmo snapshot;ambas as rotas geram e recusam
+as propostas adulteradas. Alcance:consulta dirigida por ID canônico da
+alegação. Arquivo/volume,JSON/diamante/corrupções e evicção são contratuais;
+sem hardware,aferição,áudio,main diário ou inferência Qwen nova. C5/F1/C7
+gerais abertos;não é fechamento da compreensão completa. Princípio global:
+derivação conserva todos os apoios;revisar um necessário suspende confirmação,
+sem alterar execução passada. Próxima candidata:revisão na explicação
+histórica via vínculo canônico entre IDs próprios,sem unir por valor/recência.
+Referência livre aos operandos também não foi ampliada aqui. Contratos,
+responsáveis,baselines,XMLs,brutos,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261021/revisao_comparacao/RELATORIO.md`.
+
+## 56. C5 — revisão acompanha o vínculo até a explicação histórica
+
+21/10/2026. Continuação autorizada da seção55,hardware adiado. HEAD
+b128f4e48b774352846a40672de493d19c30f109,main/worktree preservados.
+Primeira perda:executor remapeia fontes para solicitação imediata,mas descarta
+captura/ID corporal de origem. Consulta seleciona o gesto correto e revisão
+permanece no registro;explicação não recebe seu estado.4 REDs instalados antes
+do candidato. Falsificadas escolha de outro gesto,perda da contestação,falta
+dos números e culpa exclusiva da LLM. IDs não são unidos por valor/recência.
+
+ResultadoAcao/adaptador conservam FontesComparacaoResultado original tipada,
+com metas/início equivalentes à solicitação remapeada. Projeção JSON explícita
+não se reidrata como fonte;proposta nova descarta campo. Registro acrescenta
+vínculo ID/owner fora do hash anterior da alegação. Binder compartilhado
+confronta fonte integral/ID/texto/apoios com episódio do owner e projeta revisão
+tipada da mesma consulta. Com revisão aplicável,contradição/ambiguidade falham
+fechadas;sem revisão/restrição,preserva qualificação histórica do owner. Consulta por
+ato usa o mesmo binder,sem herança entre owners. Realizador reutiliza revisão
+canônica;conserva tentativa/escopo,operando independente e motivos das demais
+comparações indisponíveis. Derivação nova de premissa revisada também recebe
+restrição,sem persistir nova alegação/prova ou autorizar efeito.
+
+| Responsável | Obrigação | Validação |
+| --- | --- | --- |
+| Executor/ResultadoAcao/adaptador | Conservar captura prévia e identidades próprias | Origem/tipo/meta/início;árvore JSON íntegra,sem reidratação de proposta. |
+| Registro da entrega/revisão | Declarar e conferir vínculo próprio | Fonte integral,ID/owner/apoios;duplicatas/contradições recusadas,reentrega preserva revisão. |
+| Contrato/binding por ato | Enriquecer fonte da consulta atual | Turno/texto exatos;arquivo/IoT contratuais sem emprestar revisão. |
+| Realizador/juiz compartilhados | Respeitar componente revisado e independente |4 ciclos históricos instalados;2 propostas normais recusadas e preferência rápida também segura;receipt/histórico intactos. |
+
+Sete produções:decisao_observada,resultado_acao,executor_corpo,adaptador_resultado,
+registro_semantico,contrato_fala e explicacao_fala_historica. Fixture ampliada
+sob flag;novo módulo51 casos.20 dos28 controles congelados idênticos. Runtime
+corporal/recuperação/aprendizado/transporte/firmware/gramáticas/autorização/
+seletor/orquestrador/revisor/composition root preservados neste candidato.
+Nenhum commit/shutdown ou novo produtor de outros domínios ativado.
+
+Projeção inicial com tuplas rejeitada pelo coletor;1 RED contratual demonstrou
+ValueError. Corrigida sem enfraquecer SnapshotComandoIA;5 GREEN,31.13s.
+Guarda de lista vazia e ramo inválido combinado:2 REDs/2 GREEN. Teste de
+múltiplas grandezas inicialmente exigia motivo incorreto;expectativa corrigida
+pelo avaliador canônico e retirada do realizador intermediário comprovou a
+omissão com o motivo certo. Histórico dos erros de ensaio e baselines adicionais
+preservado. Contrato intermediário49 GREEN/zero erros,33.10s. Foco350 aprovados/4 skips/
+zero falhas/zero erros,111.65s. Retiradas em memória com PID/hash local/filho:
+captura anterior4 REDs;registro,ligação e realização anteriores2 REDs/2 controles
+cada,em fronteiras distintas. Serialização e múltiplas grandezas:1 RED contratual
+cada. Sete fontes antigas completas retomam seis pendências conhecidas.
+Ampla inicial89 módulos:3386 aprovados/34 skips/8 subtestes/6 falhas/8 erros,
+633.84s. O candidato excedia escopo da revisão e recusava fontes de controles
+históricos sem revisão pendente.2 REDs canônicos/2 GREEN;guarda usa estado
+compartilhado de revisão/suporte e preserva qualificação histórica do owner.
+Módulo antigo de limites intacto. Retirada da guarda retoma2 REDs;baseline
+intermediário/hashes da ampla inicial preservados. Contrato final51 GREEN/
+zero erros,32.31s. Foco final9 módulos:455 aprovados/4 skips/zero falhas/zero
+erros,119.98s,incluindo todos os controles históricos que falharam na ampla.
+Regressão final89 módulos:3396 aprovados/34 skips/8 subtestes/6 falhas/zero
+erros,656.04s.51 novos GREEN também na ampla;mesmos seis IDs da contraprova,
+107 fontes estáveis. Suíte ampla não GREEN,sem reduzir raízes/pendências.
+
+Auditoria final corrigiu suposição sobre geração:configuração rápida sem
+geração nos focados;na ampla,um ciclo gerou/recusou proposta e outro não gerou.
+Mesma resposta canônica,sem efeitos. Motivo da variação não diagnosticado;
+não é contrato de bypass. Nenhuma produção alterada por essa suposição.
+
+Composição instalada,persistência isolada,serial/janela/geração controlados.
+12 ciclos imediatos anteriores continuam como controles. Arquivo/volume,
+ato composto e múltiplas grandezas são contratuais. Sem hardware,aferição,
+áudio,main diário ou inferência Qwen nova. Vínculo atual exige captura numérica
+prévia com meta;não cobre gestos autônomos sem essa fonte. Ausência de vínculo
+mantém legado sem herdar revisão alheia,não prova ausência de revisão.
+C5/F1/C7 gerais abertos,sem reduzir pendências. Princípio:identidade de origem
+acompanha projeções da execução;revisão acompanha fonte sem reescrever efeito.
+Próxima candidata:referência natural à proposição revisável,com seleção única
+e contexto próprio,sem promover semelhança a prova/permissão. Outra fronteira
+a estudar. Contratos,responsáveis,baselines,XMLs,brutos,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261021/revisao_historica/RELATORIO.md`.
+
+## 57. C5 — referência nominal exige papel, entrega e seleção única
+
+21/10/2026. Continuação autorizada da seção56,hardware adiado. HEAD
+b128f4e48b774352846a40672de493d19c30f109/main;worktree preservada.
+Primeira divergência:sem ID/citação,o seletor revisava a última alegação,
+mesmo quando a consulta dizia “essa meta” ou “essa medição”. “Esse valor”
+ambíguo também escolhia a comparação.3 REDs/1 controle na composição
+instalada antes do candidato;4 REDs adicionais na projeção/dependência.
+Números/IDs/registro íntegros;falsificada culpa exclusiva da geração.
+
+Leitor compartilhado declara papéis/qualificadores limitados. Registro
+resolve na última entrega observada recente,mesmo request,texto entregue,
+ID íntegro/único;sem saltar entrega independente ou emprestar receipt.
+Ambiguidade/ausência viram fonte tipada da consulta e realização canônica
+pede esclarecimento,sem revisar por suposição. Contrato/binder/grafo já
+existentes conservam a revisão nos dependentes e no histórico.
+Perguntas gerais por artigo não viram revisão;dêitico/contestação/referência
+literal delimitam o escopo. ID explícito mantém prioridade pelo mesmo leitor.
+
+Responsáveis:referencias_linguagem pela leitura;registro_semantico por
+identidade/escopo/estado;explicacao_fala_historica pela conclusão observável.
+Somente essas3 produções alteradas,fixture sob flag,novo módulo68 casos.
+8 controles dos12 arquivos congelados idênticos. Sem mudança de executor,
+hardware,autorização,aprendizado,root ou orquestrador nesta etapa;sem commit.
+Guardas2 REDs/2 GREEN;escopo5 REDs/1 controle;prioridade1 RED;7 controles
+finais GREEN. Foco final523 aprovados/4 skips/zero falhas/erros,136.47s.
+Contraprovas em memória retomam as perdas de seleção,realização e guardas.
+Oito chamadas completas adicionais validam as quatro referências nas duas
+rotas configuradas;persistência isolada e folhas controladas.
+
+Ampla final90 módulos:3464 aprovados/34 skips/8 subtestes/6 falhas anteriores/
+zero erros,620.72s.68 novos GREEN também na ampla;110 fontes estáveis.
+Mesmos seis IDs da contraprova com produção congelada,suíte ampla não GREEN.
+18 ciclos principais e8 chamadas diretas adicionais,uma resposta por ciclo,
+sem novos efeitos;receipt/histórico preservados. Geração rápida observada,
+sem pressupor bypass. Ampla inicial interrompida por excesso de escopo do
+candidato;baselines/log parcial preservados. Erros de ensaio de arquivo
+exclusivo e expectativa de aspas corrigidos no ensaio,sem afrouxar produção.
+Auditoria e selo em final.json/SELO_SHA256.json junto ao relatório.
+
+IDs históricos preservados;C5/F1/C7 gerais abertos. Não prova paráfrase
+livre,hardware/áudio,Qwen novo ou compreensão completa. Referência limitada
+à última entrega numérica recente;resposta independente a substitui.
+Próxima candidata:esclarecimento por elipse após a pergunta,com ciclo/escopo
+próprios,sem herdar qualquer última fala ou autorização. Ainda estudar.
+Princípio global:resolver referência antes de revisar confiança;ambiguidade
+é estado observável,não permissão para escolher o último item. Contratos,
+responsáveis,baselines,replays,erros de ensaio e limites:
+`resultados_testes/compreensao_fala_acao_20261021/referencia_proposicao/RELATORIO.md`.
+
+## 58. C5 — esclarecimento entregue conserva candidatos e contestação original
+
+21/10/2026. Continuação autorizada da seção57. HEAD
+b128f4e48b774352846a40672de493d19c30f109/main;worktree preservada,hardware
+adiado.4 REDs instalados nas duas rotas. Pergunta era entregue e alegações
+permaneciam,mas fonte não conservava candidatos nem criava pendência canônica.
+“A medição” entrava como conversa nova. Falsificados falta da pergunta,
+perda geral do registro e falha de leitura do papel;perda anterior à geração.
+
+Fonte tipada captura até8 candidatos/assinaturas e entrega original. Depois
+da publicação observada,o orquestrador registra pendencia_atual pelo serviço
+de diálogo existente,sem slot privado. TTL300s,intenção vazia,sem autoridade.
+Leitor nominal/literal compartilhado seleciona somente nesse conjunto.
+Registro conserva a contestação original,aplica revisão comum e o turno
+consome a pendência antes da autoria. Elipse classificada como conversa recebe
+conclusão somente quando o host já resolveu esse esclarecimento,mesmo turno/
+texto. Não se abre revisão genérica para outras conversas ou novos comandos.
+
+Responsáveis:registro_semantico por candidatos/vínculos/revisão;
+pendencia pelo estado de diálogo;orquestrador_fala pela entrega real;
+orquestrador_turno pelo consumo;referencias_linguagem pela leitura e
+contrato_fala pela conclusão.6 produções,fixture sob flag,64 novos casos.
+7 dos14 controles congelados idênticos,inclusive root/realizador/executor
+contratual. Sem firmware,transporte,aprendizado ou autorização operacional
+alterados nesta etapa;sem commit/shutdown ou ativação autônoma.
+
+Intermediário2 GREEN/2 RED mostrou alvo correto e fala errada;passagem da
+elipse ao contrato corrigida,4 GREEN. Opções truncadas1 RED antes de exigir
+conjunto integral da consulta;45 controles GREEN. Identificação por ID2 REDs/
+2 GREEN,reutilizando leitor literal com moldura integral;outro ato citado
+não seleciona alvo. Contrato intermediário56 GREEN. Foco final15 módulos:
+608 aprovados/4 skips/zero falhas/erros,169.77s. Contraprovas:captura/entrega
+anteriores4 REDs cada;turno/contrato2 REDs/2 controles cada;opções1 RED e
+identificação2 REDs;6 produções antigas completas4 REDs instalados.
+
+Ampla final95 módulos:3549 aprovados/34 skips/8 subtestes/6 falhas anteriores/
+zero erros,652.35s.64 novos GREEN também na ampla;117 fontes estáveis. Seis
+IDs iguais à contraprova congelada e à seção57;suíte ampla não GREEN. Seis
+passos novos completos e18 controles anteriores,uma resposta por passo,
+pendência ativada/consumida pelo mesmo ID,origem/alvo preservados,sem novos
+efeitos e histórico/receipt intactos. Propostas contabilizadas nos brutos,
+sem pressupor bypass rápido. Auditoria/selo junto ao relatório.
+
+Expiração,mudança de sessão,cancelamento canônico,entrega independente,
+duplicação/adulteração e disputa com outro owner falham fechados. Recusa da
+disputa não prova arbitragem entre perguntas concorrentes. Repergunta nominal
+ambígua conserva origem/candidatos/TTL. Sem hardware,áudio,Qwen novo ou
+main diário;persistência isolada,geração/folhas externas controladas. Outros
+owners e falhas de estado são contratuais. C5/F1/C7 gerais continuam abertos.
+Próxima candidata:qualificadores próprios para vários candidatos do mesmo
+papel,sem semelhança virar seleção única;a estudar. Princípio global:
+esclarecimento carrega operação/alvos de origem,existe só após entrega e
+consome resposta dentro desse escopo,sem nova prova/permissão. Contratos,
+responsáveis,baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261021/esclarecimento_proposicao/RELATORIO.md`.
+
+## 59. C5 — grandeza da própria fonte antes de escolher a proposição,21/10
+
+Continuação das seções57–58,sem nova raiz por frase ou habilidade. A pergunta
+entregue conservava duas medições;“a medição de rotação relativa” perdia o
+qualificador antes da seleção. IDs literais funcionavam e a pergunta/opções
+existiam,afastando falha geral da revisão ou ausência de entrega. RED local14;
+prova instalada válida2 REDs,uma por rota. Erros anteriores do ensaio ficaram
+registrados;guardas de fonte histórica não foram alteradas para acomodá-lo.
+
+Contrato:leitor nominal comum declara papel/grandeza integral;registro semântico
+filtra pela grandeza da própria fonte e conserva multiplicidade. Comparação
+confere ambas as premissas. A mesma seleção vale na consulta,captura/validação
+da pendência e elipse,sem criar prova,permissão ou reconstruir receipt de JSON.
+Owner lexical:referencias_linguagem;owner da seleção/revisão:registro_semantico.
+Somente essas duas produções alteradas nesta etapa. Orquestradores,executor,
+pendência,transporte e aprendizado mantidos. Fixture captura objeto tipado e
+adiciona coleta sob flag;34 testes novos. Nenhum commit/shutdown/ativação.
+
+Foco4 módulos:172 aprovados/zero falhas/erros,95.32s. Controles finais32
+aprovados/2 instalados desmarcados,0.46s. Retirada das duas fontes em memória
+retoma15 REDs,sem erros,inclusive no processo instalado. Dois candidatos
+normalizados não viram um;pergunta qualificada não pode ter escopo ampliado
+pela resposta;adulteração das opções/fontes/entrega falha fechada.
+
+Ampla96 módulos:3583 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero
+erros,684.25s.34 novos GREEN;118 fontes estáveis;8/11 controles congelados
+idênticos. IDs das seis falhas iguais à seção58;suíte ampla não GREEN.
+Quatro passos novos e24 controles anteriores auditados na composição.
+Relatório,hashes,diffs e selo preservam a cadeia sem apagar pendências.
+
+Instalação real por laylay.py,persistência isolada,geração/serial controlados.
+A medição corporal atravessa executor real com folha simulada;segunda grandeza
+é fonte tipada experimental na porta de entrega,não um sensor aferido. Uma
+resposta por entrada,sem novo executor,histórico/receipt/publicação preservados.
+Sem Qwen novo,áudio audível,hardware ou main diário. Recorte:grandeza nominal
+integral na entrega recente. Mesmo papel/grandeza com métodos diferentes
+continua ambíguo. Próxima candidata:qualificadores de método/referencial com
+fonte e exposição verificáveis,a estudar. C5/F1/C7 gerais abertos,sem reduzir
+pendências. Princípio:qualificador restringe identidade,sem provar conteúdo
+ou conceder autoridade. Contratos,responsáveis,baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261021/qualificador_proposicao/RELATORIO.md`.
+
+## 60. C5 — opções de método/referencial vinculadas à entrega,22/10
+
+Continuação das seções58–59. Fontes guardavam método/referencial e pendência
+conservava duas medições,mas a fonte da pergunta descartava os campos antes
+da realização. Pergunta oferecia só citação/ID. Primeira perda antes da geração.
+8 REDs locais;após corrigir erro de montagem do ensaio,4 REDs instalados sem
+erros,38.32s.10 controles anteriores ao candidato:IDs funcionavam,dados e
+pergunta estavam presentes;omissão não era culpa exclusiva do modelo.
+
+Contrato:registro_semantico projeta campos próprios distinguíveis de medições
+da mesma grandeza;referencias_linguagem lê papel/grandeza/método/referencial
+integrais,como conjunção. explicacao_fala_historica apresenta opções inteiras.
+Campos apresentados são conferidos contra candidatos/assinaturas e a entrega
+observada das opções. Elipse não usa campo armazenado mas omitido da pergunta.
+Excesso mantém pedido por citação/ID,sem truncar opções. pendencia exporta o
+limite já existente de500 caracteres;nenhum aumento de orçamento ou mudança
+de TTL. Somente essas quatro produções alteradas;fixture sob flag,50 casos
+novos. Orquestradores,executor,transporte e aprendizado mantidos. Sem commit,
+shutdown,hardware novo ou ativação autônoma.
+
+22 GREEN iniciais;foco204 GREEN/138.77s. Dois REDs de conjunção detectaram
+que o leitor perdia o“e”usado pela própria pergunta;corrigido no leitor comum.
+40 controles finais GREEN/0.54s;foco final59 GREEN/42.13s. Instalação final46
+GREEN/41.41s,mais4 vizinhos GREEN/0.49s. Retirada completa das quatro fontes
+em memória retoma12 REDs sem erros,41.71s,inclusive no filho instalado.
+
+Ampla97 módulos:3633 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero
+erros,752.83s.50 novos GREEN;119 fontes estáveis;6/11 controles congelados
+idênticos. IDs das seis falhas iguais à seção59;suíte ampla não GREEN.
+Relatório,diffs,hashes e selo conservam evidências sem apagar pendências.
+
+Doze entradas novas e28 controles anteriores auditados na composição instalada:
+uma resposta por entrada,mesma pendência/origem consumida,receipt/publicação/
+histórico intactos,zero novos executores. Orçamento insuficiente também provado
+nas duas rotas,conservando seleção por ID. Folhas/geração controladas,persistência
+isolada;segunda fonte tipada experimental na entrega,não sensor aferido. Sem
+Qwen novo,áudio audível,hardware ou main diário. Repergunta entregue protegida
+contratualmente;não comprova classificação de elipse ambígua em conversa nova.
+Próxima candidata:esse caso e elipse sem papel,sem ampliar escopo ou autoridade;
+a estudar. C5/F1/C7 gerais abertos,sem reduzir pendências. Princípio:campos
+próprios e efetivamente apresentados restringem identidade,nunca verdade ou
+permissão. Contratos,responsáveis,baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261022/opcoes_proposicao/RELATORIO.md`.
+
+## 61. C5 — resposta ainda ambígua continua a pergunta entregue,22/10
+
+Continuação58–60,sem nova raiz por frase/domínio. Dois REDs instalados:
+“a medição”entrava como conversa,recebia fala inventada da geração e perdia
+a pendência. Nenhum giro proposto foi executado. Primeiro estado incorreto:
+pendência ativa antes da autoria,mas ausente do contrato. Retrato anterior à
+geração falsificou limpeza antecipada/TTL;pergunta,opções e dados existiam.
+RED local sem LLM e dois instalados na fronteira,com6 controles verdes.
+
+Contrato compartilhado:registro_semantico valida a pendência e o mesmo filtro
+nominal;referência ainda não única produz fonte ligada ao ID real da pendência,
+candidatos/assinaturas/origem/operação. contrato_fala encaminha esse estado
+canônico nos atos já permitidos. Classificação continua conversa;nenhuma
+reescrita do input para forçar pergunta. Entrega observada religa a pergunta
+sem novo ID,TTL,operação ou seleção. Só esses dois módulos de produção foram
+alterados. Fixture sob flag;36 casos novos;sem commit/shutdown/ativação.
+
+Baseline RED inclui a coleta nova;fixture anterior foi conferida contra SHA
+selado da seção60 e arquivada separadamente,sem reescrever o baseline. Onze
+fontes congeladas. Candidato9 GREEN/45.67s;contrato32 GREEN/0.65s;foco148
+GREEN/122.11s;entregas tardias2 GREEN/0.49s. Retirada das duas fontes antigas
+em memória retoma3 REDs sem erros/48.23s,inclusive no filho instalado.
+
+Ampla98 módulos:3669 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero
+erros,791.21s.36 novos GREEN;120 fontes estáveis;9/11 fontes da base RED
+idênticas(coletor já incluído). Diff separado da fixture contra selo60.
+Mesmos seis IDs da seção60;suíte ampla não GREEN. Diffs,hashes e selo
+conservam evidências,sem redução artificial de pendências.
+
+Seis entradas novas/40 controles anteriores auditados na composição:uma resposta
+por entrada,mesma pendência/candidatos/TTL/origem,sem revisão durante ambiguidade;
+resposta única posterior usa revisão comum. Receipt/publicação/histórico intactos,
+zero executores novos. Folhas/geração controladas,persistência isolada;segunda
+fonte tipada experimental,não sensor aferido. Sem hardware,áudio,Qwen novo ou
+main diário. Recorte:papel nominal estrito com mais de um candidato válido;
+não refina conjunto,não resolve elipse sem papel ou referência fora do conjunto.
+Próxima candidata:essas respostas incompletas,sem capturar comando/assunto novo;
+a estudar. C5/F1/C7 gerais abertos,sem apagar pendências. Princípio:ambiguidade
+é continuação observável ligada à pergunta original,nunca nova prova/permissão.
+Contratos,responsáveis,baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261022/continuidade_esclarecimento/RELATORIO.md`.
+
+## 62. C5 — elipse sem papel ligada às opções entregues,22/10
+
+Continuação58–61,sem nova raiz por frase/habilidade. “a do sensor auxiliar”
+perdia a referência embora as opções e a pendência estivessem presentes antes
+da autoria. Referência completa funciona no mesmo estado;RED local sem LLM e
+4 REDs instalados falsificam perda geral de dados,TTL e culpa exclusiva do
+modelo. Primeira perda no contrato lexical de seleção;entrega independente
+encerrava a pendência como consequência. Zero novo executor no RED.
+
+referencias_linguagem lê elipse estrita apenas sob opção explícita do owner.
+registro_semantico confere nomes integrais contra campos próprios realmente
+apresentados,usando um filtro para seleção/repergunta. Nome sem campo não
+escolhe método ou referencial por suposição;colisão conserva ambiguidade.
+Único alvo entra na revisão comum com operação original;mais de um conserva
+ID,TTL,opções e origem. Contexto/proposta não se tornam prova ou permissão.
+Somente essas duas produções alteradas;fixture sob flag;41 casos novos.
+Base com12 arquivos congelados antes da fixture/candidato;9 permanecem
+idênticos. Sem commit,shutdown,hardware ou ativação autônoma.
+
+37 controles locais GREEN/0.56s;191 focados GREEN/170.24s. Retirada completa
+das duas fontes antigas em memória retoma5 REDs sem erros/51.00s,inclusive
+no filho instalado com PID/hashes conferidos. Validação final usa fontes
+estabilizadas;ensaio inicial5 GREEN ocorreu enquanto novos testes locais
+eram acrescentados e não é tratado como snapshot integral estável.
+
+Ampla99 módulos:3710 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero
+erros,849.23s.41 novos GREEN;121 fontes estáveis no foco/ampla. Mesmos seis
+IDs da seção61;suíte ampla não GREEN. Teste RED original preservado com hash
+conferido contra dois snapshots,sem mudar baseline. Diffs,hashes e selo
+mantêm as evidências;9/12 arquivos de controle idênticos.
+
+Dez entradas novas/46 controles anteriores auditados na composição instalada:
+uma resposta por entrada,seleção única correta,ambiguidade preservada com
+seleção posterior,receipts/publicação/histórico intactos,zero executores novos.
+Folhas/geração controladas,persistência isolada;segunda/terceira medições são
+fontes tipadas experimentais na entrega. Sem aferição,hardware,áudio,Qwen novo
+ou main diário. Recorte:nomes integrais apresentados,sem aproximação/paráfrase.
+Resposta parcial ou fora do conjunto permanece sem seleção;comunicação do
+limite/conservação da pergunta nesses casos é próxima candidata,a estudar
+antes de patch,distinguindo outro ato. C5/F1/C7 gerais abertos,sem reduzir
+pendências. Princípio:elipse restringe identidade em opções observadas,nunca
+verdade ou autoridade. Contratos,responsáveis,baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261022/elipse_opcoes/RELATORIO.md`.
+
+## 63. C5 — ausência de seleção conserva pergunta com vínculo verificável,22/10
+
+Continuação58–62,sem nova raiz por frase/domínio. “a do sensor”não seleciona
+“sensor auxiliar”,corretamente,mas perdia o contrato de continuação e a entrega
+independente encerrava a pergunta. Pendência/opções presentes antes da autoria.
+2 REDs locais/4 instalados sem erros,55.40s;falsificadas perda geral de dados,
+expiração/limpeza antecipada e culpa exclusiva da geração.
+
+Primeira rodada também usava citação isolada:essa entrada segue moldura
+metalinguística anterior,fora do recorte nominal. Teste inicial preservado
+com hash e premissa corrigida;essa regra não recebeu patch nem foi contada
+como raiz corrigida. Falsificação com fontes antigas mostra que mudar só
+“len>1”para“len!=1”capturaria comentários/nomes sem vínculo.
+
+registro_semantico distingue prefixo de palavras efetivamente apresentadas,
+que só motiva repergunta,nunca seleção ou redução de opções. explicacao_fala_historica
+realiza ausência de identificação e menu integral no limite500;
+excesso usa pedido por citação/ID e mantém exposição anterior válida. Mesmo
+ID,TTL,operação e origem;nenhuma nova alegação ou autoridade. Somente esses
+dois módulos de produção alterados. Fixture sob flag,44 casos novos. Um
+teste vizinho foi separado:continua sem selecionar,mas agora exige conclusão
+de esclarecimento;não se relaxaram controles de outros atos. Base com13
+arquivos anterior ao candidato;9 permanecem idênticos. Sem commit/shutdown.
+
+40 locais GREEN/0.61s;235 focados GREEN/228.10s. Orçamento limítrofe e entrega
+tardia cobertos.12 entradas novas/56 controles anteriores auditados na
+composição instalada:uma resposta por entrada,sem seleção na parcial,mesma
+pendência,seleção posterior correta,receipt/publicação/histórico intactos,
+zero executores novos.
+
+Replay das duas fontes antigas completas retoma6 REDs sem erros/57.80s,
+inclusive no filho instalado com PID/hashes conferidos. Teste RED nominal
+preservado em bytes com hash original;baseline intacto. Ampla100 módulos:
+3754 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero erros,884.24s.
+44 novos GREEN;122 fontes estáveis no foco/ampla. Mesmos seis IDs da seção62;
+suíte ampla não GREEN. Diffs,hashes e selo preservados;9/13 controles idênticos.
+
+Folhas/geração controladas,persistência isolada;segunda medição tipada
+experimental na entrega. Sem aferição,hardware,áudio,Qwen novo ou main diário.
+Recorte:prefixo de palavras próprias apresentadas serve para perguntar,sem
+aproximação para selecionar. Nome desconhecido sem vínculo,paráfrase,ordinal
+e citação isolada permanecem fora. Próxima candidata:qualificar essas outras
+tentativas de resposta sem capturar comentário/comando;estudar papel
+comunicativo e fontes primeiro. C5/F1/C7 gerais abertos,sem apagar pendências.
+Princípio:ausência de seleção com vínculo verificável exige conclusão coerente,
+sem contexto virar prova ou referência virar permissão. Contratos,responsáveis,
+baselines,replays e limites:
+`resultados_testes/compreensao_fala_acao_20261022/referencia_sem_correspondencia/RELATORIO.md`.
+
+## 64. Autoridade por ato — citação integral precede decisão operacional,22/10
+
+Estudo de nome/citação como resposta revelou primeira fronteira anterior à
+revisão C5:`"apague tudo"`chegava à autoria como comando autorizado. Nenhum
+executor no ensaio,mas a autoridade declarada era incorreta. Essa raiz não
+foi consolidada às perdas posteriores da revisão. Estudo inicial9 REDs
+selecionados/zero erros/62.96s,preservado em citacao_resposta. Novo baseline
+de18 arquivos complementa o inicial de14,sem substituí-lo,para congelar os
+owners da autoridade. Coleta por flag e prazo180s somente no processo de
+ensaio acumulado;nenhum prazo de operação/modelo/runtime ampliado.
+
+35 REDs/7 controles GREEN/zero erros,63.11s. Moldura é reconhecida na conversa,
+mas não era aplicada antes da autoridade operacional. Reproduzido com dois
+normalizadores e vários domínios;falsificadas causa exclusiva do normalizador
+e da geração. normalizacao_linguagem expõe reconhecimento integral já existente;
+modalidade_turno reutiliza a moldura bruta,P0 e veto canônico antes dos owners
+especializados. Verbo citado não fornece autoridade;coordenação interna não
+cria atos atuais. Projeção normal preserva texto/identidade/schema. Pedidos
+externos com argumentos citados continuam legítimos. Só essas duas produções
+alteradas;registro/revisão/orquestradores/executores mantidos.42 testes novos
+de autoridade;41 casos diagnósticos da revisão preservados,sem relaxamento.
+
+Primeiro candidato vetou mas perdeu texto:24 falhas/16 aprovados;parado e
+corrigido usando projeção normal,sem alterar testes.40 locais GREEN/0.36s;
+196 focados GREEN/164.85s. Replay de ambas as fontes antigas retoma35 REDs e7
+controles GREEN/zero erros/66.79s,inclusive no filho com hashes/PID. Diagnóstico
+posterior mantém os mesmos9 REDs selecionados/32 desmarcados/zero erros/66.01s:
+projeção de referência e entrega de revisão ainda não corrigidas nessa etapa.
+
+Ampla102 módulos:3811 aprovados/34 skips/8 subtestes/6 falhas anteriores/zero
+erros,946.83s.42 novos GREEN;126 fontes estáveis;16/18 controles da base
+idênticos. Mesmos seis IDs da seção63;suíte ampla não GREEN. Diagnóstico
+posterior9 REDs relatado separadamente,sem apagar pendências. Baselines,
+diffs,hashes e selos preservados.
+
+Duas citações operacionais negativas nas rotas normal/rápida,mais14 controles
+novos de contexto e68 anteriores auditados,uma resposta por entrada,sem novos
+executores,receipt/publicação/histórico preservados. Composição por laylay.py,
+persistência isolada,geração/folhas controladas;segunda medição tipada
+experimental. Propostas têm texto hostil e comandos vazios;sem prova de
+despacho hostil completo,hardware,aferição,Qwen novo,áudio ou main diário.
+Sem commit/shutdown/ativação. C5/F1/C7 gerais abertos. A próxima fronteira é
+a projeção da citação como referência da pergunta;contrato de revisão já
+resolvida tem sua perda posterior. Estudar e validar separadamente. Princípio:
+moldura compartilhada precede domínios e menção não vira permissão. Evidências:
+`resultados_testes/compreensao_fala_acao_20261022/citacao_autoridade/RELATORIO.md`.
+
+## 65. C5 — admissão da revisão já resolvida após resposta citada,22/10
+
+Após validar/selar a autoridade da seção64,baseline separado18 arquivos. RED
+anterior9 casos reutilizado com todas126 fontes iguais à worktree e artefatos
+sob hash. No caso conhecido,consumer seleciona corretamente e owner recupera
+revisão tipada,mas contrato_fala a descarta por ser metalinguagem. Primeira
+perda real nessa admissão,antes da projeção dos casos sem seleção.
+
+Só contrato_fala alterado primeiro:API somente_esclarecida=True atende conversa
+não executável com vínculo validado,sem remover metalinguagem ou reinterpretar
+conteúdo como utterance. Sem pergunta/revisão corrente,não intercepta.3 GREEN/
+6 RED/zero erros,63.21s:controle local e duas rotas conhecidas corrigidos,
+restantes sem seleção continuam RED. Registro byte idêntico à base nessa prova.
+Owner e critério:contrato deve levar a revisão consumida à fala,com mesmo
+turno/texto,sem autoridade nova. Não consolidar à projeção descrita abaixo.
+
+## 66. C5 — projeção da referência literal ainda sem seleção,22/10
+
+Com admissão correta,filtro do registro só projetava nominal;literal/ID tinha
+reader canônico no consumo mas não na projeção. Só registro_semantico alterado
+depois:mesmo filtro usa reader estrito após validar pendência/fontes. Consumo
+e projeção reutilizam decisão;zero correspondência pede esclarecimento com
+mesmos candidatos/ID/TTL/operação,sem escolher por aproximação;uma revisa pelo
+owner comum,várias mantêm ambiguidade. Citação continua argumento,dado sem
+autoridade/prova. Sem parser local,recência ou novo source criado pela IA.
+
+35 locais GREEN/0.56s. Foco inicial236 GREEN/1 expectativa antiga RED:seção63
+descartava literal desconhecido. Não seleção mantida;conclusão passa a pedir
+esclarecimento. Teste antigo preservado no baseline/XML,demais atos não relaxados,
+total44 vizinhos igual.41 casos citados não modificados. Foco final237 GREEN/
+229.19s. Replay de duas fontes antigas retoma9 REDs/zero erros/62.14s,com P0
+da seção64 preservada e PID/hashes do filho. Causas de admissão/projeção
+distintas,demonstradas por candidato sequencial;não nove novas raízes.
+
+Ampla final103 módulos:3852 aprovados/34 skips/8 subtestes/6 falhas anteriores/
+zero erros,1004.93s.41 casos citados agora na ampla GREEN;42 de autoridade
+preservados,total83 novos desta continuação.126 fontes estáveis;15/18 controles
+da base idênticos. Mesmos seis IDs da seção64;suíte ampla não GREEN. Diffs,
+hashes e selo preservam os dois candidatos sequenciais e a expectativa antiga
+do teste vizinho;41 citados permanecem com os bytes originais do diagnóstico.
+
+Seis ciclos do estudo,16 entradas,uma resposta por entrada;literal ausente
+conserva pergunta sem revisão,conhecido seleciona/revisa alvo correto. Atos
+metalinguísticos e P0 preservados,receipt/publicação/histórico intactos,zero
+executores novos. Composição instalada,persistência isolada,geração/folhas
+controladas,segunda fonte tipada experimental. Sem Qwen novo,aferição,hardware,
+áudio/main diário,commit/shutdown/ativação. Duas produções desta base;15/18
+controles iguais. Selos anteriores,com seus REDs históricos,não reescritos;
+conclusão posterior neste artefato. C5/F1/C7 gerais abertos. Próxima candidata:
+campos como método/referencial citados,distinguindo nome de campo e afirmação
+inteira,com fonte/exposição verificáveis;estudar antes de patch. Evidências:
+`resultados_testes/compreensao_fala_acao_20261022/citacao_referencia/RELATORIO.md`.
+
+## 67. F1/F2/F3 — conversa contínua real priorizada por Pedro, 22–23/10
+
+O novo relato e a orientação de testar conversa contínua passaram à frente da
+expansão de campos citados. Base main/b128f4e48b774352846a40672de493d19c30f109,
+worktree anterior preservada em hashes; 18 fontes desta investigação possuem
+backup verificado contra `controle4/baseline.json`. Não atribuir todas as
+alterações já presentes à conversa. Sem commit, restart pessoal, shutdown,
+ativação AUT, alteração de modelo, janela, voz ou timeout.
+
+Planejamento por mecanismos nas famílias existentes, sem contar cada frase como
+raiz e sem afirmar que F1/F2/F3 são uma causa única:
+
+- **F1/C5, finalidade e continuidade:** contrato de fala e registro distinguem
+  explicar sentido de auditar receipt; opinião conserva fala anterior como
+  contexto, sem ordem de explicá-la. Filtro não promove `ultima_fala` por mera
+  recência em assunto novo. Esclarecimento exige transformação, não repetição
+  literal. Citação, causa explícita, revisão e referências legítimas permanecem
+  sob os respectivos owners.
+- **F2, escopo da observação:** gramática e fundamentação reconhecem consulta
+  aberta de estado. Sem observação, autoria consome realização controlada do
+  limite; ausência de leitura não prova falta de capacidade ou defeito. O
+  produtor conhece o sentido da sua realização quando uma entrega única foi
+  observada pelo registro. Não é certificação de paráfrases livres.
+- **F3, conclusão de falha:** codec preserva categoria técnica negativa;
+  emissão principal e retorno secundário do serviço têm vínculo tipado com
+  turno/texto e, no secundário, hash da principal. Normalização, composição,
+  planejamento e revisão preservam apenas a realização exata, sem comandos.
+  Ausência de realização contextual local não desabilita o reparo; rejeição
+  não vira prova de falta de contexto do usuário.
+- **Orçamento do transporte local:** perfil compacto já existente substitui
+  só o prefixo canônico normal. Demais perfis/portas mantidos. Trata o recorte
+  real de 4153 tokens numa janela 4096, não encerra todo orçamento composto.
+
+Responsáveis, contratos, REDs sequenciais, hipóteses falsificadas e controles
+por domínio estão na matriz do relatório. Não duplicar essas responsabilidades
+nos executores. O novo comprovante negativo da geração não confirma efeitos
+de nenhuma habilidade e nunca nasce da hidratação de JSON da IA.
+
+Validação: sequência original com seis turnos reais apresentou limite de estado
+e explicação coerentes; a cotidiana de oito revelou novos REDs, que foram
+preservados e usados antes dos candidatos seguintes. Última sequência reúne
+14 entradas sem reset: 14 publicações, zero pedidos ao executor, 16 HTTP
+(13 com 200, três timeouts), zero HTTP 400 e fontes estáveis. Os exercícios
+continuam sendo assunto da opinião posterior. GREEN instalado de entrega e
+segurança não é aprovação da qualidade livre: turno 2 nega capacidades do
+catálogo e turnos 9/11/12 têm prosa vaga/generalizações/esclarecimento fraco.
+Foco cotidiano 166 aprovados; foco de falha secundária 126 aprovados.
+Ampla de 125 módulos e suas falhas constam no fechamento do artefato, sem
+rotular a suíte de verde por antecipação.
+
+Os dois consumos prioritários históricos não foram reproduzidos com estado
+limpo nem após receipt IoT tipado; continuam abertos. A sombra neural e a
+ambiguidade lexical de `esta` não demonstram a rota histórica. Ablação da ordem
+de explicar na opinião não provou suficiência causal: ambas as variantes reais
+retomaram o relato. Não atribuir toda perda de continuidade a essa ordem.
+
+Critério de encerramento: conversa contínua real deve conservar significado,
+tema e limites das fontes até a resposta posterior; qualidade não pode ser
+deduzida de publicação, schema, termos em comum ou testes estruturais. Próxima
+fronteira é a autoria livre sobre atividade/capacidade e opinião/esclarecimento
+do relato, com fonte própria e revisão consistente, além da latência e da
+prioridade histórica. F1/F2/F3/C5/C7 gerais permanecem abertos. Resultados,
+contratos, responsáveis, falhas conhecidas e reproduções:
+`resultados_testes/conversa_continua_20261022/RELATORIO.md`.

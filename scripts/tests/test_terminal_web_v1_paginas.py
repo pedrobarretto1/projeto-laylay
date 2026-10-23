@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import shutil
 import time
 
 import pytest
@@ -12,7 +13,7 @@ pytest.importorskip("PySide6.QtWebEngineWidgets")
 
 
 @pytest.fixture
-def paginas_reais(monkeypatch, tmp_path):
+def paginas_reais(monkeypatch, tmp_path, request):
     monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("LAYLAY_UI_PLATFORM", "offscreen"))
     monkeypatch.setenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu --no-sandbox")
     monkeypatch.delenv("LAYLAY_REDUZIR_MOVIMENTO", raising=False)
@@ -88,7 +89,27 @@ def paginas_reais(monkeypatch, tmp_path):
     worker.terminou.connect(thread.quit)
     recebidas = []
     worker.mensagem.connect(recebidas.append)
-    janela = JanelaInterfaceWebV1(worker, Path(__file__).parents[2], session_id=ponte.session_id)
+    raiz_renderer = Path(__file__).parents[2]
+    diretorio_renderer = None
+    if getattr(request, "param", None) == "replay_inicial":
+        # Executa os mesmos scripts/renderer/canal; apenas insere publicações
+        # anteriores à inscrição das páginas para reproduzir a ordem do boot.
+        destino = tmp_path / "renderer" / "cliente" / "terminal_2" / "web_v1"
+        shutil.copytree(raiz_renderer / "cliente/terminal_2/web_v1", destino)
+        indice = destino / "index.html"
+        html = indice.read_text(encoding="utf-8")
+        ancora = '<script defer src="paginas.js"></script>'
+        assert html.count(ancora) == 1
+        indice.write_text(html.replace(ancora, '<script defer src="publicacoes_anteriores.js"></script>\n' + ancora), encoding="utf-8")
+        (destino / "publicacoes_anteriores.js").write_text("""
+          window.publicacoesValidadas={inicio:!!window.LaylayInterface};
+          for(let i=1;i<=30;i++)LaylayInterface.receiveEvent({type:'dashboard_state',dashboard:{system:{cpu_percent:{value:i,observed_at:i,freshness:'fresh'}}}});
+          LaylayInterface.receiveEvent({type:'dashboard_state',dashboard:{system:{cpu_percent:{value:30,observed_at:30,freshness:'fresh'}}}});
+          LaylayInterface.receiveEvent({type:'dashboard_state',dashboard:{system:{cpu_percent:{value:31,observed_at:31,freshness:'stale'}}}});
+          window.publicacoesValidadas.final=LaylayInterface.state.dashboard.system.cpu_percent.value;
+        """, encoding="utf-8")
+        diretorio_renderer = destino
+    janela = JanelaInterfaceWebV1(worker, raiz_renderer, session_id=ponte.session_id, diretorio_web=diretorio_renderer)
     janela.web.settings().setAttribute(QWebEngineSettings.AutoLoadImages, False)
 
     def esperar(condicao, segundos=8):
@@ -175,6 +196,77 @@ def test_historico_usa_24_posicoes_e_ignora_replay_e_metricas_antigas(paginas_re
     assert js("document.querySelector('.tp-chart svg').getAttribute('aria-label')") == "CPU: 24 de 24 posições, agora à direita"
     assert js("document.querySelector('.tp-chart polyline').getAttribute('points').split(' ').length") == 24
     assert js("document.querySelector('.tp-chart polyline').getAttribute('points').split(' ')[23].startsWith('235,')")
+
+
+@pytest.mark.parametrize("paginas_reais", ["replay_inicial"], indirect=True)
+def test_historico_inicial_conserva_cada_publicacao_antes_da_inscricao(paginas_reais):
+    js, esperar, _recebidas = paginas_reais
+    assert js("JSON.stringify(window.publicacoesValidadas)") == '{"inicio":true,"final":31}'
+    js("LaylayInterface.goPage('system')")
+    esperar(lambda: js("!!document.querySelector('.tp-chart svg')"))
+    assert js("document.querySelector('.tp-chart svg').getAttribute('aria-label')") == "CPU: 24 de 24 posições, agora à direita"
+    assert js("document.querySelector('.tp-chart polyline').getAttribute('points').split(' ').length") == 24
+    pontos = json.loads(js("JSON.stringify(document.querySelector('.tp-chart polyline').getAttribute('points').split(' ').map(p=>p.split(',').map(Number)))"))
+    # Janela efetiva 7..30: nem cópias do estado final nem a amostra stale 31.
+    assert pontos[0][1] == pytest.approx(65 - 7 / 100 * 65)
+    assert pontos[-1][1] == pytest.approx(65 - 30 / 100 * 65)
+
+
+def test_navegacao_refinada_movel_nomeia_todas_abas_e_fecha_com_escape(paginas_reais):
+    js, esperar, _recebidas = paginas_reais
+    js.janela.resize(375, 812)
+    esperar(lambda: js("innerWidth<=400"))
+    assert js("!!document.querySelector('.pr-mobile-nav')"), "Falta o acesso às nove abas na janela estreita"
+    js("document.querySelector('.pr-mobile-nav').click()")
+    assert js("document.querySelector('.pr-mobile-nav').getAttribute('aria-expanded')") == "true"
+    assert js("[...document.querySelectorAll('.nav [data-page]')].every(n=>n.getAttribute('aria-label')&&n.getBoundingClientRect().width>100)")
+    assert js("document.querySelectorAll('.nav [data-page]').length") == 9
+    js("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))")
+    assert js("document.querySelector('.pr-mobile-nav').getAttribute('aria-expanded')") == "false"
+
+
+def test_refinamento_preserva_rolagem_entre_abas_e_streaming_real(paginas_reais):
+    js, esperar, _recebidas = paginas_reais
+    js.janela.resize(900, 650)
+    js("LaylayInterface.goPage('system')")
+    esperar(lambda: js("document.getElementById('page-content').scrollHeight>document.getElementById('page-content').clientHeight+300"))
+    js("document.getElementById('page-content').scrollTop=300;LaylayInterface.goPage('memory');LaylayInterface.goPage('system')")
+    assert js("document.getElementById('page-content').scrollTop") == 300
+    js("LaylayInterface.goPage('streaming')")
+    assert js("!!document.querySelector('[data-tp-action=streaming-open]')&&!!document.querySelector('#streaming-viewport')"), "CTA real precisa usar o viewport integrado da nova composição"
+    assert js("!document.querySelector('.pr-preview-player,[data-tp-action=streaming-crop],[data-tp-action=streaming-float],.pr-preview-bar')")
+    assert js("typeof window.LaylayPreviewBridge==='undefined'")
+
+
+def test_cta_streaming_refinado_abre_owner_nativo_sem_pedido_para_mente(paginas_reais):
+    from PySide6.QtTest import QSignalSpy
+
+    js, esperar, _recebidas = paginas_reais
+    js("LaylayInterface.goPage('streaming')")
+    envios = QSignalSpy(js.janela.controlador.enviar_json)
+    js("document.querySelector('[data-tp-action=streaming-open]').click()")
+    esperar(lambda: js.janela._streaming_pagina is not None and js.janela._streaming_pagina.isVisible())
+    from cliente.terminal_2.streaming import PaginaStreaming
+    assert isinstance(js.janela._streaming_pagina, PaginaStreaming)
+    assert js.janela._streaming_pagina.window() is js.janela, "Player local deve ficar na mesma janela oficial"
+    assert envios.count() == 0, "Abrir o player local não deve enviar comando à mente"
+    assert js("!document.querySelector('.pr-preview-player')")
+    js("document.querySelector('[data-tp-action=streaming-stop]').click()")
+    esperar(lambda: not js.janela._streaming_pagina.isVisible())
+    assert envios.count() == 0
+
+
+def test_painel_nativo_conserva_medidas_da_previa_quando_cabe_na_tela(paginas_reais):
+    js, esperar, _recebidas = paginas_reais
+    disponivel = js.janela.screen().availableGeometry()
+    if disponivel.width() < 650 or disponivel.height() < 720:
+        pytest.skip("A especificação desktop do painel requer área disponível suficiente")
+    js("LaylayInterface.goMode('quick')")
+    esperar(lambda: js.janela.modo_apresentacao == "quick")
+    assert (js.janela.width(), js.janela.height()) == (425, 720)
+    esperar(lambda: js("getComputedStyle(document.querySelector('.quick-greeting h2')).fontSize==='22px'"))
+    assert js("getComputedStyle(document.querySelector('.quick-greeting')).paddingLeft") == "23px"
+    assert js("getComputedStyle(document.querySelector('.quick-history')).paddingLeft") == "22px"
 
 
 def test_playlist_tem_botao_play_visivel_em_cada_faixa(paginas_reais):

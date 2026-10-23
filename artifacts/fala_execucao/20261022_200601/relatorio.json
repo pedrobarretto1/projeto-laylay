@@ -1,0 +1,12 @@
+{
+  "head": "b128f4e48b774352846a40672de493d19c30f109",
+  "instancia": "composicao_instalada_com_memoria_isolada",
+  "modelo": "configuracao_preservada",
+  "voz": "pt-BR-FranciscaNeural",
+  "falas": [],
+  "metricas": [],
+  "eventos": [],
+  "ok": false,
+  "erro": "RuntimeError: Clipboard possui formato não serializável; ensaio não alterou o conteúdo.",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\scripts\\validar_fala_execucao_real.py\", line 123, in coletar\n    with clipboard_controlado(texto):\n         ~~~~~~~~~~~~~~~~~~~~^^^^^^^\n  File \"C:\\Python314\\Lib\\contextlib.py\", line 141, in __enter__\n    return next(self.gen)\n  File \"C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\scripts\\validar_fala_execucao_real.py\", line 36, in clipboard_controlado\n    raise RuntimeError('Clipboard possui formato não serializável; ensaio não alterou o conteúdo.')\nRuntimeError: Clipboard possui formato não serializável; ensaio não alterou o conteúdo.\n"
+}

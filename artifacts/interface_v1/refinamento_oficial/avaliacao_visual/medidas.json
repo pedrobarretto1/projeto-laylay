@@ -1,0 +1,326 @@
+[
+  {
+    "page": "home",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 901,
+    "visible": 901,
+    "heading": "Bom ter você por aqui.",
+    "clipped": []
+  },
+  {
+    "page": "chat",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 901,
+    "visible": 901,
+    "heading": "Uma tarde com boas ideias",
+    "clipped": []
+  },
+  {
+    "page": "lamp",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 987,
+    "visible": 901,
+    "heading": "Automação",
+    "clipped": []
+  },
+  {
+    "page": "music",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 1315,
+    "visible": 901,
+    "heading": "Música",
+    "clipped": []
+  },
+  {
+    "page": "streaming",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 901,
+    "visible": 901,
+    "heading": "Streaming",
+    "clipped": []
+  },
+  {
+    "page": "memory",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 1155,
+    "visible": 901,
+    "heading": "Memória",
+    "clipped": []
+  },
+  {
+    "page": "system",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 1318,
+    "visible": 901,
+    "heading": "Sistema",
+    "clipped": []
+  },
+  {
+    "page": "dev",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 1180,
+    "visible": 901,
+    "heading": "DevConsole",
+    "clipped": []
+  },
+  {
+    "page": "settings",
+    "w": 1440,
+    "overflow": false,
+    "scroll": 1848,
+    "visible": 901,
+    "heading": "Configurações",
+    "clipped": []
+  },
+  {
+    "page": "home",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 701,
+    "visible": 669,
+    "heading": "Bom ter você por aqui.",
+    "clipped": []
+  },
+  {
+    "page": "chat",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 669,
+    "visible": 669,
+    "heading": "Uma tarde com boas ideias",
+    "clipped": []
+  },
+  {
+    "page": "lamp",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 983,
+    "visible": 669,
+    "heading": "Automação",
+    "clipped": []
+  },
+  {
+    "page": "music",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 1297,
+    "visible": 669,
+    "heading": "Música",
+    "clipped": []
+  },
+  {
+    "page": "streaming",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 715,
+    "visible": 669,
+    "heading": "Streaming",
+    "clipped": []
+  },
+  {
+    "page": "memory",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 1151,
+    "visible": 669,
+    "heading": "Memória",
+    "clipped": []
+  },
+  {
+    "page": "system",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 1314,
+    "visible": 669,
+    "heading": "Sistema",
+    "clipped": []
+  },
+  {
+    "page": "dev",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 1077,
+    "visible": 669,
+    "heading": "DevConsole",
+    "clipped": []
+  },
+  {
+    "page": "settings",
+    "w": 1366,
+    "overflow": false,
+    "scroll": 1844,
+    "visible": 669,
+    "heading": "Configurações",
+    "clipped": []
+  },
+  {
+    "page": "home",
+    "w": 768,
+    "overflow": false,
+    "scroll": 801,
+    "visible": 801,
+    "heading": "Bom ter você por aqui.",
+    "clipped": []
+  },
+  {
+    "page": "chat",
+    "w": 768,
+    "overflow": false,
+    "scroll": 801,
+    "visible": 801,
+    "heading": "Uma tarde com boas ideias",
+    "clipped": []
+  },
+  {
+    "page": "lamp",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1236,
+    "visible": 801,
+    "heading": "Automação",
+    "clipped": []
+  },
+  {
+    "page": "music",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1487,
+    "visible": 801,
+    "heading": "Música",
+    "clipped": []
+  },
+  {
+    "page": "streaming",
+    "w": 768,
+    "overflow": false,
+    "scroll": 801,
+    "visible": 801,
+    "heading": "Streaming",
+    "clipped": []
+  },
+  {
+    "page": "memory",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1171,
+    "visible": 801,
+    "heading": "Memória",
+    "clipped": []
+  },
+  {
+    "page": "system",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1562,
+    "visible": 801,
+    "heading": "Sistema",
+    "clipped": []
+  },
+  {
+    "page": "dev",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1133,
+    "visible": 801,
+    "heading": "DevConsole",
+    "clipped": []
+  },
+  {
+    "page": "settings",
+    "w": 768,
+    "overflow": false,
+    "scroll": 1850,
+    "visible": 801,
+    "heading": "Configurações",
+    "clipped": []
+  },
+  {
+    "page": "home",
+    "w": 375,
+    "overflow": false,
+    "scroll": 1148,
+    "visible": 726,
+    "heading": "Bom ter você por aqui.",
+    "clipped": []
+  },
+  {
+    "page": "chat",
+    "w": 375,
+    "overflow": false,
+    "scroll": 726,
+    "visible": 726,
+    "heading": "Uma tarde com boas ideias",
+    "clipped": []
+  },
+  {
+    "page": "lamp",
+    "w": 375,
+    "overflow": false,
+    "scroll": 1505,
+    "visible": 726,
+    "heading": "Automação",
+    "clipped": []
+  },
+  {
+    "page": "music",
+    "w": 375,
+    "overflow": false,
+    "scroll": 1400,
+    "visible": 726,
+    "heading": "Música",
+    "clipped": []
+  },
+  {
+    "page": "streaming",
+    "w": 375,
+    "overflow": false,
+    "scroll": 788,
+    "visible": 726,
+    "heading": "Streaming",
+    "clipped": []
+  },
+  {
+    "page": "memory",
+    "w": 375,
+    "overflow": false,
+    "scroll": 1402,
+    "visible": 726,
+    "heading": "Memória",
+    "clipped": []
+  },
+  {
+    "page": "system",
+    "w": 375,
+    "overflow": false,
+    "scroll": 2178,
+    "visible": 726,
+    "heading": "Sistema",
+    "clipped": []
+  },
+  {
+    "page": "dev",
+    "w": 375,
+    "overflow": false,
+    "scroll": 1180,
+    "visible": 726,
+    "heading": "DevConsole",
+    "clipped": []
+  },
+  {
+    "page": "settings",
+    "w": 375,
+    "overflow": false,
+    "scroll": 2023,
+    "visible": 726,
+    "heading": "Configurações",
+    "clipped": []
+  }
+]

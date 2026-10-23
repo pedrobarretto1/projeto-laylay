@@ -18,6 +18,7 @@ def decisao_instalada(tmp_path_factory):
     pasta = tmp_path_factory.mktemp("motivo_decisao_instalada")
     codigo = textwrap.dedent(r'''
         import dataclasses, json, os, sys
+        from copy import deepcopy
         from pathlib import Path
         from memoria_sqlite import MemoriaSQLite
         from mente_laylay.memoria_mental.resumo_diario import MemoriaLaylay
@@ -85,7 +86,7 @@ def decisao_instalada(tmp_path_factory):
             antes = estado.obter_copia("mental", "intencao_corporal", {})
             ocorrencia = original_iniciar(**campos)
             argumentos = {k: v.como_dict() if hasattr(v, "como_dict") else v for k, v in campos.items()}
-            iniciar_capturas.append({"decisao": antes, "argumentos": argumentos, "ocorrencia": ocorrencia.copy()})
+            iniciar_capturas.append({"decisao": antes, "argumentos": argumentos, "ocorrencia": deepcopy(ocorrencia)})
             return ocorrencia
         corpo.experiencias.iniciar = iniciar
         original_mover = rosto.mover_corpo
@@ -456,6 +457,7 @@ def decisao_instalada(tmp_path_factory):
                 contexto_medidas = runtime_medidas._contexto_getter
                 textos_medidas = []
                 rastros_imediatos = []
+                resultados_qualificador = []
                 if os.environ.get("LAYLAY_COLETAR_RESPOSTA_IMEDIATA") == "1":
                     import mente_laylay.autonomia.adaptador_resultado as adaptador_imediato
                     escolher_fala_original = adaptador_imediato.fala_por_estado_acao
@@ -466,6 +468,8 @@ def decisao_instalada(tmp_path_factory):
                             "resultado": kw["resultado"].como_dict(), "fala": fala})
                         return fala
                     def planejar_fala_imediata(resultado, fala, **kw):
+                        if os.environ.get("LAYLAY_COLETAR_QUALIFICADOR_PROPOSICAO") == "1":
+                            resultados_qualificador.append(deepcopy(resultado))
                         plano = planejar_fala_original(resultado, fala, **kw)
                         rastros_imediatos.append({"fronteira": "planejamento", "fala_base": fala,
                             "resultado": resultado.como_dict(), "plano": dataclasses.asdict(plano)})
@@ -501,23 +505,272 @@ def decisao_instalada(tmp_path_factory):
                             ("protecao", "PROTECAO", "atual"), ("interrompido", "INTERROMPIDO", "atual"),
                             ("outra_sequencia", "TEMPO_LIMITE", "outra_sequencia"),
                             ("sem_parada", "TEMPO_LIMITE", "atual")))
+                if os.environ.get("LAYLAY_COLETAR_EXPECTATIVAS_OCORRENCIA") == "1":
+                    casos_medidas = (
+                        ("meta90", "gire 90 graus para a esquerda", "TEMPO_LIMITE", "atual"),
+                        ("meta180", "gire 180 graus para a esquerda", "TEMPO_LIMITE", "atual"),
+                        ("meta_direita", "gire 90 graus para a direita", "TEMPO_LIMITE", "atual"),
+                        ("sem_leitura", "gire 45 graus para a esquerda", "IMU_OU_SESSAO", "atual"),
+                        ("pulso", "ande para frente", "ALVO", "atual"))
+                if os.environ.get("LAYLAY_COLETAR_LIMITES_COMPARACAO") == "1":
+                    casos_medidas = tuple((nome, "gire 90 graus para a esquerda", resultado, "atual")
+                        for nome, resultado in (("comparavel", "TEMPO_LIMITE"), ("sem_meta", "TEMPO_LIMITE"),
+                            ("sem_medicao", "IMU_OU_SESSAO"), ("sem_referencial", "TEMPO_LIMITE"),
+                            ("referencial_distinto", "TEMPO_LIMITE"), ("unidade_distinta", "TEMPO_LIMITE"),
+                            ("grandeza_distinta", "TEMPO_LIMITE"))) + (("sem_fontes", "ande para frente", "ALVO", "atual"),)
+                if os.environ.get("LAYLAY_COLETAR_COMPARACAO_IMEDIATA") == "1":
+                    casos_medidas += tuple((nome, "gire 90 graus para a esquerda", resultado, "atual")
+                        for nome, resultado in (("igual", "ALVO"), ("zero", "SEM_ROTACAO"),
+                            ("divergente", "SENTIDO_DIVERGENTE"), ("ultrapassou", "ULTRAPASSOU")))
+                    casos_medidas += (("erro_executor", "gire 90 graus para a esquerda", "TEMPO_LIMITE", "atual"),)
                 for nome, comando, resultado_giro, correlacao in casos_medidas:
                     esp.mack = esp.stopped = True
                     esp.resultado, esp.correlacao = resultado_giro, correlacao
                     if os.environ.get("LAYLAY_COLETAR_LEITURAS_PARCIAIS") == "1":
                         esp.valor = {"zero": 0.0, "divergente": -17.25, "ultrapassou": 110.5}.get(nome, 23.75)
                         esp.stopped = nome != "sem_parada"
+                    if os.environ.get("LAYLAY_COLETAR_COMPARACAO_IMEDIATA") == "1" and nome == "igual":
+                        esp.valor = 90.0
                     root._iniciar_planejamento_turno(comando, origem="teste_medida_ocorrencia")
                     assert rosto.sincronizar()
                     pedido, rota = ciclo_medidas.resolver_comando_natural(comando, "teste_medida_ocorrencia")
                     assert pedido, rota
                     inicio_imediato, inicio_rastro = len(textos_medidas), len(rastros_imediatos)
-                    observada = ciclo_medidas.executar_intencao_observando(pedido, comando)
+                    girar_teste_original = corpo.transporte.girar_corpo
+                    if os.environ.get("LAYLAY_COLETAR_COMPARACAO_IMEDIATA") == "1" and nome == "erro_executor":
+                        corpo.transporte.girar_corpo = lambda *_a, **_k: (_ for _ in ()).throw(OSError("falha de folha controlada"))
+                    try:
+                        observada = ciclo_medidas.executar_intencao_observando(pedido, comando)
+                    finally:
+                        corpo.transporte.girar_corpo = girar_teste_original
+                    inicio_medida = deepcopy(iniciar_capturas[-1])
                     textos_imediatos = textos_medidas[inicio_imediato:]
                     autoria_imediata = deepcopy(rastros_imediatos[inicio_rastro:])
                     e = estado.obter_copia("mental", "experiencia_corporal", {})
                     chave_medida = f"corpo_execucao:{e['perfil']}:{e['nome']}:{e['variante']}"
                     eventos_medida = root._motor_aprendizado_runtime.memoria.listar_eventos_aprendizado(chave_medida)
+                    if os.environ.get("LAYLAY_COLETAR_REVISAO_COMPARACAO") == "1" and nome == "meta90":
+                        registro_original = estado.obter_copia("mental", "registro_semantico", {})
+                        hist_revisao = estado.obter_copia("mental", "historico_corporal", [])
+                        receipt_revisao = deepcopy(observada.publicacoes[0].como_dict())
+                        efeitos_revisao = tuple(f for f in esp.enviados if f.startswith(("TURN ", "MOTOR ", "STOP ")))
+                        saida["revisao_comparacao"] = {}
+                        if os.environ.get("LAYLAY_COLETAR_REFERENCIA_PROPOSICAO") == "1":
+                            saida["referencia_proposicao"] = {}
+                            props_ref = {i.get("vinculo_resultado", {}).get("tipo"): i
+                                for i in registro_original.get("alegacoes", [])
+                                if i.get("vinculo_resultado", {}).get("id_solicitacao") == receipt_revisao["id_solicitacao"]}
+                            for papel_ref, expressao_ref in (("valor", "esse valor"), ("meta", "essa meta"),
+                                    ("medicao", "essa medição"), ("comparacao", "essa diferença")):
+                                estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_original))
+                                texto_ref = "De onde você tirou " + expressao_ref + "?"
+                                root._iniciar_planejamento_turno(texto_ref, origem="teste_referencia_proposicao")
+                                plano_ref = estado.obter_copia("mental", "plano_turno_atual", {})
+                                root._registrar_mente_curta(texto_ref, "")
+                                depois_ref = estado.obter_copia("mental", "registro_semantico", {})
+                                saida["referencia_proposicao"][papel_ref] = {
+                                    "texto":texto_ref, "antes":deepcopy(registro_original), "depois":depois_ref,
+                                    "proposicoes":deepcopy(props_ref), "plano":plano_ref,
+                                    "historico_inalterado":hist_revisao==estado.obter_copia("mental","historico_corporal",[]),
+                                    "receipt_inalterado":receipt_revisao==observada.publicacoes[0].como_dict(),
+                                    "sem_novos_efeitos":efeitos_revisao==tuple(f for f in esp.enviados if f.startswith(("TURN ","MOTOR ","STOP ")))}
+                                if papel_ref == "valor":
+                                    ciclos_ref = []
+                                    for rapido_ref in (False, True):
+                                        estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_original))
+                                        ctx_ref = contexto_medidas()
+                                        ctx_ref["usar_modo_rapido"] = lambda _t: rapido_ref
+                                        chamadas_ref, propostas_ref = [], []
+                                        def impedir_ref(*_a, **_k):
+                                            chamadas_ref.append(True)
+                                            raise AssertionError("Referência ambígua não autoriza execução.")
+                                        ctx_ref["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda:{"executar_intencao":impedir_ref})
+                                        runtime_medidas._contexto_getter = lambda: ctx_ref
+                                        def gerar_ref(*_a, **_k):
+                                            propostas_ref.append("A medição está errada porque o sensor quebrou; vou refazer o giro.")
+                                            return ResultadoModelo(json.dumps({"fala":propostas_ref[-1],"comandos":[]}),True)
+                                        RegistroModeloLLM.executar = gerar_ref
+                                        inicio_ref = len(textos_medidas)
+                                        try:
+                                            runtime_medidas.processar(texto_ref,origem="teste_referencia_ambigua")
+                                        finally:
+                                            runtime_medidas._contexto_getter = contexto_medidas
+                                            RegistroModeloLLM.executar = lambda *_a,**_k: ResultadoModelo("",False)
+                                        ciclos_ref.append({"rota":"rapida" if rapido_ref else "normal",
+                                            "propostas":propostas_ref,"textos":textos_medidas[inicio_ref:],"executores":chamadas_ref,
+                                            "registro":estado.obter_copia("mental","registro_semantico",{})})
+                                    saida["referencia_proposicao"][papel_ref]["ciclos"] = ciclos_ref
+                                    if os.environ.get("LAYLAY_COLETAR_ESCLARECIMENTO_PROPOSICAO") == "1":
+                                        saida["esclarecimento_proposicao"] = []
+                                        for rapido_escl in (False, True):
+                                            estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_original),pendencia_atual={})
+                                            ctx_escl = contexto_medidas()
+                                            ctx_escl["usar_modo_rapido"] = lambda _t: rapido_escl
+                                            chamadas_escl, propostas_escl = [], []
+                                            def impedir_escl(*_a, **_k):
+                                                chamadas_escl.append(True)
+                                                raise AssertionError("Esclarecimento não autoriza efeito.")
+                                            ctx_escl["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda:{"executar_intencao":impedir_escl})
+                                            runtime_medidas._contexto_getter = lambda:ctx_escl
+                                            def gerar_escl(*_a, **_k):
+                                                propostas_escl.append("A medição era falsa porque o sensor quebrou; vou repetir o giro.")
+                                                return ResultadoModelo(json.dumps({"fala":propostas_escl[-1],"comandos":[]}),True)
+                                            RegistroModeloLLM.executar = gerar_escl
+                                            etapas_escl = []
+                                            try:
+                                                for entrada_escl in (texto_ref,"a medição", "Você mantém a alegação "+props_ref["comparacao"]["id"]+"?"):
+                                                    inicio_escl = len(textos_medidas)
+                                                    runtime_medidas.processar(entrada_escl,origem="teste_esclarecimento_proposicao")
+                                                    etapas_escl.append({"entrada":entrada_escl,"textos":textos_medidas[inicio_escl:],
+                                                        "mental":estado.retrato_dominio("mental")})
+                                            finally:
+                                                runtime_medidas._contexto_getter = contexto_medidas
+                                                RegistroModeloLLM.executar = lambda *_a,**_k:ResultadoModelo("",False)
+                                            saida["esclarecimento_proposicao"].append({"rota":"rapida" if rapido_escl else "normal",
+                                                "etapas":etapas_escl,"proposicoes":deepcopy(props_ref),"propostas":propostas_escl,"executores":chamadas_escl,
+                                                "historico_inalterado":hist_revisao==estado.obter_copia("mental","historico_corporal",[]),
+                                                "receipt_inalterado":receipt_revisao==observada.publicacoes[0].como_dict(),
+                                                "sem_novos_efeitos":efeitos_revisao==tuple(f for f in esp.enviados if f.startswith(("TURN ","MOTOR ","STOP ")))})
+                        if os.environ.get("LAYLAY_COLETAR_QUALIFICADOR_PROPOSICAO") == "1":
+                            from scripts.tests.test_qualificador_proposicao import coletar_composicao
+                            saida["qualificador_proposicao"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        if os.environ.get("LAYLAY_COLETAR_OPCOES_PROPOSICAO") == "1":
+                            from scripts.tests.test_opcoes_proposicao import coletar_composicao
+                            saida["opcoes_proposicao"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        if os.environ.get("LAYLAY_COLETAR_CONTINUIDADE_ESCLARECIMENTO") == "1":
+                            from scripts.tests.test_continuidade_esclarecimento import coletar_composicao
+                            saida["continuidade_esclarecimento"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        if os.environ.get("LAYLAY_COLETAR_ELIPSE_OPCOES") == "1":
+                            from scripts.tests.test_elipse_opcoes import coletar_composicao
+                            saida["elipse_opcoes"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        if os.environ.get("LAYLAY_COLETAR_SEM_CORRESPONDENCIA") == "1":
+                            from scripts.tests.test_referencia_sem_correspondencia import coletar_composicao
+                            saida["referencia_sem_correspondencia"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        if os.environ.get("LAYLAY_COLETAR_CITACAO_RESPOSTA") == "1":
+                            from scripts.tests.test_citacao_resposta import coletar_composicao
+                            saida["citacao_resposta"] = coletar_composicao(root,estado,
+                                runtime_medidas,contexto_medidas,textos_medidas,RegistroModeloLLM,
+                                ResultadoModelo,resultados_qualificador[-1],esp,hist_revisao,observada.publicacoes[0])
+                        for operando in ("meta", "medicao"):
+                            # Ramos isolados da mesma publicação; não altera receipt/histórico.
+                            estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_original))
+                            proposicoes = {i.get("vinculo_resultado", {}).get("tipo"): i
+                                for i in registro_original.get("alegacoes", [])
+                                if i.get("vinculo_resultado", {}).get("id_solicitacao") == receipt_revisao["id_solicitacao"]}
+                            alvo = proposicoes.get(operando, {}).get("id", "alegacao:000")
+                            contestacao = "De onde você tirou a alegação " + alvo + "?"
+                            if os.environ.get("LAYLAY_COLETAR_REFERENCIA_PROPOSICAO") == "1":
+                                contestacao = "De onde você tirou " + ("essa meta" if operando == "meta" else "essa medição") + "?"
+                            root._iniciar_planejamento_turno(contestacao, origem="teste_revisao_operando")
+                            root._registrar_mente_curta(contestacao, "")
+                            registro_depois = estado.obter_copia("mental", "registro_semantico", {})
+                            conclusao = proposicoes.get("comparacao", {}).get("id", "alegacao:000")
+                            consulta = "Você mantém a alegação " + conclusao + "?"
+                            if os.environ.get("LAYLAY_COLETAR_REFERENCIA_PROPOSICAO") == "1":
+                                consulta = "Você mantém essa diferença?"
+                            root._iniciar_planejamento_turno(consulta, origem="teste_revisao_comparacao")
+                            plano_revisao = estado.obter_copia("mental", "plano_turno_atual", {})
+                            fonte_revisao = plano_revisao.get("contrato_fala", {}).get("revisao_alegacao")
+                            ciclos_revisao = []
+                            for rapido_revisao in (False, True):
+                                for modo_revisao in ("reafirma", "nega", "causa"):
+                                    estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_depois))
+                                    contexto_revisao = contexto_medidas()
+                                    contexto_revisao["usar_modo_rapido"] = lambda _t: rapido_revisao
+                                    executores_revisao, geracoes_revisao = [], []
+                                    def impedir_efeito_revisao(*_a, **_k):
+                                        executores_revisao.append(True)
+                                        raise AssertionError("Revisão não autoriza efeito externo.")
+                                    contexto_revisao["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda:{"executar_intencao":impedir_efeito_revisao})
+                                    runtime_medidas._contexto_getter = lambda: contexto_revisao
+                                    texto_original_revisao = proposicoes.get("comparacao",{}).get("texto","A diferença foi confirmada.")
+                                    proposta_revisao = (texto_original_revisao if modo_revisao == "reafirma" else
+                                        "A diferença original foi falsa e o valor correto é 999 graus." if modo_revisao == "nega" else
+                                        "A revisão comprova que o sensor quebrou; vou refazer o giro.")
+                                    def gerar_revisao(*_a, **_k):
+                                        geracoes_revisao.append(proposta_revisao)
+                                        return ResultadoModelo(json.dumps({"fala":proposta_revisao,"comandos":[]}),True)
+                                    RegistroModeloLLM.executar = gerar_revisao
+                                    inicio_revisao = len(textos_medidas)
+                                    try:
+                                        runtime_medidas.processar(consulta,origem="teste_ciclo_revisao_comparacao")
+                                    finally:
+                                        runtime_medidas._contexto_getter = contexto_medidas
+                                        RegistroModeloLLM.executar = lambda *_a, **_k: ResultadoModelo("",False)
+                                    ciclos_revisao.append({"rota":"rapida" if rapido_revisao else "normal", "modo":modo_revisao,
+                                        "propostas":geracoes_revisao, "textos":textos_medidas[inicio_revisao:], "executores":executores_revisao})
+                            saida["revisao_comparacao"][operando] = {"proposicoes": deepcopy(proposicoes),
+                                "registro_antes": deepcopy(registro_original), "registro_depois": registro_depois,
+                                "fonte": dataclasses.asdict(fonte_revisao) if dataclasses.is_dataclass(fonte_revisao) else {},
+                                "plano": plano_revisao,
+                                "ciclos":ciclos_revisao,
+                                "sem_novos_efeitos": efeitos_revisao == tuple(f for f in esp.enviados if f.startswith(("TURN ", "MOTOR ", "STOP "))),
+                                "historico_inalterado": hist_revisao == estado.obter_copia("mental", "historico_corporal", []),
+                                "receipt_inalterado": receipt_revisao == observada.publicacoes[0].como_dict()}
+                            if os.environ.get("LAYLAY_COLETAR_REVISAO_HISTORICA") == "1":
+                                estado.atualizar_campos("mental", registro_semantico=deepcopy(registro_depois))
+                                consulta_hist = f"Por que você fez esse gesto {e['id']}?"
+                                root._iniciar_planejamento_turno(consulta_hist,origem="teste_revisao_historica")
+                                plano_hist = estado.obter_copia("mental","plano_turno_atual",{})
+                                fonte_hist = plano_hist.get("contrato_fala",{}).get("explicacao_ocorrencia")
+                                ciclos_hist = []
+                                for rapido_hist in (False,True):
+                                    contexto_hist = contexto_medidas()
+                                    contexto_hist["usar_modo_rapido"] = lambda _t: rapido_hist
+                                    geracoes_hist, executores_hist = [], []
+                                    def impedir_efeito_hist(*_a,**_k):
+                                        executores_hist.append(True)
+                                        raise AssertionError("Explicação histórica não autoriza efeito.")
+                                    contexto_hist["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda:{"executar_intencao":impedir_efeito_hist})
+                                    runtime_medidas._contexto_getter = lambda: contexto_hist
+                                    def gerar_hist(*_a,**_k):
+                                        proposta = "A diferença está confirmada em -66.25 graus porque o sensor quebrou; vou refazer o giro."
+                                        geracoes_hist.append(proposta)
+                                        return ResultadoModelo(json.dumps({"fala":proposta,"comandos":[]}),True)
+                                    RegistroModeloLLM.executar = gerar_hist
+                                    inicio_hist = len(textos_medidas)
+                                    try:
+                                        runtime_medidas.processar(consulta_hist,origem="teste_ciclo_revisao_historica")
+                                    finally:
+                                        runtime_medidas._contexto_getter = contexto_medidas
+                                        RegistroModeloLLM.executar = lambda *_a,**_k: ResultadoModelo("",False)
+                                    ciclos_hist.append({"rota":"rapida" if rapido_hist else "normal",
+                                        "propostas":geracoes_hist,"textos":textos_medidas[inicio_hist:],"executores":executores_hist})
+                                saida["revisao_comparacao"][operando]["historica"] = {
+                                    "plano":plano_hist,"fonte":dataclasses.asdict(fonte_hist) if dataclasses.is_dataclass(fonte_hist) else {},
+                                    "ciclos":ciclos_hist,"ocorrencia_id":e["id"],
+                                    "historico_inalterado":hist_revisao==estado.obter_copia("mental","historico_corporal",[]),
+                                    "receipt_inalterado":receipt_revisao==observada.publicacoes[0].como_dict(),
+                                    "sem_novos_efeitos":efeitos_revisao==tuple(f for f in esp.enviados if f.startswith(("TURN ","MOTOR ","STOP ")))}
+                        estado.atualizar_campos("mental", registro_semantico=registro_original)
+                    if os.environ.get("LAYLAY_COLETAR_LIMITES_COMPARACAO") == "1":
+                        # Fontes históricas controladas para simular legado/incompatibilidade.
+                        # O executor, qualificador e recuperação continuam os instalados;
+                        # não se altera receipt, leitura ou evento de aprendizado persistido.
+                        e = deepcopy(e)
+                        if nome == "sem_meta":
+                            e.pop("expectativas", None)
+                        elif nome == "sem_referencial":
+                            e["expectativas"][0].pop("referencial", None)
+                        elif nome == "referencial_distinto":
+                            e["expectativas"][0]["referencial"] = "outro_inicio_de_referencia"
+                        elif nome == "unidade_distinta":
+                            e["expectativas"][0]["unidade"] = "radianos"
+                        elif nome == "grandeza_distinta":
+                            e["expectativas"][0]["grandeza"] = "posição absoluta"
+                        fonte_historica = estado.obter_copia("mental", "historico_corporal", [])
+                        fonte_historica = [deepcopy(e) if item["id"] == e["id"] else item for item in fonte_historica]
+                        estado.atualizar_campos("mental", historico_corporal=fonte_historica, experiencia_corporal=e)
                     pergunta = f"Por que você fez esse gesto {e['id']}?"
                     root._iniciar_planejamento_turno(pergunta, origem="teste_recuperacao_medida")
                     historico = deepcopy(estado.obter_copia("mental", "historico_corporal", []))
@@ -582,6 +835,7 @@ def decisao_instalada(tmp_path_factory):
                             except (ValueError, TypeError, KeyError):
                                 pass
                     saida["medidas_ocorrencias"][nome] = {"experiencia": e,
+                        "inicio_ocorrencia": inicio_medida,
                         "textos_imediatos": textos_imediatos, "autoria_imediata": autoria_imediata,
                         "eventos_aprendizado": eventos_medida,
                         "qwen_real": qwen_medida,
@@ -618,8 +872,26 @@ def decisao_instalada(tmp_path_factory):
                         return contexto
                     ciclo_medidas.contexto_intencao_runtime.montar = contexto_cadeia_aspectos
                     try:
-                        for modo_autoria in ("fiel", "causa_inventada", "sucesso_total"):
+                        modos_autoria = ("fiel", "causa_inventada", "sucesso_total")
+                        if os.environ.get("LAYLAY_COLETAR_MEDIDAS_IMEDIATAS") == "1":
+                            modos_autoria += ("medida_trocada", "sinal_trocado", "medida_sem_limite")
+                        casos_autoria = tuple((modo, "TEMPO_LIMITE") for modo in modos_autoria)
+                        if os.environ.get("LAYLAY_COLETAR_NQ_IMEDIATA") == "1":
+                            casos_autoria = tuple((codigo + ":" + modo, codigo)
+                                for codigo in ("IMU_OU_SESSAO", "SATURACAO", "PROTECAO", "INTERROMPIDO")
+                                for modo in ("fiel", "causa_inventada", "sucesso_total", "codigo_trocado", "criterio_sem_limite", "criterio_omitido"))
+                        if os.environ.get("LAYLAY_COLETAR_COMPARACAO_IMEDIATA") == "1":
+                            casos_autoria = tuple((codigo + ":" + modo, codigo)
+                                for codigo, modos in (("TEMPO_LIMITE", ("fiel", "meta_trocada", "diferenca_trocada",
+                                    "sinal_diferenca", "diferenca_sem_limite", "comparacao_omitida", "causa_inventada", "sucesso_total")),
+                                    ("IMU_OU_SESSAO", ("fiel", "meta_trocada", "comparacao_inventada",
+                                    "limite_indisponibilidade_omitido", "causa_inventada", "sucesso_total")),
+                                    ("ERRO_EXECUTOR", ("fiel", "meta_trocada", "comparacao_inventada",
+                                    "limite_indisponibilidade_omitido", "causa_inventada", "sucesso_total"))) for modo in modos)
+                        for caso_autoria, resultado_composto in casos_autoria:
+                            modo_autoria = caso_autoria.split(":")[-1]
                             autorias_aspectos = []
+                            geracoes_aspectos = []
                             def modelo_aspectos(self, pedido):
                                 dados = json.loads(pedido.mensagens[1]["content"])
                                 autorias_aspectos.append(dados)
@@ -628,10 +900,38 @@ def decisao_instalada(tmp_path_factory):
                                     trechos[-1] += ". Isso aconteceu porque você não configurou direito."
                                 elif modo_autoria == "sucesso_total":
                                     trechos[-1] = "Concluí o giro e todos os pedidos."
-                                return ResultadoModelo(json.dumps({"fala": " e ".join(trechos) + ".",
-                                    "trechos": trechos}, ensure_ascii=False), True)
+                                elif modo_autoria == "medida_trocada":
+                                    trechos[-1] = trechos[-1].replace("23.75", "999.0")
+                                elif modo_autoria == "sinal_trocado":
+                                    trechos[-1] = trechos[-1].replace("23.75", "-23.75")
+                                elif modo_autoria == "medida_sem_limite":
+                                    trechos[-1] = trechos[-1].replace(
+                                        "Leitura até o encerramento reportado; não confirma conclusão da operação nem posição absoluta", "")
+                                elif modo_autoria == "codigo_trocado":
+                                    trechos[-1] = trechos[-1].replace(resultado_composto, "ALVO")
+                                elif modo_autoria == "criterio_sem_limite":
+                                    trechos[-1] = trechos[-1].replace("Isso relata o critério registrado; não identifica uma causa física", "")
+                                elif modo_autoria == "criterio_omitido":
+                                    trechos[-1] = __import__("re").sub(r"\s*Critério registrado de não qualificação.*$", "", trechos[-1])
+                                elif modo_autoria == "meta_trocada":
+                                    trechos[-1] = trechos[-1].replace('90 "graus"', '180 "graus"')
+                                elif modo_autoria == "diferenca_trocada":
+                                    trechos[-1] = trechos[-1].replace("-66.25", "-156.25")
+                                elif modo_autoria == "sinal_diferenca":
+                                    trechos[-1] = trechos[-1].replace("-66.25", "66.25")
+                                elif modo_autoria == "diferenca_sem_limite":
+                                    trechos[-1] = trechos[-1].replace("Esta diferença não comprova conclusão nem explica a causa do resultado", "")
+                                elif modo_autoria == "comparacao_omitida":
+                                    trechos[-1] = __import__("re").sub(r"\s*Diferença aritmética.*?Esta diferença não comprova conclusão nem explica a causa do resultado\.?", "", trechos[-1])
+                                elif modo_autoria == "comparacao_inventada":
+                                    trechos[-1] += '. Diferença aritmética (medido menos solicitado): -66.25 "graus".'
+                                elif modo_autoria == "limite_indisponibilidade_omitido":
+                                    trechos[-1] = trechos[-1].replace("Não há medição qualificada nesta fonte para comparar com o valor solicitado", "")
+                                geracao = {"fala": " e ".join(trechos) + ".", "trechos": trechos}
+                                geracoes_aspectos.append(deepcopy(geracao))
+                                return ResultadoModelo(json.dumps(geracao, ensure_ascii=False), True)
                             RegistroModeloLLM.executar = modelo_aspectos
-                            esp.resultado, esp.correlacao, esp.valor = "TEMPO_LIMITE", "atual", 23.75
+                            esp.resultado, esp.correlacao, esp.valor = resultado_composto, "atual", 23.75
                             esp.stopped = True
                             conector_teste = os.environ.get("LAYLAY_CONECTOR_COMPOSTO_TESTE", "; ")
                             comando = "abre a calculadora" + conector_teste + "gire 90 graus para a esquerda"
@@ -644,14 +944,26 @@ def decisao_instalada(tmp_path_factory):
                             comandos_compostos = [{"intent": "APP_OPEN", "params": {"nome_app": "calculadora"}},
                                 detectar_intencao_corpo("gire 90 graus para a esquerda")]
                             turno_antes_execucao = estado.obter_copia("mental", "turno_atual", {})
-                            if os.environ.get("LAYLAY_ROTA_COMPOSTO_TESTE") == "cadeia":
-                                retorno_cadeia = ciclo_medidas.processar_cadeia(comando, origem="teste_coordenacao")
-                            else:
-                                retorno_cadeia = executar_comandos_json(root._contexto_dispatcher_runtime.montar(),
-                                    comando, comandos_compostos, "", "comando", False, False, False)
-                            saida["compostos_aspectos"][modo_autoria] = {
+                            girar_composto_original = corpo.transporte.girar_corpo
+                            falhas_folha = []
+                            if resultado_composto == "ERRO_EXECUTOR":
+                                def falhar_giro(*_a, **_k):
+                                    falhas_folha.append(True)
+                                    raise OSError("falha de folha controlada no composto")
+                                corpo.transporte.girar_corpo = falhar_giro
+                            try:
+                                if os.environ.get("LAYLAY_ROTA_COMPOSTO_TESTE") == "cadeia":
+                                    retorno_cadeia = ciclo_medidas.processar_cadeia(comando, origem="teste_coordenacao")
+                                else:
+                                    retorno_cadeia = executar_comandos_json(root._contexto_dispatcher_runtime.montar(),
+                                        comando, comandos_compostos, "", "comando", False, False, False)
+                            finally:
+                                corpo.transporte.girar_corpo = girar_composto_original
+                            saida["compostos_aspectos"][caso_autoria] = {
                                 "tratado": retorno_cadeia, "textos": textos_medidas[inicio_textos:],
                                 "autorias": deepcopy(autorias_aspectos), "leituras_janela": list(folhas_janela),
+                                "geracoes": deepcopy(geracoes_aspectos),
+                                "falhas_folha": len(falhas_folha),
                                 "antecedentes_corpo": deepcopy(antecedentes_corpo),
                                 "turno_antes_execucao": turno_antes_execucao,
                                 "plano": estado.obter_copia("mental", "plano_turno_atual", {}),
@@ -683,12 +995,15 @@ def decisao_instalada(tmp_path_factory):
     ''')
     # O ensaio cresceu além do limite de linha de comando do Windows.
     # stdin conserva o mesmo programa/ambiente sem criar outro módulo de teste.
+    if os.environ.get("LAYLAY_COLETAR_REVISAO_HISTORICA") == "1":
+        codigo = "try:\n" + textwrap.indent(codigo,"    ") + "\nexcept BaseException:\n    import traceback, sys\n    sys.__stdout__.write('ERRO_ENSAIO ' + repr([(f.f_code.co_filename,n) for f,n in traceback.walk_tb(sys.exc_info()[2])]) + '\\n')\n    traceback.print_exc(limit=50,file=sys.__stderr__)\n    raise SystemExit(1)\n"
     processo = subprocess.run([sys.executable, "-"], input=codigo,
         cwd=Path(__file__).resolve().parents[2],
         env=dict(os.environ, PYTHONIOENCODING="utf-8", LAYLAY_DECISAO_MEMORIA_TESTE=str(pasta)),
         capture_output=True, text=True, encoding="utf-8",
         timeout=180 if (os.environ.get("LAYLAY_DECISAO_QWEN_REAL") == "1"
-                        or os.environ.get("LAYLAY_MEDIDAS_QWEN_REAL") == "1") else 60)
+                        or os.environ.get("LAYLAY_MEDIDAS_QWEN_REAL") == "1"
+                        or os.environ.get("LAYLAY_COLETAR_CITACAO_RESPOSTA") == "1") else 60)
     assert processo.returncode == 0, processo.stdout[-1500:] + processo.stderr[-5000:]
     dados = json.loads(next(linha.removeprefix("DECISAO_INSTALADA ")
         for linha in processo.stdout.splitlines() if linha.startswith("DECISAO_INSTALADA ")))

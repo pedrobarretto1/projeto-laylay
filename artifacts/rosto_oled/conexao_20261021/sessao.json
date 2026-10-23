@@ -1,0 +1,3110 @@
+{
+  "head": "b128f4e48b774352846a40672de493d19c30f109",
+  "status": " M artifacts/interface_v1/validar_web.py\n M artifacts/rosto_oled/wifi/hotspot_windows.json\n M cliente/terminal_2/interface_web_v1.py\n M cliente/terminal_2/web_v1/index.html\n M cliente/terminal_2/web_v1/interface.js\n M cliente/terminal_2/web_v1/paginas.js\n M cliente/terminal_laylay_2.py\n M empacotamento/LICENCAS_TERCEIROS.md\n M laylay.py\n M \"melhorias e planos/planos/PLANO_COMPREENSAO_FALA_E_ACOES_20261015.md\"\n M \"melhorias e planos/raiz/MAPA_RAIZES_CONVERSA.md\"\n M \"melhorias e planos/registro/REGISTRO_PROBLEMAS_E_CORRECOES.md\"\n M mente_laylay/autonomia/adaptador_resultado.py\n M mente_laylay/autonomia/executor_corpo.py\n M mente_laylay/cognicao/contrato_fala.py\n M mente_laylay/cognicao/explicacao_fala_historica.py\n M mente_laylay/cognicao/proveniencia_informacao.py\n M mente_laylay/especialistas/corpo_motor_runtime.py\n M mente_laylay/especialistas/rosto_oled_runtime.py\n M mente_laylay/memoria_mental/decisao_observada.py\n M mente_laylay/memoria_mental/experiencia_corporal_runtime.py\n M mente_laylay/memoria_mental/registro_semantico.py\n M mente_laylay/memoria_mental/resultado_acao.py\n M mente_laylay/personalidade/confirmacao_llm.py\n M mente_laylay/personalidade/orquestrador_fala_runtime.py\n M mente_laylay/personalidade/planejador_resposta.py\n M scripts/tests/test_imu_corporal.py\n M scripts/tests/test_medidas_resultado_imediato.py\n M scripts/tests/test_motivo_decisao_composicao.py\n M scripts/tests/test_terminal_web_v1_estabilidade.py\n M scripts/tests/test_terminal_web_v1_paginas.py\n?? artifacts/interface_v1/desktop_integrado/\n?? artifacts/interface_v1/desktop_janela_unica/\n?? artifacts/interface_v1/mascote_reimaginado/\n?? artifacts/interface_v1/refinamento_oficial/\n?? artifacts/rosto_oled/conexao_20261021/\n?? cliente/terminal_2/apresentacao_desktop.py\n?? cliente/terminal_2/web_v1/desktop.css\n?? cliente/terminal_2/web_v1/mascote.css\n?? cliente/terminal_2/web_v1/paginas-refinadas.css\n?? cliente/terminal_2/web_v1/refinamento.css\n?? licencas/\n?? scripts/tests/test_comparacao_resultado.py\n?? scripts/tests/test_comparacao_resultado_imediato.py\n?? scripts/tests/test_expectativa_ocorrencia.py\n?? scripts/tests/test_limites_comparacao.py\n?? scripts/tests/test_nao_qualificacao_resultado_imediato.py\n?? scripts/tests/test_proveniencia_qualificacao_medicao.py\n?? scripts/tests/test_revisao_comparacao_historica.py\n?? scripts/tests/test_revisao_comparacao_resultado.py\n?? scripts/tests/test_terminal_desktop_integrado.py\n?? scripts/tests/test_terminal_retrato_emocional_composicao.py\n",
+  "fontes": {
+    "mente_laylay/especialistas/rosto_oled_runtime.py": "5d0cd468b3b55da771781749ca67b4ba77dfb6c18dd08e5505370e52fb090d2f",
+    "firmware/rosto_laylay/rosto_laylay.ino": "ae8fedf25aab7ebdce21374c01d36f84c76c4b53cb3e47a256a655e0dd81aa79"
+  },
+  "escopo": "transporte de producao isolado; sem autorizacao de movimento; nao e main completo",
+  "amostras": [
+    {
+      "t": 2.255,
+      "ok": true,
+      "duracao_ms": 2186.41,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "1c9dbb2e",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": true,
+          "recente": true,
+          "consulta_id": 1,
+          "alerta_suportado": true,
+          "busca_renovada": false,
+          "leituras": {
+            "frente": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            },
+            "borda": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            }
+          },
+          "protecao": {
+            "incidente_id": 0,
+            "motor_origem_seq": 0,
+            "risco": "FALHA_BORDA",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "nenhuma",
+            "tentativa_busca": 0,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "fase_manuseio": "DESCONHECIDA",
+          "evento_manuseio": 0,
+          "idade_fase_ms": 350738,
+          "repeticoes_manuseio": 0,
+          "estado": "AUSENTE",
+          "idade_ms": 4294967295,
+          "calibrada": false,
+          "modelo": "nao_identificada",
+          "roll_graus": null,
+          "pitch_graus": null,
+          "yaw_relativo_graus": null,
+          "velocidade_graus_s": null,
+          "aceleracao_norma_g": null,
+          "manuseio": "DESCONHECIDO",
+          "origem": "imu_esp",
+          "autoriza_execucao": false,
+          "prova_deslocamento": false,
+          "consulta_id": 1,
+          "suportado": true,
+          "recente": false,
+          "idade_host_ms": 544,
+          "bloqueio_manuseio": true
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 350626,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 40,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 284040,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 1,
+          "suportado": true,
+          "recente": true,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "envio_suportado": true,
+          "solicitacao_confirmada": true,
+          "motivo": "sequencia_aceita_pelo_firmware",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 3.272,
+      "ok": false,
+      "duracao_ms": 766.42,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "ValueError:receipt_protecao_invalido",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 2,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 2,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 350626,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 40,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 284040,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 1,
+          "suportado": true,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 8.458,
+      "ok": false,
+      "duracao_ms": 2185.44,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "ValueError:receipt_protecao_invalido",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 3,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 3,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 356812,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 41,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 351783,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 2,
+          "suportado": true,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 13.85,
+      "ok": false,
+      "duracao_ms": 2392.47,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "TimeoutError:sem_confirmacao_do_esp",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 3,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 3,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 356812,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 41,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 351783,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 2,
+          "suportado": false,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 19.563,
+      "ok": false,
+      "duracao_ms": 2712.72,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "TimeoutError:sem_confirmacao_do_esp",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 3,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 3,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 356812,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 41,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 351783,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 2,
+          "suportado": false,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 26.48,
+      "ok": false,
+      "duracao_ms": 3917.03,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "TimeoutError:sem_confirmacao_do_esp",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 3,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 3,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 356812,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 41,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 351783,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 2,
+          "suportado": false,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 31.551,
+      "ok": true,
+      "duracao_ms": 2069.81,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "234a1456",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": true,
+          "recente": true,
+          "consulta_id": 4,
+          "alerta_suportado": true,
+          "busca_renovada": false,
+          "leituras": {
+            "frente": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            },
+            "borda": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            }
+          },
+          "protecao": {
+            "incidente_id": 0,
+            "motor_origem_seq": 0,
+            "risco": "FALHA_BORDA",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "nenhuma",
+            "tentativa_busca": 0,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "fase_manuseio": "DESCONHECIDA",
+          "evento_manuseio": 0,
+          "idade_fase_ms": 380158,
+          "repeticoes_manuseio": 0,
+          "estado": "AUSENTE",
+          "idade_ms": 4294967295,
+          "calibrada": false,
+          "modelo": "nao_identificada",
+          "roll_graus": null,
+          "pitch_graus": null,
+          "yaw_relativo_graus": null,
+          "velocidade_graus_s": null,
+          "aceleracao_norma_g": null,
+          "manuseio": "DESCONHECIDO",
+          "origem": "imu_esp",
+          "autoriza_execucao": false,
+          "prova_deslocamento": false,
+          "consulta_id": 4,
+          "suportado": true,
+          "recente": false,
+          "idade_host_ms": 434,
+          "bloqueio_manuseio": true
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 380039,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 45,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 371879,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 3,
+          "suportado": true,
+          "recente": true,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "envio_suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "aguardando_evento",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 32.453,
+      "ok": true,
+      "duracao_ms": 652.09,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": true,
+        "sessao": "234a1456",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "COM4",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": true,
+        "aplicacao_confirmada": true,
+        "estado": "disponivel",
+        "motivo": "frame_confirmado_pelo_esp",
+        "confirmado": [
+          0,
+          1,
+          0
+        ],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": true,
+          "recente": true,
+          "consulta_id": 5,
+          "alerta_suportado": true,
+          "busca_renovada": false,
+          "leituras": {
+            "frente": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            },
+            "borda": {
+              "estado": "EXPIRADA",
+              "mm": null,
+              "idade_ms": 4294967295,
+              "status": 255
+            }
+          },
+          "protecao": {
+            "incidente_id": 0,
+            "motor_origem_seq": 0,
+            "risco": "FALHA_BORDA",
+            "fase": "PRONTA",
+            "reflexo_ativo": false,
+            "reacao_expressiva": "nenhuma",
+            "tentativa_busca": 0,
+            "vigia_ativa": false,
+            "limite_borda_mm": 130,
+            "limite_obstaculo_mm": 100,
+            "origem": "executor_protecao_esp",
+            "autoriza_execucao": false,
+            "rotacao_medida": false,
+            "cobertura": "frente_e_borda_dianteira",
+            "recente": true
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "fase_manuseio": "DESCONHECIDA",
+          "evento_manuseio": 0,
+          "idade_fase_ms": 381053,
+          "repeticoes_manuseio": 0,
+          "estado": "AUSENTE",
+          "idade_ms": 4294967295,
+          "calibrada": false,
+          "modelo": "nao_identificada",
+          "roll_graus": null,
+          "pitch_graus": null,
+          "yaw_relativo_graus": null,
+          "velocidade_graus_s": null,
+          "aceleracao_norma_g": null,
+          "manuseio": "DESCONHECIDO",
+          "origem": "imu_esp",
+          "autoriza_execucao": false,
+          "prova_deslocamento": false,
+          "consulta_id": 5,
+          "suportado": true,
+          "recente": false,
+          "idade_host_ms": 434,
+          "bloqueio_manuseio": true
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 380039,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 45,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 371879,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 3,
+          "suportado": true,
+          "recente": true,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": true,
+          "confirmada": false,
+          "motivo": "aguardando_evento",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": true,
+          "envio_suportado": true,
+          "solicitacao_confirmada": false,
+          "motivo": "aguardando_evento",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": true,
+          "aplicacao_confirmada": true,
+          "ativo": false,
+          "motivo": "overlay_confirmado_pelo_esp",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": true,
+          "aplicacao_confirmada": false,
+          "motivo": "aguardando_falha",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": true,
+          "duracao_maxima_ms": 5000,
+          "suportado": true,
+          "disponivel": true,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 33.467,
+      "ok": false,
+      "duracao_ms": 763.25,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "ValueError:receipt_protecao_invalido",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 6,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 6,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 380039,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 45,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 371879,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 3,
+          "suportado": true,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 38.635,
+      "ok": false,
+      "duracao_ms": 2168.35,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "ValueError:receipt_protecao_invalido",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 7,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 7,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 386994,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 47,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 386928,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 4,
+          "suportado": true,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    },
+    {
+      "t": 44.252,
+      "ok": false,
+      "duracao_ms": 2616.02,
+      "diagnostico": {
+        "configurado": true,
+        "conectado": false,
+        "sessao": "",
+        "transporte": "serial",
+        "canal_autenticado": false,
+        "modo_conexao": "manual",
+        "selecao_automatica_usb_wifi": false,
+        "endpoint": "",
+        "porta_ativa": "",
+        "identidade_usb": {
+          "verificada": false,
+          "autoriza_execucao": false,
+          "prova_autenticidade_criptografica": false
+        },
+        "evidencia_recente": false,
+        "aplicacao_confirmada": false,
+        "estado": "indisponivel",
+        "motivo": "TimeoutError:sem_confirmacao_do_esp",
+        "confirmado": [],
+        "evidencia": "ack_apos_renderizacao",
+        "prova_optica": false,
+        "autoriza_execucao": false,
+        "sensores": {
+          "suportado": false,
+          "recente": false,
+          "consulta_id": 7,
+          "alerta_suportado": false,
+          "busca_renovada": false,
+          "leituras": {},
+          "protecao": {
+            "recente": false
+          },
+          "origem": "owner_usb_dist_guard",
+          "autoriza_execucao": false
+        },
+        "imu": {
+          "consulta_id": 7,
+          "suportado": false,
+          "recente": false,
+          "idade_host_ms": 4294967295,
+          "autoriza_execucao": false,
+          "bloqueio_manuseio": false
+        },
+        "saude": {
+          "dispositivo": "03d017988fdecda9",
+          "boot": "0d82b043",
+          "motivo_boot": "ligacao_energia",
+          "motivo_boot_codigo": 1,
+          "uptime_ms": 386994,
+          "heap_livre": 187040,
+          "heap_minimo": 182436,
+          "perdas_sessao": 47,
+          "motivo_perda_sessao": "I2C",
+          "perda_sessao_em_ms": 386928,
+          "origem": "executor_esp",
+          "autoriza_execucao": false,
+          "consulta_id": 4,
+          "suportado": false,
+          "recente": false,
+          "reinicios_observados": 0
+        },
+        "expressao": {
+          "suportado": false,
+          "confirmada": false,
+          "motivo": "desconectado",
+          "fase": [
+            0,
+            0,
+            0
+          ],
+          "evidencia": "eack_apos_render",
+          "prova_visual_humana": false,
+          "autoriza_execucao": false
+        },
+        "som": {
+          "resultados_pendentes": [],
+          "suportado": false,
+          "envio_suportado": false,
+          "solicitacao_confirmada": false,
+          "motivo": "desconectado",
+          "prova_auditiva": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "hack": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "ativo": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "glitch": {
+          "suportado": false,
+          "aplicacao_confirmada": false,
+          "motivo": "desconectado",
+          "evidencia": "ack_apos_renderizacao",
+          "prova_optica": false,
+          "autoriza_execucao": false,
+          "confirma_efeito_da_acao": false
+        },
+        "motor": {
+          "rampa_suportada": false,
+          "duracao_maxima_ms": 500,
+          "suportado": false,
+          "disponivel": false,
+          "aplicacao_pwm_confirmada": false,
+          "parada_confirmada": false,
+          "em_andamento": false,
+          "motivo": "desconectado",
+          "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+          "prova_rotacao": false,
+          "prova_parada_fisica": false,
+          "autoriza_execucao": false
+        }
+      }
+    }
+  ],
+  "trilha": [
+    {
+      "t": 0.0687,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 0.0836,
+      "tipo": "tx",
+      "linha": "HELLO 1 1c9dbb2e"
+    },
+    {
+      "t": 0.1885,
+      "tipo": "rx",
+      "texto": "READY 1 1c9dbb2e SSD1306 128 64\n"
+    },
+    {
+      "t": 0.1886,
+      "tipo": "tx",
+      "linha": "CAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.2966,
+      "tipo": "rx",
+      "texto": "CAPS 1 1c9dbb2e HACK1\n"
+    },
+    {
+      "t": 0.2966,
+      "tipo": "tx",
+      "linha": "GCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.4048,
+      "tipo": "rx",
+      "texto": "GCAPS 1 1c9dbb2e GLITCH1\n"
+    },
+    {
+      "t": 0.4049,
+      "tipo": "tx",
+      "linha": "MCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.5136,
+      "tipo": "rx",
+      "texto": "MCAPS 1 1c9dbb2e MOTOR1\n"
+    },
+    {
+      "t": 0.5137,
+      "tipo": "tx",
+      "linha": "LCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.6216,
+      "tipo": "rx",
+      "texto": "LCAPS 1 1c9dbb2e LONGO1\n"
+    },
+    {
+      "t": 0.6216,
+      "tipo": "tx",
+      "linha": "SCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.731,
+      "tipo": "rx",
+      "texto": "SCAPS 1 1c9dbb2e SOM1\n"
+    },
+    {
+      "t": 0.7311,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.8399,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 1c9dbb2e ENVIO1\n"
+    },
+    {
+      "t": 0.8399,
+      "tipo": "tx",
+      "linha": "ECAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 0.9485,
+      "tipo": "rx",
+      "texto": "ECAPS 1 1c9dbb2e OLHOS2\n"
+    },
+    {
+      "t": 0.9486,
+      "tipo": "tx",
+      "linha": "RCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 1.0564,
+      "tipo": "rx",
+      "texto": "RCAPS 1 1c9dbb2e RAMPA1\n"
+    },
+    {
+      "t": 1.0565,
+      "tipo": "tx",
+      "linha": "DCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 1.1645,
+      "tipo": "rx",
+      "texto": "DCAPS 1 1c9dbb2e SENSORES2\n"
+    },
+    {
+      "t": 1.1646,
+      "tipo": "tx",
+      "linha": "PCAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 1.2732,
+      "tipo": "rx",
+      "texto": "PCAPS 1 1c9dbb2e VIGIA1\n"
+    },
+    {
+      "t": 1.2733,
+      "tipo": "tx",
+      "linha": "ICAPS 1 1c9dbb2e"
+    },
+    {
+      "t": 1.3818,
+      "tipo": "rx",
+      "texto": "ICAPS 1 1c9dbb2e IMU1\n"
+    },
+    {
+      "t": 1.3819,
+      "tipo": "tx",
+      "linha": "FACE 1 1c9dbb2e 1 0 1 0 3500"
+    },
+    {
+      "t": 1.4914,
+      "tipo": "rx",
+      "texto": "ACK 1 1c9dbb2e 1 0 1 0\n"
+    },
+    {
+      "t": 1.4915,
+      "tipo": "tx",
+      "linha": "HEALTH 1 1"
+    },
+    {
+      "t": 1.6014,
+      "tipo": "rx",
+      "texto": "HEALTH 1 1 70ba726e27ac 0d82b043 1 350626 187040 182436 40 I2C 284040\n"
+    },
+    {
+      "t": 1.6015,
+      "tipo": "tx",
+      "linha": "IMU 1 1"
+    },
+    {
+      "t": 1.7101,
+      "tipo": "rx",
+      "texto": "IMU 1 1 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 350738 0\n"
+    },
+    {
+      "t": 1.7102,
+      "tipo": "tx",
+      "linha": "SENTRY 1 1c9dbb2e 1 0 1200"
+    },
+    {
+      "t": 1.8185,
+      "tipo": "rx",
+      "texto": "SENTRYACK 1 1c9dbb2e 1 0\n"
+    },
+    {
+      "t": 1.8185,
+      "tipo": "tx",
+      "linha": "DIST 1 1"
+    },
+    {
+      "t": 1.9277,
+      "tipo": "rx",
+      "texto": "DIST 1 1 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 1.9278,
+      "tipo": "tx",
+      "linha": "GUARD 1 1"
+    },
+    {
+      "t": 2.0371,
+      "tipo": "rx",
+      "texto": "GUARD 1 1 1c9dbb2e 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 2.0372,
+      "tipo": "tx",
+      "linha": "ACTIVITY 1 1c9dbb2e 1 0 1200"
+    },
+    {
+      "t": 2.1452,
+      "tipo": "rx",
+      "texto": "AACK 1 1c9dbb2e 1 0\n"
+    },
+    {
+      "t": 2.1509,
+      "tipo": "tx",
+      "linha": "SOUND 1 1c9dbb2e 1 0"
+    },
+    {
+      "t": 2.2549,
+      "tipo": "rx",
+      "texto": "SOUNDACK 1 1c9dbb2e 1 0\n"
+    },
+    {
+      "t": 2.5055,
+      "tipo": "tx",
+      "linha": "FACE 1 1c9dbb2e 2 0 1 0 3500"
+    },
+    {
+      "t": 2.6166,
+      "tipo": "rx",
+      "texto": "ACK 1 1c9dbb2e 2 0 1 0\n"
+    },
+    {
+      "t": 2.6166,
+      "tipo": "tx",
+      "linha": "IMU 1 2"
+    },
+    {
+      "t": 2.7257,
+      "tipo": "rx",
+      "texto": "IMU 1 2 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 351743 0\n"
+    },
+    {
+      "t": 2.7258,
+      "tipo": "tx",
+      "linha": "SENTRY 1 1c9dbb2e 2 0 1200"
+    },
+    {
+      "t": 2.8351,
+      "tipo": "rx",
+      "texto": "ERROR 1 VIGIA_INVALIDA\n"
+    },
+    {
+      "t": 3.0525,
+      "tipo": "tx",
+      "linha": "DIST 1 2"
+    },
+    {
+      "t": 3.1617,
+      "tipo": "rx",
+      "texto": "DIST 1 2 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 3.1618,
+      "tipo": "tx",
+      "linha": "GUARD 1 2"
+    },
+    {
+      "t": 3.2714,
+      "tipo": "rx",
+      "texto": "GUARD 1 2 SEMSESS 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 3.2715,
+      "tipo": "fechar"
+    },
+    {
+      "t": 6.2723,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 6.2738,
+      "tipo": "tx",
+      "linha": "HELLO 1 e7c52214"
+    },
+    {
+      "t": 6.3833,
+      "tipo": "rx",
+      "texto": "READY 1 e7c52214 SSD1306 128 64\n"
+    },
+    {
+      "t": 6.3834,
+      "tipo": "tx",
+      "linha": "CAPS 1 e7c52214"
+    },
+    {
+      "t": 6.4926,
+      "tipo": "rx",
+      "texto": "CAPS 1 e7c52214 HACK1\n"
+    },
+    {
+      "t": 6.4927,
+      "tipo": "tx",
+      "linha": "GCAPS 1 e7c52214"
+    },
+    {
+      "t": 6.6023,
+      "tipo": "rx",
+      "texto": "GCAPS 1 e7c52214 GLITCH1\n"
+    },
+    {
+      "t": 6.6024,
+      "tipo": "tx",
+      "linha": "MCAPS 1 e7c52214"
+    },
+    {
+      "t": 6.7119,
+      "tipo": "rx",
+      "texto": "MCAPS 1 e7c52214 MOTOR1\n"
+    },
+    {
+      "t": 6.7119,
+      "tipo": "tx",
+      "linha": "LCAPS 1 e7c52214"
+    },
+    {
+      "t": 6.8202,
+      "tipo": "rx",
+      "texto": "LCAPS 1 e7c52214 LONGO1\n"
+    },
+    {
+      "t": 6.8202,
+      "tipo": "tx",
+      "linha": "SCAPS 1 e7c52214"
+    },
+    {
+      "t": 6.9293,
+      "tipo": "rx",
+      "texto": "SCAPS 1 e7c52214 SOM1\n"
+    },
+    {
+      "t": 6.9294,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 e7c52214"
+    },
+    {
+      "t": 7.0389,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 e7c52214 ENVIO1\n"
+    },
+    {
+      "t": 7.039,
+      "tipo": "tx",
+      "linha": "ECAPS 1 e7c52214"
+    },
+    {
+      "t": 7.1479,
+      "tipo": "rx",
+      "texto": "ECAPS 1 e7c52214 OLHOS2\n"
+    },
+    {
+      "t": 7.148,
+      "tipo": "tx",
+      "linha": "RCAPS 1 e7c52214"
+    },
+    {
+      "t": 7.2578,
+      "tipo": "rx",
+      "texto": "RCAPS 1 e7c52214 RAMPA1\n"
+    },
+    {
+      "t": 7.2578,
+      "tipo": "tx",
+      "linha": "DCAPS 1 e7c52214"
+    },
+    {
+      "t": 7.3663,
+      "tipo": "rx",
+      "texto": "DCAPS 1 e7c52214 SENSORES2\n"
+    },
+    {
+      "t": 7.3664,
+      "tipo": "tx",
+      "linha": "PCAPS 1 e7c52214"
+    },
+    {
+      "t": 7.4756,
+      "tipo": "rx",
+      "texto": "PCAPS 1 e7c52214 VIGIA1\n"
+    },
+    {
+      "t": 7.4757,
+      "tipo": "tx",
+      "linha": "ICAPS 1 e7c52214"
+    },
+    {
+      "t": 7.5845,
+      "tipo": "rx",
+      "texto": "ICAPS 1 e7c52214 IMU1\n"
+    },
+    {
+      "t": 7.5845,
+      "tipo": "tx",
+      "linha": "FACE 1 e7c52214 1 0 1 0 3500"
+    },
+    {
+      "t": 7.6947,
+      "tipo": "rx",
+      "texto": "ACK 1 e7c52214 1 0 1 0\n"
+    },
+    {
+      "t": 7.6947,
+      "tipo": "tx",
+      "linha": "HEALTH 1 2"
+    },
+    {
+      "t": 7.8035,
+      "tipo": "rx",
+      "texto": "HEALTH 1 2 70ba726e27ac 0d82b043 1 356812 187040 182436 41 I2C 351783\n"
+    },
+    {
+      "t": 7.8036,
+      "tipo": "tx",
+      "linha": "IMU 1 3"
+    },
+    {
+      "t": 7.9112,
+      "tipo": "rx",
+      "texto": "IMU 1 3 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 356920 0\n"
+    },
+    {
+      "t": 7.9113,
+      "tipo": "tx",
+      "linha": "SENTRY 1 e7c52214 1 0 1200"
+    },
+    {
+      "t": 8.0189,
+      "tipo": "rx",
+      "texto": "ERROR 1 VIGIA_INVALIDA\n"
+    },
+    {
+      "t": 8.2369,
+      "tipo": "tx",
+      "linha": "DIST 1 3"
+    },
+    {
+      "t": 8.3467,
+      "tipo": "rx",
+      "texto": "DIST 1 3 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 8.3467,
+      "tipo": "tx",
+      "linha": "GUARD 1 3"
+    },
+    {
+      "t": 8.457,
+      "tipo": "rx",
+      "texto": "GUARD 1 3 SEMSESS 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 8.4572,
+      "tipo": "fechar"
+    },
+    {
+      "t": 11.4578,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 11.459,
+      "tipo": "tx",
+      "linha": "HELLO 1 c4afec0e"
+    },
+    {
+      "t": 11.561,
+      "tipo": "rx",
+      "texto": "READY 1 c4afec0e SSD1306 128 64\n"
+    },
+    {
+      "t": 11.5611,
+      "tipo": "tx",
+      "linha": "CAPS 1 c4afec0e"
+    },
+    {
+      "t": 11.6714,
+      "tipo": "rx",
+      "texto": "CAPS 1 c4afec0e HACK1\n"
+    },
+    {
+      "t": 11.6714,
+      "tipo": "tx",
+      "linha": "GCAPS 1 c4afec0e"
+    },
+    {
+      "t": 11.78,
+      "tipo": "rx",
+      "texto": "GCAPS 1 c4afec0e GLITCH1\n"
+    },
+    {
+      "t": 11.7801,
+      "tipo": "tx",
+      "linha": "MCAPS 1 c4afec0e"
+    },
+    {
+      "t": 11.8896,
+      "tipo": "rx",
+      "texto": "MCAPS 1 c4afec0e MOTOR1\n"
+    },
+    {
+      "t": 11.8896,
+      "tipo": "tx",
+      "linha": "LCAPS 1 c4afec0e"
+    },
+    {
+      "t": 11.999,
+      "tipo": "rx",
+      "texto": "LCAPS 1 c4afec0e LONGO1\n"
+    },
+    {
+      "t": 11.9991,
+      "tipo": "tx",
+      "linha": "SCAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.1081,
+      "tipo": "rx",
+      "texto": "SCAPS 1 c4afec0e SOM1\n"
+    },
+    {
+      "t": 12.1082,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.2188,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 c4afec0e ENVIO1\n"
+    },
+    {
+      "t": 12.2188,
+      "tipo": "tx",
+      "linha": "ECAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.328,
+      "tipo": "rx",
+      "texto": "ECAPS 1 c4afec0e OLHOS2\n"
+    },
+    {
+      "t": 12.3281,
+      "tipo": "tx",
+      "linha": "RCAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.4366,
+      "tipo": "rx",
+      "texto": "RCAPS 1 c4afec0e RAMPA1\n"
+    },
+    {
+      "t": 12.4367,
+      "tipo": "tx",
+      "linha": "DCAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.5451,
+      "tipo": "rx",
+      "texto": "DCAPS 1 c4afec0e SENSORES2\n"
+    },
+    {
+      "t": 12.5451,
+      "tipo": "tx",
+      "linha": "PCAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.6544,
+      "tipo": "rx",
+      "texto": "PCAPS 1 c4afec0e VIGIA1\n"
+    },
+    {
+      "t": 12.6545,
+      "tipo": "tx",
+      "linha": "ICAPS 1 c4afec0e"
+    },
+    {
+      "t": 12.7628,
+      "tipo": "rx",
+      "texto": "ICAPS 1 c4afec0e IMU1\n"
+    },
+    {
+      "t": 12.7629,
+      "tipo": "tx",
+      "linha": "FACE 1 c4afec0e 1 0 1 0 3500"
+    },
+    {
+      "t": 12.8719,
+      "tipo": "rx",
+      "texto": "ERROR 1 PACOTE_INVALIDO\n"
+    },
+    {
+      "t": 13.8499,
+      "tipo": "fechar"
+    },
+    {
+      "t": 16.8504,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 16.8516,
+      "tipo": "tx",
+      "linha": "HELLO 1 5e6ea60d"
+    },
+    {
+      "t": 16.9576,
+      "tipo": "rx",
+      "texto": "READY 1 5e6ea60d SSD1306 128 64\n"
+    },
+    {
+      "t": 16.9576,
+      "tipo": "tx",
+      "linha": "CAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.066,
+      "tipo": "rx",
+      "texto": "CAPS 1 5e6ea60d HACK1\n"
+    },
+    {
+      "t": 17.066,
+      "tipo": "tx",
+      "linha": "GCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.1748,
+      "tipo": "rx",
+      "texto": "GCAPS 1 5e6ea60d GLITCH1\n"
+    },
+    {
+      "t": 17.1748,
+      "tipo": "tx",
+      "linha": "MCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.2841,
+      "tipo": "rx",
+      "texto": "MCAPS 1 5e6ea60d MOTOR1\n"
+    },
+    {
+      "t": 17.2841,
+      "tipo": "tx",
+      "linha": "LCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.3927,
+      "tipo": "rx",
+      "texto": "LCAPS 1 5e6ea60d LONGO1\n"
+    },
+    {
+      "t": 17.3928,
+      "tipo": "tx",
+      "linha": "SCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.5023,
+      "tipo": "rx",
+      "texto": "SCAPS 1 5e6ea60d SOM1\n"
+    },
+    {
+      "t": 17.5024,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.6117,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 5e6ea60d ENVIO1\n"
+    },
+    {
+      "t": 17.6117,
+      "tipo": "tx",
+      "linha": "ECAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.7204,
+      "tipo": "rx",
+      "texto": "ECAPS 1 5e6ea60d OLHOS2\n"
+    },
+    {
+      "t": 17.7205,
+      "tipo": "tx",
+      "linha": "RCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.8294,
+      "tipo": "rx",
+      "texto": "RCAPS 1 5e6ea60d RAMPA1\n"
+    },
+    {
+      "t": 17.8294,
+      "tipo": "tx",
+      "linha": "DCAPS 1 5e6ea60d"
+    },
+    {
+      "t": 17.9359,
+      "tipo": "rx",
+      "texto": "ERROR 1 DCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 18.1515,
+      "tipo": "tx",
+      "linha": "ICAPS 1 5e6ea60d"
+    },
+    {
+      "t": 18.2605,
+      "tipo": "rx",
+      "texto": "ERROR 1 ICAPS_INVALIDAS\n"
+    },
+    {
+      "t": 18.4781,
+      "tipo": "tx",
+      "linha": "FACE 1 5e6ea60d 1 0 1 0 3500"
+    },
+    {
+      "t": 18.5861,
+      "tipo": "rx",
+      "texto": "ERROR 1 PACOTE_INVALIDO\n"
+    },
+    {
+      "t": 19.5628,
+      "tipo": "fechar"
+    },
+    {
+      "t": 22.5633,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 22.5645,
+      "tipo": "tx",
+      "linha": "HELLO 1 29123ced"
+    },
+    {
+      "t": 22.6728,
+      "tipo": "rx",
+      "texto": "READY 1 29123ced SSD1306 128 64\n"
+    },
+    {
+      "t": 22.6728,
+      "tipo": "tx",
+      "linha": "CAPS 1 29123ced"
+    },
+    {
+      "t": 22.7809,
+      "tipo": "rx",
+      "texto": "CAPS 1 29123ced HACK1\n"
+    },
+    {
+      "t": 22.7809,
+      "tipo": "tx",
+      "linha": "GCAPS 1 29123ced"
+    },
+    {
+      "t": 22.89,
+      "tipo": "rx",
+      "texto": "ERROR 1 GCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 23.108,
+      "tipo": "tx",
+      "linha": "MCAPS 1 29123ced"
+    },
+    {
+      "t": 23.2169,
+      "tipo": "rx",
+      "texto": "ERROR 1 MCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 23.4339,
+      "tipo": "tx",
+      "linha": "LCAPS 1 29123ced"
+    },
+    {
+      "t": 23.5428,
+      "tipo": "rx",
+      "texto": "ERROR 1 LCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 23.7602,
+      "tipo": "tx",
+      "linha": "SCAPS 1 29123ced"
+    },
+    {
+      "t": 23.8687,
+      "tipo": "rx",
+      "texto": "ERROR 1 SCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 24.0867,
+      "tipo": "tx",
+      "linha": "ECAPS 1 29123ced"
+    },
+    {
+      "t": 24.1966,
+      "tipo": "rx",
+      "texto": "ERROR 1 ECAPS_INVALIDAS\n"
+    },
+    {
+      "t": 24.416,
+      "tipo": "tx",
+      "linha": "RCAPS 1 29123ced"
+    },
+    {
+      "t": 24.5234,
+      "tipo": "rx",
+      "texto": "ERROR 1 RCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 24.74,
+      "tipo": "tx",
+      "linha": "DCAPS 1 29123ced"
+    },
+    {
+      "t": 24.8492,
+      "tipo": "rx",
+      "texto": "ERROR 1 DCAPS_INVALIDAS\n"
+    },
+    {
+      "t": 25.0647,
+      "tipo": "tx",
+      "linha": "ICAPS 1 29123ced"
+    },
+    {
+      "t": 25.1737,
+      "tipo": "rx",
+      "texto": "ERROR 1 ICAPS_INVALIDAS\n"
+    },
+    {
+      "t": 25.3913,
+      "tipo": "tx",
+      "linha": "FACE 1 29123ced 1 0 1 0 3500"
+    },
+    {
+      "t": 25.5006,
+      "tipo": "rx",
+      "texto": "ERROR 1 PACOTE_INVALIDO\n"
+    },
+    {
+      "t": 26.4799,
+      "tipo": "fechar"
+    },
+    {
+      "t": 29.4809,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 29.4822,
+      "tipo": "tx",
+      "linha": "HELLO 1 234a1456"
+    },
+    {
+      "t": 29.5916,
+      "tipo": "rx",
+      "texto": "READY 1 234a1456 SSD1306 128 64\n"
+    },
+    {
+      "t": 29.5917,
+      "tipo": "tx",
+      "linha": "CAPS 1 234a1456"
+    },
+    {
+      "t": 29.6993,
+      "tipo": "rx",
+      "texto": "CAPS 1 234a1456 HACK1\n"
+    },
+    {
+      "t": 29.6994,
+      "tipo": "tx",
+      "linha": "GCAPS 1 234a1456"
+    },
+    {
+      "t": 29.8086,
+      "tipo": "rx",
+      "texto": "GCAPS 1 234a1456 GLITCH1\n"
+    },
+    {
+      "t": 29.8086,
+      "tipo": "tx",
+      "linha": "MCAPS 1 234a1456"
+    },
+    {
+      "t": 29.9169,
+      "tipo": "rx",
+      "texto": "MCAPS 1 234a1456 MOTOR1\n"
+    },
+    {
+      "t": 29.917,
+      "tipo": "tx",
+      "linha": "LCAPS 1 234a1456"
+    },
+    {
+      "t": 30.0252,
+      "tipo": "rx",
+      "texto": "LCAPS 1 234a1456 LONGO1\n"
+    },
+    {
+      "t": 30.0253,
+      "tipo": "tx",
+      "linha": "SCAPS 1 234a1456"
+    },
+    {
+      "t": 30.1333,
+      "tipo": "rx",
+      "texto": "SCAPS 1 234a1456 SOM1\n"
+    },
+    {
+      "t": 30.1334,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 234a1456"
+    },
+    {
+      "t": 30.2422,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 234a1456 ENVIO1\n"
+    },
+    {
+      "t": 30.2423,
+      "tipo": "tx",
+      "linha": "ECAPS 1 234a1456"
+    },
+    {
+      "t": 30.3504,
+      "tipo": "rx",
+      "texto": "ECAPS 1 234a1456 OLHOS2\n"
+    },
+    {
+      "t": 30.3505,
+      "tipo": "tx",
+      "linha": "RCAPS 1 234a1456"
+    },
+    {
+      "t": 30.4613,
+      "tipo": "rx",
+      "texto": "RCAPS 1 234a1456 RAMPA1\n"
+    },
+    {
+      "t": 30.4613,
+      "tipo": "tx",
+      "linha": "DCAPS 1 234a1456"
+    },
+    {
+      "t": 30.5697,
+      "tipo": "rx",
+      "texto": "DCAPS 1 234a1456 SENSORES2\n"
+    },
+    {
+      "t": 30.5697,
+      "tipo": "tx",
+      "linha": "PCAPS 1 234a1456"
+    },
+    {
+      "t": 30.679,
+      "tipo": "rx",
+      "texto": "PCAPS 1 234a1456 VIGIA1\n"
+    },
+    {
+      "t": 30.679,
+      "tipo": "tx",
+      "linha": "ICAPS 1 234a1456"
+    },
+    {
+      "t": 30.7881,
+      "tipo": "rx",
+      "texto": "ICAPS 1 234a1456 IMU1\n"
+    },
+    {
+      "t": 30.7882,
+      "tipo": "tx",
+      "linha": "FACE 1 234a1456 1 0 1 0 3500"
+    },
+    {
+      "t": 30.8973,
+      "tipo": "rx",
+      "texto": "ACK 1 234a1456 1 0 1 0\n"
+    },
+    {
+      "t": 30.8974,
+      "tipo": "tx",
+      "linha": "HEALTH 1 3"
+    },
+    {
+      "t": 31.0057,
+      "tipo": "rx",
+      "texto": "HEALTH 1 3 70ba726e27ac 0d82b043 1 380039 187040 182436 45 I2C 371879\n"
+    },
+    {
+      "t": 31.0059,
+      "tipo": "tx",
+      "linha": "IMU 1 4"
+    },
+    {
+      "t": 31.1159,
+      "tipo": "rx",
+      "texto": "IMU 1 4 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 380158 0\n"
+    },
+    {
+      "t": 31.116,
+      "tipo": "tx",
+      "linha": "SENTRY 1 234a1456 1 0 1200"
+    },
+    {
+      "t": 31.2254,
+      "tipo": "rx",
+      "texto": "SENTRYACK 1 234a1456 1 0\n"
+    },
+    {
+      "t": 31.2255,
+      "tipo": "tx",
+      "linha": "DIST 1 4"
+    },
+    {
+      "t": 31.3337,
+      "tipo": "rx",
+      "texto": "DIST 1 4 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 31.3338,
+      "tipo": "tx",
+      "linha": "GUARD 1 4"
+    },
+    {
+      "t": 31.4433,
+      "tipo": "rx",
+      "texto": "GUARD 1 4 234a1456 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 31.4434,
+      "tipo": "tx",
+      "linha": "ACTIVITY 1 234a1456 1 0 1200"
+    },
+    {
+      "t": 31.5504,
+      "tipo": "rx",
+      "texto": "AACK 1 234a1456 1 0\n"
+    },
+    {
+      "t": 31.801,
+      "tipo": "tx",
+      "linha": "FACE 1 234a1456 2 0 1 0 3500"
+    },
+    {
+      "t": 31.9099,
+      "tipo": "rx",
+      "texto": "ACK 1 234a1456 2 0 1 0\n"
+    },
+    {
+      "t": 31.9099,
+      "tipo": "tx",
+      "linha": "IMU 1 5"
+    },
+    {
+      "t": 32.018,
+      "tipo": "rx",
+      "texto": "IMU 1 5 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 381053 0\n"
+    },
+    {
+      "t": 32.0181,
+      "tipo": "tx",
+      "linha": "SENTRY 1 234a1456 2 0 1200"
+    },
+    {
+      "t": 32.1268,
+      "tipo": "rx",
+      "texto": "SENTRYACK 1 234a1456 2 0\n"
+    },
+    {
+      "t": 32.1268,
+      "tipo": "tx",
+      "linha": "DIST 1 5"
+    },
+    {
+      "t": 32.2358,
+      "tipo": "rx",
+      "texto": "DIST 1 5 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 32.2359,
+      "tipo": "tx",
+      "linha": "GUARD 1 5"
+    },
+    {
+      "t": 32.3442,
+      "tipo": "rx",
+      "texto": "GUARD 1 5 234a1456 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 32.3443,
+      "tipo": "tx",
+      "linha": "ACTIVITY 1 234a1456 2 0 1200"
+    },
+    {
+      "t": 32.4529,
+      "tipo": "rx",
+      "texto": "AACK 1 234a1456 2 0\n"
+    },
+    {
+      "t": 32.7034,
+      "tipo": "tx",
+      "linha": "FACE 1 234a1456 3 0 1 0 3500"
+    },
+    {
+      "t": 32.8112,
+      "tipo": "rx",
+      "texto": "ACK 1 234a1456 3 0 1 0\n"
+    },
+    {
+      "t": 32.8112,
+      "tipo": "tx",
+      "linha": "IMU 1 6"
+    },
+    {
+      "t": 32.9206,
+      "tipo": "rx",
+      "texto": "IMU 1 6 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 381971 0\n"
+    },
+    {
+      "t": 32.9207,
+      "tipo": "tx",
+      "linha": "SENTRY 1 234a1456 3 0 1200"
+    },
+    {
+      "t": 33.0299,
+      "tipo": "rx",
+      "texto": "ERROR 1 VIGIA_INVALIDA\n"
+    },
+    {
+      "t": 33.2472,
+      "tipo": "tx",
+      "linha": "DIST 1 6"
+    },
+    {
+      "t": 33.355,
+      "tipo": "rx",
+      "texto": "DIST 1 6 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 33.3551,
+      "tipo": "tx",
+      "linha": "GUARD 1 6"
+    },
+    {
+      "t": 33.4661,
+      "tipo": "rx",
+      "texto": "GUARD 1 6 SEMSESS 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 33.4662,
+      "tipo": "fechar"
+    },
+    {
+      "t": 36.467,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 36.4681,
+      "tipo": "tx",
+      "linha": "HELLO 1 53f5eba3"
+    },
+    {
+      "t": 36.5688,
+      "tipo": "rx",
+      "texto": "READY 1 53f5eba3 SSD1306 128 64\n"
+    },
+    {
+      "t": 36.5688,
+      "tipo": "tx",
+      "linha": "CAPS 1 53f5eba3"
+    },
+    {
+      "t": 36.6787,
+      "tipo": "rx",
+      "texto": "CAPS 1 53f5eba3 HACK1\n"
+    },
+    {
+      "t": 36.6788,
+      "tipo": "tx",
+      "linha": "GCAPS 1 53f5eba3"
+    },
+    {
+      "t": 36.7875,
+      "tipo": "rx",
+      "texto": "GCAPS 1 53f5eba3 GLITCH1\n"
+    },
+    {
+      "t": 36.7876,
+      "tipo": "tx",
+      "linha": "MCAPS 1 53f5eba3"
+    },
+    {
+      "t": 36.8972,
+      "tipo": "rx",
+      "texto": "MCAPS 1 53f5eba3 MOTOR1\n"
+    },
+    {
+      "t": 36.8973,
+      "tipo": "tx",
+      "linha": "LCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.0043,
+      "tipo": "rx",
+      "texto": "LCAPS 1 53f5eba3 LONGO1\n"
+    },
+    {
+      "t": 37.0044,
+      "tipo": "tx",
+      "linha": "SCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.1123,
+      "tipo": "rx",
+      "texto": "SCAPS 1 53f5eba3 SOM1\n"
+    },
+    {
+      "t": 37.1123,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.2198,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 53f5eba3 ENVIO1\n"
+    },
+    {
+      "t": 37.2198,
+      "tipo": "tx",
+      "linha": "ECAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.3279,
+      "tipo": "rx",
+      "texto": "ECAPS 1 53f5eba3 OLHOS2\n"
+    },
+    {
+      "t": 37.3279,
+      "tipo": "tx",
+      "linha": "RCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.4364,
+      "tipo": "rx",
+      "texto": "RCAPS 1 53f5eba3 RAMPA1\n"
+    },
+    {
+      "t": 37.4365,
+      "tipo": "tx",
+      "linha": "DCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.547,
+      "tipo": "rx",
+      "texto": "DCAPS 1 53f5eba3 SENSORES2\n"
+    },
+    {
+      "t": 37.5471,
+      "tipo": "tx",
+      "linha": "PCAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.6556,
+      "tipo": "rx",
+      "texto": "PCAPS 1 53f5eba3 VIGIA1\n"
+    },
+    {
+      "t": 37.6556,
+      "tipo": "tx",
+      "linha": "ICAPS 1 53f5eba3"
+    },
+    {
+      "t": 37.7642,
+      "tipo": "rx",
+      "texto": "ICAPS 1 53f5eba3 IMU1\n"
+    },
+    {
+      "t": 37.7643,
+      "tipo": "tx",
+      "linha": "FACE 1 53f5eba3 1 0 1 0 3500"
+    },
+    {
+      "t": 37.8722,
+      "tipo": "rx",
+      "texto": "ACK 1 53f5eba3 1 0 1 0\n"
+    },
+    {
+      "t": 37.8723,
+      "tipo": "tx",
+      "linha": "HEALTH 1 4"
+    },
+    {
+      "t": 37.9818,
+      "tipo": "rx",
+      "texto": "HEALTH 1 4 70ba726e27ac 0d82b043 1 386994 187040 182436 47 I2C 386928\n"
+    },
+    {
+      "t": 37.9819,
+      "tipo": "tx",
+      "linha": "IMU 1 7"
+    },
+    {
+      "t": 38.0907,
+      "tipo": "rx",
+      "texto": "IMU 1 7 104 AUSENTE 4294967295 0 0 0 0 0 0 DESCONHECIDO 0 DESCONHECIDA 0 387113 0\n"
+    },
+    {
+      "t": 38.0908,
+      "tipo": "tx",
+      "linha": "SENTRY 1 53f5eba3 1 0 1200"
+    },
+    {
+      "t": 38.1992,
+      "tipo": "rx",
+      "texto": "ERROR 1 VIGIA_INVALIDA\n"
+    },
+    {
+      "t": 38.4179,
+      "tipo": "tx",
+      "linha": "DIST 1 7"
+    },
+    {
+      "t": 38.5264,
+      "tipo": "rx",
+      "texto": "DIST 1 7 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 AUSENTE -1 4294967295 255\n"
+    },
+    {
+      "t": 38.5265,
+      "tipo": "tx",
+      "linha": "GUARD 1 7"
+    },
+    {
+      "t": 38.6349,
+      "tipo": "rx",
+      "texto": "GUARD 1 7 SEMSESS 0 0 FALHA_BORDA PRONTA 130 100 NENHUMA 0 0\n"
+    },
+    {
+      "t": 38.635,
+      "tipo": "fechar"
+    },
+    {
+      "t": 41.6359,
+      "tipo": "abrir",
+      "porta": "COM4"
+    },
+    {
+      "t": 41.637,
+      "tipo": "tx",
+      "linha": "HELLO 1 07861f57"
+    },
+    {
+      "t": 41.7424,
+      "tipo": "rx",
+      "texto": "READY 1 07861f57 SSD1306 128 64\n"
+    },
+    {
+      "t": 41.7424,
+      "tipo": "tx",
+      "linha": "CAPS 1 07861f57"
+    },
+    {
+      "t": 41.8508,
+      "tipo": "rx",
+      "texto": "CAPS 1 07861f57 HACK1\n"
+    },
+    {
+      "t": 41.8509,
+      "tipo": "tx",
+      "linha": "GCAPS 1 07861f57"
+    },
+    {
+      "t": 41.9596,
+      "tipo": "rx",
+      "texto": "GCAPS 1 07861f57 GLITCH1\n"
+    },
+    {
+      "t": 41.9596,
+      "tipo": "tx",
+      "linha": "MCAPS 1 07861f57"
+    },
+    {
+      "t": 42.0691,
+      "tipo": "rx",
+      "texto": "MCAPS 1 07861f57 MOTOR1\n"
+    },
+    {
+      "t": 42.0692,
+      "tipo": "tx",
+      "linha": "LCAPS 1 07861f57"
+    },
+    {
+      "t": 42.1781,
+      "tipo": "rx",
+      "texto": "LCAPS 1 07861f57 LONGO1\n"
+    },
+    {
+      "t": 42.1781,
+      "tipo": "tx",
+      "linha": "SCAPS 1 07861f57"
+    },
+    {
+      "t": 42.2867,
+      "tipo": "rx",
+      "texto": "SCAPS 1 07861f57 SOM1\n"
+    },
+    {
+      "t": 42.2868,
+      "tipo": "tx",
+      "linha": "SENCAPS 1 07861f57"
+    },
+    {
+      "t": 42.3962,
+      "tipo": "rx",
+      "texto": "SENCAPS 1 07861f57 ENVIO1\n"
+    },
+    {
+      "t": 42.3962,
+      "tipo": "tx",
+      "linha": "ECAPS 1 07861f57"
+    },
+    {
+      "t": 42.5067,
+      "tipo": "rx",
+      "texto": "ECAPS 1 07861f57 OLHOS2\n"
+    },
+    {
+      "t": 42.5068,
+      "tipo": "tx",
+      "linha": "RCAPS 1 07861f57"
+    },
+    {
+      "t": 42.6167,
+      "tipo": "rx",
+      "texto": "RCAPS 1 07861f57 RAMPA1\n"
+    },
+    {
+      "t": 42.6167,
+      "tipo": "tx",
+      "linha": "DCAPS 1 07861f57"
+    },
+    {
+      "t": 42.7247,
+      "tipo": "rx",
+      "texto": "DCAPS 1 07861f57 SENSORES2\n"
+    },
+    {
+      "t": 42.7247,
+      "tipo": "tx",
+      "linha": "PCAPS 1 07861f57"
+    },
+    {
+      "t": 42.8337,
+      "tipo": "rx",
+      "texto": "PCAPS 1 07861f57 VIGIA1\n"
+    },
+    {
+      "t": 42.8337,
+      "tipo": "tx",
+      "linha": "ICAPS 1 07861f57"
+    },
+    {
+      "t": 42.9424,
+      "tipo": "rx",
+      "texto": "ERROR 1 ICAPS_INVALIDAS\n"
+    },
+    {
+      "t": 43.1617,
+      "tipo": "tx",
+      "linha": "FACE 1 07861f57 1 0 1 0 3500"
+    },
+    {
+      "t": 43.2711,
+      "tipo": "rx",
+      "texto": "ERROR 1 PACOTE_INVALIDO\n"
+    },
+    {
+      "t": 44.2514,
+      "tipo": "fechar"
+    }
+  ],
+  "proibidos": [],
+  "final": {
+    "configurado": true,
+    "conectado": false,
+    "sessao": "",
+    "transporte": "serial",
+    "canal_autenticado": false,
+    "modo_conexao": "manual",
+    "selecao_automatica_usb_wifi": false,
+    "endpoint": "",
+    "porta_ativa": "",
+    "identidade_usb": {
+      "verificada": false,
+      "autoriza_execucao": false,
+      "prova_autenticidade_criptografica": false
+    },
+    "evidencia_recente": false,
+    "aplicacao_confirmada": false,
+    "estado": "indisponivel",
+    "motivo": "encerrado",
+    "confirmado": [],
+    "evidencia": "ack_apos_renderizacao",
+    "prova_optica": false,
+    "autoriza_execucao": false,
+    "sensores": {
+      "suportado": false,
+      "recente": false,
+      "consulta_id": 7,
+      "alerta_suportado": false,
+      "busca_renovada": false,
+      "leituras": {},
+      "protecao": {
+        "recente": false
+      },
+      "origem": "owner_usb_dist_guard",
+      "autoriza_execucao": false
+    },
+    "imu": {
+      "consulta_id": 7,
+      "suportado": false,
+      "recente": false,
+      "idade_host_ms": 4294967295,
+      "autoriza_execucao": false,
+      "bloqueio_manuseio": false
+    },
+    "saude": {
+      "dispositivo": "03d017988fdecda9",
+      "boot": "0d82b043",
+      "motivo_boot": "ligacao_energia",
+      "motivo_boot_codigo": 1,
+      "uptime_ms": 386994,
+      "heap_livre": 187040,
+      "heap_minimo": 182436,
+      "perdas_sessao": 47,
+      "motivo_perda_sessao": "I2C",
+      "perda_sessao_em_ms": 386928,
+      "origem": "executor_esp",
+      "autoriza_execucao": false,
+      "consulta_id": 4,
+      "suportado": false,
+      "recente": false,
+      "reinicios_observados": 0
+    },
+    "expressao": {
+      "suportado": false,
+      "confirmada": false,
+      "motivo": "desconectado",
+      "fase": [
+        0,
+        0,
+        0
+      ],
+      "evidencia": "eack_apos_render",
+      "prova_visual_humana": false,
+      "autoriza_execucao": false
+    },
+    "som": {
+      "resultados_pendentes": [],
+      "suportado": false,
+      "envio_suportado": false,
+      "solicitacao_confirmada": false,
+      "motivo": "desconectado",
+      "prova_auditiva": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "hack": {
+      "suportado": false,
+      "aplicacao_confirmada": false,
+      "ativo": false,
+      "motivo": "desconectado",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "glitch": {
+      "suportado": false,
+      "aplicacao_confirmada": false,
+      "motivo": "desconectado",
+      "evidencia": "ack_apos_renderizacao",
+      "prova_optica": false,
+      "autoriza_execucao": false,
+      "confirma_efeito_da_acao": false
+    },
+    "motor": {
+      "rampa_suportada": false,
+      "duracao_maxima_ms": 500,
+      "suportado": false,
+      "disponivel": false,
+      "aplicacao_pwm_confirmada": false,
+      "parada_confirmada": false,
+      "em_andamento": false,
+      "motivo": "desconectado",
+      "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+      "prova_rotacao": false,
+      "prova_parada_fisica": false,
+      "autoriza_execucao": false
+    }
+  }
+}

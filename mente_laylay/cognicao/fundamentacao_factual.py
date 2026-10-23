@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
 from mente_laylay.cognicao.proveniencia_informacao import (
     classificar_proveniencia_informacao,
     limitar_proveniencia_invalida,
@@ -132,6 +133,7 @@ def classificar_atualidade_factual(
         "?" in bruto
         or modalidade in {"pergunta", "misto"}
         or _ABERTURA_CONSULTA.search(bruto)
+        or texto_consulta_estado_recurso(bruto)
     )
     base = {
         "depende_atualidade": False,
@@ -149,7 +151,7 @@ def classificar_atualidade_factual(
         return {**base, "classe": "contexto_pessoal", "motivos": ["resposta_vem_da_mente_local"]}
     if _CONSULTA_MATEMATICA.search(bruto):
         return {**base, "motivos": ["resultado_deterministico"]}
-    if _CONSULTA_ESTADO_OBSERVAVEL.search(normalizado):
+    if _CONSULTA_ESTADO_OBSERVAVEL.search(normalizado) or texto_consulta_estado_recurso(bruto):
         return {
             "depende_atualidade": True,
             "classe": "estado_observavel",

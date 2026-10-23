@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Dict
+import time
+from mente_laylay.memoria_mental.decisao_observada import MedicaoObservada, NaoQualificacaoMedicao, ExpectativaResultado, FontesComparacaoResultado
 
 from mente_laylay.memoria_mental.resultado_acao import (
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
@@ -66,6 +68,7 @@ class AdaptadorResultadoOperacional:
     id_solicitacao: str = ""
     _receipt_publicado: ResultadoAcao | None = field(default=None, init=False, repr=False)
     _publicacao_tentada: bool = field(default=False, init=False, repr=False)
+    _inicio_invocacao: float = field(default_factory=time.time, init=False, repr=False)
 
     def __post_init__(self) -> None:
         resultado = self.resultado if isinstance(self.resultado, dict) else {}
@@ -145,6 +148,11 @@ class AdaptadorResultadoOperacional:
         contexto_resultado: Dict[str, Any] | None = None,
         evidencia_confirmacao: str = "",
         aspectos: tuple[AspectoResultado, ...] = (),
+        medicoes: tuple[MedicaoObservada, ...] = (),
+        nao_qualificacoes_medicao: tuple[NaoQualificacaoMedicao, ...] = (),
+        expectativas: tuple[ExpectativaResultado, ...] = (),
+        inicio_execucao: float | None = None,
+        fontes_ocorrencia: FontesComparacaoResultado | None = None,
     ) -> None:
         """Publica também as resoluções descobertas durante a execução.
 
@@ -204,6 +212,13 @@ class AdaptadorResultadoOperacional:
                 id_solicitacao=self.id_solicitacao,
                 evidencia_confirmacao=str(evidencia_confirmacao or ""),
                 aspectos=aspectos,
+                medicoes=medicoes,
+                nao_qualificacoes_medicao=nao_qualificacoes_medicao,
+                expectativas=expectativas,
+                inicio_execucao=(inicio_execucao if inicio_execucao is not None else (
+                    self._inicio_invocacao if self.intent == 'PLAYLIST_PLAY' and fontes_ocorrencia is None else None
+                )),
+                fontes_ocorrencia=fontes_ocorrencia,
             )
             publicacao = registrar(
                 contrato,
@@ -301,7 +316,7 @@ class AdaptadorResultadoOperacional:
         if receipt is None:
             return falar("Não consegui validar o resultado dessa ação com segurança.",
                 "calma", 1, **kwargs) is not False
-        if receipt.aspectos:
+        if receipt.tem_observacoes_do_executor:
             texto = fala_resultado_por_aspectos(receipt)
         acumular = self.ctx.get("_acumular_resultado_operacional")
         if callable(acumular) and acumular(receipt, texto, emocao, nivel, contexto=self.contexto_fala()):
@@ -382,6 +397,11 @@ class AdaptadorResultadoOperacional:
             id_solicitacao=self.id_solicitacao,
             contexto=contexto_receipt,
             aspectos=receipt.aspectos if receipt is not None else (),
+            medicoes=receipt.medicoes if receipt is not None else (),
+            nao_qualificacoes_medicao=receipt.nao_qualificacoes_medicao if receipt is not None else (),
+            expectativas=receipt.expectativas if receipt is not None else (),
+            inicio_execucao=receipt.inicio_execucao if receipt is not None else None,
+            fontes_ocorrencia=receipt.fontes_ocorrencia if receipt is not None else None,
         )
         if self.intent == "NOTIFICATIONS" and str(fallback or "").strip():
             # O resumo da central já é o dado observado. Passá-lo pelo gerador
@@ -451,7 +471,7 @@ class AdaptadorResultadoOperacional:
             # O receipt já foi publicado. A autoria e a entrega pertencem ao
             # pedido composto inteiro, depois de todas as etapas concluídas.
             return
-        if contrato.aspectos:
+        if contrato.tem_observacoes_do_executor:
             # A realização enumera alcances distintos da mesma publicação.
             # Não submeter confirmações parciais a uma paráfrase por status global.
             confirmacao = ConfirmacaoPersonalizada(plano.fala, plano.emocao, plano.nivel)
@@ -513,7 +533,7 @@ class AdaptadorResultadoOperacional:
                 alvo=contrato.alvo,
                 contexto=contexto_fala,
             )
-            if modo_jogo_ativo and not contrato.aspectos
+            if modo_jogo_ativo and not contrato.tem_observacoes_do_executor
             else confirmacao.fala
         )
         fala_final = limpar_fala_operacional(fala_final)

@@ -846,6 +846,8 @@ class RespostaIARuntime:
             autoria_revisada = resposta.get("autoria_revisada_proposta")
             campos_autoria = ({"autoria_revisada_proposta": autoria_revisada}
                               if autoria_revisada is not None and callable(atualizar_proposta) else {})
+            if resposta.get("falha_resposta_observada") is not None and callable(atualizar_proposta):
+                campos_autoria["falha_resposta_observada"] = resposta["falha_resposta_observada"]
             if not publicar_plano_principal(
                 "resposta_planejada", comandos=comandos, fala=fala_limpa_original, **campos_autoria,
             ):

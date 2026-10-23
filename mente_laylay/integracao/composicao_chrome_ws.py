@@ -29,6 +29,7 @@ class ComposicaoChromeWsLaylayRuntime:
         fechar_extensoes_anteriores: Callable[..., Any],
         stop_event: Any,
         music_meter_publisher: Callable[[dict[str, Any]], Any] | None = None,
+        player_observer: Callable[[dict[str, Any], dict[str, Any]], Any] | None = None,
         servicos_iniciais: Mapping[str, Any] | None = None,
         namespace_getter: Callable[[], Mapping[str, Any]] | None = None,
         env_getter: Callable[[str, str], str] = os.getenv,
@@ -58,6 +59,7 @@ class ComposicaoChromeWsLaylayRuntime:
             action_context_getter=self.contexto.contexto_acao,
             aplicar_action_updates=self.contexto.aplicar_updates_acao,
             music_meter_publisher=music_meter_publisher,
+            player_observer=player_observer,
         )
         self.ws = ws_factory(contexto_getter=self._contexto_conexao)
         self.handler = self.ws.handler

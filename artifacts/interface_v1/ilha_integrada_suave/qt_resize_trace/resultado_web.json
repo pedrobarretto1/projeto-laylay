@@ -1,0 +1,140 @@
+{
+  "plataforma": "windows",
+  "renderer": "QtWebEngine",
+  "frontend_local": true,
+  "ponte_autenticada": true,
+  "dashboard_real_psutil": true,
+  "mente_iniciada": false,
+  "efeitos_externos": false,
+  "mensagens_texto_recebidas": 1,
+  "continuidade_dom_e_animacao": true,
+  "mouse_nativo": [],
+  "expressoes_de_demonstracao_transportadas": false,
+  "desktop_integrado": null,
+  "ilha_suave": {
+    "captura_nativa_de_janela_propria": true,
+    "selecao_e_transmitir_caminho_real": true,
+    "fonte_websocket_local_real": true,
+    "quadros_distintos": 15,
+    "player_e_ampliacao_na_mesma_janela": true,
+    "captura_para_ao_sair": true,
+    "player_nativo_390_sem_overflow": true,
+    "inatividade_real_segundos": 20.033,
+    "frames_ao_vivo_nao_renovam_prazo": true,
+    "rascunho_preservado": true,
+    "mente_iniciada": false,
+    "browser_real_nao_exercitado": true
+  },
+  "capturas": [
+    {
+      "arquivo": "web-inicio.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-0.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-1.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-2.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-3.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-music.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-system.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-settings.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-memory.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-lamp.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-dev.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-streaming.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-ilha.png",
+      "largura": 330,
+      "altura": 86
+    },
+    {
+      "arquivo": "web-painel.png",
+      "largura": 425,
+      "altura": 720
+    },
+    {
+      "arquivo": "web-conversa.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-conversa-768.png",
+      "largura": 768,
+      "altura": 800
+    },
+    {
+      "arquivo": "web-conversa-390.png",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "desktop-streaming-integrado-ao-vivo.png",
+      "largura": 1000,
+      "altura": 760
+    },
+    {
+      "arquivo": "desktop-streaming-integrado-390.png",
+      "largura": 390,
+      "altura": 760
+    },
+    {
+      "arquivo": "desktop-streaming-ampliado-false.png",
+      "largura": 1000,
+      "altura": 760
+    },
+    {
+      "arquivo": "desktop-streaming-ampliado-true.png",
+      "largura": 1000,
+      "altura": 760
+    },
+    {
+      "arquivo": "desktop-recolhido-apos-20s.png",
+      "largura": 264,
+      "altura": 50
+    }
+  ]
+}

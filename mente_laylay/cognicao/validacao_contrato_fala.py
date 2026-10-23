@@ -959,7 +959,8 @@ def validar_aderencia_contrato_fala(
         anterior = str(contrato.get("fala_anterior_relevante") or ultima_resposta or "")
         ancora = _termos_ancora(anterior)
         resposta_ancoras = _termos_ancora(resposta)
-        if not primeira or ("?" in primeira and len(partes) == 1):
+        if (not primeira or ("?" in primeira and len(partes) == 1)
+            or _normalizar(anterior) == _normalizar(resposta)):
             problemas.append("esclarecimento_sem_explicacao")
         if ancora and not (ancora & resposta_ancoras):
             problemas.append("esclarecimento_sem_ancora_anterior")

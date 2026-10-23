@@ -1,0 +1,92 @@
+{
+  "head": "b128f4e48b774352846a40672de493d19c30f109",
+  "instancia": "composicao_instalada_com_memoria_isolada",
+  "modelo": "configuracao_preservada",
+  "voz": "pt-BR-FranciscaNeural",
+  "caso": "sem_audio",
+  "falas": [
+    {
+      "texto": "Vou preparar um arquivo com o texto copiado e conferir o conteúdo.",
+      "id": "progresso:1a3e44e5a30e3c26:2",
+      "ts": 4287.5892357
+    },
+    {
+      "texto": "Criei o arquivo com o texto copiado e conferi o conteúdo.",
+      "id": "turno:1792710935060430400",
+      "ts": 4287.6794974
+    }
+  ],
+  "metricas": [],
+  "eventos": [
+    {
+      "tipo": "arquivo_observado",
+      "ts": 4287.6060081,
+      "stream_audio_ativo": false,
+      "hash": "c1da596877aada8193a1e8c783b258786ba2eed25d6cfeb8dbd4be916f8d39eb"
+    }
+  ],
+  "plano": {
+    "id": "1a3e44e5a30e3c26",
+    "objetivo": "salvar conteúdo copiado em arquivo de texto",
+    "estado": "confirmado",
+    "confianca": 0.98,
+    "risco": "baixo",
+    "autorizacao": "explicita_no_pedido",
+    "orcamento_total_ms": 20000,
+    "politica_falha_parcial": "interromper",
+    "cancelamento_solicitado": false,
+    "habilidades": [
+      "area_transferencia",
+      "arquivos"
+    ],
+    "etapas": [
+      {
+        "id": "1",
+        "habilidade": "area_transferencia",
+        "acao": "fornecer_referencia",
+        "intent": "",
+        "estado": "confirmado",
+        "depende_de": [],
+        "orcamento_ms": 500,
+        "duracao_ms": 0,
+        "evidencia_esperada": "hash_e_tamanho_da_referencia_validos",
+        "resultado": {}
+      },
+      {
+        "id": "2",
+        "habilidade": "arquivos",
+        "acao": "criar_arquivo",
+        "intent": "CREATE_FILE",
+        "estado": "confirmado",
+        "depende_de": [
+          "1"
+        ],
+        "orcamento_ms": 20000,
+        "duracao_ms": 76,
+        "evidencia_esperada": "arquivo_existente_e_hash_confirmado",
+        "resultado": {
+          "status": "arquivo_criado",
+          "confirmado": true,
+          "evidencia": "arquivo_existente_e_hash_confirmado",
+          "orcamento_excedido": false
+        }
+      }
+    ],
+    "metadados": {
+      "fluxo": "clipboard_para_arquivo",
+      "nome": "objetivo_concorrente.txt",
+      "tamanho_conteudo": 68,
+      "quantidade_janelas": 0
+    },
+    "resultado": {
+      "status": "plano_confirmado",
+      "confirmado": true,
+      "falhas_parciais": 0,
+      "interrompido": false
+    }
+  },
+  "arquivo_conferido": true,
+  "sobreposicao_observada": false,
+  "audios_confirmados": 0,
+  "ok": true
+}

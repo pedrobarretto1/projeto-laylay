@@ -123,10 +123,15 @@ def test_capas_locais_exigem_token_exato_e_imagem_no_cache(interface_web, tmp_pa
     handler = CapasLocaisV1(janela, cache)
     url = QUrl("laylay-playlist-artwork://" + token)
     assert handler.png(url).startswith(b"\x89PNG\r\n\x1a\n")
+    # Chromium normaliza uma URL com host acrescentando o caminho raiz '/'.
+    normalizada = QUrl("laylay-playlist-artwork://" + token + "/")
+    assert handler.png(normalizada).startswith(b"\x89PNG\r\n\x1a\n")
     for invalida in ("laylay-playlist-artwork://../segredo.png", "laylay-playlist-artwork://" + token + "?arquivo=outro", "file:///C:/Windows/win.ini"):
         assert handler.png(QUrl(invalida)) == b""
     politica = janela.politica_recursos
     assert politica.permitido(url, QWebEngineUrlRequestInfo.ResourceTypeImage)
+    assert politica.permitido(normalizada, QWebEngineUrlRequestInfo.ResourceTypeImage)
+    assert not politica.permitido(QUrl(normalizada.toString()+"outro.png"), QWebEngineUrlRequestInfo.ResourceTypeImage)
     assert not politica.permitido(url, QWebEngineUrlRequestInfo.ResourceTypeScript)
     assert not politica.permitido(QUrl("https://example.com/capa.png"), QWebEngineUrlRequestInfo.ResourceTypeImage)
 

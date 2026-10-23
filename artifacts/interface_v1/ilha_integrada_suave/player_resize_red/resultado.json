@@ -1,0 +1,700 @@
+{
+  "plataforma": "windows",
+  "startup": [
+    {
+      "ms": 0,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 41,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 63,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 86,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 106,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 128,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 152,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 173,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 194,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 215,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 236,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 257,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 277,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 303,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 324,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 346,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 367,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 388,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 409,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 430,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 452,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 474,
+      "visivel": true,
+      "opacidade": 0.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 495,
+      "visivel": true,
+      "opacidade": 0.29411764705882354,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 516,
+      "visivel": true,
+      "opacidade": 0.403921568627451,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 536,
+      "visivel": true,
+      "opacidade": 0.6784313725490196,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 557,
+      "visivel": true,
+      "opacidade": 0.803921568627451,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 582,
+      "visivel": true,
+      "opacidade": 0.8666666666666667,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 603,
+      "visivel": true,
+      "opacidade": 0.9568627450980393,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 625,
+      "visivel": true,
+      "opacidade": 0.984313725490196,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 645,
+      "visivel": true,
+      "opacidade": 0.9921568627450981,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 666,
+      "visivel": true,
+      "opacidade": 0.996078431372549,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 688,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 710,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 731,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 756,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 777,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 797,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 818,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 839,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 860,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 882,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 903,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 928,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 949,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 971,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1006,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1028,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1049,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1069,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1090,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1111,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1132,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1152,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1173,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1194,
+      "visivel": true,
+      "opacidade": 1.0,
+      "web_visivel": true,
+      "pronta": true
+    }
+  ],
+  "transicoes": [],
+  "mente_iniciada": false,
+  "pinturas_iniciais": [
+    {
+      "t": 72.4,
+      "modo": null,
+      "classe": "mode-full",
+      "filhos": 0
+    },
+    {
+      "t": 89,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 122.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 139,
+      "modo": "desktop",
+      "classe": "mode-desktop desktop-transitioning",
+      "filhos": 1
+    },
+    {
+      "t": 422.3,
+      "modo": "desktop",
+      "classe": "mode-desktop desktop-transitioning",
+      "filhos": 1
+    },
+    {
+      "t": 439.1,
+      "modo": "desktop",
+      "classe": "mode-desktop desktop-transitioning",
+      "filhos": 1
+    },
+    {
+      "t": 455.7,
+      "modo": "desktop",
+      "classe": "mode-desktop desktop-transitioning",
+      "filhos": 1
+    },
+    {
+      "t": 472.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 489,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 505.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 522.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 539,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 555.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 572.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 589.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 605.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 622.3,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 639,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 655.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 672.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 689,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 705.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 722.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 739,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 755.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 772.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 789,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 805.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 822.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 839,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 855.6,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 872.3,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 889,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 905.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 922.3,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 939,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 955.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 972.3,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 989,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1005.6,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1022.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1039,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1055.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1072.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1089,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1105.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1122.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1139,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1155.7,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1172.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1189,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    }
+  ]
+}

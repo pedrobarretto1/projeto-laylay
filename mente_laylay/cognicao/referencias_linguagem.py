@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 import unicodedata
 
 
@@ -118,12 +119,21 @@ def referencia_explicacao_ocorrencia(texto: str, *, entidades: tuple[str, ...]) 
     return "ultima" if re.search(r"\bultim[oa]\b", base) else "referida"
 
 
-def ids_ocorrencias_citadas(texto: str, ocorrencias: tuple[tuple[str, str], ...]) -> tuple[str, ...] | None:
+def ids_ocorrencias_citadas(
+    texto: str, ocorrencias: tuple[tuple[str,str],...], *, somente_referencia: bool = False,
+) -> tuple[str, ...] | None:
     """None indica referência implícita; vazio, referência explícita sem fonte.
 
     Não substituir uma citação desconhecida pela última ocorrência disponível.
     A resolução é a mesma para qualquer owner, sem interpretar motivos/efeitos.
     """
+    if somente_referencia:
+        from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+        fora=re.sub(r'"[^"\n]*"|“[^”\n]*”', ' ',texto)
+        for identidade,_ in ocorrencias:
+            if identidade:fora=re.sub(rf'(?<!\w){re.escape(identidade)}(?!\w)',' ',fora)
+        moldura=normalizar_texto_basico(fora).strip(' .,!?:;')
+        if moldura not in {'','a alegacao','a afirmacao'}:return None
     nomes = {s.casefold().replace("_", " ") for grupo in re.findall(r'"([^"\n]+)"|“([^”\n]+)”', texto)
              for s in grupo if s}
     ids = set(re.findall(r"(?<!\w)[0-9a-f]{32}(?!\w)", texto, flags=re.I))
@@ -137,6 +147,94 @@ def ids_ocorrencias_citadas(texto: str, ocorrencias: tuple[tuple[str, str], ...]
         return ()
     return tuple(identidade for identidade, nome in ocorrencias
         if (not ids or identidade in ids) and (not nomes or nome.casefold().replace("_", " ") in nomes))
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenciaNominalProposicao:
+    """Restrições lexicais; nunca identidade resolvida, fonte ou autorização."""
+    papeis: tuple[str, ...]
+    grandeza: str = ""
+    metodo: str = ""
+    referencial: str = ""
+    qualificador: str = ""
+
+
+def papeis_referencia_proposicao(
+    texto: str, *, exigir_deitico: bool = False, somente_nominal: bool = False,
+) -> tuple[str, ...] | None:
+    """Compatibilidade para consumidores que precisam somente do papel lexical."""
+    leitura = referencia_nominal_proposicao(texto, exigir_deitico=exigir_deitico,
+        somente_nominal=somente_nominal)
+    return leitura.papeis if leitura is not None else None
+
+
+def referencia_nominal_proposicao(
+    texto: str, *, exigir_deitico: bool = False, somente_nominal: bool = False,
+    permitir_elipse: bool = False,
+) -> ReferenciaNominalProposicao | None:
+    """Lê papel e grandeza nominal integral; o owner confere a própria fonte.
+
+    None não declarou este recorte; papéis vazios declaram referência cuja
+    moldura não resolvemos. Não resolve identidade, paráfrase, verdade ou ação.
+    Grandeza, método e referencial são nomes integrais, sem aproximação.
+    Elipse sem papel exige escopo estrito solicitado pelo owner; qualificador
+    sem campo só pode ser conferido contra opções efetivamente apresentadas.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+
+    fora_de_aspas = re.sub(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\'[^\'\n]*\'', " ", str(texto or ""))
+    base = normalizar_texto_basico(fora_de_aspas).strip(" .!?;:")
+    papeis = {"meta": ("meta",), "objetivo": ("meta",),
+        "medicao": ("medicao",), "medida": ("medicao",),
+        "diferenca": ("comparacao",), "comparacao": ("comparacao",),
+        "conclusao": ("comparacao",), "valor": ("meta", "medicao", "comparacao"),
+        "numero": ("meta", "medicao", "comparacao")}
+    determinantes = "esse|essa|este|esta|desse|dessa|deste|desta|nesse|nessa|neste|nesta|aquele|aquela|daquele|daquela"
+    if not exigir_deitico:
+        determinantes += "|o|a"
+    molde = r"\b(?:" + determinantes + r")\s+"
+    achados = list(re.finditer(molde + r"(?P<papel>" + "|".join(papeis) + r")\b", base))
+    if not achados:
+        if not (permitir_elipse and somente_nominal and not exigir_deitico):return None
+        elipse=re.fullmatch(molde+r"(?:de|do|da)\s+([a-z0-9_]+(?:[ -][a-z0-9_]+)*)",base)
+        if elipse and len(elipse[1])<=240:
+            return ReferenciaNominalProposicao(('meta','medicao','comparacao'),qualificador=elipse[1])
+        complemento=re.sub(r"^(?:"+determinantes+r")\s+",'',base,count=1)
+        if not re.match(r"^(?:(?:pelo|por|com o) metodo|(?:no|com) referencial)\s+",complemento):return None
+        escolhidos=('meta','medicao','comparacao')
+    else:
+        if len(achados) != 1:
+            return ReferenciaNominalProposicao(())
+        achado, = achados
+        if somente_nominal and achado.start()!=0:
+            return None
+        complemento = base[achado.end():].strip()
+        escolhidos = papeis[achado['papel']]
+    if not complemento or complemento in {"aqui", "ai"}:
+        return ReferenciaNominalProposicao(escolhidos)
+    qualificadores = {"solicitado": ("meta",), "medido": ("medicao",),
+        "da meta": ("meta",), "da medicao": ("medicao",), "da medida": ("medicao",),
+        "da diferenca": ("comparacao",), "da comparacao": ("comparacao",)}
+    if complemento in qualificadores:
+        return ReferenciaNominalProposicao(tuple(p for p in escolhidos if p in qualificadores[complemento]))
+    marcadores=list(re.finditer(r"(?:^|\s)(?:e\s+)?(?:(?P<metodo>(?:pelo|por|com o) metodo)|"
+        r"(?P<referencial>(?:no|com) referencial))\s+",complemento))
+    nomes={}
+    prefixo=complemento[:marcadores[0].start()].strip() if marcadores else complemento
+    if prefixo:
+        grandeza=re.fullmatch(r"(?:de|do|da)\s+([a-z0-9_]+(?:[ -][a-z0-9_]+)*)",prefixo)
+        if not grandeza:return ReferenciaNominalProposicao(())
+        nomes['grandeza']=grandeza[1]
+    for i,marcador in enumerate(marcadores):
+        campo='metodo' if marcador['metodo'] else 'referencial'
+        valor=complemento[marcador.end():marcadores[i+1].start() if i+1<len(marcadores) else len(complemento)].strip()
+        if campo in nomes or not re.fullmatch(r"[a-z0-9_]+(?:[ -][a-z0-9_]+)*",valor):
+            return ReferenciaNominalProposicao(())
+        nomes[campo]=valor
+    if nomes and all(len(v)<=240 for v in nomes.values()):
+        return ReferenciaNominalProposicao(escolhidos,**nomes)
+    # Não ignorar um complemento desconhecido para voltar ao último item.
+    return ReferenciaNominalProposicao(())
 
 _PRONOMES = (
     r"ele|ela|eles|elas|isso|isto|aquilo|esse|essa|esses|essas|este|esta|"

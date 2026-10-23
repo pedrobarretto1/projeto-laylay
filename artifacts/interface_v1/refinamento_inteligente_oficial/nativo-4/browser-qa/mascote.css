@@ -1,0 +1,112 @@
+/* Identidade compartilhada: Início, Conversa, Painel e Ilha.
+   Somente data-emotion / data-emotion-level publicados definem a expressão.
+   As partes permanecem vivas durante reconciliações e piscadas. */
+.avatar{--mascot-energy:1;--mascot-tilt:-3deg;--mascot-float:5.8s;--mascot-blush:.68;--mascot-eye-scale:1;width:112px;height:104px;position:relative;isolation:isolate;animation:mascot-float var(--mascot-float) ease-in-out infinite;filter:drop-shadow(0 9px 12px #08081133);overflow:visible}
+.avatar .avatar-body{position:absolute}
+.avatar[data-emotion-level="2"]{--mascot-energy:1.14;--mascot-blush:.8;--mascot-eye-scale:1.06}
+.avatar[data-emotion-level="3"]{--mascot-energy:1.3;--mascot-blush:.92;--mascot-eye-scale:1.12}
+.avatar .mascot-figure{position:absolute;inset:0;transform:rotate(var(--mascot-tilt));transform-origin:50% 76%;transition:transform .45s cubic-bezier(.2,.7,.3,1)}
+.avatar .avatar-body{inset:0;transform:none;overflow:hidden;border:1px solid #e9cfff8c;border-radius:43% 44% 33% 34% / 34% 39% 30% 30%;background:radial-gradient(ellipse at 25% 12%,#e9caffb8 0,transparent 49%),radial-gradient(ellipse at 47% 27%,#d4b1ff 0,transparent 72%),linear-gradient(145deg,#d9b6ff 3%,#c39bf4 55%,#b184eb 83%,#a36fe1);box-shadow:inset 0 1px 1px #fbe9ffab,inset -5px -8px 10px #8450c035,inset 2px 2px 7px #f8e4ff35}
+.avatar .avatar-body:before{content:"";position:absolute;left:8%;top:17%;width:8%;height:21%;border-radius:80% 20% 70% 30%;transform:rotate(33deg);background:linear-gradient(#f3deffb3,#f3deff28)}
+.avatar .avatar-body:after{content:"";position:absolute;inset:8% -2% -1% 10%;border-radius:50% 40% 31% 40%;border-right:5px solid #b481eb38;border-bottom:5px solid #ac75e538;transform:rotate(4deg)}
+.avatar .mascot-tuft{position:absolute;left:12%;top:-8%;height:22%;width:20%;z-index:1;border-radius:72% 41% 14% 25% / 65% 60% 33% 30%;transform:rotate(-22deg);transform-origin:75% 90%;background:linear-gradient(135deg,#efd4ff 4%,#d3abfc 48%,#bb89f1 80%);box-shadow:inset 1px 1px 1px #f9e6ffd9,inset -1px -1px 3px #9c6bd74a;animation:mascot-tuft 5.8s ease-in-out infinite}
+.avatar .mascot-tuft:after{content:"";position:absolute;right:0;top:12%;width:24%;height:77%;border-radius:100% 40% 60% 60%;transform:rotate(9deg);background:linear-gradient(100deg,#a979e6,#c596f7);box-shadow:inset 1px 0 2px #935dcb5c}
+.avatar .mascot-mark{position:absolute;width:7.6%;height:8.5%;right:15.1%;top:20%;border:2px solid #7948b9;border-radius:23%;transform:rotate(45deg);box-shadow:inset 0 0 0 1px #a776e0,0 1px 1px #a375dc4a;z-index:3}
+.avatar .mascot-mark:after{content:"";position:absolute;width:42%;height:42%;left:155%;top:130%;border-radius:50%;background:#9967d8;transform:rotate(-45deg)}
+.avatar .face{position:absolute;inset:0;display:block;height:auto;translate:var(--look-x,0px) var(--look-y,0px);transform:none;z-index:4;will-change:translate}
+.avatar .eye{position:absolute;display:block;top:44%;left:25.5%;right:auto;width:8.3%;height:17%;border:0;border-radius:48%;background:radial-gradient(ellipse at 65% 78%,#624080 0 12%,transparent 26%),radial-gradient(ellipse at 24% 63%,#4c2c71 0 16%,transparent 30%),linear-gradient(158deg,#211331 3%,#38204f 64%,#482a63);box-shadow:inset 0 0 0 1px #29123d7d,0 1px 0 #eed2ff6b;transform:scaleY(var(--mascot-eye-scale));transform-origin:50% 55%;scale:1 1;transition:scale .1s ease,transform .32s ease,height .32s ease,width .32s ease}
+.avatar .eye.right{left:auto;right:25.5%;top:42.5%}
+.avatar .eye:after{content:"";position:absolute;display:block;left:21%;top:13%;width:33%;height:22%;border-radius:50%;background:#fff7ff;opacity:1}
+.avatar .eye:before{content:"";position:absolute;display:block;bottom:13%;right:18%;width:18%;height:14%;border-radius:50%;background:#a378c9;opacity:.28}
+.avatar .smile{position:absolute;display:block;left:45.8%;top:66%;width:8.6%;height:4%;border:0;border-bottom:1.5px solid #492362;border-radius:0 0 55% 55%;background:none;transform:none;opacity:1;transition:width .25s,height .25s,transform .25s}
+.avatar .cheek{position:absolute;display:block;top:65%;left:16%;width:8.4%;height:4%;border-radius:55%;background:repeating-linear-gradient(116deg,#efa6ef 0 27%,#f4b4f35c 28% 34%);filter:none;opacity:var(--mascot-blush);transform:rotate(-8deg);transition:opacity .35s}
+.avatar .cheek.right{left:auto;right:15.5%;top:63.5%}
+.avatar .mascot-brow{position:absolute;left:25%;top:37%;height:3%;width:9%;border-top:1.5px solid #67408c;border-radius:50%;opacity:0;transform:rotate(-12deg)}
+.avatar .mascot-brow.right{left:auto;right:25%;transform:rotate(12deg)}
+.avatar .mascot-emote{position:absolute;left:77%;top:-14%;width:24%;height:27%;color:#dfa9f1;font-family:'Segoe UI',sans-serif;font-style:normal;font-size:19px;line-height:1;font-weight:600;opacity:0;transform:rotate(8deg);transition:opacity .25s;z-index:5}
+.avatar .mascot-activity{position:absolute;inset:-16%;pointer-events:none;border:1px solid transparent;border-radius:50%;z-index:-1}
+.avatar.hearing .eye{height:17%;transform:scaleY(var(--mascot-eye-scale))}
+/* Happy arcs and mouth preserve the same eye and smile nodes. */
+.avatar[data-expression="feliz"] .eye{top:48%;width:12%;height:8%;left:23.5%;background:none;border-top:2px solid #422252;border-radius:55% 55% 0 0;box-shadow:none;transform:rotate(-5deg)}
+.avatar[data-expression="feliz"] .eye.right{left:auto;right:23.5%;transform:rotate(5deg);top:46.5%}
+.avatar[data-expression="feliz"] .eye:before,.avatar[data-expression="feliz"] .eye:after{opacity:0}
+.avatar[data-expression="feliz"] .smile,.avatar[data-expression="animada"] .smile{left:44.5%;width:11%;height:9%;top:64%;border:1px solid #4c245f;border-radius:12% 12% 55% 55%;background:radial-gradient(ellipse at 50% 110%,#ed90d7 0 53%,transparent 55%),#4b255f}
+.avatar[data-expression="feliz"] .mascot-figure{animation:mascot-cheer .7s cubic-bezier(.2,.7,.4,1) 1}
+.avatar[data-expression="animada"] .mascot-figure{animation:mascot-excited .76s cubic-bezier(.2,.7,.4,1) 1}
+.avatar[data-expression="animada"] .mascot-emote{opacity:1;background:linear-gradient(110deg,transparent 42%,#dfa9f1 44% 55%,transparent 57%) 6% 8% / 33% 58% no-repeat,linear-gradient(128deg,transparent 42%,#dfa9f1 44% 55%,transparent 57%) 48% 35% / 33% 58% no-repeat,linear-gradient(150deg,transparent 42%,#dfa9f1 44% 55%,transparent 57%) 92% 66% / 33% 58% no-repeat}
+.avatar[data-expression="curiosa"]{--mascot-tilt:-9deg}
+.avatar[data-expression="curiosa"] .eye.right{height:18%;top:40.5%}
+.avatar[data-expression="curiosa"] .smile{width:6%;left:47%;transform:rotate(-10deg)}
+.avatar[data-expression="curiosa"] .mascot-emote{opacity:.9}
+.avatar[data-expression="curiosa"] .mascot-emote:after{content:"?"}
+.avatar[data-expression="confusa"]{--mascot-tilt:6deg}
+.avatar[data-expression="confusa"] .mascot-brow{opacity:.8;top:34%;transform:rotate(10deg)}
+.avatar[data-expression="confusa"] .mascot-brow.right{transform:rotate(-18deg);top:36%}
+.avatar[data-expression="confusa"] .smile{width:6%;height:5%;left:47%;border:1.5px solid #4c245f;border-radius:45%;background:#6b3d82;transform:rotate(-10deg)}
+.avatar[data-expression="confusa"] .mascot-emote{opacity:.9;color:#a1d5ed;transform:rotate(13deg)}
+.avatar[data-expression="confusa"] .mascot-emote:after{content:"??";font-size:.84em;letter-spacing:2px}
+.avatar[data-expression="triste"]{--mascot-tilt:2deg;--mascot-float:8s;--mascot-eye-scale:.84;--mascot-blush:.45}
+.avatar[data-expression="triste"] .mascot-brow{opacity:.75;transform:rotate(-16deg);top:35%}
+.avatar[data-expression="triste"] .mascot-brow.right{transform:rotate(16deg)}
+.avatar[data-expression="triste"] .eye{top:47%;height:14%}
+.avatar[data-expression="triste"] .eye.right{top:47%}
+.avatar[data-expression="triste"] .smile{top:69%;height:3.5%;border-bottom:0;border-top:1.5px solid #542c70;border-radius:55% 55% 0 0}
+.avatar[data-expression="brava"] .mascot-brow{opacity:1;top:38%;transform:rotate(22deg)}
+.avatar[data-expression="brava"] .mascot-brow.right{transform:rotate(-22deg)}
+.avatar[data-expression="brava"] .eye{height:15%;top:45%}
+.avatar[data-expression="brava"] .eye.right{top:45%}
+.avatar[data-expression="brava"] .smile{height:4%;top:68%;border-bottom:0;border-top:1.6px solid #542c70;border-radius:55% 55% 0 0}
+.avatar[data-expression="brava"] .mascot-emote{opacity:.9;color:#ef86aa}
+.avatar[data-expression="brava"] .mascot-emote:after{content:"";position:absolute;inset:8%;background:radial-gradient(circle at 0 0,transparent 30%,currentColor 34% 49%,transparent 53%) 100% 100% / 47% 47% no-repeat,radial-gradient(circle at 100% 0,transparent 30%,currentColor 34% 49%,transparent 53%) 0 100% / 47% 47% no-repeat,radial-gradient(circle at 0 100%,transparent 30%,currentColor 34% 49%,transparent 53%) 100% 0 / 47% 47% no-repeat,radial-gradient(circle at 100% 100%,transparent 30%,currentColor 34% 49%,transparent 53%) 0 0 / 47% 47% no-repeat}
+.avatar[data-expression="surpresa"] .eye{height:21%;width:9.8%;top:40.5%;left:25%}
+.avatar[data-expression="surpresa"] .eye.right{top:39%;left:auto;right:25%}
+.avatar[data-expression="surpresa"] .smile{height:9%;width:7%;left:46.5%;top:65%;border:1px solid #4c245f;border-radius:48%;background:radial-gradient(ellipse at 50% 112%,#d781bf 0 40%,transparent 43%),#4b255f}
+.avatar[data-expression="surpresa"] .mascot-emote{opacity:.95}
+.avatar[data-expression="surpresa"] .mascot-emote:after{content:"!"}
+.avatar[data-expression="envergonhada"]{--mascot-tilt:5deg;--mascot-blush:1}
+.avatar[data-expression="envergonhada"] .eye{height:13%;top:48%;transform:scaleY(var(--mascot-eye-scale)) rotate(7deg)}
+.avatar[data-expression="envergonhada"] .eye.right{top:46.5%;transform:scaleY(var(--mascot-eye-scale)) rotate(-7deg)}
+.avatar[data-expression="envergonhada"] .cheek{width:12%;height:6%;left:12%;top:63%}
+.avatar[data-expression="envergonhada"] .cheek.right{left:auto;right:12%}
+.avatar[data-expression="envergonhada"] .smile{width:6%;left:47%}
+/* Activity never overwrites the emotional eye or mouth geometry. */
+.avatar.hearing .face,.avatar.thinking .face{transform:none}
+.avatar.hearing .eye,.avatar.thinking .eye:last-child{align-self:auto}
+.avatar.hearing .mascot-activity{border-color:#a8dce63b;animation:mascot-listen 2.4s ease-in-out infinite}
+.avatar.thinking .mascot-activity{border-top-color:#c4a5eb80;border-right-color:#c4a5eb21;animation:mascot-think 4s linear infinite}
+.avatar.speaking .smile{animation:mascot-speaking .52s ease-in-out infinite alternate;transform-origin:50% 50%}
+.avatar.is-blinking .eye{scale:1 .08}
+.avatar.avatar-mini{animation:none;filter:none;flex-shrink:0}
+.avatar.avatar-mini .mascot-figure{animation:none}
+.avatar.avatar-mini .mascot-tuft{animation:none}
+.avatar.avatar-mini .mascot-mark{border-width:1px;box-shadow:none}
+.avatar.avatar-mini .mascot-mark:after{display:none}
+.avatar.avatar-mini .mascot-emote,.avatar.avatar-mini .mascot-activity,.avatar.avatar-mini .mascot-brow{display:none}
+.avatar.avatar-mini .eye:after{display:block}
+.avatar.avatar-mini .eye:before{display:none}
+.avatar.avatar-mini .smile{display:block;border-width:1px;min-height:1px}
+.avatar.avatar-mini .cheek{display:block;opacity:.65}
+.avatar.avatar-mini[data-expression="feliz"] .eye{border-top-width:1px}
+.avatar.avatar-small .mascot-mark{border-width:1.5px}
+.avatar.avatar-small .mascot-emote{font-size:12px}
+.avatar.avatar-small .eye:after{left:21%;top:13%;width:33%;height:22%}
+.avatar.avatar-small .smile{border-width:1px}
+@keyframes mascot-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes mascot-tuft{0%,100%{transform:rotate(-22deg)}50%{transform:rotate(-26deg)}}
+@keyframes mascot-cheer{0%,100%{transform:rotate(var(--mascot-tilt)) translateY(0)}38%{transform:rotate(3deg) translateY(calc(-7px * var(--mascot-energy))) scale(1.015,.985)}70%{transform:rotate(-4deg) translateY(0) scale(1.025,.98)}}
+@keyframes mascot-excited{0%,100%{transform:rotate(var(--mascot-tilt)) translateY(0)}37%{transform:rotate(5deg) translateY(calc(-10px * var(--mascot-energy))) scale(.98,1.035)}72%{transform:rotate(-5deg) translateY(0) scale(1.035,.975)}}
+@keyframes mascot-listen{0%,100%{transform:scale(.95);opacity:.4}50%{transform:scale(1.03);opacity:.9}}
+@keyframes mascot-think{to{transform:rotate(360deg)}}
+@keyframes mascot-speaking{from{scale:1 .85}to{scale:1 1.32}}
+/* Motion preferences suppress movement, never the received expression. */
+.avatar-motion-paused .avatar,.avatar-motion-paused .avatar *{animation-play-state:paused!important}
+.avatar-motion-off .avatar,.avatar-motion-off .avatar *{animation:none!important;transition:none!important}
+.avatar-motion-off .avatar .face{translate:0 0!important;transform:none!important;will-change:auto}
+.avatar-motion-off .avatar .eye{height:17%!important;transform:scaleY(var(--mascot-eye-scale))!important;scale:1 1!important;border-radius:48%!important}
+.avatar-motion-off .avatar[data-expression="feliz"] .eye{height:8%!important;border-radius:55% 55% 0 0!important;transform:none!important}
+.avatar-motion-off .avatar[data-expression="curiosa"] .eye.right{height:18%!important}
+.avatar-motion-off .avatar[data-expression="triste"] .eye{height:14%!important}
+.avatar-motion-off .avatar[data-expression="brava"] .eye{height:15%!important}
+.avatar-motion-off .avatar[data-expression="surpresa"] .eye{height:21%!important}
+.avatar-motion-off .avatar[data-expression="envergonhada"] .eye{height:13%!important}
+@media(prefers-reduced-motion:reduce){.avatar,.avatar *{animation:none!important;transition:none!important}.avatar .face{translate:0 0!important;will-change:auto}}

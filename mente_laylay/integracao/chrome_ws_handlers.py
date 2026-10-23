@@ -293,6 +293,7 @@ def handle_player_event(
                 if total <= 0.0 and duracao_anterior > 0.0:
                     total = duracao_anterior
         player = {
+            "is_ad": data.get("isAd") if type(data.get("isAd")) is bool else None,
             "title": str(data.get("title") or "").replace(" - YouTube", "").strip()[:180],
             "channel": str(data.get("channel") or "").strip()[:120],
             "video_id": video_id,
@@ -687,6 +688,7 @@ class ChromeWsEventosRuntime:
         action_context_getter: Callable[[], Dict[str, Any]],
         aplicar_action_updates: Callable[[Dict[str, Any]], Any],
         music_meter_publisher: Callable[[Dict[str, Any]], Any] | None = None,
+        player_observer: Callable[[Dict[str, Any], Dict[str, Any]], Any] | None = None,
     ) -> None:
         self.solicitacoes = solicitacoes
         self.playlist_state = playlist_state
@@ -698,6 +700,21 @@ class ChromeWsEventosRuntime:
         self.action_context_getter = action_context_getter
         self.aplicar_action_updates = aplicar_action_updates
         self.music_meter_publisher = music_meter_publisher
+        self.player_observer = player_observer
+
+    def _player_event(self, item: Dict[str, Any]) -> None:
+        anterior = self.playlist_state.get("player")
+        handle_player_event(item, playlist_state=self.playlist_state,
+            yt_clean_url=self.yt_clean_url, playlist_avancar_proxima=self.playlist_avancar_proxima,
+            falar_com_lipsync=self.falar_com_lipsync)
+        player = self.playlist_state.get("player")
+        # Só uma amostra aceita pelo owner pode confirmar uma reprodução.
+        if item.get("event") == "player_state" and isinstance(player, dict) and player is not anterior:
+            if callable(self.player_observer):
+                try:
+                    self.player_observer(dict(player), dict(self.playlist_state))
+                except Exception:
+                    pass  # Observação estatística nunca interrompe o player.
 
     def _user_context(self, data: Dict[str, Any]) -> None:
         updates = handle_user_context(data, self.user_context_getter() or {})
@@ -736,13 +753,7 @@ class ChromeWsEventosRuntime:
             "check_tabs_result": protegido(lambda item: handle_check_tabs_result(item, self.solicitacoes.pendencias_checagem_abas)),
             "active_tab_url": protegido(lambda item: handle_active_tab_url(item, self.solicitacoes.pendencias_aba_ativa)),
             "youtube_data": protegido(lambda item: handle_youtube_data(item, self.solicitacoes.pendencias_aba_ativa)),
-            "player_event": lambda item: handle_player_event(
-                item,
-                playlist_state=self.playlist_state,
-                yt_clean_url=self.yt_clean_url,
-                playlist_avancar_proxima=self.playlist_avancar_proxima,
-                falar_com_lipsync=self.falar_com_lipsync,
-            ),
+            "player_event": self._player_event,
             "music_meter": self._music_meter,
             "user_context": self._user_context,
             "page_content": protegido(lambda item: handle_page_content(item, self.solicitacoes.pendencias_conteudo_pagina)),

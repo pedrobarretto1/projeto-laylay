@@ -274,6 +274,10 @@ class MemoriaSQLite:
                 "ON aprendizado_eventos(chave, id DESC)"
             )
             cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_aprendizado_eventos_tipo_data "
+                "ON aprendizado_eventos(tipo, criado_em)"
+            )
+            cur.execute(
                 "CREATE INDEX IF NOT EXISTS idx_aprendizado_hipoteses_revisao "
                 "ON aprendizado_hipoteses(status, confianca, atualizado_em)"
             )
@@ -1295,6 +1299,23 @@ class MemoriaSQLite:
         finally:
             if _conn is None:
                 conn.close()
+
+    def listar_eventos_aprendizado_tipo(
+        self, tipo: str, *, desde: float = 0.0, limit: int = 10000,
+    ) -> List[Dict[str, Any]]:
+        """Leitura factual filtrada no owner SQLite, sem buscar uma hipótese por vez."""
+        inicio = datetime.fromtimestamp(max(0.0, float(desde))).isoformat(' ')
+        conn = self._conectar()
+        try:
+            rows = conn.execute(
+                'SELECT valor_json, origem, criado_em, id_evento FROM aprendizado_eventos '
+                'WHERE tipo = ? AND criado_em >= ? ORDER BY id DESC LIMIT ?',
+                (str(tipo), inicio, max(1, min(100000, int(limit)))),
+            ).fetchall()
+            return [{'valor': json.loads(row[0]), 'origem': row[1], 'criado_em': row[2],
+                'id_evento': str(row[3] or '')} for row in rows]
+        finally:
+            conn.close()
 
     def listar_eventos_aprendizado(
         self, chave: str, *, limit: int = 100

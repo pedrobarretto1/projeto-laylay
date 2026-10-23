@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT_RAPIDO
+from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO
 
 
 def _ultima_fala_usuario(mensagens: list[Any]) -> str:
@@ -204,6 +204,26 @@ def preparar_payload_llm(
             prompt_sistema = {
                 "role": "system",
                 "content": BASE_SYSTEM_PROMPT_RAPIDO,
+            }
+        elif (
+            otimizacao_prompt_ativa
+            and endpoint_local
+            and not contexto_fechado
+            and isinstance(prompt_sistema, dict)
+            and str(prompt_sistema.get("role") or "").casefold() == "system"
+            and str(prompt_sistema.get("content") or "").startswith(BASE_SYSTEM_PROMPT)
+        ):
+            # O perfil local compacto é uma representação canônica completa,
+            # não um corte de caracteres. Conversas normais também precisam
+            # reservar espaço para a fonte, o contrato e o diálogo contínuo.
+            # Trocar só a base preserva o contexto anexado e a identidade do
+            # turno. Instruções prioritárias antepostas pelo owner, pacotes
+            # fechados e prompts personalizados permanecem atômicos.
+            prompt_sistema = {
+                **prompt_sistema,
+                "content": str(prompt_sistema["content"]).replace(
+                    BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO, 1,
+                ),
             }
         prompt_principal = bool(
             isinstance(prompt_sistema, dict)

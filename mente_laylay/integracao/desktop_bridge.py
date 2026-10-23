@@ -631,6 +631,39 @@ def _info_sistema_dashboard(
     return resultado
 
 
+def _inicio_inteligente_publico(bruto: Any) -> dict[str, Any]:
+    fonte = bruto if isinstance(bruto, Mapping) else {}
+    observado = _numero_dashboard(fonte.get('observed_at'), minimo=0, maximo=9_999_999_999) or 0.0
+    resultado = {'freshness': _frescor_dashboard(fonte.get('freshness'), disponivel=observado > 0),
+        'observed_at': observado,
+        'observed_since': _numero_dashboard(fonte.get('observed_since'), minimo=0, maximo=9_999_999_999) or 0.0,
+        'periods': {}}
+    periodos = fonte.get('periods') if isinstance(fonte.get('periods'), Mapping) else {}
+    for dias in ('7', '30'):
+        periodo = periodos.get(dias) if isinstance(periodos.get(dias), Mapping) else {}
+        playlists, acoes = [], []
+        for item in list(periodo.get('playlists') or ())[:12]:
+            if not isinstance(item, Mapping):
+                continue
+            nome = _texto_publico_dashboard(item.get('name'), 80, fallback='')
+            total = _inteiro_dashboard(item.get('confirmed_plays'), maximo=1_000_000)
+            if nome and total:
+                playlists.append({'name': nome, 'confirmed_plays': total,
+                    'last_played_at': _numero_dashboard(item.get('last_played_at'), minimo=0, maximo=9_999_999_999) or 0.0,
+                    'reason': _texto_publico_dashboard(item.get('reason'), 180, fallback='Reprodução iniciada confirmada.')})
+        for item in list(periodo.get('actions') or ())[:12]:
+            if not isinstance(item, Mapping) or item.get('id') not in IDS_ACOES_RAPIDAS | IDS_ACOES_PAINEL:
+                continue
+            total = _inteiro_dashboard(item.get('confirmed_uses'), maximo=1_000_000)
+            if total:
+                acoes.append({'id': item['id'], 'confirmed_uses': total,
+                    'title': _texto_publico_dashboard(item.get('title'), 80, fallback='Ação confirmada'),
+                    'last_used_at': _numero_dashboard(item.get('last_used_at'), minimo=0, maximo=9_999_999_999) or 0.0,
+                    'reason': _texto_publico_dashboard(item.get('reason'), 180, fallback='Resultado confirmado.')})
+        resultado['periods'][dias] = {'playlists': playlists, 'actions': acoes}
+    return resultado
+
+
 def sanitizar_dashboard_estado(
     dashboard: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -1198,6 +1231,7 @@ def sanitizar_dashboard_estado(
         "context": contexto_publico,
         "memory_recent": memoria,
         "quick_actions": acoes_publicas,
+        "home": _inicio_inteligente_publico(bruto.get("home")),
         "music": musica_publica,
         "routines": {
             "items": rotinas_publicas,

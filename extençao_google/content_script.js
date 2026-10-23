@@ -1469,6 +1469,16 @@ function _laylayYoutubeQueueSnapshot() {
   }
 }
 
+function _laylayYoutubeIsAd() {
+  try {
+    const player = document.querySelector('.html5-video-player');
+    return Boolean(document.body?.classList?.contains('ad-showing') ||
+      document.body?.classList?.contains('ad-interrupting') ||
+      player?.classList?.contains('ad-showing') || player?.classList?.contains('ad-interrupting') ||
+      String(location.href).includes('ad_id') || String(location.href).includes('doubleclick'));
+  } catch (_) { return null; }
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   console.log("Comando recebido na página:", request);
 
@@ -1496,6 +1506,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       const queue = _laylayYoutubeQueueSnapshot();
       sendResponse({
         ok: !!video,
+        isAd: video ? _laylayYoutubeIsAd() : null,
         playing,
         audible: playing && !muted && volume > 0 && readyState >= 2,
         paused: !!video?.paused,
@@ -1688,6 +1699,7 @@ try {
       sendMessage({
         type: "PLAYER_EVENT",
         event: "player_state",
+        isAd: _laylayYoutubeIsAd(),
         url: location.href,
         videoId: _laylayVideoId(),
         title,

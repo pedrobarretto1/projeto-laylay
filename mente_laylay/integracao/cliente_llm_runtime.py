@@ -303,7 +303,14 @@ class ServicoModeloLLMRuntime:
         if pedido.contrato_saida is None:
             return resultado
         if not resultado.sucesso:
-            return ResultadoModelo("", False, rota=resultado.rota)
+            # O codec valida autoria bem-sucedida; uma falha técnica não é
+            # autoria para decodificar. Apagar sua categoria convertia timeout
+            # em vazio e depois em um pedido para o usuário reformular.
+            # Só sentinelas canônicas atravessam esta fronteira negativa.
+            return ResultadoModelo(
+                resultado.texto if eh_estado_tecnico_llm(resultado.texto) else "",
+                False, rota=resultado.rota,
+            )
         try:
             dados = pedido.contrato_saida.decodificar_json(resultado.texto)
         except (TypeError, ValueError, OverflowError, RecursionError):

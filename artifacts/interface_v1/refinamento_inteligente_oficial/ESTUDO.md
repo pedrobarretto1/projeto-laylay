@@ -1,0 +1,19 @@
+# Refinamento inteligente oficial
+
+Pedido autorizado: aplicar exatamente o visual, o Início e a entrada da prévia aprovada em artifacts/interface_v1/previa_inteligente/, preservando funções reais. Baseline main HEAD b128f4e48b774352846a40672de493d19c30f109; worktree suja com mudanças paralelas preservada, hashes do escopo em baseline.json. Sem commit/push/shutdown nesta iteração.
+
+Inventário: interface.js já possui estado, WebChannel, reconciliação incremental, drafts, seleção, scroll e emoção canônica; paginas.js preserva os handlers reais das9abas; JanelaInterfaceWebV1 possui HWND/âncora/entrada/Streaming e preferências QSettings; DashboardTerminalRuntime coleta projeções fora de snapshot, DesktopBridge sanitiza explicitamente campos. Portanto o simulador preview.js não deve substituir o runtime oficial.
+
+Primeiras fronteiras RED demonstradas antes do candidato: três testes alcançaram a janela real e mostraram desktop_pagina=None ao primeiro clique, compacto264x50 em lugar272x54 e preferência do Início recusada. O quarto chegou à página/canal autenticados mas não encontrou .home-inteligente. Um quinto demonstrou ausência de desktop_entry na apresentação. Não são falhas de importação; mensagens de GPU não impediram a execução dos contratos.
+
+Contrato visual: shell lateral e hierarquia da prévia sobre os mesmos controladores; nove abas mantêm todos os controles necessários do oficial. Primeiro clique abre Início, próximos reabrem aba ativa. Preferências de período/fixados/ocultos são locais e não executam comandos. Entrada650ms é uma ocorrência visual de primeiro boot confirmado, separada de render/feed; movimento reduzido evita animação. Posição, arrasto, inatividade20s, drafts, identidade do player e Streaming permanecem nos owners existentes.
+
+Candidato nativo mínimo: geometrias272x54/1100x730 com clamps e faixa120; validação versionada de preferências; evento desktop_entry e timer próprio após ack do primeiro renderer. GREEN intermediário:10testes focados,1,92s. Não é prova visual Windows nem encerramento da integração.
+
+Início factual: catalogo_publico.count é quantidade de faixas; histórico legado guarda títulos em blocos horários sem identidade de playlist/reprodução e pode receber troca de aba/repetição. Esses dados não provam audições. Também confiabilidade aprendida aceita alguns sucessos sem confirmado=True e deduplica por2s; não é contador de uso. Ambas alternativas foram falsificadas por leitura dos owners.
+
+Contrato de uso proposto: receipt tipado canônico, ID da solicitação, executor confirmado, rejeição de falha/cancelamento/no-op, dedupe persistente por ocorrência. Agregar em7/30dias com eventos do owner SQLite/portas existentes, sem novo arquivo de hábitos ou parser em UI. A seleção de playlist só conta reprodução iniciada confirmada após observar player canônico fresco, mesma playlist/aba/vídeo após início de execução. Heartbeats/auto-next não são novas seleções. A observação factual precisa anteceder o veto contextual de turno, preservando esse veto e sem trazer resultado velho ao contexto atual. Backend tem RED próprio no registrador real antes de publicar contexto; implementação em andamento.
+
+API pública combinada: dashboard.home com freshness/observed_at/observed_since/periods7e30 (playlists e actions). Retomada, agenda, música e contexto usam campos existentes. Sem evidência suficiente, renderizar estado sem histórico aprovado, nunca números demonstrativos. Preferências home separadas em QSettings.
+
+Registro/mapa geral consultados. Não foi localizada root histórica específica para o agregado; não reutilizamos IDs cognitivos por semelhança visual. Estudos, candidato nativo, frontend e dados são fronteiras técnicas desta integração, com limites de prova separados. Validação real e regressões ainda em andamento.

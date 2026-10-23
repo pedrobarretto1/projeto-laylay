@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Mapping
 
 
 _STATUS_BLOQUEADOS = {"contestado", "corrigido", "incerto", "suporte_em_revisao", "suporte_interno_invalido"}
@@ -12,6 +12,20 @@ def referencia_alegacao_da_fonte(fonte: Any) -> str:
     """Identidade interna declarada, não uma relação inferida da linguagem."""
     valor = fonte.strip() if isinstance(fonte, str) else ""
     return valor if valor.startswith("alegacao:") else ""
+
+
+def referencias_suporte_alegacao(item: Mapping[str, Any]) -> tuple[str, ...] | None:
+    """Apoios internos conjuntivos declarados; None é envelope inválido."""
+    unica = referencia_alegacao_da_fonte(item.get("fonte"))
+    if "fontes_alegacoes" not in item:
+        return (unica,) if unica else ()
+    fontes = item["fontes_alegacoes"]
+    if (type(fontes) not in (tuple, list) or len(fontes) > 8
+            or any(type(f) is not str or not f or f != f.strip()
+                or referencia_alegacao_da_fonte(f) != f for f in fontes)
+            or len(set(fontes)) != len(fontes) or (unica and unica not in fontes)):
+        return None
+    return tuple(fontes)
 
 
 def classificar_proveniencia_informacao(
@@ -67,7 +81,8 @@ def classificar_proveniencia_informacao(
             "pode_sustentar_contexto_pessoal": eh_usuario and not bloqueada,
         }
 
-    if referencia_alegacao_da_fonte(fonte) and not eh_usuario:
+    apoios = referencias_suporte_alegacao(dados)
+    if (apoios is None or apoios) and not eh_usuario:
         return {
             "tipo": "derivacao_interna", "subtipo": "referencia_de_suporte_declarada",
             "origem": fonte, "autor": autor or "laylay", "subjetiva": False,

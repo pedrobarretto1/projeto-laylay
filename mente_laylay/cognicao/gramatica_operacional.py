@@ -9,7 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, remover_conector_discursivo_inicial
+from mente_laylay.cognicao.normalizacao_linguagem import (
+    normalizar_texto_basico, remover_conector_discursivo_inicial, texto_e_metalinguistico,
+)
 
 
 _TIPOS_RECURSO_NOMINAL = {
@@ -23,6 +25,34 @@ _TIPOS_RECURSO_NOMINAL = {
     "lampada": "iot", "lâmpada": "iot", "luz": "iot", "tomada": "iot", "ventilador": "iot",
     "dispositivo": "iot", "aparelho": "iot",
 }
+
+
+def texto_consulta_estado_recurso(texto: str) -> bool:
+    """Consulta aberta de estado, sem resolver alvo nem produzir autorização.
+
+    Reusa os substantivos dos recursos canônicos. Recursos do host/corpo
+    acrescentam nomes para observação, sem virar verbos ou intents executáveis.
+    O predicado interrogativo não contém a resposta que precisa ser observada.
+    """
+    if texto_e_metalinguistico(texto):
+        return False
+    base = normalizar_texto_basico(remover_conector_discursivo_inicial(texto))
+    consulta = re.fullmatch(
+        r"^(?:como\s+(?:esta|estao|ta|tao|anda|andam)\s+|"
+        r"qual\s+(?:e\s+)?(?:o\s+)?estado\s+d[oa]s?\s+)"
+        r"(?:(?:as\s+)?coisas\s+n[oa]s?\s+)?"
+        r"(?:(?:o|a|os|as|meu|minha|meus|minhas)\s+)?(?P<nome>\w+)"
+        r"(?:\s+d[oa]s?\s+\w+){0,2}(?:\s+(?:agora|hoje|atualmente))?[.!?]*",
+        base,
+    )
+    if not consulta:
+        return False
+    nome = consulta["nome"]
+    nomes = {nome, nome[:-1] if nome.endswith("s") else nome,
+             nome[:-2] if nome.endswith("es") else nome}
+    return bool(nomes.intersection(_TIPOS_RECURSO_NOMINAL) or nomes.intersection({
+        "computador", "pc", "sistema", "bateria", "motor", "sensor", "corpo",
+    }))
 
 
 def tipo_recurso_pedido_direto(texto: str) -> str:

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="2.472" timestamp="2026-10-22T20:04:05.745866-03:00" hostname="maquina2"><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_biblioteca_preserva_cards_capas_e_play_sobreposto_apos_refinamento[1280]" time="1.453"><failure message="AssertionError: Biblioteca virou chips em vez dos cards anteriores&#10;assert False&#10; +  where False = &lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9844D7A0&gt;(&quot;getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'&quot;)">paginas_reais = (&lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9844D7A0&gt;, &lt;function paginas_reais.&lt;locals&gt;.esperar at 0x0000016F984...pe': 'settings_state'}, {'activity': 'idle', 'activity_label': 'Pronta', 'emotion': 'calma', 'emotion_level': 1, ...}])
+largura = 1280
+
+    @pytest.mark.parametrize('largura', [1280, 390])
+    def test_biblioteca_preserva_cards_capas_e_play_sobreposto_apos_refinamento(paginas_reais, largura):
+        js, esperar, _recebidas = paginas_reais
+        js.janela.resize(largura, 900)
+        js("LaylayInterface.goPage('music')")
+        esperar(lambda: js("!!document.querySelector('.tp-playlist .tp-art')"))
+&gt;       assert js("getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'"), 'Biblioteca virou chips em vez dos cards anteriores'
+E       AssertionError: Biblioteca virou chips em vez dos cards anteriores
+E       assert False
+E        +  where False = &lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9844D7A0&gt;("getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'")
+
+scripts\tests\test_terminal_inicio_inteligente.py:144: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_biblioteca_preserva_cards_capas_e_play_sobreposto_apos_refinamento[390]" time="0.474"><failure message="AssertionError: Biblioteca virou chips em vez dos cards anteriores&#10;assert False&#10; +  where False = &lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9D289DD0&gt;(&quot;getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'&quot;)">paginas_reais = (&lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9D289DD0&gt;, &lt;function paginas_reais.&lt;locals&gt;.esperar at 0x0000016F9D2...motion_level': 1, ...}, {'activity': 'idle', 'activity_label': 'Pronta', 'emotion': 'calma', 'emotion_level': 1, ...}])
+largura = 390
+
+    @pytest.mark.parametrize('largura', [1280, 390])
+    def test_biblioteca_preserva_cards_capas_e_play_sobreposto_apos_refinamento(paginas_reais, largura):
+        js, esperar, _recebidas = paginas_reais
+        js.janela.resize(largura, 900)
+        js("LaylayInterface.goPage('music')")
+        esperar(lambda: js("!!document.querySelector('.tp-playlist .tp-art')"))
+&gt;       assert js("getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'"), 'Biblioteca virou chips em vez dos cards anteriores'
+E       AssertionError: Biblioteca virou chips em vez dos cards anteriores
+E       assert False
+E        +  where False = &lt;function paginas_reais.&lt;locals&gt;.js at 0x0000016F9D289DD0&gt;("getComputedStyle(document.querySelector('.tp-playlists')).display==='grid'")
+
+scripts\tests\test_terminal_inicio_inteligente.py:144: AssertionError</failure></testcase></testsuite></testsuites>

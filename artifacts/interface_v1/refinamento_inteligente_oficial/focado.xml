@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="72" time="57.906" timestamp="2026-10-22T19:45:57.300364-03:00" hostname="maquina2"><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_primeiro_clique_da_ilha_abre_inicio_na_mesma_janela" time="0.826" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_geometria_oficial_reproduz_proporcoes_da_previa_sem_invadir_topo" time="0.001" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_do_inicio_persiste_sem_enviar_operacao_para_mente" time="0.089" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor0]" time="0.074" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor1]" time="0.085" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor2]" time="0.076" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor3]" time="0.077" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor4]" time="0.074" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_preferencia_invalida_nao_grava_nem_executa[valor5]" time="0.071" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_animacao_de_entrada_e_uma_ocorrencia_visual_sem_reinicio_por_feed" time="0.104" /><testcase classname="scripts.tests.test_terminal_inicio_inteligente" name="test_inicio_oficial_expoe_personalizacao_com_estado_sem_historico_honesto" time="0.528" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_posicao_inicial_da_ilha_libera_a_faixa_das_abas_do_navegador" time="0.068" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_expansao_em_tela_baixa_preserva_faixa_livre_do_navegador" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_usa_ancora_escolhida_e_recolhe_sem_adotar_clamp_do_painel[area_xywh0]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_usa_ancora_escolhida_e_recolhe_sem_adotar_clamp_do_painel[area_xywh1]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_usa_ancora_escolhida_e_recolhe_sem_adotar_clamp_do_painel[area_xywh2]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_arrasto_salva_posicao_restaura_apos_abas_recolhimento_e_nova_janela" time="0.184" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_animacao_navegacao_e_reancoragem_nao_gravam_posicao_como_se_fossem_arrasto" time="0.072" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_monitor_ausente_ou_preferencia_invalida_tem_fallback_visivel_sem_sobrescrever_escolha[offsets0]" time="0.165" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_monitor_ausente_ou_preferencia_invalida_tem_fallback_visivel_sem_sobrescrever_escolha[offsets1]" time="0.173" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_inatividade_nao_recolhe_durante_arrasto_e_reinicia_prazo_no_drop" time="0.085" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_soltura_fora_da_ilha_conclui_ultimo_deslocamento_e_salva_posicao_visivel" time="0.099" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_passar_mouse_na_ilha_compacta_nao_expande_sem_clique" time="0.485" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_player_streaming_e_filho_da_mesma_janela_sem_dialogo" time="0.132" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_prazo_de_inatividade_e_vinte_segundos_e_telemetria_nao_renova" time="0.145" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_atividade_humana_renova_prazo_e_pin_nao_impede_recolher" time="0.249" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_streaming_viewport_invalido_ou_atrasado_nao_sobrepoe_outra_aba" time="0.092" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_cursor_imovel_e_resize_nao_renovam_prazo_mas_movimento_real_dentro_sim" time="0.267" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_confirmacao_visual_antiga_nao_conclui_transicao_nova" time="0.152" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_controles_streaming_integrados_cabem_no_viewport_estreito[360]" time="0.283" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_controles_streaming_integrados_cabem_no_viewport_estreito[390]" time="0.273" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_desktop_expande_recolhe_e_restaura_mesma_superficie_sem_enviar_comandos" time="0.121" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_pedido_pendente_e_emocao_recebida_sobrevivem_a_recolhimento_e_reabertura" time="0.079" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_desktop_respeita_origem_tela_pequena_e_ancora[tela0]" time="0.001" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_desktop_respeita_origem_tela_pequena_e_ancora[tela1]" time="0.001" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_desktop_respeita_origem_tela_pequena_e_ancora[tela2]" time="0.001" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino" time="0.087" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_rascunho_e_resposta_recebida_na_ilha_permanecem_no_painel_real" time="0.906" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_gestos_desconhecidos_pin_e_encerramento_nao_executam_efeitos" time="0.068" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_abas_abrem_dentro_da_ilha_sem_mudar_hwnd_canal_ou_ancora" time="1.390" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_conversas_reabrem_na_mesma_ilha_e_links_preservam_rascunho" time="0.917" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_rolagem_da_conversa_desktop_sobrevive_a_troca_de_aba" time="0.690" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_paginas_animam_na_mesma_ancora_e_resumo_recolhe_sem_trocar_hwnd" time="0.086" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[home]" time="0.001" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[chat]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[lamp]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[music]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[streaming]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[memory]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[system]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[dev]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo[settings]" time="0.000" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_entrypoint_oficial_respeita_preferencia_com_ponte_real[True]" time="3.899" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_entrypoint_oficial_respeita_preferencia_com_ponte_real[False]" time="3.740" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_mascote_reimaginado_projeta_emocao_e_nivel_da_ponte_nos_quatro_formatos" time="1.067" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao" time="8.538"><failure message="AssertionError: O caminho real da conversa não chegou ao estado esperado&#10;assert ''&#10; +  where '' = &lt;function test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7824B0&gt;()">conversa_web = (&lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x1e18efd69f0) at 0x000001E18A784C80&gt;, &lt;mente_laylay.integr...ction conversa_web.&lt;locals&gt;.js at 0x000001E1668FA980&gt;, &lt;function conversa_web.&lt;locals&gt;.aguardar at 0x000001E1668FA8D0&gt;)
+
+    def test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao(conversa_web):
+        from PySide6.QtTest import QTest
+        _janela, _ponte, _entradas, js, aguardar = conversa_web
+        js("LaylayInterface.goPage('home')")
+        js.estado_publicado.update(emotion="alegre", emotion_level=1)
+        aguardar(lambda: js("LaylayInterface.state.emotion==='alegre'"))
+        js("""window.retrato={host:document.querySelector('.presence .avatar'),eye:document.querySelector('.presence .eye'),body:document.querySelector('.presence .avatar-body')};
+          retrato.host.classList.add('is-blinking');retrato.host.style.setProperty('--look-x','2.000px');""")
+        js.estado_publicado["emotion_level"] = 3
+&gt;       aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.emotionLevel==='3'"))
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+condicao = &lt;function test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7824B0&gt;
+
+    def aguardar(condicao):
+        limite = time.monotonic() + 8
+        while not condicao() and time.monotonic() &lt; limite:
+            QTest.qWait(20)
+&gt;       assert condicao(), "O caminho real da conversa não chegou ao estado esperado"
+E       AssertionError: O caminho real da conversa não chegou ao estado esperado
+E       assert ''
+E        +  where '' = &lt;function test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7824B0&gt;()
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:45: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga" time="8.508"><failure message="AssertionError: O caminho real da conversa não chegou ao estado esperado&#10;assert ''&#10; +  where '' = &lt;function test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7822A0&gt;()">conversa_web = (&lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x1e1902db620) at 0x000001E18A741640&gt;, &lt;mente_laylay.integr...ction conversa_web.&lt;locals&gt;.js at 0x000001E16693E090&gt;, &lt;function conversa_web.&lt;locals&gt;.aguardar at 0x000001E16693DFE0&gt;)
+
+    def test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga(conversa_web):
+        janela, _ponte, entradas, js, aguardar = conversa_web
+        js("LaylayInterface.goPage('home')")
+        for emocao, expressao in (("irritada", "brava"), ("triste", "triste"), ("surpresa", "surpresa"), ("desconhecida", "neutra")):
+            js.estado_publicado.update(emotion=emocao, emotion_level=2)
+            aguardar(lambda: js("LaylayInterface.state.emotion===" + json.dumps(emocao)))
+&gt;           aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.expression===" + json.dumps(expressao)))
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+condicao = &lt;function test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7822A0&gt;
+
+    def aguardar(condicao):
+        limite = time.monotonic() + 8
+        while not condicao() and time.monotonic() &lt; limite:
+            QTest.qWait(20)
+&gt;       assert condicao(), "O caminho real da conversa não chegou ao estado esperado"
+E       AssertionError: O caminho real da conversa não chegou ao estado esperado
+E       assert ''
+E        +  where '' = &lt;function test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga.&lt;locals&gt;.&lt;lambda&gt; at 0x000001E18A7822A0&gt;()
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:45: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza" time="10.569"><failure message="AssertionError: F                                                                        [100%]&#10;  ================================== FAILURES ===================================&#10;  ______ test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza _______&#10;  &#10;  x = 5, y = 5, eixo = 'x', sinal = -1&#10;  &#10;      def mover(x, y, eixo, sinal):&#10;          QTest.mouseMove(receptor, QPoint(x, y))&#10;          try:&#10;  &gt;           aguardar(lambda: js(&#10;                  f&quot;parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2&quot;))&#10;  &#10;  scripts\tests\test_terminal_web_v1_estabilidade.py:161: &#10;  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _&#10;  &#10;  condicao = &lt;function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza.&lt;locals&gt;.mover.&lt;locals&gt;.&lt;lambda&gt; at 0x000001A39425FAB0&gt;&#10;  &#10;      def aguardar(condicao):&#10;          limite = time.monotonic() + 8&#10;          while not condicao() and time.monotonic() &lt; limite:&#10;              QTest.qWait(20)&#10;  &gt;       assert condicao(), &quot;O caminho real da conversa não chegou ao estado esperado&quot;&#10;  E       AssertionError: O caminho real da conversa não chegou ao estado esperado&#10;  E       assert ''&#10;  E        +  where '' = &lt;function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza.&lt;locals&gt;.mover.&lt;locals&gt;.&lt;lambda&gt; at 0x000001A39425FAB0&gt;()&#10;  &#10;  scripts\tests\test_terminal_web_v1_estabilidade.py:45: AssertionError&#10;  &#10;  During handling of the above exception, another exception occurred:&#10;  &#10;  request = &lt;FixtureRequest for &lt;Function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza&gt;&gt;&#10;  &#10;      def test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza(request):&#10;          import os&#10;          import subprocess&#10;          import sys&#10;      &#10;          # Entrada nativa exige uma QApplication própria: após centenas de widgets&#10;          # da suíte, QTest.mouseMove pode não entregar nenhum pointermove ao WebView.&#10;          # Executamos as MESMAS asserções num processo limpo, sem simular eventos JS.&#10;          if os.environ.get(&quot;LAYLAY_TEST_OLHAR_ISOLADO&quot;) != &quot;1&quot;:&#10;              ambiente = dict(os.environ, LAYLAY_TEST_OLHAR_ISOLADO=&quot;1&quot;)&#10;              resultado = subprocess.run(&#10;                  [sys.executable, &quot;-m&quot;, &quot;pytest&quot;, str(Path(__file__).resolve()) + &quot;::&quot; + request.node.name, &quot;-q&quot;],&#10;                  cwd=Path(__file__).parents[2], env=ambiente, capture_output=True,&#10;                  text=True, encoding=&quot;utf-8&quot;, errors=&quot;replace&quot;, timeout=60,&#10;              )&#10;              assert resultado.returncode == 0, resultado.stdout + resultado.stderr&#10;              return&#10;      &#10;          from PySide6.QtCore import QPoint&#10;          from PySide6.QtTest import QTest&#10;      &#10;          conversa_web = request.getfixturevalue(&quot;conversa_web&quot;)&#10;          janela, _ponte, entradas, js, aguardar = conversa_web&#10;          js(&quot;LaylayInterface.goPage('home')&quot;)&#10;          janela.activateWindow()&#10;          janela.web.setFocus()&#10;          aguardar(lambda: js(&quot;document.hasFocus()&quot;))&#10;          js(&quot;window.olharHost=document.querySelector('.presence .avatar');window.eventosOlhar=[];window.addEventListener('pointermove',e=&gt;eventosOlhar.push([e.pointerType,e.clientX,e.clientY]))&quot;)&#10;          receptor = janela.web.focusProxy() or janela.web&#10;          # Começar em outro ponto garante um deslocamento real na primeira amostra.&#10;          QTest.mouseMove(receptor, QPoint(receptor.width() // 2, receptor.height() // 2))&#10;          QTest.qWait(30)&#10;      &#10;          def mover(x, y, eixo, sinal):&#10;              QTest.mouseMove(receptor, QPoint(x, y))&#10;              try:&#10;                  aguardar(lambda: js(&#10;                      f&quot;parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2&quot;))&#10;              except AssertionError:&#10;                  pytest.fail(str(js(&quot;JSON.stringify({events:eventosOlhar,look:olharHost.getAttribute('style'),connected:olharHost.isConnected,body:document.body.className,focus:document.hasFocus(),hidden:document.hidden,reduced:LaylayInterface.state.preferences.reduced,visible:LaylayInterface.state.windowVisible})&quot;)))&#10;              assert js(f&quot;parseFloat(getComputedStyle(olharHost.querySelector('.face')).translate.split(' ')[{0 if eixo == 'x' else 1}])*{sinal}&gt;0.2&quot;)&#10;      &#10;  &gt;       mover(5, 5, &quot;x&quot;, -1)&#10;  &#10;  scripts\tests\test_terminal_web_v1_estabilidade.py:167: &#10;  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _&#10;  &#10;  x = 5, y = 5, eixo = 'x', sinal = -1&#10;  &#10;      def mover(x, y, eixo, sinal):&#10;          QTest.mouseMove(receptor, QPoint(x, y))&#10;          try:&#10;              aguardar(lambda: js(&#10;                  f&quot;parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2&quot;))&#10;          except AssertionError:&#10;  &gt;           pytest.fail(str(js(&quot;JSON.stringify({events:eventosOlhar,look:olharHost.getAttribute('style'),connected:olharHost.isConnected,body:document.body.className,focus:document.hasFocus(),hidden:document.hidden,reduced:LaylayInterface.state.preferences.reduced,visible:LaylayInterface.state.windowVisible})&quot;)))&#10;  E           Failed&#10;  &#10;  scripts\tests\test_terminal_web_v1_estabilidade.py:164: Failed&#10;  ---------------------------- Captured stdout call -----------------------------&#10;  🖥️ [TERMINAL 2:CLIENTE] snapshot autenticado | sessão=dae5b18f&#10;  ---------------------------- Captured stderr call -----------------------------&#10;  [10728:28348:1022/194635.033:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.&#10;  [10728:28348:1022/194635.033:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.&#10;  [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.&#10;  [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.&#10;  [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.&#10;  [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.&#10;  =========================== short test summary info ===========================&#10;  FAILED scripts/tests/test_terminal_web_v1_estabilidade.py::test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza&#10;  1 failed in 9.75s&#10;  &#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\..._v1_estabilidade.py::test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza\n1 failed in 9.75s\n', stderr='').returncode">request = &lt;FixtureRequest for &lt;Function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza&gt;&gt;
+
+    def test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza(request):
+        import os
+        import subprocess
+        import sys
+    
+        # Entrada nativa exige uma QApplication própria: após centenas de widgets
+        # da suíte, QTest.mouseMove pode não entregar nenhum pointermove ao WebView.
+        # Executamos as MESMAS asserções num processo limpo, sem simular eventos JS.
+        if os.environ.get("LAYLAY_TEST_OLHAR_ISOLADO") != "1":
+            ambiente = dict(os.environ, LAYLAY_TEST_OLHAR_ISOLADO="1")
+            resultado = subprocess.run(
+                [sys.executable, "-m", "pytest", str(Path(__file__).resolve()) + "::" + request.node.name, "-q"],
+                cwd=Path(__file__).parents[2], env=ambiente, capture_output=True,
+                text=True, encoding="utf-8", errors="replace", timeout=60,
+            )
+&gt;           assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+E           AssertionError: F                                                                        [100%]
+E             ================================== FAILURES ===================================
+E             ______ test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza _______
+E             
+E             x = 5, y = 5, eixo = 'x', sinal = -1
+E             
+E                 def mover(x, y, eixo, sinal):
+E                     QTest.mouseMove(receptor, QPoint(x, y))
+E                     try:
+E             &gt;           aguardar(lambda: js(
+E                             f"parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2"))
+E             
+E             scripts\tests\test_terminal_web_v1_estabilidade.py:161: 
+E             _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+E             
+E             condicao = &lt;function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza.&lt;locals&gt;.mover.&lt;locals&gt;.&lt;lambda&gt; at 0x000001A39425FAB0&gt;
+E             
+E                 def aguardar(condicao):
+E                     limite = time.monotonic() + 8
+E                     while not condicao() and time.monotonic() &lt; limite:
+E                         QTest.qWait(20)
+E             &gt;       assert condicao(), "O caminho real da conversa não chegou ao estado esperado"
+E             E       AssertionError: O caminho real da conversa não chegou ao estado esperado
+E             E       assert ''
+E             E        +  where '' = &lt;function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza.&lt;locals&gt;.mover.&lt;locals&gt;.&lt;lambda&gt; at 0x000001A39425FAB0&gt;()
+E             
+E             scripts\tests\test_terminal_web_v1_estabilidade.py:45: AssertionError
+E             
+E             During handling of the above exception, another exception occurred:
+E             
+E             request = &lt;FixtureRequest for &lt;Function test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza&gt;&gt;
+E             
+E                 def test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza(request):
+E                     import os
+E                     import subprocess
+E                     import sys
+E                 
+E                     # Entrada nativa exige uma QApplication própria: após centenas de widgets
+E                     # da suíte, QTest.mouseMove pode não entregar nenhum pointermove ao WebView.
+E                     # Executamos as MESMAS asserções num processo limpo, sem simular eventos JS.
+E                     if os.environ.get("LAYLAY_TEST_OLHAR_ISOLADO") != "1":
+E                         ambiente = dict(os.environ, LAYLAY_TEST_OLHAR_ISOLADO="1")
+E                         resultado = subprocess.run(
+E                             [sys.executable, "-m", "pytest", str(Path(__file__).resolve()) + "::" + request.node.name, "-q"],
+E                             cwd=Path(__file__).parents[2], env=ambiente, capture_output=True,
+E                             text=True, encoding="utf-8", errors="replace", timeout=60,
+E                         )
+E                         assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+E                         return
+E                 
+E                     from PySide6.QtCore import QPoint
+E                     from PySide6.QtTest import QTest
+E                 
+E                     conversa_web = request.getfixturevalue("conversa_web")
+E                     janela, _ponte, entradas, js, aguardar = conversa_web
+E                     js("LaylayInterface.goPage('home')")
+E                     janela.activateWindow()
+E                     janela.web.setFocus()
+E                     aguardar(lambda: js("document.hasFocus()"))
+E                     js("window.olharHost=document.querySelector('.presence .avatar');window.eventosOlhar=[];window.addEventListener('pointermove',e=&gt;eventosOlhar.push([e.pointerType,e.clientX,e.clientY]))")
+E                     receptor = janela.web.focusProxy() or janela.web
+E                     # Começar em outro ponto garante um deslocamento real na primeira amostra.
+E                     QTest.mouseMove(receptor, QPoint(receptor.width() // 2, receptor.height() // 2))
+E                     QTest.qWait(30)
+E                 
+E                     def mover(x, y, eixo, sinal):
+E                         QTest.mouseMove(receptor, QPoint(x, y))
+E                         try:
+E                             aguardar(lambda: js(
+E                                 f"parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2"))
+E                         except AssertionError:
+E                             pytest.fail(str(js("JSON.stringify({events:eventosOlhar,look:olharHost.getAttribute('style'),connected:olharHost.isConnected,body:document.body.className,focus:document.hasFocus(),hidden:document.hidden,reduced:LaylayInterface.state.preferences.reduced,visible:LaylayInterface.state.windowVisible})")))
+E                         assert js(f"parseFloat(getComputedStyle(olharHost.querySelector('.face')).translate.split(' ')[{0 if eixo == 'x' else 1}])*{sinal}&gt;0.2")
+E                 
+E             &gt;       mover(5, 5, "x", -1)
+E             
+E             scripts\tests\test_terminal_web_v1_estabilidade.py:167: 
+E             _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+E             
+E             x = 5, y = 5, eixo = 'x', sinal = -1
+E             
+E                 def mover(x, y, eixo, sinal):
+E                     QTest.mouseMove(receptor, QPoint(x, y))
+E                     try:
+E                         aguardar(lambda: js(
+E                             f"parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}&gt;0.2"))
+E                     except AssertionError:
+E             &gt;           pytest.fail(str(js("JSON.stringify({events:eventosOlhar,look:olharHost.getAttribute('style'),connected:olharHost.isConnected,body:document.body.className,focus:document.hasFocus(),hidden:document.hidden,reduced:LaylayInterface.state.preferences.reduced,visible:LaylayInterface.state.windowVisible})")))
+E             E           Failed
+E             
+E             scripts\tests\test_terminal_web_v1_estabilidade.py:164: Failed
+E             ---------------------------- Captured stdout call -----------------------------
+E             🖥️ [TERMINAL 2:CLIENTE] snapshot autenticado | sessão=dae5b18f
+E             ---------------------------- Captured stderr call -----------------------------
+E             [10728:28348:1022/194635.033:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.
+E             [10728:28348:1022/194635.033:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.
+E             [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.
+E             [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.
+E             [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:920] Failed to create GLES3 context, fallback to GLES2.
+E             [10728:28348:1022/194635.051:ERROR:../../../qtwebengine/src/3rdparty/chromium/gpu/ipc/service/gpu_channel_manager.cc:931] ContextResult::kFatalFailure: Failed to create shared context for virtualization.
+E             =========================== short test summary info ===========================
+E             FAILED scripts/tests/test_terminal_web_v1_estabilidade.py::test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza
+E             1 failed in 9.75s
+E             
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\.venv314\..._v1_estabilidade.py::test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza\n1 failed in 9.75s\n', stderr='').returncode
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:140: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao" time="1.185" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_snapshot_preserva_entrega_falha_resposta_e_retry" time="0.454" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll" time="0.627"><failure message="assert False&#10; +  where False = &lt;function conversa_web.&lt;locals&gt;.js at 0x000001E166683740&gt;(&quot;enviada===document.querySelector('.message.user')&amp;&amp;enviada.textContent.includes('Recebida pela mente')&quot;)">conversa_web = (&lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x1e192d9c400) at 0x000001E166661140&gt;, &lt;mente_laylay.integr...ction conversa_web.&lt;locals&gt;.js at 0x000001E166683740&gt;, &lt;function conversa_web.&lt;locals&gt;.aguardar at 0x000001E166683690&gt;)
+
+    def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conversa_web):
+        _janela, _ponte, _entradas, js, aguardar = conversa_web
+        from PySide6.QtTest import QTest
+    
+        messages = [{"id": str(i), "role": "assistant", "text": "Uma mensagem anterior, com conteúdo para ocupar o histórico. " * 8} for i in range(14)]
+        js("LaylayInterface.receiveEvent(" + json.dumps({"type": "snapshot", "messages": messages, "state": {"activity": "idle"}}) + ")")
+        aguardar(lambda: js("document.querySelectorAll('.message').length===14"))
+        js("""window.primeira=document.querySelector('.message');window.feed=document.getElementById('chat-history');
+          feed.scrollTop=40;window.posicao=feed.scrollTop;
+          LaylayInterface.receiveEvent({type:'pedido_enviado',id:'novo',kind:'texto',text:'Pedido novo'});""")
+        aguardar(lambda: js("document.querySelectorAll('.message').length===15"))
+        js("window.enviada=document.querySelector('.message.user');LaylayInterface.receiveEvent({type:'input_ack',id:'novo',accepted:true})")
+        QTest.qWait(40)
+&gt;       assert js("enviada===document.querySelector('.message.user')&amp;&amp;enviada.textContent.includes('Recebida pela mente')")
+E       assert False
+E        +  where False = &lt;function conversa_web.&lt;locals&gt;.js at 0x000001E166683740&gt;("enviada===document.querySelector('.message.user')&amp;&amp;enviada.textContent.includes('Recebida pela mente')")
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:253: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_inicio_preserva_mascote_piscada_olhar_play_e_reatividade" time="0.774"><failure message="AssertionError: assert ''&#10; +  where '' = &lt;function conversa_web.&lt;locals&gt;.js at 0x000001E19DE845C0&gt;('inicio.animation===inicio.mascot.getAnimations()[0]&amp;&amp;inicio.animation.currentTime&gt;inicio.clock')">conversa_web = (&lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x1e19680daa0) at 0x000001E166661980&gt;, &lt;mente_laylay.integr...ction conversa_web.&lt;locals&gt;.js at 0x000001E19DE845C0&gt;, &lt;function conversa_web.&lt;locals&gt;.aguardar at 0x000001E19DE84510&gt;)
+
+    def test_inicio_preserva_mascote_piscada_olhar_play_e_reatividade(conversa_web):
+        _janela, _ponte, _entradas, js, aguardar = conversa_web
+        from PySide6.QtTest import QTest
+    
+        dashboard = {"music": {"state": "playing", "title": "Faixa observada", "channel": "Canal", "freshness": "fresh", "controls_available": True, "duration_seconds": 180, "position_seconds": 20}}
+        js("LaylayInterface.goPage('home');LaylayInterface.receiveEvent(" + json.dumps({"type": "dashboard_state", "dashboard": dashboard}) + ")")
+        QTest.qWait(40)
+        js("""window.inicio={page:document.getElementById('page-content'),mascot:document.querySelector('.presence .avatar'),
+          eye:document.querySelector('.presence .eye'),smile:document.querySelector('.presence .smile'),play:document.querySelector('.music-play')};
+          inicio.animation=inicio.mascot.getAnimations()[0];inicio.clock=inicio.animation.currentTime;
+          inicio.mascot.style.setProperty('--look-x','3.500px');inicio.mascot.style.setProperty('--look-y','1.250px');
+          inicio.mascot.classList.add('is-blinking');inicio.top=inicio.page.scrollTop;
+          window.scrollCalls=0;window.scrollOriginal=Element.prototype.scrollIntoView;
+          Element.prototype.scrollIntoView=function(...args){scrollCalls++;return scrollOriginal.apply(this,args)};
+        """)
+        for _ in range(4):
+            js("LaylayInterface.receiveEvent({type:'state',activity:'idle',activity_label:'Pronta'});LaylayInterface.receiveEvent({type:'dev_events',events:[]});")
+            QTest.qWait(60)
+        assert js("inicio.mascot===document.querySelector('.presence .avatar')&amp;&amp;inicio.eye===document.querySelector('.presence .eye')&amp;&amp;inicio.smile===document.querySelector('.presence .smile')")
+&gt;       assert js("inicio.animation===inicio.mascot.getAnimations()[0]&amp;&amp;inicio.animation.currentTime&gt;inicio.clock")
+E       AssertionError: assert ''
+E        +  where '' = &lt;function conversa_web.&lt;locals&gt;.js at 0x000001E19DE845C0&gt;('inicio.animation===inicio.mascot.getAnimations()[0]&amp;&amp;inicio.animation.currentTime&gt;inicio.clock')
+
+scripts\tests\test_terminal_web_v1_estabilidade.py:293: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[music]" time="0.898" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[system]" time="0.856" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[dev]" time="0.877" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[memory]" time="0.855" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[settings]" time="0.855" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[lamp]" time="0.890" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_paginas_compartilham_projecao_estavel_e_preservam_dialogo[streaming]" time="0.851" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_receipt_configuracao_atualiza_valor_controlado_sem_recriar_input" time="0.827" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_observacoes_em_burst_nao_renderizam_sincronamente_nem_bloqueiam_receipt" time="0.859" /><testcase classname="scripts.tests.test_terminal_web_v1_estabilidade" name="test_invalidacoes_visiveis_sao_agrupadas_em_um_frame_sem_perder_ultima_leitura" time="0.578" /></testsuite></testsuites>

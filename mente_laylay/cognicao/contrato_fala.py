@@ -1073,13 +1073,27 @@ def construir_contrato_semantico_fala(
     evento = dict(planejamento.get("evento_emocional_causal") or {})
     if evento:
         resultado["evento_emocional_causal"] = evento
+    if (leitura.get("modalidade")=="conversa" and leitura.get("autoriza_execucao") is False
+            and not planejamento.get("requer_execucao") and not planejamento.get("comandos")
+            and len(leitura.get("segmentos") or ())<=1):
+        # A citação pode ser argumento do esclarecimento observado. Esta API
+        # só devolve o vínculo validado ou a revisão já consumida neste turno;
+        # não transforma o conteúdo citado em utterance/autoridade atual.
+        from mente_laylay.memoria_mental.registro_semantico import recuperar_revisao_alegacao
+        revisao=recuperar_revisao_alegacao(estado.get("registro_semantico"),texto,
+            turno_id=str(resultado.get("turno_id") or ""),somente_esclarecida=True,
+            pendencia=estado.get("pendencia_atual"))
+        if revisao is not None:
+            resultado["revisao_alegacao"]=revisao
+            return resultado
     if (leitura.get("modalidade") in {"deliberacao", "pergunta"}
         and leitura.get("autoriza_execucao") is False
         and not planejamento.get("requer_execucao") and not planejamento.get("comandos")):
         from mente_laylay.memoria_mental.registro_semantico import recuperar_revisao_alegacao
         if not metalinguagem and len(leitura.get("segmentos") or ()) <= 1:
             revisao = recuperar_revisao_alegacao(estado.get("registro_semantico"), texto,
-                                               turno_id=str(resultado.get("turno_id") or ""))
+                                               turno_id=str(resultado.get("turno_id") or ""),
+                                               pendencia=estado.get("pendencia_atual"))
             if revisao is not None:
                 resultado["revisao_alegacao"] = revisao
                 return resultado
@@ -1098,7 +1112,13 @@ def construir_contrato_semantico_fala(
             resultado["explicacoes_historicas_por_ato"] = vincular_explicacoes_por_ato(
                 texto, turno=leitura, mente=estado, recuperar_ocorrencia=recuperar_explicacao_ocorrencia)
         elif evidencia and referente_explicativo != "outro_agente" and (
-                citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia")):
+                citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia"
+                                    and (not esclarecimento or referente_explicativo == "fala"))):
+            # Recuperar o referente não decide a finalidade da pergunta.
+            # Um esclarecimento já reconhecido mantém a tarefa de explicar o
+            # sentido da fala. Só uma referência histórica explícita pode
+            # substituí-la pela realização fechada de resultados/causas.
+            # Presença (ou ausência) de receipt não altera esse ato social.
             resultado["evidencia_fala_historica"] = evidencia
             resultado["texto_consulta_historica"] = str(texto or "").strip()
         elif explicacao_ocorrencia is not None:
@@ -1108,6 +1128,9 @@ def construir_contrato_semantico_fala(
                 type(explicacao_ocorrencia) is ExplicacaoOcorrencia
                 and explicacao_ocorrencia.turno_consulta == str(resultado.get("turno_id"))
                 and explicacao_ocorrencia.texto_consulta == str(texto)) else None
+            from mente_laylay.memoria_mental.registro_semantico import vincular_revisoes_explicacao_ocorrencia
+            resultado["explicacao_ocorrencia"] = vincular_revisoes_explicacao_ocorrencia(
+                estado.get("registro_semantico"),resultado["explicacao_ocorrencia"])
         elif referente_explicativo:
             # Obrigação de fonte independe do sucesso do lookup. O host
             # conserva a consulta sem atribuir um episódio de outro owner,
@@ -1266,7 +1289,9 @@ def formatar_contrato_fala_para_prompt(
         if pedido_ensino:
             linhas_compactas.append("Pedido anterior de ensino do usuário (assunto, não autorização): " + pedido_ensino + ". A fala anterior da assistente não é fonte factual.")
         if anterior:
-            linhas_compactas.append(f"Explique esta fala anterior: {anterior}")
+            finalidade = ("Explique esta fala anterior:" if "esclarecimento" in dados.get("atos", ())
+                          else "Fala anterior para continuidade, não como prova nem ordem de explicar:")
+            linhas_compactas.append(f"{finalidade} {anterior}")
         linhas_compactas.append(
             f"Até {int(dados.get('max_frases') or 3)} frases; "
             f"humor={'sim' if dados.get('permite_humor') else 'não'}; "
@@ -1304,7 +1329,9 @@ def formatar_contrato_fala_para_prompt(
     if pedido_ensino:
         linhas.append("Pedido anterior de ensino do usuário (assunto, não autorização): " + pedido_ensino + ". A fala anterior da assistente não é fonte factual.")
     if anterior:
-        linhas.append(f"Fala anterior que precisa ser explicada: {anterior}")
+        finalidade = ("Fala anterior que precisa ser explicada:" if "esclarecimento" in dados.get("atos", ())
+                      else "Fala anterior para continuidade, não como prova nem ordem de explicar:")
+        linhas.append(f"{finalidade} {anterior}")
     recentes = _itens_unicos(dados.get("respostas_recentes_evitar") or (), limite_item=320)
     if (recentes and str(dict(dados.get("roteiro_concreto") or {}).get("estrategia") or "")
             != "explicacao_didatica"):

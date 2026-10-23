@@ -1,0 +1,1251 @@
+{
+  "current": {
+    "geometry": [
+      1282,
+      0,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1413,
+      0
+    ],
+    "phase": "compact",
+    "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1413,\"top_y\":0}}",
+    "hwnd": 1575166,
+    "same_objects": true,
+    "renderer_ready": true,
+    "enviadas": 0,
+    "mente_iniciada": false
+  },
+  "history": [
+    {
+      "t": 0.17,
+      "geometry": [
+        1148,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": false,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 0.323,
+      "geometry": [
+        1148,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.01,
+      "geometry": [
+        1272,
+        114,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1403,
+        114
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.12,
+      "geometry": [
+        1302,
+        117,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1433,
+        117
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.229,
+      "geometry": [
+        1384,
+        127,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1515,
+        127
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.446,
+      "geometry": [
+        1365,
+        118,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1496,
+        118
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.56,
+      "geometry": [
+        1336,
+        53,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1467,
+        53
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.665,
+      "geometry": [
+        1331,
+        41,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1462,
+        41
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.777,
+      "geometry": [
+        1317,
+        28,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1448,
+        28
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.884,
+      "geometry": [
+        1297,
+        21,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1428,
+        21
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 7.995,
+      "geometry": [
+        1282,
+        17,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1413,
+        17
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.109,
+      "geometry": [
+        1276,
+        15,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1407,
+        15
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.213,
+      "geometry": [
+        1271,
+        3,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1402,
+        3
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.324,
+      "geometry": [
+        1269,
+        1,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.431,
+      "geometry": [
+        1269,
+        1,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.762,
+      "geometry": [
+        1269,
+        1,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "expanded",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.882,
+      "geometry": [
+        1137,
+        1,
+        527,
+        238
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "expanded",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 8.993,
+      "geometry": [
+        1084,
+        1,
+        633,
+        314
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "expanded",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 9.088,
+      "geometry": [
+        1081,
+        1,
+        640,
+        320
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "expanded",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 10.619,
+      "geometry": [
+        1109,
+        1,
+        583,
+        279
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 10.752,
+      "geometry": [
+        1234,
+        1,
+        333,
+        100
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 10.853,
+      "geometry": [
+        1266,
+        1,
+        269,
+        53
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 10.953,
+      "geometry": [
+        1269,
+        1,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1400,
+        1
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.384,
+      "geometry": [
+        1289,
+        15,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1420,
+        15
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.494,
+      "geometry": [
+        1358,
+        31,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1489,
+        31
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.603,
+      "geometry": [
+        1442,
+        104,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1573,
+        104
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.714,
+      "geometry": [
+        1450,
+        299,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1581,
+        299
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.825,
+      "geometry": [
+        1430,
+        299,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1561,
+        299
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 11.932,
+      "geometry": [
+        1391,
+        298,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1522,
+        298
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 12.043,
+      "geometry": [
+        1271,
+        357,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1402,
+        357
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 12.15,
+      "geometry": [
+        1212,
+        397,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1343,
+        397
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 12.259,
+      "geometry": [
+        1201,
+        403,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1332,
+        403
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1400,\"top_y\":1}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 12.37,
+      "geometry": [
+        1201,
+        403,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1332,
+        403
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 13.354,
+      "geometry": [
+        1321,
+        271,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1452,
+        271
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 13.463,
+      "geometry": [
+        1653,
+        55,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1784,
+        55
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 13.572,
+      "geometry": [
+        1829,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1960,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 13.683,
+      "geometry": [
+        1912,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        2043,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.23,
+      "geometry": [
+        1830,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1961,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.342,
+      "geometry": [
+        1804,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1935,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.449,
+      "geometry": [
+        1789,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1920,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.556,
+      "geometry": [
+        1724,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1855,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.668,
+      "geometry": [
+        1590,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1721,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.776,
+      "geometry": [
+        1424,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1555,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.887,
+      "geometry": [
+        1304,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1435,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 14.997,
+      "geometry": [
+        1284,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1415,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 15.103,
+      "geometry": [
+        1282,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1413,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1332,\"top_y\":403}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    },
+    {
+      "t": 15.215,
+      "geometry": [
+        1282,
+        0,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1413,
+        0
+      ],
+      "phase": "compact",
+      "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1413,\"top_y\":0}}",
+      "hwnd": 1575166,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false
+    }
+  ]
+}

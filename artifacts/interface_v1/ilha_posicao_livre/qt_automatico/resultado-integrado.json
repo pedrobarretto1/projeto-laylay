@@ -1,0 +1,87 @@
+{
+  "tipo": "integração QtWebEngine/QWebChannel com entrada sintética Qt; sem prova Sky",
+  "mente_iniciada": false,
+  "ok": true,
+  "inicial": {
+    "geometry": [
+      1148,
+      120,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1279,
+      120
+    ],
+    "phase": "compact",
+    "saved_position": null,
+    "hwnd": 2886146,
+    "same_objects": true,
+    "renderer_ready": true,
+    "window_title": "Laylay — prova de posição arrastável, sem mente",
+    "visible": true,
+    "enviadas": 0,
+    "mente_iniciada": false
+  },
+  "arrastada": {
+    "geometry": [
+      1308,
+      205,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1439,
+      205
+    ],
+    "phase": "compact",
+    "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1439,\"top_y\":205}}",
+    "hwnd": 2886146,
+    "same_objects": true,
+    "renderer_ready": true,
+    "window_title": "Laylay — prova de posição arrastável, sem mente",
+    "visible": true,
+    "enviadas": 0,
+    "mente_iniciada": false
+  },
+  "final": {
+    "geometry": [
+      1308,
+      205,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1439,
+      205
+    ],
+    "phase": "compact",
+    "saved_position": "{\"version\":1,\"screen\":{\"name\":\"D-300D 100H\",\"manufacturer\":\"HCS\",\"model\":\"D-300D 100H\",\"serial\":\"1\"},\"offsets\":{\"center_x\":1439,\"top_y\":205}}",
+    "hwnd": 2886146,
+    "same_objects": true,
+    "renderer_ready": true,
+    "window_title": "Laylay — prova de posição arrastável, sem mente",
+    "visible": true,
+    "enviadas": 0,
+    "mente_iniciada": false
+  },
+  "abas": 9
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from dataclasses import asdict
 import math
 import threading
 import time
@@ -10,9 +11,93 @@ from uuid import uuid4
 import hashlib
 
 from mente_laylay.memoria_mental.decisao_observada import (
-    DecisaoObservada, EpisodioExplicavel, ExplicacaoOcorrencia, MedicaoObservada,
+    DecisaoObservada, EpisodioExplicavel, ExplicacaoOcorrencia, MedicaoObservada, ExpectativaResultado,
+    REFERENCIAL_GIRO_RELATIVO,
+    NaoQualificacaoMedicao,
 )
 from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+
+
+def medicoes_rotacao_observadas(dados: Mapping[str, Any], *, ocorrencia_id: str) -> tuple[MedicaoObservada, ...]:
+    """Adapta a leitura qualificada para o envelope atual, sem inferir do pedido.
+
+    Publicação imediata e histórico reutilizam a qualificação do transporte;
+    medida não confirma conclusão, posição absoluta ou uma nova autorização.
+    """
+    angulo = dados.get("rotacao_medida_graus")
+    if not ocorrencia_id or type(angulo) not in (int, float) or not math.isfinite(angulo):
+        return ()
+    if (dados.get("ok") is True and dados.get("prova_rotacao") is True
+            and dados.get("evidencia") == "imu_relativa_turnend_e_sack"):
+        metodo = "imu_relativa_turnend_e_sack"
+        limite = "Estimativa relativa da IMU para esta ocorrência; não mede posição absoluta."
+    elif (dados.get("leitura_rotacao_valida") is True
+            and dados.get("evidencia_leitura_rotacao") == "turnend_correlacionado_imu_valida"):
+        metodo = "turnend_correlacionado_imu_valida"
+        limite = "Leitura até o encerramento reportado; não confirma conclusão da operação nem posição absoluta."
+    else:
+        return ()
+    return (MedicaoObservada(ocorrencia_id=ocorrencia_id, owner="executor_corpo",
+        grandeza="rotação relativa", valor=angulo, unidade="graus", metodo=metodo,
+        limite_observacao=limite, referencial=REFERENCIAL_GIRO_RELATIVO),)
+
+
+def _nao_qualificacao_rotacao(campos: Any, *, ocorrencia_id: str) -> NaoQualificacaoMedicao | None:
+    """Valida o envelope do owner, sem refazer a decisão ou interpretar prosa."""
+    if (not isinstance(campos, Mapping) or campos.get("fonte") != "qualificacao_turnend_owner_usb_v1"
+            or campos.get("autoriza_execucao") is not False or campos.get("confirma_efeito") is not False):
+        return None
+    if any(campos.get(chave, esperado) != esperado for chave, esperado in (
+            ("ocorrencia_id", ocorrencia_id), ("owner", "executor_corpo"),
+            ("grandeza", "rotação relativa"), ("unidade", "graus"))):
+        return None
+    criterio, codigo = campos.get("criterio"), campos.get("codigo")
+    if type(criterio) is not str or type(codigo) is not str:
+        return None
+    if (criterio == "criterio_da_fonte_nao_atendido" and codigo not in
+            {"IMU_OU_SESSAO", "SATURACAO", "PROTECAO", "INTERROMPIDO"}) or (
+            criterio != "criterio_da_fonte_nao_atendido" and codigo != ""):
+        return None
+    try:
+        return NaoQualificacaoMedicao(ocorrencia_id, "executor_corpo", "rotação relativa", "graus",
+            criterio, campos["fonte"], codigo)
+    except (ValueError, TypeError):
+        return None
+
+
+def nao_qualificacoes_rotacao_observadas(dados: Mapping[str, Any], *, ocorrencia_id: str) -> tuple[NaoQualificacaoMedicao, ...]:
+    """Adapta apenas a decisão explícita da própria chamada do transporte."""
+    if (dados.get("leitura_rotacao_valida") is not False or dados.get("prova_rotacao") is True
+            or medicoes_rotacao_observadas(dados, ocorrencia_id=ocorrencia_id)):
+        return ()
+    observada = _nao_qualificacao_rotacao(dados.get("nao_qualificacao_rotacao"), ocorrencia_id=ocorrencia_id)
+    return (observada,) if observada is not None else ()
+
+
+def expectativas_corpo_observadas(ocorrencia: Mapping[str, Any]) -> tuple[ExpectativaResultado, ...]:
+    """Lê a captura deste owner; não completa meta com receipt ou intenção."""
+    try:
+        capturadas = ocorrencia.get("expectativas", ())
+        if type(capturadas) not in (list, tuple) or len(capturadas) > 8:
+            raise ValueError("Envelope de expectativas inválido.")
+        itens = []
+        for item in capturadas:
+            if (not isinstance(item, Mapping) or item.get("ocorrencia_id") != ocorrencia["id"]
+                    or item.get("owner") != "executor_corpo"
+                    or item.get("fonte") != "parametros_validados_antes_da_execucao"
+                    or item.get("autoriza_execucao") is not False or item.get("confirma_efeito") is not False):
+                raise ValueError("Expectativa não pertence à captura deste owner.")
+            meta = ExpectativaResultado(**{k: item[k] for k in (
+                "ocorrencia_id", "owner", "grandeza", "valor", "unidade", "fonte", "registrada_em")},
+                referencial=item.get("referencial", ""))
+            if meta.registrada_em > ocorrencia["iniciada_em"]:
+                raise ValueError("Expectativa posterior ao início.")
+            itens.append(meta)
+        if len({(i.grandeza, i.unidade) for i in itens}) != len(itens):
+            raise ValueError("Expectativa duplicada.")
+        return tuple(itens)
+    except (ValueError, TypeError, KeyError):
+        return ()
 
 
 def _limitar_historico(historico: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -71,31 +156,34 @@ class ExperienciaCorporalRuntime:
                 escopo = e.get("escopo_confirmacao")
                 if type(escopo) is not str or escopo not in ("parada elétrica", "PWM e parada elétrica", "giro solicitado, PWM e parada elétrica"):
                     escopo = "escopo não registrado"
-                medicoes = ()
-                angulo = e.get("rotacao_medida_graus")
-                if (e.get("confirmado") is True and e.get("prova_rotacao") is True
-                        and e.get("evidencia_rotacao") == "imu_relativa_turnend_e_sack"
-                        and type(angulo) in (int, float) and math.isfinite(angulo)):
-                    medicoes = (MedicaoObservada(ocorrencia_id=e["id"], owner="executor_corpo",
-                        grandeza="rotação relativa", valor=angulo, unidade="graus",
-                        metodo="imu_relativa_turnend_e_sack",
-                        limite_observacao="Estimativa relativa da IMU para esta ocorrência; não mede posição absoluta."),)
-                elif (e.get("leitura_rotacao_valida") is True
-                        and e.get("evidencia_leitura_rotacao") == "turnend_correlacionado_imu_valida"
-                        and type(angulo) in (int, float) and math.isfinite(angulo)):
-                    # Validade da observação não depende da conclusão da ação.
-                    # O transporte é quem confere a semântica do encerramento.
-                    medicoes = (MedicaoObservada(ocorrencia_id=e["id"], owner="executor_corpo",
-                        grandeza="rotação relativa", valor=angulo, unidade="graus",
-                        metodo="turnend_correlacionado_imu_valida",
-                        limite_observacao="Leitura até o encerramento reportado; não confirma conclusão da operação nem posição absoluta."),)
+                medicoes = medicoes_rotacao_observadas({
+                    "ok": e.get("confirmado"), "prova_rotacao": e.get("prova_rotacao"),
+                    "evidencia": e.get("evidencia_rotacao"),
+                    "rotacao_medida_graus": e.get("rotacao_medida_graus"),
+                    "leitura_rotacao_valida": e.get("leitura_rotacao_valida"),
+                    "evidencia_leitura_rotacao": e.get("evidencia_leitura_rotacao"),
+                }, ocorrencia_id=e["id"])
+                # Meta inválida não apaga tentativa ou medição válida.
+                expectativas = expectativas_corpo_observadas(e)
+                nao_qualificacoes = []
+                capturadas_nq = e.get("nao_qualificacoes_medicao", ())
+                if (not medicoes and e.get("prova_rotacao") is not True and e.get("leitura_rotacao_valida") is not True
+                        and type(capturadas_nq) in (list, tuple) and len(capturadas_nq) == 1):
+                    for item in capturadas_nq:
+                        if (not isinstance(item, Mapping) or (item.get("ocorrencia_id"), item.get("owner"),
+                                item.get("grandeza"), item.get("unidade")) != (e["id"], "executor_corpo", "rotação relativa", "graus")):
+                            continue
+                        observada = _nao_qualificacao_rotacao(item, ocorrencia_id=e["id"])
+                        if observada is not None and observada not in nao_qualificacoes:
+                            nao_qualificacoes.append(observada)
                 episodio = EpisodioExplicavel(id=e["id"], owner="executor_corpo", nome=e["nome"],
                     turno_origem=str(e.get("turno_id") or ""), sessao=str(e.get("sessao") or ""),
                     iniciada_em=e["iniciada_em"], encerrada_em=e["ts"],
                     intencao_id=str(e.get("intencao_id") or ""), decisao=decisao,
                     justificativa_registrada=decisao is not None and e.get("origem_intencao") != "llm_principal",
                     confirmado=e.get("confirmado"), escopo_confirmacao=escopo,
-                    limite_observacao="Não há medição de deslocamento neste registro.", medicoes=medicoes)
+                    limite_observacao="Não há medição de deslocamento neste registro.", medicoes=medicoes,
+                    expectativas=expectativas, nao_qualificacoes_medicao=tuple(nao_qualificacoes))
                 episodios.append(episodio)
             except (ValueError, TypeError, KeyError):
                 continue
@@ -458,7 +546,8 @@ class ExperienciaCorporalRuntime:
     def iniciar(self, *, nome: str, origem_intencao: str, perfil: str,
                 intencao_id: str = "", turno_id: str | None = None,
                 variante: int = 0, movimentos: tuple = (), familia: str = "",
-                decisao_origem: DecisaoObservada | None = None) -> dict[str, Any]:
+                decisao_origem: DecisaoObservada | None = None,
+                angulo_solicitado_graus: int | None = None) -> dict[str, Any]:
         mental = self.estado.retrato_dominio("mental") if self.estado is not None else {}
         diag = self.diagnostico_getter()
         ocorrencia = {"id": uuid4().hex, "origem": "executor_corpo", "nome": nome, "familia": familia or nome,
@@ -466,6 +555,14 @@ class ExperienciaCorporalRuntime:
                 "intencao_id": intencao_id, "turno_id": str(turno_id if turno_id is not None else (mental.get("turno_atual") or {}).get("id", "")),
                 "sessao": str(diag.get("sessao") or ""), "iniciada_em": self.clock(),
                 "variante": variante % 3, "movimentos": [list(m) for m in movimentos]}
+        if angulo_solicitado_graus is not None:
+            if type(angulo_solicitado_graus) is not int:
+                raise ValueError("Meta angular exige parâmetro inteiro validado antes do efeito.")
+            expectativa = ExpectativaResultado(ocorrencia_id=ocorrencia["id"], owner="executor_corpo",
+                grandeza="rotação relativa", valor=angulo_solicitado_graus, unidade="graus",
+                fonte="parametros_validados_antes_da_execucao", registrada_em=ocorrencia["iniciada_em"],
+                referencial=REFERENCIAL_GIRO_RELATIVO)
+            ocorrencia["expectativas"] = [asdict(expectativa)]
         if decisao_origem is not None:
             if type(decisao_origem) is not DecisaoObservada:
                 raise ValueError("Fonte da decisão exige captura tipada anterior ao efeito.")
@@ -506,6 +603,11 @@ class ExperienciaCorporalRuntime:
                      evidencia_rotacao="imu_relativa_turnend_e_sack" if retorno.get("prova_rotacao") else "giro_parcial_ou_interrompido")
             if confirmado and e["prova_rotacao"]:
                 e["resultado"] = "giro_relativo_confirmado"
+        # Só o retorno da chamada atual publica esta decisão, nunca a intenção.
+        e.pop("nao_qualificacoes_medicao", None)
+        nao_qualificacoes = nao_qualificacoes_rotacao_observadas(retorno, ocorrencia_id=e["id"])
+        if nao_qualificacoes:
+            e["nao_qualificacoes_medicao"] = [asdict(item) for item in nao_qualificacoes]
         novo = False
         with self._lock:
             if self.estado is not None:

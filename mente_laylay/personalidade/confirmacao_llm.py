@@ -1002,7 +1002,7 @@ def personalizar_confirmacao_composta_llm(
     retrato = dict(contexto or {})
     informacoes = dict(informacoes or {})
     for item in itens:
-        if item.aspectos:
+        if item.tem_observacoes_do_executor:
             informacoes[item.id_solicitacao] = fala_resultado_por_aspectos(item)
     if humor_bloqueado_por_preferencia(retrato) and not conversa:
         return fallback
@@ -1207,10 +1207,10 @@ def personalizar_confirmacao_composta_llm(
                 if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
                     return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
             literal = informacoes.get(identidade, "")
-            if item.aspectos and trecho.rstrip(" .;") != fala_resultado_por_aspectos(item).rstrip(" .;"):
+            if item.tem_observacoes_do_executor and trecho.rstrip(" .;") != fala_resultado_por_aspectos(item).rstrip(" .;"):
                 return _com_motivo_fallback(fallback, "aspectos_compostos_alterados")
             motivo = (
-                "" if item.aspectos else
+                "" if item.tem_observacoes_do_executor else
                 "informacao_composta_omitida" if literal and literal not in trecho else
                 "" if literal else _motivo_contrato_invalido(
                     trecho, resultado=item, classe=classe,

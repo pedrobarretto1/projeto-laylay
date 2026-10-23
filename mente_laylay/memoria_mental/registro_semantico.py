@@ -7,20 +7,24 @@ própria assistente sejam promovidas automaticamente a fatos.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 import hashlib
 import json
 import re
 import time
 import unicodedata
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mente_laylay.memoria_mental.decisao_observada import ExplicacaoOcorrencia
 
 from mente_laylay.cognicao.proveniencia_informacao import (
-    classificar_proveniencia_informacao, referencia_alegacao_da_fonte,
+    classificar_proveniencia_informacao, referencia_alegacao_da_fonte, referencias_suporte_alegacao,
 )
 from mente_laylay.cognicao.referencias_linguagem import (
-    ids_ocorrencias_citadas, qualificador_referencia_nominal,
+    ids_ocorrencias_citadas, qualificador_referencia_nominal, papeis_referencia_proposicao,
+    referencia_nominal_proposicao,
 )
 from mente_laylay.cognicao.normalizacao_linguagem import (
     texto_discute_evidencia_textual, TIPOS_REFERENCIA_TEXTUAL,
@@ -59,6 +63,42 @@ class RevisaoAlegacaoConsulta:
                    or apoio[1] not in {"contestado", "corrigido"} for apoio in self.apoios_revisados)
             or (bool(self.apoios_revisados) != (self.status == "suporte_em_revisao"))):
             raise ValueError("Revisão exige consulta, identidade e estado do registro.")
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenciaProposicaoPendente:
+    """Seleção não resolvida nesta consulta, sem alterar alegações ou efeitos."""
+
+    turno_consulta: str
+    texto_consulta: str
+    referencia: str
+    entrega_origem: str = ""
+    candidatos: tuple[tuple[str,str,str], ...] = ()
+    tipo_revisao: str = "consulta"
+    qualificadores: tuple[tuple[str,str,str], ...] = ()
+    pendencia_id: str = ""
+    autoriza_execucao: bool = field(default=False, init=False)
+
+    def __post_init__(self) -> None:
+        if (any(type(v) is not str or not v.strip() for v in (self.turno_consulta, self.texto_consulta))
+                or self.referencia not in {"ausente", "ambigua"}
+                or type(self.entrega_origem) is not str
+                or type(self.candidatos) is not tuple or len(self.candidatos)>8
+                or self.tipo_revisao not in {"consulta","contestacao","correcao"}
+                or any(type(c) is not tuple or len(c)!=3 or any(type(v) is not str or not v for v in c)
+                    or c[1] not in {"meta","medicao","comparacao"}
+                    or not re.fullmatch(r"[0-9a-f]{64}",c[2]) for c in self.candidatos)
+                or len({c[0] for c in self.candidatos})!=len(self.candidatos)
+                or bool(self.entrega_origem)!=bool(self.candidatos)
+                or type(self.pendencia_id) is not str or len(self.pendencia_id)>240
+                or (self.pendencia_id and not self.candidatos)
+                or type(self.qualificadores) is not tuple
+                or (self.qualificadores and (tuple(q[0] for q in self.qualificadores if type(q) is tuple and len(q)==3)
+                    !=tuple(c[0] for c in self.candidatos)
+                    or any(type(q) is not tuple or len(q)!=3
+                        or any(type(v) is not str or len(v)>240 for v in q)
+                        or not any(q[1:]) for q in self.qualificadores)))):
+            raise ValueError("Referência pendente exige consulta própria e ausência de seleção única.")
 
 
 def _normalizar(texto: str) -> str:
@@ -150,7 +190,78 @@ def registrar_fala_observada(
             "resultados": snapshots, "canais": [canal], "ts": instante,
             "autoriza_execucao": False})
     estado["falas_observadas"] = historico[-24:]
+    for resultado in resultados:
+        estado = _registrar_proposicoes_resultado(estado, resultado, fala, instante)
     return estado
+
+
+def _id_proposicao_resultado(vinculo: Mapping[str, Any]) -> str:
+    identidade = json.dumps(dict(vinculo),ensure_ascii=False,allow_nan=False,sort_keys=True)
+    return "alegacao:" + str(int(hashlib.sha256(identidade.encode()).hexdigest()[:24],16))
+
+
+def _registrar_proposicoes_resultado(
+    registro: Dict[str, Any], resultado: ResultadoAcao, fala: str, instante: float,
+) -> Dict[str, Any]:
+    """A entrega observada registra somente realizações integrais de fontes tipadas."""
+    if not (resultado.expectativas or resultado.medicoes):
+        return registro
+    from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado
+    from mente_laylay.cognicao.explicacao_fala_historica import proposicoes_resultado_comparado
+    fontes = FontesComparacaoResultado(resultado.id_solicitacao, resultado.expectativas,
+        resultado.medicoes, resultado.inicio_execucao)
+    proposicoes = proposicoes_resultado_comparado(fontes)
+    presentes = {p["chave"]:p for p in proposicoes if len(p["texto"]) <= 500 and p["texto"] in fala}
+    ids = {}
+    novos = []
+    for p in proposicoes:
+        if p["chave"] not in presentes or any(a not in ids for a in p["apoios"]):
+            continue
+        vinculo = {"id_solicitacao": resultado.id_solicitacao, "tipo": p["tipo"], "fonte": p["dados"]}
+        ident = _id_proposicao_resultado(vinculo)
+        ids[p["chave"]] = ident
+        novos.append({"id":ident, "chave":"resultado:"+ident, "texto":p["texto"], "autor":"laylay",
+            "sujeito":resultado.alvo, "tipo":"proposicao_resultado", "fonte":"", "confianca":0.35,
+            "status":"derivado_sem_verificacao" if p["apoios"] else "observacao_registrada",
+            "ts":instante, "vinculo_resultado":vinculo,
+            **({"fontes_alegacoes":tuple(ids[a] for a in p["apoios"])} if p["apoios"] else {})})
+        origem = resultado.fontes_ocorrencia
+        owner = (p["dados"].get("expectativa") or p["dados"]).get("owner")
+        if origem is not None and any(e.owner==owner for e in origem.expectativas):
+            novos[-1]["vinculo_ocorrencia"] = {"id":origem.id,"owner":owner}
+    itens = [dict(i) for i in registro["alegacoes"] if isinstance(i,dict)]
+    for novo in novos:
+        anteriores = [i for i in itens if i.get("id") == novo["id"]]
+        if anteriores:
+            if (len(anteriores) != 1 or any(anteriores[0].get(k) != novo.get(k)
+                    for k in ("texto","vinculo_resultado"))
+                    or referencias_suporte_alegacao(anteriores[0]) != referencias_suporte_alegacao(novo)
+                    or (anteriores[0].get("vinculo_ocorrencia") is not None
+                        and anteriores[0]["vinculo_ocorrencia"] != novo.get("vinculo_ocorrencia"))):
+                return registro
+            # Reentrega não reabilita uma fonte contestada nem aumenta prova.
+            if "vinculo_ocorrencia" in novo:
+                anteriores[0]["vinculo_ocorrencia"] = novo["vinculo_ocorrencia"]
+            continue
+        revisoes = [r for r in registro["revisoes_alegacoes"] if isinstance(r,dict) and r.get("alegacao_id")==novo["id"]]
+        if revisoes:
+            revisao = revisoes[-1]; anterior = revisao.get("anterior")
+            tipo = revisao.get("tipo"); ts = revisao.get("ts")
+            if (tipo not in {"contestacao","correcao"} or not isinstance(anterior,dict)
+                    or revisao.get("autoriza_execucao") is not False
+                    or revisao.get("status_resultante") != ("contestado" if tipo=="contestacao" else "corrigido")
+                    or any(anterior.get(k)!=novo.get(k) for k in ("texto","vinculo_resultado"))
+                    or referencias_suporte_alegacao(anterior)!=referencias_suporte_alegacao(novo)
+                    or (anterior.get("vinculo_ocorrencia") is not None
+                        and anterior["vinculo_ocorrencia"]!=novo.get("vinculo_ocorrencia"))
+                    or type(ts) not in (int,float) or not math.isfinite(ts) or ts<0
+                    or type(anterior.get("ts")) not in (int,float) or not math.isfinite(anterior["ts"])
+                    or type(revisao.get("texto_usuario")) is not str):
+                return registro
+            novo = _aplicar_estado_revisao_alegacao(novo,tipo,revisao["texto_usuario"],ts)
+            novo["ts"] = anterior["ts"]
+        itens.append(novo)
+    return {**registro,"alegacoes":itens[-60:]}
 
 
 def recuperar_evidencia_da_fala(
@@ -205,6 +316,26 @@ def formatar_evidencia_da_fala(texto: str, mente: Mapping[str, Any]) -> str:
         evidencia = recuperar_evidencia_da_fala(texto, mente)
     if not evidencia:
         return ""
+    turno = mente.get("turno_atual") or {}
+    if (isinstance(contrato, Mapping) and isinstance(turno, Mapping)
+        and contrato.get("turno_id") == turno.get("id")
+        and texto == (turno.get("texto_original") or turno.get("texto"))
+        and "esclarecimento" in contrato.get("atos", ())
+        and not {"evidencia_fala_historica", "explicacao_ocorrencia",
+                 "explicacoes_historicas_por_ato", "revisao_alegacao"}.intersection(contrato)):
+        # O contrato já distinguiu sentido de justificativa/resultado. A fonte
+        # textual entregue contextualiza a paráfrase; seus receipts continuam
+        # no registro e não passam a ser o assunto desta pergunta.
+        return (
+            "REFERENTE TEXTUAL DESTE ESCLARECIMENTO: "
+            + json.dumps({"falas": [{"id": f.get("id"), "fala": f.get("fala")}
+                                   for f in evidencia.get("falas", ())],
+                          "referencia_ambigua": evidencia.get("referencia_ambigua"),
+                          "autoriza_execucao": False}, ensure_ascii=False, allow_nan=False)
+            + "\nExplique o sentido da fala em relação à mensagem atual. "
+              "O texto anterior não prova fatos, causas, efeitos nem estado atual. "
+              "Não substitua o esclarecimento por uma auditoria de execução."
+        )
     return (
         "EVIDÊNCIA HISTÓRICA DA PRÓPRIA FALA: "
         + json.dumps(evidencia, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
@@ -368,16 +499,18 @@ def _eh_contestacao(texto: str) -> bool:
 
 def selecionar_alegacao_para_revisao(
     registro: Dict[str, Any] | None, texto: str, *, fala_anterior: str = "",
-    permitir_recencia: bool = True,
+    permitir_recencia: bool = True, agora: float | None = None,
 ) -> Dict[str, Any]:
     """Seleciona identidade antes de revisar; citação não resolvida veda recência.
 
     A leitura de referências literais é a compartilhada com outros owners.
-    Não resolve paráfrases, decide verdade ou transforma correção em autoridade.
+    Papel nominal restringe à última entrega observada recente, sem pular uma
+    entrega independente. Não resolve paráfrases ou transforma correção em prova.
     Sem referência explícita, mantém o último candidato mesmo já contestado:
     chamadas repetidas do pipeline não podem avançar para outro alvo.
     """
-    alegacoes = [item for item in _registro(registro)["alegacoes"]
+    estado = _registro(registro)
+    alegacoes = [item for item in estado["alegacoes"]
                  if isinstance(item, dict) and item.get("autor") == "laylay"]
     ocorrencias = tuple((str(item.get("id") or ""), str(item.get("texto") or ""))
                         for item in alegacoes)
@@ -394,6 +527,19 @@ def selecionar_alegacao_para_revisao(
         else:
             citados = tuple(identidade for identidade, _ in ocorrencias
                             if identidade in ids_explicitos and (citados is None or identidade in citados))
+    papeis = papeis_referencia_proposicao(texto) if citados is None else None
+    if papeis is not None:
+        entregas = estado["falas_observadas"]
+        entrega = entregas[-1] if entregas and isinstance(entregas[-1],dict) else {}
+        instante = time.time() if agora is None else agora
+        candidatos_nominais = _candidatos_da_entrega(estado,entrega,papeis,instante,texto=texto)
+        # Conserva multiplicidade: duplicata não pode ser deduplicada em um
+        # falso referente único. IDs e citações continuam no caminho próprio.
+        selecionada = candidatos_nominais[0] if (len(candidatos_nominais)==1
+            and sum(i.get("id")==candidatos_nominais[0].get("id") for i in alegacoes)==1) else {}
+        return {"referencia":"unica" if selecionada else "ambigua" if candidatos_nominais else "ausente",
+            "alegacao_id":str(selecionada.get("id") or ""),
+            "texto":str(selecionada.get("texto") or ""),"autoriza_execucao":False}
     candidatos = ([item for item in alegacoes if item.get("id") in citados]
                   if citados is not None else alegacoes[-1:] if permitir_recencia else [])
     # Compatibilidade com memória antiga que só conservava ultima_resposta.
@@ -406,16 +552,329 @@ def selecionar_alegacao_para_revisao(
             "texto": str(selecionada.get("texto") or ""), "autoriza_execucao": False}
 
 
-def recuperar_revisao_alegacao(
-    registro: Dict[str, Any] | None, texto: str, *, turno_id: str,
-) -> RevisaoAlegacaoConsulta | None:
-    """Vincula revisão à consulta explícita; outro assunto não herda a última.
+def _candidatos_da_entrega(
+    registro: Dict[str,Any], entrega: Mapping[str,Any], papeis: tuple[str,...], instante: float,
+    *, texto: str = "",
+) -> list[Dict[str,Any]]:
+    """Mesmo escopo da seleção e da continuação; não reidrata fontes do executor."""
+    ts=entrega.get('ts')
+    valida=(type(instante) in (int,float) and math.isfinite(instante)
+        and type(ts) in (int,float) and math.isfinite(ts) and 0<=instante-ts<=900
+        and entrega.get('autoriza_execucao') is False
+        and isinstance(entrega.get('fala'),str) and bool(entrega['fala'])
+        and isinstance(entrega.get('canais'),list) and bool(entrega['canais'])
+        and all(c in {'texto_publicado','audio_reproducao_confirmada'} for c in entrega['canais'])
+        and isinstance(entrega.get('resultados'),list) and len(entrega['resultados'])<=16)
+    solicitacoes={r.get('id_solicitacao') for r in entrega.get('resultados',[]) if isinstance(r,dict)
+        and r.get('origem')=='executor' and type(r.get('id_solicitacao')) is str} if valida else set()
+    candidatos=[]
+    for item in registro['alegacoes']:
+        if not isinstance(item,dict) or item.get('autor')!='laylay':continue
+        v=item.get('vinculo_resultado')
+        if (isinstance(v,dict) and v.get('tipo') in papeis
+                and type(v.get('id_solicitacao')) is str and bool(v['id_solicitacao'])
+                and v['id_solicitacao'] in solicitacoes and type(item.get('texto')) is str
+                and bool(item['texto']) and item['texto'] in entrega['fala']):
+            try: integra=item.get('id')==_id_proposicao_resultado(v)
+            except (TypeError,ValueError):integra=False
+            if integra:candidatos.append(item)
+    return _filtrar_referencia_proposicao(candidatos,texto) if texto else candidatos
 
-    Usa a mesma identidade da revisão, sem resolver paráfrase ou promover
+
+def _filtrar_referencia_proposicao(
+    itens: list[Dict[str,Any]], texto: str, *, somente_nominal: bool = False, permitir_elipse: bool = False,
+) -> list[Dict[str,Any]]:
+    """Restringe candidatos existentes; qualificador não cria fonte nem unicidade.
+
+    Grandeza e referencial são conferidos nas fontes próprias; na derivação,
+    em ambas as premissas. Método pertence à medição. Status/valor/recência não
+    desempata fontes; nomes parecidos ou múltiplos continuam sem seleção.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    leitura=referencia_nominal_proposicao(texto,somente_nominal=somente_nominal,permitir_elipse=permitir_elipse)
+    if leitura is None or leitura.qualificador:return []
+    candidatos=[]
+    for item in itens:
+        v=item['vinculo_resultado']
+        if v['tipo'] not in leitura.papeis:continue
+        if leitura.grandeza or leitura.metodo or leitura.referencial:
+            f=v.get('fonte')
+            if not isinstance(f,dict):continue
+            fontes=(f.get('expectativa'),f.get('medicao')) if v['tipo']=='comparacao' else (f,)
+            if any(not isinstance(s,dict) for s in fontes):continue
+            requisitos={'grandeza':leitura.grandeza,'referencial':leitura.referencial}
+            if any(valor and any(type(s.get(campo)) is not str or normalizar_texto_basico(s[campo])!=valor
+                    for s in fontes) for campo,valor in requisitos.items()):continue
+            if leitura.metodo:
+                medicao=f.get('medicao') if v['tipo']=='comparacao' else f if v['tipo']=='medicao' else {}
+                if (not isinstance(medicao,dict) or type(medicao.get('metodo')) is not str
+                        or normalizar_texto_basico(medicao['metodo'])!=leitura.metodo):continue
+        candidatos.append(item)
+    return candidatos
+
+
+def _assinatura_candidato(item: Mapping[str,Any]) -> str:
+    dados={k:item.get(k) for k in ('id','texto','autor','vinculo_resultado','vinculo_ocorrencia','fontes_alegacoes')}
+    return hashlib.sha256(json.dumps(dados,ensure_ascii=False,allow_nan=False,sort_keys=True).encode()).hexdigest()
+
+
+def _opcoes_candidatas(itens: list[Dict[str,Any]]) -> tuple[tuple[str,str,str],...]:
+    return tuple((i['id'],i['vinculo_resultado']['tipo'],_assinatura_candidato(i)) for i in itens)
+
+
+def _qualificadores_candidatos(itens: list[Dict[str,Any]]) -> tuple[tuple[str,str,str],...]:
+    """Campos próprios distinguíveis, sem paráfrase, nomes inferidos ou fontes novas."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if len(itens)<2 or any(i['vinculo_resultado']['tipo']!='medicao' for i in itens):return ()
+    fontes=[i['vinculo_resultado'].get('fonte') for i in itens]
+    if any(not isinstance(f,dict) or type(f.get('grandeza')) is not str for f in fontes):return ()
+    if len({normalizar_texto_basico(f['grandeza']) for f in fontes})!=1:return ()
+    colunas=[]
+    for campo in ('metodo','referencial'):
+        valores=[f.get(campo) for f in fontes]
+        admissiveis=all(type(v) is str and 0<len(v)<=240 and
+            re.fullmatch(r"[a-z0-9_]+(?:[ -][a-z0-9_]+)*",normalizar_texto_basico(v)) for v in valores)
+        colunas.append(valores if admissiveis and len({normalizar_texto_basico(v) for v in valores})>1 else ['']*len(itens))
+    return tuple((i['id'],m,r) for i,m,r in zip(itens,*colunas)) if any(any(c) for c in colunas) else ()
+
+
+def _validar_esclarecimento(
+    registro: Dict[str,Any], pendencia: Mapping[str,Any], instante: float, *, ultima_pergunta: bool = True,
+) -> list[Dict[str,Any]] | None:
+    """Confere a pendência contra entregas retidas, não contra prosa da LLM."""
+    p=pendencia;v=p.get('vinculo_proposicao')
+    criada=p.get('criada_em');expira=p.get('expira_em')
+    if (p.get('origem')!='revisao_alegacao' or p.get('tipo')!='esclarecimento_proposicao'
+            or p.get('dominio')!='conversa' or p.get('status')!='ativa' or p.get('foi_falada') is not True
+            or p.get('intencao') or p.get('resposta_esperada')!='referencia_proposicao'
+            or p.get('autoriza_execucao') is not False or not isinstance(v,dict)
+            or v.get('tipo_revisao') not in {'contestacao','correcao'}
+            or any(type(v.get(k)) is not str or not v[k] for k in
+                ('entrega_origem','pergunta_id','turno_pergunta','solicitacao_original'))
+            or type(criada) not in (int,float) or not math.isfinite(criada)
+            or type(expira) not in (int,float) or not math.isfinite(expira)
+            or not criada<=instante<expira<=criada+300):return None
+    falas=registro['falas_observadas']
+    origem=[i for i in falas if isinstance(i,dict) and i.get('id')==v['entrega_origem']]
+    perguntas=[i for i in falas if isinstance(i,dict) and i.get('id')==v['pergunta_id']]
+    if len(origem)!=1 or len(perguntas)!=1:return None
+    pergunta,=perguntas
+    if (pergunta.get('turno_id')!=v['turno_pergunta'] or pergunta.get('fala')!=p.get('conteudo')
+            or pergunta.get('autoriza_execucao') is not False or not pergunta.get('canais')
+            or any(c not in {'texto_publicado','audio_reproducao_confirmada'} for c in pergunta['canais'])
+            or (ultima_pergunta and falas[-1].get('id')!=v['pergunta_id'])):return None
+    opcoes=p.get('opcoes')
+    if (not isinstance(opcoes,list) or not 2<=len(opcoes)<=8
+            or any(not isinstance(o,dict) or set(o)!={'alegacao_id','papel','assinatura'}
+                or any(type(valor) is not str for valor in o.values()) for o in opcoes)):
+        return None
+    papeis=papeis_referencia_proposicao(v['solicitacao_original'])
+    esperados=_candidatos_da_entrega(registro,origem[0],papeis or (),instante,texto=v['solicitacao_original'])
+    if (len(esperados)!=len(opcoes) or set(_opcoes_candidatas(esperados))!=
+            {(o['alegacao_id'],o['papel'],o['assinatura']) for o in opcoes}):return None
+    itens=_candidatos_da_entrega(registro,origem[0],('meta','medicao','comparacao'),instante)
+    por_id={}
+    for i in itens:por_id.setdefault(i.get('id'),[]).append(i)
+    retidos=[]
+    for o in opcoes:
+        ident=o.get('alegacao_id')
+        if type(ident) is not str or len(por_id.get(ident,[]))!=1:return None
+        item=por_id[ident][0]
+        if (sum(isinstance(i,dict) and i.get('id')==ident for i in registro['alegacoes'])!=1
+                or o.get('papel')!=item['vinculo_resultado']['tipo']
+                or o.get('assinatura')!=_assinatura_candidato(item)):return None
+        retidos.append(item)
+    if len({i['id'] for i in retidos})!=len(retidos):return None
+    from mente_laylay.cognicao.explicacao_fala_historica import realizacao_opcoes_proposicao
+    apresentados=v.get('qualificadores',[])
+    if apresentados:
+        esperados=_qualificadores_candidatos(retidos)
+        if apresentados!=[list(q) for q in esperados]:return None
+        entrega_opcoes=[i for i in falas if isinstance(i,dict) and i.get('id')==v.get('opcoes_entrega_id')]
+        if len(entrega_opcoes)!=1:return None
+        oferta,=entrega_opcoes
+        textos=tuple(t for ausente in (False,True)
+            if (t:=realizacao_opcoes_proposicao(esperados,sem_correspondencia=ausente)))
+        if (not textos or oferta.get('fala') not in textos or oferta.get('autoriza_execucao') is not False
+                or not oferta.get('canais') or any(c not in {'texto_publicado','audio_reproducao_confirmada'}
+                    for c in oferta['canais'])):return None
+    elif v.get('opcoes_entrega_id'):
+        return None
+    return retidos
+
+
+def _filtrar_esclarecimento(
+    itens: list[Dict[str,Any]], texto: str, pendencia: Mapping[str,Any],
+) -> list[Dict[str,Any]] | None:
+    """Mesmo filtro na seleção e repergunta, após validar fontes e exposição.
+
+    None deixa outros atos e IDs no caminho próprio. Nome sem campo restringe
+    somente valores integrais expostos; colisão entre campos não desempata.
+    Prefixo de palavras expostas pode motivar repergunta, nunca selecionar.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    leitura=referencia_nominal_proposicao(texto,somente_nominal=True,permitir_elipse=True)
+    if leitura is None:
+        citados=ids_ocorrencias_citadas(texto,tuple((i['id'],i['texto']) for i in itens),somente_referencia=True)
+        return None if citados is None else [i for i in itens if i['id'] in citados]
+    if not leitura.papeis:return None
+    expostos=pendencia['vinculo_proposicao'].get('qualificadores',[])
+    def relacionado(valor: str, opcoes: list[str]) -> bool:
+        return (not re.search(r'["“”«»\']',texto) and any(v and
+            (normalizar_texto_basico(v)==valor or normalizar_texto_basico(v).startswith(valor+' '))
+            for v in opcoes))
+    if leitura.qualificador:
+        ids={q[0] for q in expostos if any(valor and normalizar_texto_basico(valor)==leitura.qualificador
+            for valor in q[1:])}
+        return ([i for i in itens if i['id'] in ids] if ids or
+            relacionado(leitura.qualificador,[valor for q in expostos for valor in q[1:]]) else None)
+    if ((leitura.metodo and not any(q[1] for q in expostos))
+            or (leitura.referencial and not any(q[2] for q in expostos))):return None
+    selecionados=_filtrar_referencia_proposicao(itens,texto,somente_nominal=True,permitir_elipse=True)
+    if selecionados:return selecionados
+    campos=[(leitura.metodo,[q[1] for q in expostos]),(leitura.referencial,[q[2] for q in expostos])]
+    requeridos=[(valor,opcoes) for valor,opcoes in campos if valor]
+    return ([] if not leitura.grandeza and requeridos
+        and all(relacionado(valor,opcoes) for valor,opcoes in requeridos) else None)
+
+
+def registrar_esclarecimento_proposicao_entregue(
+    mente: Dict[str,Any], fonte: object, *, entrega_id: str, turno_id: str,
+) -> Dict[str,Any]:
+    """Ativa somente após entrega; usa a pendência de diálogo compartilhada."""
+    from mente_laylay.memoria_mental.pendencia import criar_pendencia,registrar_pendencia,pendencia_ativa,limpar_pendencia
+    from mente_laylay.cognicao.explicacao_fala_historica import realizacao_revisao_alegacao,realizacao_opcoes_proposicao
+    if str(dict(mente.get('turno_atual') or {}).get('id') or '')!=turno_id:return mente
+    registro=_registro(mente.get('registro_semantico'));falas=registro['falas_observadas']
+    if not falas or falas[-1].get('id')!=entrega_id or falas[-1].get('turno_id')!=turno_id:return mente
+    atual=pendencia_ativa(mente)
+    if (atual and atual.get('origem')=='revisao_alegacao'
+            and dict(atual.get('vinculo_proposicao') or {}).get('pergunta_id')==entrega_id):return mente
+    if type(fonte) is ReferenciaProposicaoPendente and fonte.candidatos:
+        if (fonte.turno_consulta!=turno_id or falas[-1].get('fala')!=realizacao_revisao_alegacao(fonte)
+                or fonte.tipo_revisao not in {'contestacao','correcao'}):return mente
+        if atual and atual.get('origem')!='revisao_alegacao':return mente
+        if fonte.pendencia_id:
+            if (not atual or atual.get('id')!=fonte.pendencia_id or len(falas)<2
+                    or falas[-2].get('id')!=dict(atual.get('vinculo_proposicao') or {}).get('pergunta_id')):return mente
+            retidos=_validar_esclarecimento(registro,atual,time.time(),ultima_pergunta=False)
+            v=dict(atual.get('vinculo_proposicao') or {})
+            if (retidos is None or fonte.candidatos!=_opcoes_candidatas(retidos)
+                    or fonte.qualificadores!=_qualificadores_candidatos(retidos)
+                    or fonte.entrega_origem!=v.get('entrega_origem')
+                    or fonte.tipo_revisao!=v.get('tipo_revisao')):return mente
+            v.update(pergunta_id=entrega_id,turno_pergunta=turno_id)
+            if fonte.qualificadores and realizacao_opcoes_proposicao(fonte.qualificadores,
+                    sem_correspondencia=fonte.referencia=='ausente'):
+                v.update(qualificadores=[list(q) for q in fonte.qualificadores],opcoes_entrega_id=entrega_id)
+            p={**atual,'conteudo':falas[-1]['fala'],'vinculo_proposicao':v}
+            return {**mente,'pendencia_atual':p}
+        p=criar_pendencia(origem='revisao_alegacao',tipo='esclarecimento_proposicao',dominio='conversa',
+            conteudo=falas[-1]['fala'],opcoes=({'alegacao_id':i,'papel':papel,'assinatura':s} for i,papel,s in fonte.candidatos),
+            resposta_esperada='referencia_proposicao',ttl_s=300,foi_falada=True)
+        p.update(autoriza_execucao=False,vinculo_proposicao={'entrega_origem':fonte.entrega_origem,
+            'pergunta_id':entrega_id,'turno_pergunta':turno_id,'solicitacao_original':fonte.texto_consulta,
+            'tipo_revisao':fonte.tipo_revisao})
+        if fonte.qualificadores and realizacao_opcoes_proposicao(fonte.qualificadores,
+                sem_correspondencia=fonte.referencia=='ausente'):
+            p['vinculo_proposicao'].update(qualificadores=[list(q) for q in fonte.qualificadores],
+                opcoes_entrega_id=entrega_id)
+        if _validar_esclarecimento(registro,p,time.time()) is None:return mente
+        return registrar_pendencia(mente,p)
+    if atual and atual.get('origem')=='revisao_alegacao':
+        # Uma elipse ainda ambígua pode repetir a pergunta sem estender TTL,
+        # trocar os candidatos ou substituir a contestação de origem.
+        papel=papeis_referencia_proposicao(str(dict(mente.get('turno_atual') or {}).get('texto') or ''),somente_nominal=True)
+        if (type(fonte) is ReferenciaProposicaoPendente and papel is not None and len(falas)>1
+                and falas[-2].get('id')==dict(atual.get('vinculo_proposicao') or {}).get('pergunta_id')
+                and falas[-1].get('fala')==realizacao_revisao_alegacao(fonte)
+                and _validar_esclarecimento(registro,atual,time.time(),ultima_pergunta=False) is not None):
+            p=dict(atual);p['vinculo_proposicao']={**p['vinculo_proposicao'],'pergunta_id':entrega_id,'turno_pergunta':turno_id}
+            p['conteudo']=falas[-1]['fala']
+            return {**mente,'pendencia_atual':p}
+        return limpar_pendencia(mente,motivo='entrega_independente')
+    return mente
+
+
+def consumir_esclarecimento_proposicao(
+    mente: Dict[str,Any], texto: str, *, turno: Mapping[str,Any],
+) -> Dict[str,Any]:
+    """Uma elipse só seleciona os candidatos da pergunta efetivamente entregue."""
+    from mente_laylay.memoria_mental.pendencia import limpar_pendencia
+    p=mente.get('pendencia_atual')
+    if not isinstance(p,dict) or p.get('origem')!='revisao_alegacao' or p.get('status')!='ativa':return mente
+    instante=time.time();registro=_registro(mente.get('registro_semantico'))
+    itens=_validar_esclarecimento(registro,p,instante)
+    if itens is None:return limpar_pendencia(mente,motivo='fonte_invalida_ou_expirada')
+    if turno.get('encerramento_assunto')=='topico':return limpar_pendencia(mente,motivo='cancelada')
+    if (turno.get('autoriza_execucao') is not False
+            or not str(turno.get('id') or '')):return mente
+    escolhidos=_filtrar_esclarecimento(itens,texto,p)
+    if escolhidos is None or len(escolhidos)!=1:return mente
+    item,=escolhidos;v=p['vinculo_proposicao']
+    selecao={'referencia':'unica','alegacao_id':item['id'],'texto':item['texto'],'autoriza_execucao':False}
+    registro=_revisar_alegacao(registro,v['solicitacao_original'],tipo=v['tipo_revisao'],
+        agora=instante,selecao_validada=selecao)
+    registro['revisao_alegacao_atual'].update(origem='esclarecimento_proposicao',
+        turno_id=str(turno['id']),solicitacao=texto,solicitacao_original=v['solicitacao_original'],pendencia_id=p['id'])
+    novo=limpar_pendencia(mente,motivo='resolvida')
+    return {**novo,'registro_semantico':registro}
+
+
+def recuperar_revisao_alegacao(
+    registro: Dict[str, Any] | None, texto: str, *, turno_id: str, somente_esclarecida: bool = False,
+    pendencia: Mapping[str,Any] | None = None,
+) -> RevisaoAlegacaoConsulta | ReferenciaProposicaoPendente | None:
+    """Vincula revisão à consulta referida; outro assunto não herda a última.
+
+    Usa identidade literal ou papel na entrega, sem resolver paráfrase ou promover
     resposta/receipt a confirmação de uma proposição contestada.
     """
+    estado=_registro(registro)
+    atual=estado.get('revisao_alegacao_atual') or {}
+    if (isinstance(atual,dict) and atual.get('origem')=='esclarecimento_proposicao'
+            and atual.get('turno_id')==turno_id and atual.get('solicitacao')==texto
+            and atual.get('autoriza_execucao') is False):
+        itens=[i for i in estado['alegacoes'] if isinstance(i,dict) and i.get('id')==atual.get('alegacao_id')]
+        if len(itens)==1 and itens[0].get('status') in {'contestado','corrigido'}:
+            i,=itens
+            return RevisaoAlegacaoConsulta(str(turno_id),texto,i['id'],i['texto'],i['status'])
+    if (isinstance(pendencia,dict) and type(pendencia.get('id')) is str
+            and 0<len(pendencia['id'])<=240 and turno_id):
+        # Uma referência nominal ainda não única continua a pergunta observada.
+        # O mesmo filtro/validador da seleção evita procurar outra entrega ou
+        # usar a existência de uma pendência para interceptar qualquer conversa.
+        retidos=_validar_esclarecimento(estado,pendencia,time.time())
+        if retidos is not None:
+            filtrados=_filtrar_esclarecimento(retidos,texto,pendencia)
+            if filtrados is not None and len(filtrados)!=1:
+                v=pendencia['vinculo_proposicao']
+                return ReferenciaProposicaoPendente(str(turno_id),texto,'ambigua' if filtrados else 'ausente',v['entrega_origem'],
+                    _opcoes_candidatas(retidos),v['tipo_revisao'],_qualificadores_candidatos(retidos),pendencia['id'])
+    if somente_esclarecida:return None
+    papel_nominal = papeis_referencia_proposicao(texto)
+    if (papel_nominal is not None and not _eh_contestacao(texto)
+            and papeis_referencia_proposicao(texto,exigir_deitico=True) is None):
+        # Artigo de pergunta geral não aponta para a própria fala. O mesmo
+        # papel pode ser alvo de uma contestação expressa, sem outro parser.
+        ocorrencias = tuple((str(i.get("id") or ""),str(i.get("texto") or ""))
+            for i in _registro(registro)["alegacoes"] if isinstance(i,dict) and i.get("autor")=="laylay")
+        if ids_ocorrencias_citadas(texto,ocorrencias) is None:
+            return None
     selecao = selecionar_alegacao_para_revisao(registro, texto, permitir_recencia=False)
     if selecao["referencia"] != "unica" or not turno_id:
+        if turno_id and papeis_referencia_proposicao(texto) is not None:
+            entregas=estado['falas_observadas']
+            entrega=entregas[-1] if entregas and isinstance(entregas[-1],dict) else {}
+            itens=_candidatos_da_entrega(estado,entrega,papel_nominal or (),time.time(),texto=texto)
+            candidatos=_opcoes_candidatas(itens) if 1<len(itens)<=8 and len({i['id'] for i in itens})==len(itens) else ()
+            revisao=estado.get('revisao_alegacao_atual') or {}
+            tipo=(revisao.get('tipo') if isinstance(revisao,dict) and revisao.get('solicitacao')==texto else '')
+            tipo=tipo if tipo in {'contestacao','correcao'} else 'contestacao' if _eh_contestacao(texto) else 'consulta'
+            if candidatos and entrega.get('id') and tipo!='consulta':
+                return ReferenciaProposicaoPendente(str(turno_id),texto,selecao['referencia'],entrega['id'],candidatos,tipo,
+                    _qualificadores_candidatos(itens))
+            return ReferenciaProposicaoPendente(str(turno_id),texto,selecao["referencia"])
         return None
     item = next((item for item in _registro(registro)["alegacoes"] if isinstance(item, dict)
                  and item.get("id") == selecao["alegacao_id"]), {})
@@ -428,10 +887,83 @@ def recuperar_revisao_alegacao(
                                    suporte["estado"], suporte["apoios_revisados"])
 
 
+def vincular_revisoes_explicacao_ocorrencia(
+    registro: Dict[str, Any] | None, fonte: object,
+) -> ExplicacaoOcorrencia | None:
+    """Projeção read-only por vínculo observado; valores/recência não resolvem IDs.
+
+    O histórico do owner continua independente. JSON do registro é declaração
+    de revisão, nunca fonte para reidratar receipt ou autorizar outro efeito.
+    """
+    from mente_laylay.memoria_mental.decisao_observada import ExplicacaoOcorrencia, FontesComparacaoResultado
+    from mente_laylay.cognicao.explicacao_fala_historica import proposicoes_resultado_comparado
+    if type(fonte) is not ExplicacaoOcorrencia:
+        return None
+    fonte = replace(fonte,revisoes_proposicoes=())
+    if fonte.referencia != "unica":
+        return fonte
+    e, = fonte.episodios
+    vinculo = {"id":e.id,"owner":e.owner}
+    itens = [i for i in _registro(registro)["alegacoes"][-60:] if isinstance(i,dict)
+        and isinstance(i.get("vinculo_ocorrencia"),dict)
+        and all(i["vinculo_ocorrencia"].get(k)==v for k,v in vinculo.items())]
+    if not itens:
+        return fonte
+    if not any(i.get("status") in {"contestado","corrigido"}
+            or avaliar_suporte_alegacao(registro,str(i.get("id") or ""))["estado"]
+                in {"suporte_em_revisao","suporte_interno_invalido"} for i in itens):
+        # A porta projeta revisão aplicável. Não substitui a qualificação
+        # histórica do owner por uma reconciliação global de toda publicação.
+        return fonte
+    solicitacoes = [i.get("vinculo_resultado",{}).get("id_solicitacao")
+        if isinstance(i.get("vinculo_resultado"),dict) else None for i in itens]
+    if (any(type(i) is not str or not i or i!=i.strip() for i in solicitacoes)
+            or len(set(solicitacoes))!=1 or any(i["vinculo_ocorrencia"]!=vinculo for i in itens)):
+        return None
+    ident = solicitacoes[0]
+    fontes = FontesComparacaoResultado(ident,
+        tuple(replace(m,ocorrencia_id=ident) for m in e.expectativas),
+        tuple(replace(m,ocorrencia_id=ident) for m in e.medicoes),e.iniciada_em)
+    partes = proposicoes_resultado_comparado(fontes)
+    vinculos = {p["chave"]:{"id_solicitacao":ident,"tipo":p["tipo"],"fonte":p["dados"]} for p in partes}
+    ids = {k:_id_proposicao_resultado(v) for k,v in vinculos.items()}
+    por_chave = {}
+    for item in itens:
+        candidatas = [p for p in partes if item.get("vinculo_resultado")==vinculos[p["chave"]]
+            and item.get("texto")==p["texto"] and item.get("id")==ids[p["chave"]]]
+        if len(candidatas)!=1:
+            return None
+        p, = candidatas; chave = p["chave"]
+        if chave in por_chave or referencias_suporte_alegacao(item)!=tuple(ids[a] for a in p["apoios"]):
+            return None
+        por_chave[chave] = item
+    revisoes = {}
+    for p in partes:
+        chave = p["chave"]; item = por_chave.get(chave)
+        status = item.get("status") if item else None
+        apoios = ()
+        if status not in {"contestado","corrigido"}:
+            suporte = avaliar_suporte_alegacao(registro,ids[chave]) if item else {}
+            status = suporte.get("estado")
+            apoios = suporte.get("apoios_revisados",())
+            antecedentes = [revisoes[a] for a in p["apoios"] if a in revisoes]
+            if antecedentes and status not in {"suporte_em_revisao","suporte_interno_invalido"}:
+                status = ("suporte_interno_invalido" if any(a.status=="suporte_interno_invalido" for a in antecedentes)
+                    else "suporte_em_revisao")
+                apoios = tuple(dict.fromkeys(apoio for a in antecedentes for apoio in
+                    (((a.alegacao_id,a.status),) if a.status in {"contestado","corrigido"} else a.apoios_revisados)))
+        if status in {"contestado","corrigido","suporte_em_revisao","suporte_interno_invalido"}:
+            if status=="suporte_interno_invalido":
+                apoios = ()
+            revisoes[chave] = RevisaoAlegacaoConsulta(fonte.turno_consulta,fonte.texto_consulta,
+                ids[chave],p["texto"],status,apoios)
+    return replace(fonte,revisoes_proposicoes=tuple(revisoes.items()))
+
+
 def avaliar_suporte_alegacao(registro: Dict[str, Any] | None, alegacao_id: str) -> Dict[str, Any]:
     """Validade transitiva da fonte interna já declarada; nunca prova implicação.
 
-    A fonte única atual permite cadeias, não alternativas AND/OR. A leitura é
+    Fontes declaradas são conjuntivas (AND), não alternativas. A leitura é
     limitada à retenção canônica e não reescreve os itens históricos. Referência
     ausente, ambígua ou circular não se torna uma fonte externa válida.
     """
@@ -439,22 +971,31 @@ def avaliar_suporte_alegacao(registro: Dict[str, Any] | None, alegacao_id: str) 
     por_id: Dict[str, list[Dict[str, Any]]] = {}
     for item in itens:
         por_id.setdefault(str(item.get("id") or ""), []).append(item)
-    cursor, visitados = alegacao_id, set()
     base = {"estado": "sem_restricao_de_suporte", "apoios_revisados": (),
             "autoriza_execucao": False, "prova_implicacao": False}
-    for _ in range(60):
+    apoios, visitados, completos = [], set(), set()
+    def visitar(cursor: str, caminho: frozenset[str]) -> bool:
         candidatos = por_id.get(cursor, [])
-        if cursor in visitados or len(candidatos) != 1:
-            return {**base, "estado": "suporte_interno_invalido"}
+        if cursor in caminho or len(candidatos) != 1:
+            return False
+        if cursor in completos:
+            return True
         visitados.add(cursor)
+        if len(visitados) > 60:
+            return False
         item = candidatos[0]
         if cursor != alegacao_id and item.get("status") in {"contestado", "corrigido"}:
-            return {**base, "estado": "suporte_em_revisao",
-                    "apoios_revisados": ((cursor, item["status"]),)}
-        cursor = referencia_alegacao_da_fonte(item.get("fonte"))
-        if not cursor:
-            return base
-    return {**base, "estado": "suporte_interno_invalido"}
+            apoio = (cursor,item["status"])
+            if apoio not in apoios: apoios.append(apoio)
+        else:
+            fontes = referencias_suporte_alegacao(item)
+            if fontes is None or any(not visitar(f,caminho | {cursor}) for f in fontes):
+                return False
+        completos.add(cursor)
+        return True
+    if not visitar(alegacao_id,frozenset()):
+        return {**base,"estado":"suporte_interno_invalido"}
+    return {**base,"estado":"suporte_em_revisao","apoios_revisados":tuple(apoios)} if apoios else base
 
 
 def _alegacoes_com_suporte(registro: Dict[str, Any] | None) -> list[Dict[str, Any]]:
@@ -464,7 +1005,7 @@ def _alegacoes_com_suporte(registro: Dict[str, Any] | None) -> list[Dict[str, An
         if not isinstance(original, dict):
             continue
         item = dict(original)
-        if item.get("status") not in {"contestado", "corrigido"} and referencia_alegacao_da_fonte(item.get("fonte")):
+        if item.get("status") not in {"contestado", "corrigido"} and referencias_suporte_alegacao(item) != ():
             suporte = avaliar_suporte_alegacao(registro, str(item.get("id") or ""))
             if suporte["estado"] != "sem_restricao_de_suporte":
                 item.update(status=suporte["estado"], apoios_revisados=suporte["apoios_revisados"])
@@ -483,7 +1024,7 @@ def projetar_contestacao_alegacao(
     """Projeção contextual da mesma seleção usada pelo registro, sem outro owner."""
     if not _eh_contestacao(texto):
         return None
-    selecao = selecionar_alegacao_para_revisao(registro, texto, fala_anterior=fala_anterior)
+    selecao = selecionar_alegacao_para_revisao(registro, texto, fala_anterior=fala_anterior, agora=agora)
     return {**selecao, "contestacao": str(texto or "")[:300],
             "status": "nao_confiavel_ate_verificacao" if selecao["referencia"] == "unica" else "referencia_nao_resolvida",
             "ts": time.time() if agora is None else agora}
@@ -625,13 +1166,23 @@ def corrigir_alegacao_recente(
     return _revisar_alegacao(registro, correcao, tipo="correcao", agora=agora)
 
 
+def _aplicar_estado_revisao_alegacao(item: Dict[str, Any], tipo: str, texto: str, instante: float) -> Dict[str, Any]:
+    """Mesmo estado de revisão na entrada humana e na reentrega observada."""
+    revisada = dict(item)
+    revisada.update(status="corrigido" if tipo=="correcao" else "contestado",
+        confianca=min(0.05 if tipo=="correcao" else 0.10,float(item.get("confianca") or 0.0)))
+    revisada[tipo] = str(texto or "")[:300]
+    revisada["corrigido_ts" if tipo=="correcao" else "contestado_ts"] = instante
+    return revisada
+
+
 def _revisar_alegacao(
     registro: Dict[str, Any] | None, texto: str, *, tipo: str,
-    agora: float | None = None,
+    agora: float | None = None, selecao_validada: Dict[str,Any] | None = None,
 ) -> Dict[str, Any]:
     estado = _registro(registro)
     instante = float(agora if agora is not None else time.time())
-    selecao = selecionar_alegacao_para_revisao(estado, texto)
+    selecao = selecao_validada if selecao_validada is not None else selecionar_alegacao_para_revisao(estado, texto, agora=instante)
     estado["revisao_alegacao_atual"] = {**selecao, "tipo": tipo,
         "solicitacao": str(texto or "")[:500], "ts": instante}
     alegacoes = [dict(item) for item in estado.get("alegacoes") or [] if isinstance(item, dict)]
@@ -644,10 +1195,7 @@ def _revisar_alegacao(
                 and item.get(tipo) == str(texto or "")[:300]):
             break
         anterior = dict(item)
-        item.update(status=status, confianca=min(0.05 if tipo == "correcao" else 0.10,
-                    float(item.get("confianca") or 0.0)))
-        item[tipo] = str(texto or "")[:300]
-        item["corrigido_ts" if tipo == "correcao" else "contestado_ts"] = instante
+        item.update(_aplicar_estado_revisao_alegacao(item,tipo,texto,instante))
         revisoes = list(estado["revisoes_alegacoes"])
         revisoes.append({"alegacao_id": item["id"], "tipo": tipo,
             "texto_usuario": str(texto or "")[:500], "anterior": anterior,

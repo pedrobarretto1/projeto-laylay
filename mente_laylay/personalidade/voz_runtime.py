@@ -18,6 +18,7 @@ from mente_laylay.personalidade.retrato_entrega import (
     RetratoEntregaFala,
     criar_retrato_entrega_fala,
 )
+from mente_laylay.personalidade.progresso_fala import ProgressoFala
 from mente_laylay.memoria_mental.implantacao_desempenho import flag_desempenho_ativa
 from mente_laylay.memoria_mental.observabilidade import relatar_falha_opcional
 from mente_laylay.percepcao.dispositivos_audio import selecionar_dispositivo_audio
@@ -131,6 +132,7 @@ class VozRuntime:
         self.stop_event = stop_event or threading.Event()
         self.iniciar_servico_cb = iniciar_servico_cb
         self._worker_thread: Any = None
+        self._progresso_reproducao: ProgressoFala | None = None
         self.aberturas_fala_recentes: deque[str] = deque(maxlen=5)
         self.ultimo_uso_nome_ts = 0.0
         self._ultima_saida_audio: tuple[int, str] | None = None
@@ -774,8 +776,13 @@ class VozRuntime:
                 dispositivo = self._selecionar_saida_audio()
                 caminhos = [primeiro_arquivo]
                 for indice, caminho in enumerate(caminhos):
+                    progresso = self._progresso_reproducao
+                    if progresso is not None and not progresso.pode_emitir():
+                        return False
                     data, samplerate = self.sf.read(caminho)
                     self.sd.play(data, samplerate, device=dispositivo)
+                    if progresso is not None:
+                        progresso.iniciar_audio()
                     if indice == 0:
                         externo_ok = True
                         self._registrar_metrica_voz(
@@ -926,6 +933,11 @@ class VozRuntime:
                 continue
             if item is None:
                 continue
+            progresso = item.get("progresso") if isinstance(item, dict) else None
+            if isinstance(progresso, ProgressoFala) and not progresso.pode_emitir():
+                progresso.concluir()
+                item["done_event"].set()
+                continue
             if isinstance(item, dict):
                 enfileirado = float(item.get("enfileirado_monotonic") or 0.0)
                 if enfileirado > 0.0:
@@ -1007,8 +1019,12 @@ class VozRuntime:
                     )
                 self._trace_reproducao_atual = trace_context
                 self._texto_pronto_reproducao_atual = enfileirado
+                self._progresso_reproducao = progresso
                 entregue = self.reproduzir_fala(texto_final, emocao, nivel) is True
             finally:
+                self._progresso_reproducao = None
+                if isinstance(progresso, ProgressoFala):
+                    progresso.concluir()
                 self.ajustar_estado_fala_cb("retrato_entrega_fala", None)
                 self._trace_reproducao_atual = {}
                 self._texto_pronto_reproducao_atual = 0.0
@@ -1711,12 +1727,19 @@ class VozRuntime:
         _texto_publicado_antecipado: bool = False,
         _retrato_entrega: RetratoEntregaFala | None = None,
         _ao_concluir_entrega: Callable[[bool, str], Any] | None = None,
+        _progresso: ProgressoFala | None = None,
     ) -> bool:
+        if _progresso is not None and (
+            type(_progresso) is not ProgressoFala or not _progresso.pode_emitir()
+        ):
+            return False
         if _retrato_entrega is None and callable(self.estado_emocional_getter):
             _retrato_entrega = criar_retrato_entrega_fala(self.estado_emocional_getter())
         if isinstance(_retrato_entrega, RetratoEntregaFala):
             emocao, nivel = _retrato_entrega.emocao, _retrato_entrega.nivel
         if self.modo_silencioso_ativo():
+            if _progresso is not None:
+                _progresso.concluir()
             # A publicação textual ocorre no orquestrador antes desta chamada.
             # Proatividade não audível não deve ser contabilizada como fala
             # entregue; respostas de turno, por outro lado, continuam válidas
@@ -1728,7 +1751,7 @@ class VozRuntime:
         # A janela curta não interfere num pedido posterior de "repete".
         assinatura_fala = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
         agora = time.monotonic()
-        if not _proativa and assinatura_fala:
+        if not _proativa and _progresso is None and assinatura_fala:
             with self._turno_lock:
                 if (
                     assinatura_fala == self._ultima_solicitacao_fala
@@ -1740,7 +1763,7 @@ class VozRuntime:
                 self._ultima_solicitacao_fala_ts = agora
         pedido_existente = None
         chave = 0.0
-        if not _proativa and callable(self.chave_turno_cb):
+        if not _proativa and _progresso is None and callable(self.chave_turno_cb):
             try:
                 chave = float(self.chave_turno_cb() or 0.0)
             except Exception as erro:
@@ -1831,8 +1854,9 @@ class VozRuntime:
             ),
             "enfileirado_monotonic": time.monotonic(),
             "trace_context": self._obter_trace_contexto(),
+            "progresso": _progresso,
         }
-        if not _proativa and callable(self.chave_turno_cb):
+        if not _proativa and _progresso is None and callable(self.chave_turno_cb):
             with self._turno_lock:
                 self._pedido_turno_pendente = pedido
         self.fila.put(pedido)

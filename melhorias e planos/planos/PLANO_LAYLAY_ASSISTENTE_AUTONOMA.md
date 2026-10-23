@@ -340,3 +340,25 @@ A composição importa `laylay.py`, usa o runtime, validador, writer, estado e d
 Gate com vizinhos: **600 aprovados e 10 subtestes**, 41,67 s. Regressão ampla da revisão final: **10.161 aprovados, um ignorado e 56 subtestes**, nenhuma falha, 499,80 s. XML em `.pytest_cache/aut01_admissao_ampla.xml`. Manifesto em `.pytest_cache/aut01_admissao_hashes.json`: 222 arquivos Python acompanhados, hashes iguais antes/depois da suíte e novamente conferidos depois. HEAD/branch preservados e `git diff --check` sem erros. Totais abrangem a worktree inteira, incluindo alterações paralelas; não são ganhos exclusivos deste candidato.
 
 AUT-01 permanece parcial. Esta conferência não mantém lock durante efeitos externos, não cancela uma ação já iniciada, não impede uma troca entre a leitura e o efeito dentro de um executor e não certifica som, GUI ou dispositivos físicos. Revalidação da autoridade no próprio limite do efeito, resultado tardio de ação em curso e finalização que chama modelo/fala depois da admissão mantêm investigação própria. Nenhuma raiz histórica foi encerrada por esses controles.
+
+## 11. AUT-08 — piloto autorizado de fala e execução concorrentes, 22/10/2026
+
+Pedro autorizou iniciar um objetivo pequeno com duas habilidades e validar no
+runtime real. Entrega: texto copiado para arquivo novo, reaproveitando quadro,
+governança, ciclo/executor canônicos, execução silenciosa e receipts observados.
+Progresso e conclusão são emissões distintas; esperar pelo início do áudio não
+conserva autorização. Revalidar antes do efeito; falha de voz não bloqueia a ação.
+
+No ensaio instalado final, com memória isolada e clipboard/disco/Edge TTS reais,
+o arquivo foi observado com hash correto enquanto tocava o anúncio; a conclusão
+também teve reprodução confirmada. Controles reais de cancelamento, troca de
+turno, indisponibilidade do destino e modo silencioso preservaram os contratos.
+21 testes locais novos e uma regressão instalada; seleção de 325 GREEN. Ampliada:
+552 GREEN, dois REDs independentes de estrutura composta e um controle de
+serialização desmarcado, todos registrados com contraprovas delimitadas.
+
+Detalhes, hashes, limites e reprodução:
+`artifacts/fala_execucao/RELATORIO_20261022.md` e
+`scripts/validar_fala_execucao_real.py`. TTS teve HTTP 429 intermitente, sem mudança
+de voz. Não se declara autonomia geral, objetivos persistentes ou encerramento
+das demais raízes. Nenhum reinício da sessão desktop existente, nenhum commit.

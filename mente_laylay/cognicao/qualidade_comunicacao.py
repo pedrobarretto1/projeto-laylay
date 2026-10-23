@@ -988,6 +988,7 @@ def contingencia_comunicacao(
     contrato_reparo: Mapping[str, Any] | None = None,
     falas_evitar: Iterable[str] = (),
     motivo_falha: str = "",
+    somente_realizacao_contextual: bool = False,
 ) -> str:
     """Último recurso contextual quando a única tentativa de reparo também falha."""
     texto = _normalizar(texto_usuario)
@@ -1303,9 +1304,17 @@ def contingencia_comunicacao(
             "Tá certo, discordar não quebra nada. Só deixa a conversa menos preguiçosa.",
             "Tudo bem. Eu tenho opinião, não contrato de obediência kkk.",
         ], evitar=falas_evitar)
+    if somente_realizacao_contextual:
+        # Tentativa local: não substituir ausência de realização por um
+        # pedido de contexto ou por uma conclusão de falha já encerrada.
+        return ""
     conclusao_falha = fala_falha_geracao(motivo_falha)
     if conclusao_falha:
         return conclusao_falha
+    if motivo_falha:
+        # Uma rejeição observada pela revisão é falha da resposta. Não é
+        # evidência de que o usuário omitiu contexto ou precisa completar a fala.
+        return fala_falha_geracao("reparo_rejeitado")
     if "?" in texto:
         return escolher_variacao([
             "Essa eu não consegui fechar sem chutar. Me dá um detalhe a mais?",

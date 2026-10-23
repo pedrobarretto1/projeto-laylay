@@ -321,6 +321,12 @@ function inspectYouTubePlayerInPage() {
     const muted = !!video?.muted;
     const volume = Number(video?.volume ?? 0);
     const readyState = Number(video?.readyState ?? 0);
+    const playerElement = document.querySelector('.html5-video-player');
+    const isAd = Boolean(
+      document.body?.classList?.contains('ad-showing') || document.body?.classList?.contains('ad-interrupting') ||
+      playerElement?.classList?.contains('ad-showing') || playerElement?.classList?.contains('ad-interrupting') ||
+      String(location.href).includes('ad_id') || String(location.href).includes('doubleclick')
+    );
     const rawTitle = String(document.title || "");
     const channelNode =
       document.querySelector("#upload-info #channel-name") ||
@@ -375,6 +381,7 @@ function inspectYouTubePlayerInPage() {
     }).filter((item) => item.title);
     return {
       ok: !!video,
+      isAd: video ? isAd : null,
       playing,
       audible: playing && !muted && volume > 0 && readyState >= 2,
       paused: !!video?.paused,
@@ -550,6 +557,7 @@ async function discoverExistingYouTubePlayback() {
       tabActive: tab.active === true,
       audibleConfirmed: probe.audible === true || tab.audible === true,
       playingConfirmed: probe.playing === true,
+      isAd: typeof probe.isAd === 'boolean' ? probe.isAd : null,
       observedAt: Number(probe.observedAt || Date.now()),
     });
   } finally {

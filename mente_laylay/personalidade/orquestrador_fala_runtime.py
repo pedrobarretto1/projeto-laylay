@@ -21,7 +21,10 @@ from mente_laylay.personalidade.retrato_entrega import (
     criar_retrato_entrega_fala,
 )
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
-from mente_laylay.memoria_mental.registro_semantico import registrar_fala_observada
+from mente_laylay.personalidade.progresso_fala import ProgressoFala
+from mente_laylay.memoria_mental.registro_semantico import (
+    registrar_fala_observada, registrar_esclarecimento_proposicao_entregue,
+)
 from mente_laylay.personalidade.confirmacao_llm import (
     INTENTS_INFORMATIVOS, personalizar_confirmacao_composta_llm,
 )
@@ -86,6 +89,7 @@ class OrquestradorFalaRuntime:
         self._observadores_texto_final: list[Callable[..., Any]] = []
         self._observadores_entrega_resultados: list[Callable[..., Any]] = []
         self._textos_publicados_turno: dict[str, list[str]] = {}
+        self._progressos: dict[str, ProgressoFala] = {}
         self._lote_resultados: ContextVar[_LoteResultadosOperacionais | None] = ContextVar(
             "lote_resultados_operacionais", default=None,
         )
@@ -135,9 +139,9 @@ class OrquestradorFalaRuntime:
             # apresentação segue o snapshot mais recente do publicador.
             lote.resultados[indice] = receipt
         lote.contexto.update(dict(contexto or {}))
-        if receipt.intent in INTENTS_INFORMATIVOS or receipt.aspectos:
+        if receipt.intent in INTENTS_INFORMATIVOS or receipt.tem_observacoes_do_executor:
             lote.informacoes[receipt.id_solicitacao] = (fala_resultado_por_aspectos(receipt)
-                if receipt.aspectos else str(texto or "").strip())
+                if receipt.tem_observacoes_do_executor else str(texto or "").strip())
         else:
             lote.informacoes.pop(receipt.id_solicitacao, None)
         return True
@@ -402,7 +406,7 @@ class OrquestradorFalaRuntime:
         nivel: int = 1,
     ) -> bool:
         """Entrega no máximo uma confirmação para o mesmo resultado do turno."""
-        if isinstance(resultado, ResultadoAcao) and resultado.aspectos:
+        if isinstance(resultado, ResultadoAcao) and resultado.tem_observacoes_do_executor:
             texto = fala_resultado_por_aspectos(resultado)
         if self.acumular_resultado_operacional(resultado, texto, emocao, nivel):
             return True
@@ -543,6 +547,32 @@ class OrquestradorFalaRuntime:
         ns["salvar_memoria"]()
         ns["print"]("🧠 [CONTEXTO] assunto encerrado; fatos duráveis preservados")
 
+    def anunciar_etapa(
+        self, plano: Mapping[str, Any], etapa: Mapping[str, Any], *,
+        vigente: Callable[[], bool],
+    ) -> None:
+        """Anuncia uma etapa admitida e espera só o início do áudio.
+
+        O executor mantém autoridade, cancelamento e receipt. Falha de voz
+        não impede o trabalho; espera vencida invalida o anúncio enfileirado.
+        """
+        texto = str(etapa.get("descricao_progresso") or "").strip()
+        if not texto:
+            return
+        chave = f"{plano['id']}:{etapa['id']}"
+        with self._lock_confirmacoes:
+            if chave in self._progressos:
+                return
+            progresso = ProgressoFala(chave, vigente)
+            self._progressos[chave] = progresso
+            while len(self._progressos) > 80:
+                self._progressos.pop(next(iter(self._progressos)))
+        if not self.falar(texto, _progresso=progresso):
+            progresso.concluir()
+            return
+        voz = self._ns()["_voz_runtime"]
+        progresso.aguardar_inicio(float(getattr(voz, "tts_timeout_s", 8.0)) + 1.0)
+
     def falar(
         self,
         texto: str,
@@ -552,6 +582,7 @@ class OrquestradorFalaRuntime:
         _proativa: bool = False,
         _avaliacao_evento: Mapping[str, Any] | None = None,
         _resultados_entrega: tuple[ResultadoAcao, ...] = (),
+        _progresso: ProgressoFala | None = None,
     ) -> bool:
         """Aceita comunicação por texto publicado ou pela porta de voz.
 
@@ -560,7 +591,7 @@ class OrquestradorFalaRuntime:
         ``wait`` espera a tentativa de voz, sem invalidar texto já publicado.
         """
         lote = self._lote_resultados.get()
-        if lote is not None and not _proativa:
+        if lote is not None and not _proativa and _progresso is None:
             fala_pendente = str(texto or "").strip()
             if fala_pendente:
                 # A chamada direta não trouxe um receipt próprio. Receipts
@@ -587,6 +618,15 @@ class OrquestradorFalaRuntime:
         # A fala já foi escrita pela LLM ou pelo executor operacional. Esta
         # fronteira não corrige estilo, autorreferência nem injeta memória.
         fala = str(texto or "").strip()
+        if _progresso is not None:
+            if not _progresso.pode_emitir():
+                return False
+            verificacao = validar_alegacoes_da_fala(
+                fala, plano={"requer_execucao": False, "comandos": [],
+                             "exigir_receipt_para_estado": True}, origem="canal_voz",
+            )
+            if verificacao.get("problemas"):
+                return False
         if eh_estado_tecnico_llm(fala):
             ns["print"]("⚠️ [FALA] estado técnico da LLM absorvido antes da voz")
             if plano_antes.get("requer_execucao"):
@@ -623,7 +663,8 @@ class OrquestradorFalaRuntime:
         retrato_entrega = criar_retrato_entrega_fala(
             getattr(estado, "conversacional", {}),
             mensagem_id=(
-                f"proativa:{time.time_ns()}" if _proativa
+                f"progresso:{_progresso.id}" if _progresso is not None
+                else f"proativa:{time.time_ns()}" if _proativa
                 else (f"turno:{turno_id}" if turno_id else "")
             ),
         )
@@ -694,7 +735,11 @@ class OrquestradorFalaRuntime:
                             fala=texto_entregue, resultados=resultados_entrega,
                             canal=canal,
                         )
-                        return {**mental, "registro_semantico": registro}
+                        return registrar_esclarecimento_proposicao_entregue(
+                            {**mental, "registro_semantico": registro},
+                            dict(plano_antes.get("contrato_fala") or {}).get("revisao_alegacao"),
+                            entrega_id=ocorrencia_fala_id,turno_id=turno_id,
+                        )
                     estado.atualizar("mental", registrar_vinculo)
                 except (ValueError, TypeError) as erro:
                     ns["print"](f"⚠️ [FALA:EVIDÊNCIA] vínculo recusado: {type(erro).__name__}")
@@ -714,6 +759,8 @@ class OrquestradorFalaRuntime:
         if texto_publicado:
             concluir_entrega(True, fala, "texto_publicado")
         parametros_entrega = {}
+        if _progresso is not None:
+            parametros_entrega["_progresso"] = _progresso
         if not texto_publicado and not _proativa and (callable(registrar_entrega) or resultados_entrega):
             parametros_entrega["_ao_concluir_entrega"] = lambda entregue, texto: concluir_entrega(
                 entregue, texto, "audio_reproducao_confirmada")

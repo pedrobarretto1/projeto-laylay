@@ -289,6 +289,7 @@ class RespostaPreparadaTurnoDict(TypedDict, total=False):
     proposta_principal: ContratoPropostaPrincipal
     extracao_original: ExtracaoRespostaIA
     autoria_revisada_proposta: Any
+    falha_resposta_observada: Any
 
 
 _CAMPOS_DECISAO = {
@@ -699,9 +700,23 @@ class ContratoRespostaTurno:
     proposta_principal: ContratoPropostaPrincipal | None = None
     extracao_original: ExtracaoRespostaIA | None = None
     autoria_revisada_proposta: Any = None
+    falha_resposta_observada: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "fala", str(self.fala or "").strip())
+        from mente_laylay.cognicao.estado_tecnico_llm import FalhaRespostaObservada, realizacao_falha_resposta
+        fonte = self.falha_resposta_observada
+        if (type(fonte) is not FalhaRespostaObservada or self.comandos
+            or realizacao_falha_resposta({"id": fonte.turno_id, "texto_usuario": fonte.texto_usuario,
+                "falha_resposta_observada": fonte}) != self.fala):
+            object.__setattr__(self, "falha_resposta_observada", None)
+        elif self.proposta_principal is not None:
+            import hashlib
+            principal = self.proposta_principal
+            if (type(principal) is not ContratoPropostaPrincipal
+                or principal.turno_id != fonte.turno_id or principal.texto_usuario != fonte.texto_usuario
+                or hashlib.sha256(str(principal.resposta_bruta).encode("utf8")).hexdigest() != fonte.principal_sha256):
+                object.__setattr__(self, "falha_resposta_observada", None)
         from mente_laylay.cognicao.suporte_autoria import AutoriaRevisadaProposta
         if (type(self.autoria_revisada_proposta) is not AutoriaRevisadaProposta
             or self.autoria_revisada_proposta.fala_original != self.fala):
@@ -760,6 +775,8 @@ class ContratoRespostaTurno:
             dados["extracao_original"] = self.extracao_original
         if self.autoria_revisada_proposta is not None:
             dados["autoria_revisada_proposta"] = self.autoria_revisada_proposta
+        if self.falha_resposta_observada is not None:
+            dados["falha_resposta_observada"] = self.falha_resposta_observada
         if self.leitura_semantica_reparada:
             dados["leitura_semantica_reparada"] = deepcopy(dict(self.leitura_semantica_reparada))
         return dados
@@ -805,4 +822,5 @@ def normalizar_resposta_preparada(
         proposta_principal=origem.get("proposta_principal"),
         extracao_original=origem.get("extracao_original"),
         autoria_revisada_proposta=origem.get("autoria_revisada_proposta"),
+        falha_resposta_observada=origem.get("falha_resposta_observada"),
     )

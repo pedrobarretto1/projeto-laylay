@@ -601,6 +601,14 @@ class ContextoPromptRuntime:
                 pacote_historico = montar_pacote_explicacao_historica(plano_historico)
                 if pacote_historico is not None:
                     return concluir(pacote_historico)
+            if (len(turno.get("segmentos") or ()) <= 1
+                and (turno.get("modalidade_geral") or turno.get("modalidade")) != "misto"):
+                from mente_laylay.cognicao.geracao_concreta import montar_pacote_estado_sem_observacao
+                from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
+                pacote_estado = montar_pacote_estado_sem_observacao(str(mensagens[-1]["content"]), contrato=contrato,
+                    evidencia_fala=recuperar_evidencia_da_fala(str(mensagens[-1]["content"]), estado))
+                if pacote_estado is not None:
+                    return concluir(pacote_estado)
         if (
             identidade_atual
             and dict(contrato.get("roteiro_concreto") or {}).get("estrategia") == "explicacao_capacidades"

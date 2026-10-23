@@ -1,0 +1,84 @@
+{
+  "current": {
+    "geometry": [
+      1148,
+      120,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1279,
+      120
+    ],
+    "phase": "compact",
+    "saved_position": null,
+    "hwnd": 1312074,
+    "same_objects": true,
+    "renderer_ready": true,
+    "enviadas": 0,
+    "mente_iniciada": false,
+    "tipo_janela_diagnostico": true
+  },
+  "history": [
+    {
+      "t": 0.189,
+      "geometry": [
+        1148,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1312074,
+      "same_objects": true,
+      "renderer_ready": false,
+      "enviadas": 0,
+      "mente_iniciada": false,
+      "tipo_janela_diagnostico": true
+    },
+    {
+      "t": 0.335,
+      "geometry": [
+        1148,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1312074,
+      "same_objects": true,
+      "renderer_ready": true,
+      "enviadas": 0,
+      "mente_iniciada": false,
+      "tipo_janela_diagnostico": true
+    }
+  ]
+}

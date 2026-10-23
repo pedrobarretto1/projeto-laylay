@@ -338,10 +338,10 @@ _CONTRATO_POR_DOMINIO = {
         "limites": "não promove inferência isolada a fato confirmado",
     },
     "cooperacao": {
-        "invocacao_natural": ("faz estas etapas juntas",),
+        "invocacao_natural": ("faz estas etapas juntas", "salva o que eu copiei em um arquivo chamado estudo"),
         "proprietario": "mente_laylay.autonomia.orquestracao_cooperativa",
         "dependencias": ("porteiro", "executores participantes"),
-        "limites": "cada etapa mantém autorização e evidência próprias",
+        "limites": "cada etapa mantém autorização e evidência próprias; no fluxo texto copiado para arquivo, progresso e conclusão são separados, com sobreposição condicionada à disponibilidade do áudio",
     },
     "conversa": {
         "invocacao_natural": ("vai chover hoje", "o que você sugere"),

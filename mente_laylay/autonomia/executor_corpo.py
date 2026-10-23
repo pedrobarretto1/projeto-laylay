@@ -1,13 +1,15 @@
 """Executa pedidos corporais autorizados, sem afirmar locomoção observada."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
 from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
 from mente_laylay.memoria_mental.resultado_acao import AspectoResultado
+from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado, FalhaExecucaoComFontes
+from mente_laylay.memoria_mental.experiencia_corporal_runtime import medicoes_rotacao_observadas, nao_qualificacoes_rotacao_observadas
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +23,7 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
                             ctx: dict[str, Any], deps: DependenciasExecutorCorpo) -> ResultadoDespacho:
     if intent not in {"CORPO_MOVER", "CORPO_PARAR", "CORPO_COMPANHIA"}:
         return ResultadoDespacho.nao_tratado()
+    fontes = None
 
     def concluir(status: str, *, ok: bool, detalhe: str, fala: str, receipt: dict[str, Any] | None = None) -> ResultadoDespacho:
         executou = ok or (receipt or {}).get("aplicacao_pwm_confirmada") is True
@@ -35,7 +38,13 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
         deps.marcar_resultado(status, executou=executou, confirmado=ok, detalhe=detalhe,
             alvo_resolvido="corpo", params_resolvidos=params,
             contexto_resultado={"receipt_corpo": dict(receipt or {}), "prova_deslocamento": False},
-            evidencia_confirmacao=str((receipt or {}).get("evidencia") or ""), aspectos=aspectos)
+            evidencia_confirmacao=str((receipt or {}).get("evidencia") or ""), aspectos=aspectos,
+            medicoes=medicoes_rotacao_observadas(receipt or {}, ocorrencia_id=deps.id_solicitacao),
+            nao_qualificacoes_medicao=nao_qualificacoes_rotacao_observadas(receipt or {}, ocorrencia_id=deps.id_solicitacao),
+            expectativas=tuple(replace(e, ocorrencia_id=deps.id_solicitacao) for e in fontes.expectativas)
+                if fontes is not None and deps.id_solicitacao else (),
+            inicio_execucao=fontes.iniciada_em if fontes is not None else None,
+            fontes_ocorrencia=fontes if fontes is not None and deps.id_solicitacao else None)
         deps.falar_por_status(status, fala, alvo="corpo", executou=executou, confirmado=ok, detalhe=detalhe)
         return ResultadoDespacho.concluido(ok)
 
@@ -87,7 +96,13 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
                 if isinstance(s, dict) and autoriza_execucao_efetiva(s)
                 and detectar_intencao_corpo(str(s.get("texto") or "")) == candidato), {})
         receipt = corpo.executar(intent, params, autorizacao=concessao_turno) if intent == "CORPO_COMPANHIA" else corpo.executar(intent, params)
+        receipt = dict(receipt)
+        captura = receipt.pop("_fontes_resultado", None)
+        fontes = captura if type(captura) is FontesComparacaoResultado else None
     except Exception as erro:
+        if type(erro) is FalhaExecucaoComFontes:
+            fontes = erro.fontes
+            erro = erro.__cause__ if isinstance(erro.__cause__, Exception) else erro
         return concluir("falha_execucao", ok=False, detalhe=f"executor corporal: {type(erro).__name__}",
                         fala="O controle do corpo falhou. Não consegui confirmar a execução.")
     if receipt.get("ok") is not True:

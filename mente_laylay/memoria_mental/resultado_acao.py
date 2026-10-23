@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Dict
 from uuid import uuid4
+from mente_laylay.memoria_mental.decisao_observada import MedicaoObservada, NaoQualificacaoMedicao, ExpectativaResultado, FontesComparacaoResultado
 
 # P0_PUBLICACAO_RESULTADO_PRIORITARIO_V1_20260815
 # Marcador transitório no dict que originou uma execução. Ele nunca integra
@@ -64,7 +65,7 @@ def identificar_solicitacao_execucao(
             "status", "executou", "confirmado", "origem", "ok",
             "evidencia_confirmacao", "confirmacao_oferecida",
             "estado_final", "estado_confirmacao", "tratado",
-            "aspectos",
+            "aspectos", "medicoes", "nao_qualificacoes_medicao", "expectativas", "inicio_execucao", "fontes_ocorrencia",
             "resultado_publicado", "retorno_legado", "legado",
             CHAVE_RESULTADO_OPERACIONAL_PUBLICADO, CHAVE_TRATAMENTO_OPERACIONAL,
         ):
@@ -278,6 +279,11 @@ class ResultadoAcao:
     confirmacao_oferecida: str = ""
     evidencia_confirmacao: str = ""
     aspectos: tuple[AspectoResultado, ...] = ()
+    medicoes: tuple[MedicaoObservada, ...] = ()
+    nao_qualificacoes_medicao: tuple[NaoQualificacaoMedicao, ...] = ()
+    expectativas: tuple[ExpectativaResultado, ...] = ()
+    inicio_execucao: float | None = None
+    fontes_ocorrencia: FontesComparacaoResultado | None = None
 
     def __post_init__(self) -> None:
         intent = str(self.intent or self.acao or "").strip().upper()
@@ -298,6 +304,29 @@ class ResultadoAcao:
                 or len({a.escopo for a in self.aspectos}) != len(self.aspectos)
                 or (self.aspectos and (self.origem != "executor" or not self.id_solicitacao))):
             raise ValueError("Aspectos exigem captura tipada do executor e da mesma ocorrência.")
+        if (type(self.medicoes) is not tuple or len(self.medicoes) > 8
+                or any(type(m) is not MedicaoObservada or m.ocorrencia_id != self.id_solicitacao
+                       for m in self.medicoes)
+                or len({(m.owner, m.grandeza, m.unidade, m.metodo) for m in self.medicoes}) != len(self.medicoes)
+                or (self.medicoes and (self.origem != "executor" or not self.id_solicitacao))):
+            raise ValueError("Medições exigem captura tipada do executor e da mesma solicitação.")
+        if (type(self.nao_qualificacoes_medicao) is not tuple or len(self.nao_qualificacoes_medicao) > 8
+                or any(type(n) is not NaoQualificacaoMedicao or n.ocorrencia_id != self.id_solicitacao
+                    for n in self.nao_qualificacoes_medicao)
+                or len({(n.owner, n.grandeza, n.unidade, n.fonte) for n in self.nao_qualificacoes_medicao}) != len(self.nao_qualificacoes_medicao)
+                or (self.nao_qualificacoes_medicao and (self.origem != "executor" or not self.id_solicitacao))):
+            raise ValueError("Não qualificações exigem captura tipada do executor e da mesma solicitação.")
+        if (type(self.expectativas) is not tuple
+                or ((self.expectativas or self.inicio_execucao is not None) and self.origem != "executor")):
+            raise ValueError("Expectativas exigem captura tipada do executor.")
+        if self.expectativas or self.inicio_execucao is not None:
+            FontesComparacaoResultado(self.id_solicitacao, self.expectativas, self.medicoes, self.inicio_execucao)
+        if self.fontes_ocorrencia is not None:
+            f = self.fontes_ocorrencia
+            if (type(f) is not FontesComparacaoResultado or self.origem != "executor"
+                    or not f.expectativas or f.medicoes or f.iniciada_em != self.inicio_execucao
+                    or tuple(replace(e,ocorrencia_id=self.id_solicitacao) for e in f.expectativas) != self.expectativas):
+                raise ValueError("Vínculo histórico exige captura original tipada da mesma execução.")
         # Importação tardia evita o ciclo especialistas -> operacional ->
         # resultado_acao durante a inicialização do pacote.
         from mente_laylay.especialistas.capacidades import consultar_capacidade
@@ -318,6 +347,11 @@ class ResultadoAcao:
             object.__setattr__(self, "confirmado", None)
         if self.ok is None and self.executou is not None:
             object.__setattr__(self, "ok", bool(self.executou))
+
+    @property
+    def tem_observacoes_do_executor(self) -> bool:
+        """Presença de fontes estruturadas; não é permissão nem confirmação."""
+        return bool(self.aspectos or self.medicoes or self.nao_qualificacoes_medicao or self.expectativas)
 
     @property
     def estado_final(self) -> str:
@@ -350,6 +384,17 @@ class ResultadoAcao:
             "confirmacao_oferecida": self.confirmacao_oferecida,
             "evidencia_confirmacao": self.evidencia_confirmacao,
             **({"aspectos": [asdict(a) for a in self.aspectos]} if self.aspectos else {}),
+            **({"medicoes": [asdict(m) for m in self.medicoes]} if self.medicoes else {}),
+            **({"nao_qualificacoes_medicao": [asdict(n) for n in self.nao_qualificacoes_medicao]}
+               if self.nao_qualificacoes_medicao else {}),
+            **({"expectativas": [asdict(e) for e in self.expectativas], "inicio_execucao": self.inicio_execucao}
+               if self.expectativas else {}),
+            **({"fontes_ocorrencia":{
+                "id":self.fontes_ocorrencia.id,
+                "expectativas":[asdict(e) for e in self.fontes_ocorrencia.expectativas],
+                "medicoes":[], "iniciada_em":self.fontes_ocorrencia.iniciada_em,
+                "autoriza_execucao":False,"confirma_efeito":False,
+            }} if self.fontes_ocorrencia is not None else {}),
             "estado_confirmacao": (
                 "cancelado" if self.status in STATUS_RESULTADO_CANCELADO
                 else "confirmado" if self.confirmado is True

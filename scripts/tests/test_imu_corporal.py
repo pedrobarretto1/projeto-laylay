@@ -95,7 +95,18 @@ def test_pedido_natural_de_giro_tem_medida_e_autorizacao_canonica(texto,direcao,
         caminho=_caminho(ponte=rosto,texto=texto)
         assert executar_intencao(pedido,texto,caminho.ctx)
         assert caminho.receipts[-1].contexto["receipt_corpo"]["prova_rotacao"]
-        assert "sensor mediu aproximadamente" in caminho.falas[-1][0]
+        # A redação antiga arredondava e apagava o sinal. O contrato comum
+        # precisa preservar a leitura do receipt e sua ressalva, sem congelar
+        # uma frase particular do executor corporal.
+        receipt = caminho.receipts[-1]
+        assert len(receipt.medicoes) == 1
+        medida = receipt.medicoes[0]
+        assert medida.ocorrencia_id == receipt.id_solicitacao
+        assert medida.valor == receipt.contexto["receipt_corpo"]["rotacao_medida_graus"]
+        assert medida.valor == (angulo if direcao == "esquerda" else -angulo)
+        assert medida.unidade == "graus" and medida.metodo == "imu_relativa_turnend_e_sack"
+        assert str(medida.valor) in caminho.falas[-1][0]
+        assert medida.limite_observacao in caminho.falas[-1][0]
         assert len([c for c in esp.enviados if c.startswith("TURN ")])==1
         assert not motores(esp)
         assert caminho.estado.mental["corpo_motor"]["prova_rotacao"]

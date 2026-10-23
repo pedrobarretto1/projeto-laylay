@@ -10,8 +10,71 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import re
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, TYPE_CHECKING
 from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual
+
+if TYPE_CHECKING:
+    from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+
+
+_REALIZACOES_LIMITE_OBSERVACAO = (
+    "Ainda não tenho uma leitura atual desse estado para responder com segurança.",
+    "Preciso de uma observação atual desse estado para responder com segurança.",
+)
+
+
+def montar_pacote_estado_sem_observacao(texto: str, *, contrato: Mapping[str, Any],
+                                       evidencia_fala: Mapping[str, Any] | None = None) -> PacotePrompt | None:
+    """A ausência de fonte atual permite um limite, não fatos novos sobre o alvo.
+
+    A decisão vem do roteiro canônico. Esta projeção não consulta outro estado,
+    não escolhe executor e não transforma falta de leitura em incapacidade.
+    """
+    from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
+    from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
+    if contrato.get("autoriza_execucao") is not False or not contrato.get("turno_id"):
+        return None
+    estrategia = dict(contrato.get("roteiro_concreto") or {}).get("estrategia")
+    instrucao = ("A consulta atual não dispõe de observação suficiente. "
+        "Escolha uma realização permitida pelo contrato de saída. Isso relata apenas o limite "
+        "desta resposta: não diagnostica o recurso, não nega capacidade e não autoriza ação.")
+    nome = "limite_observacao_v1"
+    if estrategia == "estado_observavel_sem_evidencia":
+        opcoes = _REALIZACOES_LIMITE_OBSERVACAO
+    elif estrategia == "esclarecimento_literal":
+        evidencia = dict(evidencia_fala or {})
+        falas = evidencia.get("falas")
+        anterior = contrato.get("fala_anterior_relevante")
+        if (anterior not in _REALIZACOES_LIMITE_OBSERVACAO
+            or evidencia.get("autoriza_execucao") is not False
+            or evidencia.get("referencia_ambigua") is not False
+            or not isinstance(falas, list) or len(falas) != 1 or not isinstance(falas[0], Mapping)
+            or falas[0].get("fala") != anterior
+            or not falas[0].get("id") or not falas[0].get("turno_id")
+            or str(falas[0]["turno_id"]) == str(contrato["turno_id"])):
+            return None
+        # Esta linguagem foi emitida pelo próprio realizer acima. Sua
+        # equivalência de sentido é controlada, não uma certificação de
+        # paráfrases arbitrárias nem uma atualização do estado do recurso.
+        opcoes = ("Quis dizer que é preciso observar o estado antes de descrevê-lo. "
+                  "Minha frase não afirma que o recurso esteja com defeito nem que eu tenha perdido acesso a ele.",)
+        instrucao = ("Esclareça o significado da frase entregue, pela realização permitida. "
+                     "Não repita a frase original nem conclua estado, causa, tentativa ou efeito atual.")
+        nome = "sentido_limite_observacao_v1"
+    else:
+        return None
+    def validar(dados: dict[str, Any]) -> None:
+        if set(dados) != {"fala", "comandos"} or dados.get("fala") not in opcoes or dados.get("comandos") != []:
+            raise ValueError("limite_de_observacao_nao_preservado")
+    codec = ContratoSaidaEstruturada(nome=nome, marcador="LIMITE_OBSERVACAO_V1",
+        esquema={"type": "object", "additionalProperties": False, "required": ["fala", "comandos"],
+                 "properties": {"fala": {"type": "string", "enum": list(opcoes)},
+                                "comandos": {"type": "array", "maxItems": 0, "items": {"type": "object"}}}},
+        validar=validar)
+    return PacotePrompt((
+        {"role": "system", "content": instrucao},
+        {"role": "user", "content": texto},
+    ), contexto_fechado=True, reserva_saida_tokens=192, contrato_saida=codec)
 from mente_laylay.cognicao.fundamentacao_factual import (
     avaliar_candidatos_recomendacao, texto_pede_recomendacao,
 )

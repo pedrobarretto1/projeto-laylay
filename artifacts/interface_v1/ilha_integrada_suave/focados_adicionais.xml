@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="3" time="2.076" timestamp="2026-10-21T13:00:02.280181-03:00" hostname="maquina2"><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_confirmacao_visual_antiga_nao_conclui_transicao_nova" time="1.085" /><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_controles_streaming_integrados_cabem_no_viewport_estreito[360]" time="0.207"><failure message="AssertionError: O hint mínimo não pode impedir o layout estreito&#10;assert 58 == 0&#10; +  where 58 = &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A17142C0&gt;()&#10; +    where &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A17142C0&gt; = &lt;PySide6.QtWidgets.QScrollBar(0x22723922070) at 0x00000226A17142C0&gt;.maximum&#10; +      where &lt;PySide6.QtWidgets.QScrollBar(0x22723922070) at 0x00000226A17142C0&gt; = &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A16BC780&gt;()&#10; +        where &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A16BC780&gt; = &lt;PySide6.QtWidgets.QScrollArea(0x22723390a90) at 0x00000226A16BC780&gt;.horizontalScrollBar">interface_web = (&lt;PySide6.QtWidgets.QApplication(0x22698c9c500) at 0x000002269E2F1B80&gt;, &lt;cliente.terminal_laylay_2.PonteWorker(0x22722...0226A16B6A40&gt;, &lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x2269bd69c80) at 0x000002269E545100&gt;, [], [])
+largura = 360
+
+    @pytest.mark.parametrize('largura', [360, 390])
+    def test_controles_streaming_integrados_cabem_no_viewport_estreito(interface_web, largura):
+        from PySide6.QtWidgets import QScrollArea
+        from PySide6.QtTest import QTest
+        from cliente.terminal_2.streaming import PaginaStreaming
+    
+        _app, _worker, _janela, enviadas, _eventos = interface_web
+        host = QScrollArea()
+        host.setWidgetResizable(True)
+        host.resize(largura, 540)
+        pagina = PaginaStreaming(host, expandir_no_host=lambda _: None)
+        host.setWidget(pagina)
+        try:
+            host.show()
+            QTest.qWait(100)
+&gt;           assert host.horizontalScrollBar().maximum() == 0, "O hint mínimo não pode impedir o layout estreito"
+E           AssertionError: O hint mínimo não pode impedir o layout estreito
+E           assert 58 == 0
+E            +  where 58 = &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A17142C0&gt;()
+E            +    where &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A17142C0&gt; = &lt;PySide6.QtWidgets.QScrollBar(0x22723922070) at 0x00000226A17142C0&gt;.maximum
+E            +      where &lt;PySide6.QtWidgets.QScrollBar(0x22723922070) at 0x00000226A17142C0&gt; = &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A16BC780&gt;()
+E            +        where &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A16BC780&gt; = &lt;PySide6.QtWidgets.QScrollArea(0x22723390a90) at 0x00000226A16BC780&gt;.horizontalScrollBar
+
+scripts\tests\test_terminal_desktop_integrado.py:190: AssertionError</failure></testcase><testcase classname="scripts.tests.test_terminal_desktop_integrado" name="test_controles_streaming_integrados_cabem_no_viewport_estreito[390]" time="0.197"><failure message="AssertionError: O hint mínimo não pode impedir o layout estreito&#10;assert 28 == 0&#10; +  where 28 = &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A16C90C0&gt;()&#10; +    where &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A16C90C0&gt; = &lt;PySide6.QtWidgets.QScrollBar(0x226a3615da0) at 0x00000226A16C90C0&gt;.maximum&#10; +      where &lt;PySide6.QtWidgets.QScrollBar(0x226a3615da0) at 0x00000226A16C90C0&gt; = &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A40A4600&gt;()&#10; +        where &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A40A4600&gt; = &lt;PySide6.QtWidgets.QScrollArea(0x226a3309830) at 0x00000226A40A4600&gt;.horizontalScrollBar">interface_web = (&lt;PySide6.QtWidgets.QApplication(0x22698c9c500) at 0x000002269E2F1B80&gt;, &lt;cliente.terminal_laylay_2.PonteWorker(0x226a3...0226A16B7FC0&gt;, &lt;cliente.terminal_2.interface_web_v1.JanelaInterfaceWebV1(0x2272337c810) at 0x00000226A17335C0&gt;, [], [])
+largura = 390
+
+    @pytest.mark.parametrize('largura', [360, 390])
+    def test_controles_streaming_integrados_cabem_no_viewport_estreito(interface_web, largura):
+        from PySide6.QtWidgets import QScrollArea
+        from PySide6.QtTest import QTest
+        from cliente.terminal_2.streaming import PaginaStreaming
+    
+        _app, _worker, _janela, enviadas, _eventos = interface_web
+        host = QScrollArea()
+        host.setWidgetResizable(True)
+        host.resize(largura, 540)
+        pagina = PaginaStreaming(host, expandir_no_host=lambda _: None)
+        host.setWidget(pagina)
+        try:
+            host.show()
+            QTest.qWait(100)
+&gt;           assert host.horizontalScrollBar().maximum() == 0, "O hint mínimo não pode impedir o layout estreito"
+E           AssertionError: O hint mínimo não pode impedir o layout estreito
+E           assert 28 == 0
+E            +  where 28 = &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A16C90C0&gt;()
+E            +    where &lt;built-in method maximum of PySide6.QtWidgets.QScrollBar object at 0x00000226A16C90C0&gt; = &lt;PySide6.QtWidgets.QScrollBar(0x226a3615da0) at 0x00000226A16C90C0&gt;.maximum
+E            +      where &lt;PySide6.QtWidgets.QScrollBar(0x226a3615da0) at 0x00000226A16C90C0&gt; = &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A40A4600&gt;()
+E            +        where &lt;built-in method horizontalScrollBar of PySide6.QtWidgets.QScrollArea object at 0x00000226A40A4600&gt; = &lt;PySide6.QtWidgets.QScrollArea(0x226a3309830) at 0x00000226A40A4600&gt;.horizontalScrollBar
+
+scripts\tests\test_terminal_desktop_integrado.py:190: AssertionError</failure></testcase></testsuite></testsuites>

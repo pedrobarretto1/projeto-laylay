@@ -1,0 +1,177 @@
+{
+  "head": "b128f4e48b774352846a40672de493d19c30f109",
+  "instancia": "composicao_instalada_com_memoria_isolada",
+  "modelo": "configuracao_preservada",
+  "voz": "pt-BR-FranciscaNeural",
+  "caso": "sucesso",
+  "falas": [
+    {
+      "texto": "Vou preparar um arquivo com o texto copiado e conferir o conteúdo.",
+      "id": "progresso:b11d726b06dbf981:2",
+      "ts": 4550.9216685
+    },
+    {
+      "texto": "Criei o arquivo com o texto copiado e conferi o conteúdo.",
+      "id": "turno:1792711198701534300",
+      "ts": 4551.9360387
+    }
+  ],
+  "metricas": [
+    {
+      "nome": "tts_fila",
+      "duracao_ms": 0.4943999992974568,
+      "sucesso": true,
+      "ts": 4550.9229622
+    },
+    {
+      "nome": "tts_sintese_primeiro_trecho",
+      "duracao_ms": 850.2808000002915,
+      "sucesso": true,
+      "ts": 4551.7795661
+    },
+    {
+      "nome": "tts_bloqueio_externo",
+      "duracao_ms": 77.28779999979452,
+      "sucesso": true,
+      "ts": 4551.857104
+    },
+    {
+      "nome": "tts_primeiro_audio",
+      "duracao_ms": 934.9665999998251,
+      "sucesso": true,
+      "ts": 4551.8574331
+    },
+    {
+      "nome": "tts_sintese",
+      "duracao_ms": 850.5256999997073,
+      "sucesso": true,
+      "ts": 4556.530526
+    },
+    {
+      "nome": "tts_reproducao",
+      "duracao_ms": 4672.823700000663,
+      "sucesso": true,
+      "ts": 4556.5308705
+    },
+    {
+      "nome": "tts_total",
+      "duracao_ms": 5607.822599999963,
+      "sucesso": true,
+      "ts": 4556.531167
+    },
+    {
+      "nome": "tts_fila",
+      "duracao_ms": 4595.6742999997,
+      "sucesso": true,
+      "ts": 4556.531974
+    },
+    {
+      "nome": "tts_sintese_primeiro_trecho",
+      "duracao_ms": 886.8522000002486,
+      "sucesso": true,
+      "ts": 4557.4204709
+    },
+    {
+      "nome": "tts_bloqueio_externo",
+      "duracao_ms": 24.74140000049374,
+      "sucesso": true,
+      "ts": 4557.4456051
+    },
+    {
+      "nome": "tts_primeiro_audio",
+      "duracao_ms": 5509.825199999796,
+      "sucesso": true,
+      "ts": 4557.4461233
+    },
+    {
+      "nome": "tts_sintese",
+      "duracao_ms": 887.2400000000198,
+      "sucesso": true,
+      "ts": 4561.7483695
+    },
+    {
+      "nome": "tts_reproducao",
+      "duracao_ms": 4301.836700000422,
+      "sucesso": true,
+      "ts": 4561.7491065
+    },
+    {
+      "nome": "tts_total",
+      "duracao_ms": 5216.673599999922,
+      "sucesso": true,
+      "ts": 4561.7494948
+    }
+  ],
+  "eventos": [
+    {
+      "tipo": "arquivo_observado",
+      "ts": 4551.8708364,
+      "stream_audio_ativo": true,
+      "hash": "c1da596877aada8193a1e8c783b258786ba2eed25d6cfeb8dbd4be916f8d39eb"
+    }
+  ],
+  "plano": {
+    "id": "b11d726b06dbf981",
+    "objetivo": "salvar conteúdo copiado em arquivo de texto",
+    "estado": "confirmado",
+    "confianca": 0.98,
+    "risco": "baixo",
+    "autorizacao": "explicita_no_pedido",
+    "orcamento_total_ms": 20000,
+    "politica_falha_parcial": "interromper",
+    "cancelamento_solicitado": false,
+    "habilidades": [
+      "area_transferencia",
+      "arquivos"
+    ],
+    "etapas": [
+      {
+        "id": "1",
+        "habilidade": "area_transferencia",
+        "acao": "fornecer_referencia",
+        "intent": "",
+        "estado": "confirmado",
+        "depende_de": [],
+        "orcamento_ms": 500,
+        "duracao_ms": 0,
+        "evidencia_esperada": "hash_e_tamanho_da_referencia_validos",
+        "resultado": {}
+      },
+      {
+        "id": "2",
+        "habilidade": "arquivos",
+        "acao": "criar_arquivo",
+        "intent": "CREATE_FILE",
+        "estado": "confirmado",
+        "depende_de": [
+          "1"
+        ],
+        "orcamento_ms": 20000,
+        "duracao_ms": 1002,
+        "evidencia_esperada": "arquivo_existente_e_hash_confirmado",
+        "resultado": {
+          "status": "arquivo_criado",
+          "confirmado": true,
+          "evidencia": "arquivo_existente_e_hash_confirmado",
+          "orcamento_excedido": false
+        }
+      }
+    ],
+    "metadados": {
+      "fluxo": "clipboard_para_arquivo",
+      "nome": "objetivo_concorrente.txt",
+      "tamanho_conteudo": 68,
+      "quantidade_janelas": 0
+    },
+    "resultado": {
+      "status": "plano_confirmado",
+      "confirmado": true,
+      "falhas_parciais": 0,
+      "interrompido": false
+    }
+  },
+  "arquivo_conferido": true,
+  "sobreposicao_observada": true,
+  "audios_confirmados": 2,
+  "ok": true
+}

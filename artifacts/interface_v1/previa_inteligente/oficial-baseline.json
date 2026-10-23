@@ -1,0 +1,178 @@
+[
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\avatar_laylay.py",
+    "sha256": "CEFC7082325672ED04B7345B8E6883506E384534B0FE3652A294A6061B39BBC3"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\cliente_laylay.py",
+    "sha256": "4F487E517EE52A2F6173001F4E0556EC8BEEF138A8A0D39AFB79A3DDF39D1F2D"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\executor_roteiro_laylay.py",
+    "sha256": "250ED9E3C82DE421B5B281C75753CE7221BA4FD382F1375702A31EF60CAED9CD"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\iniciar_laylay.py",
+    "sha256": "062C50D275F8DDEDBBBDC66C0194FD030048B573857111A02AD03EF2EB32136B"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_laylay_2.py",
+    "sha256": "5EAC182E5220199DE743F06C0A215739B738C26E3A27E7657CA0966C758F7CC4"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\build\\cliente_laylay\\xref-cliente_laylay.html",
+    "sha256": "B28AC7D6D9A21CB37B04D6CAC24708139AAF6627FF2D20CB4E064D198F5D7FBB"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\__init__.py",
+    "sha256": "4BB8696A96994EBCE04C9F03CAA262B9DBE14A18591329486A490A9F96E8A552"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\acabamento.py",
+    "sha256": "3B91D0B7D96CFE9A59E698DFD1A1C72EED670389DF6CECDA673F28D8E75E3ED7"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\apresentacao_desktop.py",
+    "sha256": "98EE6097472407FCFF6073429CC1D04898DC9CBAA96CA1A7D0D1676F101DCF0C"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\apresentacao_v1.py",
+    "sha256": "0E7EC3EC9435994D9BF239890169C5DD4981D4C37FBF6EA4535DBE9EF7436CC5"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\dashboard.py",
+    "sha256": "24AEE435EB7CB96C9977AE725BB96251629599205A2F15478186EF28FA7BE6E8"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\desenvolvedor.py",
+    "sha256": "B1095CFCABBFE9CD03455746151C9AB106627F3E08B2E0CCE8F509FF39CCBF01"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\interface_web_v1.py",
+    "sha256": "083E42FDB6AC72295E8EF29857D87D0879D266F2626C78D57BF4BA184D365F60"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\mascote_v1.py",
+    "sha256": "C87D7FB6113A72241A1B3A2353AD221DCCBCC790BCDE2DC3ED104FDDE99A997B"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\musica_m1.py",
+    "sha256": "27D052E6461F5E3E5A5DCAB2694B7245EDFD74FAFD021A232D4D32B9D761EA32"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\playlist_detalhe.py",
+    "sha256": "CEE588DB392A84B392A69938BCF07D9390B15169E4212119D26774BA744E6D2A"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\sistema_compacto.py",
+    "sha256": "42C94C5EF3E3230D68508666F0FDF092B3F518FAEA2065DB7C518C5FADDC1533"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\streaming_fontes.py",
+    "sha256": "FFDC0A5A5DCA9CB2152D787FD5255E66FB841F14C370917CF5B78831AA46F93D"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\streaming.py",
+    "sha256": "A5ADC6FDDC21F7D8EAA60E0CDADA4341345C3577227FDCDEA9FD4D494DEDFF25"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\transporte.py",
+    "sha256": "7CC4C3311633C31583CDBB9175E9C96D5EA0A7DC3E90C8E9310D9096D3659A90"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\volume_mestre_windows.py",
+    "sha256": "910950C59F76841709D6ECD5479E5FE4E6A26C9F154942A93AF8D25751ECDB03"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\__init__.py",
+    "sha256": "8F174CF4C235199345C308966A21FFEEEBC2B7A333350EB8EC6CCA7A39031D1C"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\automation.py",
+    "sha256": "2C6315C6B3D193F2A1B91658CE88CC72C8FB2FDA1D33FB3A3BECD61CF9357135"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\chat.py",
+    "sha256": "3DE873C7B50BC5FF9AEFE13930BD31DECA455EE5EE9FDD2F0F5C4E4DCD8DA230"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\chrome.py",
+    "sha256": "9A5F5FDF00FCF4DF7FEE6732390014BF0CBFB34802CAB8D6CDC62EC9681C015F"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\context.py",
+    "sha256": "3825D8B0D2944A033ACCC9D7DA071C0757C9BE1ED8BDC30327A5E664DD5F883D"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\developer.py",
+    "sha256": "4D5EF6A8910567EE97DAA03C0A75628BB3EE0446FB8D697708A3F3EC4A56A9F2"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\home.py",
+    "sha256": "345EC4C2381CB8BE59B91C41A41F68C08225F66061AAEA32E587E8B2F910169A"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\memory.py",
+    "sha256": "FB8A65AA27EC7A6E02041880CA8E15A88D6B5D99D323C6B07596B3AD3F786FDD"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\music.py",
+    "sha256": "1CAB28F408F9E34C3868F591B3335FC7786EB79F41ADFAD0837923FE835D3E75"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\presence.py",
+    "sha256": "DA276A3367510EC4FE802EAF821396D0008849CA3B847233A316C0070CF28301"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\settings.py",
+    "sha256": "7B08E3A2546B5E147835272EC38A15E3FE6643D82457CCB20200E15E8A924F81"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\shared.py",
+    "sha256": "9CE20E421AB771DF2B78E899FB05C11EAD24A1FAC69B1D6C597DDF7BC7E6AE88"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\system.py",
+    "sha256": "0DDF88B619CC229437361BB54974F28064C20ABDE18F0DE99307BA0021B59BD9"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\tokens.py",
+    "sha256": "92C5993968A923AA12913554D0FFF3DF4B55AB23AE4C329F93E78B684ACB152D"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\theme\\v1.py",
+    "sha256": "E0190B088B299C964E68BBCC9CB6C4202414716A08320773E997C6AAF5510BC7"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\desktop.css",
+    "sha256": "18BBF78CC5DA457092CA74642DC8C643ED6CE8898A17C24C644F1471234EC941"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\index.html",
+    "sha256": "E704FA9CF1D74BD6C0C22305A2A824B63395517D7AC7B40DC6B94A12AF89E92D"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\interface.js",
+    "sha256": "F9461EFF07BC4BAD66C255B299EC94E292B58536B0310D705648347F1147D96B"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\mascote.css",
+    "sha256": "D3A7A4C402F663C54FAB96310A6A5DBEC7716E78813A2D2281758E70D7D8030B"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\paginas-refinadas.css",
+    "sha256": "82E52F2E542E08DA093EE885821AE736DB957301DBCBC30BB6F009D24FED9754"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\paginas.js",
+    "sha256": "6E1E323F2601F42F3DD74E066474AF9614FD7F9A4BB4CF6A6FCEB6C269418D7F"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\cliente\\terminal_2\\web_v1\\refinamento.css",
+    "sha256": "5D6E06D483A0F04D2067AD261C6A24571805D0AE4DCD5DF9763EB6AE015E4787"
+  },
+  {
+    "path": "C:\\Users\\pbarr\\Downloads\\pasta organizada\\programacao\\PY\\projeto lay\\laylay\\laylay.py",
+    "sha256": "024B7E1302D8E9DFB972426A4724751D8CFED9159B4B2B46CF5DECAE6740A24F"
+  }
+]

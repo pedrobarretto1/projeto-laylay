@@ -19,6 +19,7 @@ from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_tu
 from mente_laylay.integracao.registro_memoria_pessoas import PortaMemoriaPessoas
 from mente_laylay.integracao.registro_iot import PortaIoT
 from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
     CHAVE_RESULTADO_OPERACIONAL_PUBLICADO,
     interpretar_tratamento_operacional,
     normalizar_resultado_acao,
@@ -208,6 +209,15 @@ class AdaptadoresAplicacaoRuntime:
             except ValueError as erro:
                 ns["print"](f"⚠️ [PLANO] identidade de receipt recusada: {erro}")
                 return False
+        # Esta porta recebe o receipt tipado do executor. Uso factual não
+        # depende da vigência conversacional nem transforma o efeito tardio
+        # em contexto do turno atual. Dict/proposta/legado não entram aqui.
+        uso = ns.get("_uso_confirmado_runtime")
+        if type(resultado) is ResultadoAcao and resultado.origem == "executor" and uso is not None:
+            try:
+                uso.observar_resultado(resultado)
+            except Exception as erro:
+                ns["print"](f"[INÍCIO] uso confirmado não observado: {type(erro).__name__}")
         tratamento = interpretar_tratamento_operacional(resultado, executou)
         if not tratamento.legado and not tratamento.resultado_publicado:
             # A própria invocação conhece melhor seu efeito que o bool legado

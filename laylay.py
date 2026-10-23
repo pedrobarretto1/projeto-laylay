@@ -406,6 +406,7 @@ from mente_laylay.memoria_mental.aprendizado_runtime import (
 from mente_laylay.memoria_mental.motor_aprendizado import (
     criar_motor_aprendizado_runtime as _criar_motor_aprendizado_runtime_mente,
 )
+from mente_laylay.memoria_mental.uso_confirmado_runtime import criar_uso_confirmado_runtime
 from mente_laylay.memoria_mental.identidade_usuario import (
     salvar_nome_usuario_confirmado as _salvar_nome_usuario_confirmado_mente,
 )
@@ -1704,6 +1705,7 @@ _composicao_chrome_ws_runtime = _criar_composicao_chrome_ws_laylay_runtime(
     fechar_extensoes_anteriores=_ws_close_other_extensions,
     stop_event=_servicos_background_runtime.evento_parada,
     music_meter_publisher=_publicar_medidor_musical_terminal,
+    player_observer=lambda player, estado: _uso_confirmado_runtime.observar_player(player, estado),
 )
 _chrome_ws_contexto_runtime = _composicao_chrome_ws_runtime.contexto
 _chrome_ws_eventos_runtime = _composicao_chrome_ws_runtime.eventos
@@ -2317,6 +2319,14 @@ _motor_aprendizado_runtime = _criar_motor_aprendizado_runtime_mente(
         or _conversa_estado_get("conversa_ativa", False)
     ),
     pesquisar_conhecimento=_pesquisa_contextual_runtime.pesquisar_contexto_tema,
+    log=print,
+)
+
+_uso_confirmado_runtime = criar_uso_confirmado_runtime(
+    motor_aprendizado=_motor_aprendizado_runtime,
+    memoria_sqlite=MEMORIA_SQLITE,
+    playlist_state_getter=lambda: dict(playlist_state),
+    capacidade_getter=lambda intent: _mapa_habilidades_runtime.consultar(intent),
     log=print,
 )
 
@@ -3244,6 +3254,9 @@ _orquestrador_cooperativo_runtime = _criar_orquestrador_cooperativo_runtime(
         _observador_area_transferencia_runtime.marcar_conteudo_consumido
     ),
     executar_intencao=lambda resultado, texto: executar_intencao(resultado, texto),
+    executar_intencao_observando=executar_intencao_observando,
+    anunciar_etapa=_orquestrador_fala_runtime.anunciar_etapa,
+    publicar_resultado=_orquestrador_fala_runtime.falar_resultado_operacional,
     resolver_caminho=resolver_caminho,
     falar=lambda texto, emocao="calma", nivel=1: falar_com_lipsync(texto, emocao, nivel),
     planejar_layout=lambda: planejar_organizacao_desktop(),
@@ -3453,15 +3466,16 @@ _estado_conversa_runtime = _criar_estado_conversa_runtime(
 
 def _estado_terminal_2() -> dict:
     conversa = _estado_compartilhado_runtime.snapshot().get("conversacional", {})
+    visual = _estado_visual_laylay()
     modo_chat = bool(conversa.get("modo_chat") or conversa.get("conversa_ativa"))
     ouvido_ativo = bool(_ouvido_whisper_runtime.ativo()) and (
         "Laylay-Ouvido" in set(_servicos_background_runtime.ativos())
     )
     return {
-        "visual_activity": conversa.get("visual_activity", "idle"),
-        "current_emotion": conversa.get("current_emotion", "calma"),
-        "emotion_level": conversa.get("emotion_level", 1),
-        "is_speaking": conversa.get("is_speaking", False),
+        "visual_activity": visual.get("activity", "idle"),
+        "current_emotion": visual.get("emotion", "calma"),
+        "emotion_level": visual.get("level", 1),
+        "is_speaking": visual.get("speaking", False),
         "voice_available": ouvido_ativo,
         "microphone_level": (
             _ouvido_whisper_runtime.nivel_microfone()
@@ -3507,6 +3521,7 @@ _dashboard_terminal_runtime = _criar_dashboard_terminal_runtime(
     },
     playlists_getter=_playlist_runtime.catalogo_publico,
     playlist_queue_getter=_playlist_runtime.fila_publica,
+    uso_confirmado_getter=_uso_confirmado_runtime.snapshot,
     audio_output_getter=_saidas_audio_runtime.snapshot,
     volume_getter=lambda: obter_volume_sistema(log=lambda _mensagem: None),
     iot_getter=_registro_iot_runtime.retrato_para_mente,

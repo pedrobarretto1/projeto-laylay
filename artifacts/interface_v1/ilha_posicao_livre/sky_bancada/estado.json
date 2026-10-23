@@ -1,0 +1,90 @@
+{
+  "current": {
+    "geometry": [
+      1140,
+      120,
+      264,
+      50
+    ],
+    "workarea": [
+      0,
+      0,
+      2560,
+      1032
+    ],
+    "anchor": [
+      1279,
+      120
+    ],
+    "phase": "compact",
+    "saved_position": null,
+    "hwnd": 1574382,
+    "same_objects": true,
+    "renderer_ready": true,
+    "window_title": "Laylay — prova de posição arrastável, sem mente",
+    "visible": true,
+    "enviadas": 0,
+    "mente_iniciada": false,
+    "tipo_janela_diagnostico": true
+  },
+  "history": [
+    {
+      "t": 0.192,
+      "geometry": [
+        1140,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1574382,
+      "same_objects": true,
+      "renderer_ready": false,
+      "window_title": "Laylay — prova de posição arrastável, sem mente",
+      "visible": true,
+      "enviadas": 0,
+      "mente_iniciada": false,
+      "tipo_janela_diagnostico": true
+    },
+    {
+      "t": 0.328,
+      "geometry": [
+        1140,
+        120,
+        264,
+        50
+      ],
+      "workarea": [
+        0,
+        0,
+        2560,
+        1032
+      ],
+      "anchor": [
+        1279,
+        120
+      ],
+      "phase": "compact",
+      "saved_position": null,
+      "hwnd": 1574382,
+      "same_objects": true,
+      "renderer_ready": true,
+      "window_title": "Laylay — prova de posição arrastável, sem mente",
+      "visible": true,
+      "enviadas": 0,
+      "mente_iniciada": false,
+      "tipo_janela_diagnostico": true
+    }
+  ]
+}

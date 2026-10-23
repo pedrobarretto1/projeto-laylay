@@ -16,6 +16,8 @@ from mente_laylay.memoria_mental.continuidade_geral import (
     registrar_evento_continuidade,
 )
 
+LIMITE_CONTEUDO_PENDENCIA = 500
+
 
 def criar_pendencia(
     *,
@@ -36,7 +38,7 @@ def criar_pendencia(
         "origem": str(origem or "").strip(),
         "tipo": str(tipo or "").strip(),
         "dominio": str(dominio or "conversa").strip(),
-        "conteudo": str(conteudo or "").strip()[:500],
+        "conteudo": str(conteudo or "").strip()[:LIMITE_CONTEUDO_PENDENCIA],
         "opcoes": [dict(opcao) for opcao in (opcoes or []) if isinstance(opcao, dict)][:8],
         "resposta_esperada": str(resposta_esperada or "").strip(),
         "intencao": str(intencao or "").strip(),
@@ -68,6 +70,7 @@ def registrar_pendencia(
         "esclarecimento_operacional",
         "confirmacao_operacional",
         "visao_jogo",
+        "revisao_alegacao",
     }
     origens_derivadas_da_fala = {
         "pergunta_aberta",

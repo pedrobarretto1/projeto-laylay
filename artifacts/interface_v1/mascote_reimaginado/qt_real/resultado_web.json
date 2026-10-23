@@ -1,0 +1,157 @@
+{
+  "plataforma": "windows",
+  "renderer": "QtWebEngine",
+  "frontend_local": true,
+  "ponte_autenticada": true,
+  "dashboard_real_psutil": true,
+  "mente_iniciada": false,
+  "efeitos_externos": false,
+  "mensagens_texto_recebidas": 1,
+  "continuidade_dom_e_animacao": true,
+  "mouse_nativo": [
+    {
+      "direcao": "esquerda",
+      "face_translate": "-8.925px -5.328px"
+    },
+    {
+      "direcao": "direita",
+      "face_translate": "8.925px -5.328px"
+    },
+    {
+      "direcao": "cima",
+      "face_translate": "-3.195px -5.328px"
+    },
+    {
+      "direcao": "baixo",
+      "face_translate": "-3.195px 5.328px"
+    }
+  ],
+  "expressoes_de_demonstracao_transportadas": true,
+  "capturas": [
+    {
+      "arquivo": "web-inicio.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-0.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-1.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-2.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-3.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-olhar-esquerda.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-olhar-direita.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-olhar-cima.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-olhar-baixo.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-expressao-feliz.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-expressao-triste.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-expressao-brava.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-expressao-surpresa.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-music.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-system.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-settings.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-memory.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-lamp.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-dev.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-streaming.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-ilha.png",
+      "largura": 330,
+      "altura": 86
+    },
+    {
+      "arquivo": "web-painel.png",
+      "largura": 425,
+      "altura": 720
+    },
+    {
+      "arquivo": "web-conversa.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-conversa-768.png",
+      "largura": 768,
+      "altura": 800
+    },
+    {
+      "arquivo": "web-conversa-390.png",
+      "largura": 390,
+      "altura": 844
+    }
+  ]
+}

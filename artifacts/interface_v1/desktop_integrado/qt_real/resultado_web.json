@@ -1,0 +1,275 @@
+{
+  "plataforma": "windows",
+  "renderer": "QtWebEngine",
+  "frontend_local": true,
+  "ponte_autenticada": true,
+  "dashboard_real_psutil": true,
+  "mente_iniciada": false,
+  "efeitos_externos": false,
+  "mensagens_texto_recebidas": 1,
+  "continuidade_dom_e_animacao": true,
+  "mouse_nativo": [],
+  "expressoes_de_demonstracao_transportadas": false,
+  "desktop_integrado": {
+    "hover_preserva_foco": true,
+    "canto_transparente_nao_intercepta": true,
+    "janela_alvo_canto_distinta": true,
+    "identidade_superficie_preservada": true,
+    "rascunho_preservado": true,
+    "clique_explicito_permite_foco_e_teclado": true,
+    "animacao_geometrias": [
+      [
+        1148,
+        0,
+        264,
+        50
+      ],
+      [
+        1097,
+        0,
+        365,
+        123
+      ],
+      [
+        1085,
+        0,
+        389,
+        140
+      ],
+      [
+        1038,
+        0,
+        483,
+        207
+      ],
+      [
+        1017,
+        0,
+        525,
+        237
+      ],
+      [
+        993,
+        0,
+        573,
+        272
+      ],
+      [
+        976,
+        0,
+        607,
+        296
+      ],
+      [
+        968,
+        0,
+        623,
+        307
+      ],
+      [
+        962,
+        0,
+        635,
+        315
+      ],
+      [
+        960,
+        0,
+        639,
+        318
+      ],
+      [
+        960,
+        0,
+        639,
+        319
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ],
+      [
+        960,
+        0,
+        640,
+        320
+      ]
+    ],
+    "mente_iniciada": false
+  },
+  "capturas": [
+    {
+      "arquivo": "web-inicio.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "desktop-compacto.png",
+      "largura": 264,
+      "altura": 50
+    },
+    {
+      "arquivo": "desktop-expandido-hover.png",
+      "largura": 640,
+      "altura": 320
+    },
+    {
+      "arquivo": "desktop-expandido-fixado.png",
+      "largura": 640,
+      "altura": 320
+    },
+    {
+      "arquivo": "desktop-movimento-reduzido.png",
+      "largura": 640,
+      "altura": 320
+    },
+    {
+      "arquivo": "web-inicio-movimento-0.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-1.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-2.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-inicio-movimento-3.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-music.png",
+      "largura": 264,
+      "altura": 50
+    },
+    {
+      "arquivo": "web-system.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-settings.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-memory.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-lamp.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-dev.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-streaming.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-ilha.png",
+      "largura": 330,
+      "altura": 86
+    },
+    {
+      "arquivo": "web-painel.png",
+      "largura": 425,
+      "altura": 720
+    },
+    {
+      "arquivo": "web-conversa.png",
+      "largura": 1440,
+      "altura": 1000
+    },
+    {
+      "arquivo": "web-conversa-768.png",
+      "largura": 264,
+      "altura": 50
+    },
+    {
+      "arquivo": "web-conversa-390.png",
+      "largura": 390,
+      "altura": 844
+    }
+  ]
+}

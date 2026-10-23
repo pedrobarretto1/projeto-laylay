@@ -1044,6 +1044,19 @@ class RostoOledRuntime:
                            evidencia="imu_relativa_turnend_e_sack" if confirmado else receipt["evidencia"])
             if not confirmado:
                 receipt.update(status="falha_execucao", motivo=motivo or "giro_sem_alvo_confirmado")
+            if not leitura_valida:
+                # Publica a decisão deste owner; outro pacote/código não passa
+                # a explicar a ocorrência atual nem comprova uma causa física.
+                criterio, codigo = "criterio_da_fonte_nao_atendido", resultado.get("resultado", "")
+                if not correlacionado:
+                    criterio, codigo = "fonte_nao_correlacionada", ""
+                elif sessao_alterada:
+                    criterio, codigo = "contexto_alterado", ""
+                elif type(medido) not in (int, float) or not math.isfinite(medido):
+                    criterio, codigo = "valor_nao_admitido", ""
+                receipt["nao_qualificacao_rotacao"] = {
+                    "fonte": "qualificacao_turnend_owner_usb_v1", "criterio": criterio, "codigo": codigo,
+                    "autoriza_execucao": False, "confirma_efeito": False}
         return receipt
 
     def girar_corpo(self, angulo_graus: int, *, pwm: int = 160) -> dict[str, Any]:

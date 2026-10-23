@@ -1,0 +1,77 @@
+[
+  {
+    "tx": "IPROBE 1 9301",
+    "rx": [
+      "IPROBE 1 9301 104 1 152",
+      "IPROBE 1 9301 105 0 255"
+    ]
+  },
+  {
+    "tx": "IMU 1 9301",
+    "rx": [
+      "IMU 1 9301 104 CALIBRANDO 6 0 -24 6 0 90 1015 DESCONHECIDO 152 DESCONHECIDA 0 20416 0"
+    ]
+  },
+  {
+    "tx": "DIST 1 9301",
+    "rx": [
+      "DIST 1 9301 FRENTE 48 INVALIDA -1 13 4 BORDA 49 AUSENTE -1 4294967295 255"
+    ]
+  },
+  {
+    "tx": "HEALTH 1 9301",
+    "rx": [
+      "HEALTH 1 9301 70ba726e27ac 93aaeca1 1 22704 186824 182664 0 NENHUMA 0"
+    ]
+  },
+  {
+    "tx": "IPROBE 1 9302",
+    "rx": [
+      "IPROBE 1 9302 104 1 152",
+      "IPROBE 1 9302 105 0 255"
+    ]
+  },
+  {
+    "tx": "IMU 1 9302",
+    "rx": [
+      "IMU 1 9302 104 CALIBRANDO 10 0 -17 20 0 87 1017 DESCONHECIDO 152 DESCONHECIDA 0 25034 0"
+    ]
+  },
+  {
+    "tx": "DIST 1 9302",
+    "rx": [
+      "DIST 1 9302 FRENTE 48 VALIDA 26 8 0 BORDA 49 AUSENTE -1 4294967295 255"
+    ]
+  },
+  {
+    "tx": "HEALTH 1 9302",
+    "rx": [
+      "HEALTH 1 9302 70ba726e27ac 93aaeca1 1 27306 186824 182664 0 NENHUMA 0"
+    ]
+  },
+  {
+    "tx": "IPROBE 1 9303",
+    "rx": [
+      "IPROBE 1 9303 104 1 152",
+      "IPROBE 1 9303 105 0 255"
+    ]
+  },
+  {
+    "tx": "IMU 1 9303",
+    "rx": [
+      "IMU 1 9303 104 PRONTA 5 1 -24 19 -1 0 1017 ESTAVEL 152 TRANQUILA 0 29609 0"
+    ]
+  },
+  {
+    "tx": "DIST 1 9303",
+    "rx": [
+      "DIST 1 9303 FRENTE 48 VALIDA 30 15 0 BORDA 49 AUSENTE -1 4294967295 255"
+    ]
+  },
+  {
+    "tx": "HEALTH 1 9303",
+    "rx": [
+      "HEALTH 1 9303 70ba726e27ac 93aaeca1 1 31809 186824 182664 0 NENHUMA 0"
+    ]
+  }
+]

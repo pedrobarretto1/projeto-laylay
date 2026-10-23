@@ -1,0 +1,3950 @@
+{
+  "plataforma": "windows",
+  "startup": [
+    {
+      "ms": 0,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 29,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 50,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 73,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 95,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 116,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 138,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 158,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": false
+    },
+    {
+      "ms": 179,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 200,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 220,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 242,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 263,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 286,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 306,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 328,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 349,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 370,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 391,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 412,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 434,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 455,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 476,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 497,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 519,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 540,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 565,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 586,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 610,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 631,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 653,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 673,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 695,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 717,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 737,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 758,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 779,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 800,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 821,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 843,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 864,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 886,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 907,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 928,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 949,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 970,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1001,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1021,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1042,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1063,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1084,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1104,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1126,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1147,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    },
+    {
+      "ms": 1168,
+      "visivel": true,
+      "web_visivel": true,
+      "pronta": true
+    }
+  ],
+  "transicoes": [
+    {
+      "destino": "resumo",
+      "ms": 11,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 46,
+      "hwnd": 2950930,
+      "geometria": [
+        1085,
+        0,
+        389,
+        140
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 262,
+          "height": 48,
+          "top": 1,
+          "right": 263,
+          "bottom": 49,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 101,
+      "hwnd": 2950930,
+      "geometria": [
+        1021,
+        0,
+        517,
+        231
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 363,
+        "altura": 120,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 361,
+          "height": 118,
+          "top": 1,
+          "right": 362,
+          "bottom": 119,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 140,
+      "hwnd": 2950930,
+      "geometria": [
+        983,
+        0,
+        593,
+        286
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 517,
+        "altura": 231,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 515,
+          "height": 229,
+          "top": 1,
+          "right": 516,
+          "bottom": 230,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 191,
+      "hwnd": 2950930,
+      "geometria": [
+        965,
+        0,
+        629,
+        312
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 573,
+        "altura": 272,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 571,
+          "height": 270,
+          "top": 1,
+          "right": 572,
+          "bottom": 271,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 241,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        639,
+        319
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 573,
+        "altura": 272,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 571,
+          "height": 270,
+          "top": 1,
+          "right": 572,
+          "bottom": 271,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 275,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 639,
+        "altura": 319,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 637,
+          "height": 317,
+          "top": 1,
+          "right": 638,
+          "bottom": 318,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 303,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 331,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 355,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 386,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 415,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 449,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 488,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 534,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 588,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 631,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 12,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 60,
+      "hwnd": 2950930,
+      "geometria": [
+        873,
+        0,
+        813,
+        502
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 773,
+        "altura": 460,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 771,
+          "height": 458,
+          "top": 1,
+          "right": 772,
+          "bottom": 459,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 82.25513458251953,
+          "width": 771,
+          "height": 381,
+          "top": 82.25513458251953,
+          "right": 772,
+          "bottom": 463.25513458251953,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 115,
+      "hwnd": 2950930,
+      "geometria": [
+        818,
+        0,
+        923,
+        617
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 813,
+        "altura": 502,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 811,
+          "height": 500,
+          "top": 1,
+          "right": 812,
+          "bottom": 501,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 80.91973876953125,
+          "width": 811,
+          "height": 423,
+          "top": 80.91973876953125,
+          "right": 812,
+          "bottom": 503.91973876953125,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 184,
+      "hwnd": 2950930,
+      "geometria": [
+        785,
+        0,
+        989,
+        687
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 977,
+        "altura": 676,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 975,
+          "height": 674,
+          "top": 1,
+          "right": 976,
+          "bottom": 675,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78.22188568115234,
+          "width": 975,
+          "height": 597,
+          "top": 78.22188568115234,
+          "right": 976,
+          "bottom": 675.2218856811523,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 225,
+      "hwnd": 2950930,
+      "geometria": [
+        781,
+        0,
+        997,
+        697
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 979,
+        "altura": 678,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 977,
+          "height": 676,
+          "top": 1,
+          "right": 978,
+          "bottom": 677,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 977,
+          "height": 599,
+          "top": 78,
+          "right": 978,
+          "bottom": 677,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 252,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        999,
+        699
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 997,
+        "altura": 697,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 995,
+          "height": 695,
+          "top": 1,
+          "right": 996,
+          "bottom": 696,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 995,
+          "height": 618,
+          "top": 78,
+          "right": 996,
+          "bottom": 696,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 350,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 390,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 421,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 454,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 487,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 541,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 585,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 630,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 673,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 708,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "home",
+      "ms": 738,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 12,
+      "hwnd": 2950930,
+      "geometria": [
+        780,
+        0,
+        1000,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 1000,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 998,
+          "height": 698,
+          "top": 1,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 78,
+          "width": 998,
+          "height": 621,
+          "top": 78,
+          "right": 999,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 122,
+      "hwnd": 2950930,
+      "geometria": [
+        826,
+        0,
+        907,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 917,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 915,
+          "height": 698,
+          "top": 1,
+          "right": 916,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 120.71524810791016,
+          "width": 915,
+          "height": 580.0625,
+          "top": 120.71524810791016,
+          "right": 916,
+          "bottom": 700.7777481079102,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 171,
+      "hwnd": 2950930,
+      "geometria": [
+        835,
+        0,
+        889,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 907,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 905,
+          "height": 698,
+          "top": 1,
+          "right": 906,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 119.43692016601562,
+          "width": 905,
+          "height": 580.0625,
+          "top": 119.43692016601562,
+          "right": 906,
+          "bottom": 699.4994201660156,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 227,
+      "hwnd": 2950930,
+      "geometria": [
+        839,
+        0,
+        881,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 881,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 879,
+          "height": 698,
+          "top": 1,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 879,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 256,
+      "hwnd": 2950930,
+      "geometria": [
+        839,
+        0,
+        881,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 881,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 879,
+          "height": 698,
+          "top": 1,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 879,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 291,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 881,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 879,
+          "height": 698,
+          "top": 1,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 879,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 880,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 359,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 389,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 431,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 478,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 517,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 563,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 612,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 657,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 701,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 741,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "chat",
+      "ms": 787,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "page",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 12,
+      "hwnd": 2950930,
+      "geometria": [
+        840,
+        0,
+        880,
+        700
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 880,
+        "altura": 700,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 878,
+          "height": 698,
+          "top": 1,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        },
+        "pagina": {
+          "x": 1,
+          "y": 118.9375,
+          "width": 878,
+          "height": 580.0625,
+          "top": 118.9375,
+          "right": 879,
+          "bottom": 699,
+          "left": 1
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 94,
+      "hwnd": 2950930,
+      "geometria": [
+        918,
+        0,
+        723,
+        452
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 783,
+        "altura": 547,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 781,
+          "height": 545,
+          "top": 1,
+          "right": 782,
+          "bottom": 546,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 174,
+      "hwnd": 2950930,
+      "geometria": [
+        949,
+        0,
+        661,
+        352
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 723,
+        "altura": 452,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 721,
+          "height": 450,
+          "top": 1,
+          "right": 722,
+          "bottom": 451,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 255,
+      "hwnd": 2950930,
+      "geometria": [
+        959,
+        0,
+        641,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 643,
+        "altura": 324,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 641,
+          "height": 322,
+          "top": 1,
+          "right": 642,
+          "bottom": 323,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 294,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 324,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 371,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 399,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 429,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 458,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 488,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 511,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 541,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 578,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 625,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 672,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "resumo",
+      "ms": 718,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "expanded",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 12,
+      "hwnd": 2950930,
+      "geometria": [
+        960,
+        0,
+        640,
+        320
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 640,
+        "altura": 320,
+        "display": "grid",
+        "layout": {
+          "x": 1,
+          "y": 1,
+          "width": 638,
+          "height": 318,
+          "top": 1,
+          "right": 639,
+          "bottom": 319,
+          "left": 1
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 110,
+      "hwnd": 2950930,
+      "geometria": [
+        1086,
+        0,
+        387,
+        138
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 531,
+        "altura": 241,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 160,
+      "hwnd": 2950930,
+      "geometria": [
+        1125,
+        0,
+        309,
+        82
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 387,
+        "altura": 138,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 220,
+      "hwnd": 2950930,
+      "geometria": [
+        1145,
+        0,
+        269,
+        53
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 277,
+        "altura": 58,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 259,
+      "hwnd": 2950930,
+      "geometria": [
+        1147,
+        0,
+        265,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 265,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 299,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 265,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 336,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 359,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 389,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 412,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 441,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 464,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 494,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 518,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 545,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 606,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    },
+    {
+      "destino": "compacta",
+      "ms": 655,
+      "hwnd": 2950930,
+      "geometria": [
+        1148,
+        0,
+        264,
+        50
+      ],
+      "dom": {
+        "modo": "desktop",
+        "estado": "compact",
+        "view": "overview",
+        "largura": 264,
+        "altura": 50,
+        "display": "none",
+        "layout": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pagina": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      }
+    }
+  ],
+  "mente_iniciada": false,
+  "pinturas_iniciais": [
+    {
+      "t": 300.5,
+      "modo": null,
+      "classe": "mode-full",
+      "filhos": 0
+    },
+    {
+      "t": 317.2,
+      "modo": "full",
+      "classe": "mode-full avatar-motion-paused",
+      "filhos": 1
+    },
+    {
+      "t": 367.2,
+      "modo": "full",
+      "classe": "mode-full avatar-motion-paused",
+      "filhos": 1
+    },
+    {
+      "t": 383.9,
+      "modo": "desktop",
+      "classe": "mode-full avatar-motion-paused",
+      "filhos": 1
+    },
+    {
+      "t": 433.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 450.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 683.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 700.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 717.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 733.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 750.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 767.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 783.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 800.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 817.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 833.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 850.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 867.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 883.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 900.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 917.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 933.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 950.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 967.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 983.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1000.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1017.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1033.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1050.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1067.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1083.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1100.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1117.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1133.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1150.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1167.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1183.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1200.4,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1217.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1233.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1250.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1267.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1283.9,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1300.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1317.1,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1333.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1350.5,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1367.2,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    },
+    {
+      "t": 1383.8,
+      "modo": "desktop",
+      "classe": "mode-desktop",
+      "filhos": 1
+    }
+  ],
+  "mesmo_hwnd": true
+}

@@ -1,0 +1,137 @@
+[
+  {
+    "rect": {
+      "x": 31,
+      "y": 98.4375,
+      "width": 928,
+      "height": 560
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "parado",
+    "captura_depois": "parado"
+  },
+  {
+    "rect": {
+      "x": 16,
+      "y": 131.46875,
+      "width": 348,
+      "height": 560
+    },
+    "web": [
+      390,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 16,
+      "y": 131.46875,
+      "width": 348,
+      "height": 560
+    },
+    "web": [
+      390,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 31,
+      "y": 98.4375,
+      "width": 928,
+      "height": 560
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 31,
+      "y": 98.4375,
+      "width": 928,
+      "height": 560
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 1,
+      "y": 78,
+      "width": 998,
+      "height": 681
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 31,
+      "y": 98.4375,
+      "width": 928,
+      "height": 560
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 1,
+      "y": 78,
+      "width": 998,
+      "height": 681
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "rect": {
+      "x": 31,
+      "y": 98.4375,
+      "width": 928,
+      "height": 560
+    },
+    "web": [
+      1000,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  }
+]

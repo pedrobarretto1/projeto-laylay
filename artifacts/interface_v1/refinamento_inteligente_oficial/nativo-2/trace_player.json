@@ -1,0 +1,889 @@
+[
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "parado",
+    "captura_depois": "parado"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "iniciando",
+    "mensagem": "Conectando à janela…"
+  },
+  {
+    "tipo": "captura",
+    "estado": "transmitindo",
+    "mensagem": "Espelhando a janela selecionada"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 58,
+      "y": 150.0625,
+      "width": 307,
+      "height": 390
+    },
+    "web": [
+      390,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 58,
+      "y": 150.0625,
+      "width": 307,
+      "height": 390
+    },
+    "web": [
+      390,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 58,
+      "y": 150.0625,
+      "width": 307,
+      "height": 390
+    },
+    "web": [
+      390,
+      760
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 140,
+      "y": 89.046875,
+      "width": 959,
+      "height": 606.953125
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 140,
+      "y": 89.046875,
+      "width": 959,
+      "height": 606.953125
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 140,
+      "y": 89.046875,
+      "width": 959,
+      "height": 606.953125
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 140,
+      "y": 89.046875,
+      "width": 959,
+      "height": 606.953125
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "parado",
+    "captura_depois": "parado"
+  },
+  {
+    "tipo": "captura",
+    "estado": "parado",
+    "mensagem": "Escolha uma janela e clique em Transmitir"
+  },
+  {
+    "tipo": "captura",
+    "estado": "iniciando",
+    "mensagem": "Conectando à janela…"
+  },
+  {
+    "tipo": "captura",
+    "estado": "transmitindo",
+    "mensagem": "Espelhando a janela selecionada"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  },
+  {
+    "tipo": "viewport",
+    "rect": {
+      "x": 162,
+      "y": 118.21875,
+      "width": 905,
+      "height": 420
+    },
+    "web": [
+      1100,
+      730
+    ],
+    "aceito": true,
+    "captura_antes": "transmitindo",
+    "captura_depois": "transmitindo"
+  }
+]

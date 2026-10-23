@@ -1,0 +1,146 @@
+{
+  "head": "b128f4e48b774352846a40672de493d19c30f109",
+  "instancia": "composicao_instalada_com_memoria_isolada",
+  "modelo": "configuracao_preservada",
+  "voz": "pt-BR-FranciscaNeural",
+  "caso": "falha",
+  "falas": [
+    {
+      "texto": "Vou preparar um arquivo com o texto copiado e conferir o conteúdo.",
+      "id": "progresso:48d6456272bfc3c8:2",
+      "ts": 4422.3084786
+    },
+    {
+      "texto": "Não consegui concluir a gravação e conferência do arquivo.",
+      "id": "turno:1792711069873534900",
+      "ts": 4423.8955376
+    }
+  ],
+  "metricas": [
+    {
+      "nome": "tts_fila",
+      "duracao_ms": 0.5344999999579159,
+      "sucesso": true,
+      "ts": 4422.309816
+    },
+    {
+      "nome": "tts_sintese_primeiro_trecho",
+      "duracao_ms": 1433.4790000002613,
+      "sucesso": true,
+      "ts": 4423.7493202
+    },
+    {
+      "nome": "tts_bloqueio_externo",
+      "duracao_ms": 86.07449999999517,
+      "sucesso": true,
+      "ts": 4423.8356928
+    },
+    {
+      "nome": "tts_primeiro_audio",
+      "duracao_ms": 1526.9023000000743,
+      "sucesso": true,
+      "ts": 4423.8361833
+    },
+    {
+      "nome": "tts_sintese",
+      "duracao_ms": 1433.771899999556,
+      "sucesso": true,
+      "ts": 4428.5108432
+    },
+    {
+      "nome": "tts_reproducao",
+      "duracao_ms": 4674.149999999827,
+      "sucesso": true,
+      "ts": 4428.5113958
+    },
+    {
+      "nome": "tts_total",
+      "duracao_ms": 6928.926500000671,
+      "sucesso": true,
+      "ts": 4429.2392315
+    },
+    {
+      "nome": "tts_fila",
+      "duracao_ms": 5344.380600000477,
+      "sucesso": true,
+      "ts": 4429.2401873
+    },
+    {
+      "nome": "tts_sintese_primeiro_trecho",
+      "duracao_ms": 593.7494999998307,
+      "sucesso": false,
+      "ts": 4429.8351042
+    },
+    {
+      "nome": "tts_total",
+      "duracao_ms": 595.0709999997343,
+      "sucesso": false,
+      "ts": 4429.835802
+    }
+  ],
+  "eventos": [],
+  "plano": {
+    "id": "48d6456272bfc3c8",
+    "objetivo": "salvar conteúdo copiado em arquivo de texto",
+    "estado": "falhou",
+    "confianca": 0.98,
+    "risco": "baixo",
+    "autorizacao": "explicita_no_pedido",
+    "orcamento_total_ms": 20000,
+    "politica_falha_parcial": "interromper",
+    "cancelamento_solicitado": false,
+    "habilidades": [
+      "area_transferencia",
+      "arquivos"
+    ],
+    "etapas": [
+      {
+        "id": "1",
+        "habilidade": "area_transferencia",
+        "acao": "fornecer_referencia",
+        "intent": "",
+        "estado": "confirmado",
+        "depende_de": [],
+        "orcamento_ms": 500,
+        "duracao_ms": 0,
+        "evidencia_esperada": "hash_e_tamanho_da_referencia_validos",
+        "resultado": {}
+      },
+      {
+        "id": "2",
+        "habilidade": "arquivos",
+        "acao": "criar_arquivo",
+        "intent": "CREATE_FILE",
+        "estado": "falhou",
+        "depende_de": [
+          "1"
+        ],
+        "orcamento_ms": 20000,
+        "duracao_ms": 1575,
+        "evidencia_esperada": "arquivo_existente_e_hash_confirmado",
+        "resultado": {
+          "status": "arquivo_existente_requer_confirmacao",
+          "confirmado": false,
+          "evidencia": "",
+          "orcamento_excedido": false
+        }
+      }
+    ],
+    "metadados": {
+      "fluxo": "clipboard_para_arquivo",
+      "nome": "objetivo_concorrente.txt",
+      "tamanho_conteudo": 68,
+      "quantidade_janelas": 0
+    },
+    "resultado": {
+      "status": "arquivo_existente_requer_confirmacao",
+      "confirmado": false,
+      "falhas_parciais": 0,
+      "interrompido": true
+    }
+  },
+  "arquivo_conferido": false,
+  "sobreposicao_observada": false,
+  "audios_confirmados": 1,
+  "ok": true
+}

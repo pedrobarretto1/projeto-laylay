@@ -148,12 +148,14 @@ class ComposicaoTurnoRuntime:
     def atualizar_proposta(
         self, fase: str, proposta_principal: ContratoPropostaPrincipal, *,
         comandos=(), erros=(), fala: str = "", autoria_revisada_proposta: Any = None,
+        falha_resposta_observada: Any = None,
     ) -> dict:
         """Publica somente na ocorrência capturada pelo runtime da resposta."""
         return atualizar_planejamento_turno(
             self._snapshot, fase, comandos=comandos, erros=erros, fala=fala,
             proposta_principal=proposta_principal,
             autoria_revisada_proposta=autoria_revisada_proposta,
+            falha_resposta_observada=falha_resposta_observada,
         )
 
     def verificar_fala(self, fala: str, *, origem: str = "conversa") -> dict:

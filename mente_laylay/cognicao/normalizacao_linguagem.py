@@ -110,6 +110,11 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     return ""
 
 
+def texto_e_citacao_integral(texto: str) -> bool:
+    """Moldura literal integral, sem resolver conteúdo, alvo ou autoridade."""
+    return bool(_CITACAO_INTEGRAL_RE.fullmatch(str(texto or "")))
+
+
 def texto_e_metalinguistico(texto: str) -> bool:
     """Reconhece quando palavras/frases são o assunto, não seu conteúdo.
 
@@ -120,7 +125,7 @@ def texto_e_metalinguistico(texto: str) -> bool:
     if not bruto:
         return False
     return bool(
-        _CITACAO_INTEGRAL_RE.fullmatch(bruto)
+        texto_e_citacao_integral(bruto)
         or _MOLDURA_METALINGUISTICA_RE.search(bruto)
         or _FALA_CITADA_RE.search(bruto)
         or _EXEMPLO_METALINGUISTICO_RE.search(bruto)

@@ -25,8 +25,9 @@ def conversa_web(monkeypatch, tmp_path):
     monkeypatch.setattr(terminal, "QSettings", lambda *_: QSettings(str(tmp_path / "ui.ini"), QSettings.IniFormat))
     app = QApplication.instance() or QApplication([])
     entradas = []
+    estado_publicado = {"activity": "idle", "interaction_mode": "chat"}
     ponte = DesktopBridgeRuntime(enviar_entrada=entradas.append, historico_getter=lambda: [],
-        estado_getter=lambda: {"activity": "idle", "interaction_mode": "chat"},
+        estado_getter=lambda: dict(estado_publicado),
         conversas_getter=lambda: [{"id": "11111111111111111111111111111111", "titulo": "Conversa estável", "status": "ativa"}],
         conversa_ativa_getter=lambda: "11111111111111111111111111111111", configuracao_getter=lambda: {}, log=lambda _: None)
     ponte.iniciar()
@@ -49,6 +50,8 @@ def conversa_web(monkeypatch, tmp_path):
         aguardar(lambda: bool(resposta))
         return resposta[0]
 
+    js.estado_publicado = estado_publicado
+
     try:
         janela.show()
         thread.start()
@@ -64,6 +67,116 @@ def conversa_web(monkeypatch, tmp_path):
         app.processEvents()
 
 
+def test_mascote_reimaginado_projeta_emocao_e_nivel_da_ponte_nos_quatro_formatos(conversa_web):
+    _janela, _ponte, _entradas, js, aguardar = conversa_web
+    js.estado_publicado.update(emotion="alegre", emotion_level=3)
+    aguardar(lambda: js("LaylayInterface.state.emotion==='alegre'"))
+    for modo, pagina in (("full", "home"), ("full", "chat"), ("quick", "chat"), ("island", "chat")):
+        js(f"LaylayInterface.goPage('{pagina}');LaylayInterface.goMode('{modo}')")
+        if pagina == "chat" and modo == "full":
+            _ponte.publicar_fala_final("Mensagem de verificação visual.", "alegre", 3)
+            aguardar(lambda: js("!!document.querySelector('.message .avatar')"))
+        aguardar(lambda: js("!!document.querySelector('.avatar')"))
+        assert js("document.querySelector('.avatar').dataset.expression") == "feliz"
+        assert js("document.querySelector('.avatar').dataset.emotionLevel") == "3"
+        assert js("!!document.querySelector('.avatar .mascot-tuft')&&!!document.querySelector('.avatar .mascot-mark')")
+
+
+def test_emocao_preserva_partes_olhar_e_piscada_e_reduced_nao_apaga_expressao(conversa_web):
+    from PySide6.QtTest import QTest
+    _janela, _ponte, _entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goPage('home')")
+    js.estado_publicado.update(emotion="alegre", emotion_level=1)
+    aguardar(lambda: js("LaylayInterface.state.emotion==='alegre'"))
+    js("""window.retrato={host:document.querySelector('.presence .avatar'),eye:document.querySelector('.presence .eye'),body:document.querySelector('.presence .avatar-body')};
+      retrato.host.classList.add('is-blinking');retrato.host.style.setProperty('--look-x','2.000px');""")
+    js.estado_publicado["emotion_level"] = 3
+    aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.emotionLevel==='3'"))
+    assert js("retrato.host===document.querySelector('.presence .avatar')&&retrato.eye===document.querySelector('.presence .eye')&&retrato.body===document.querySelector('.presence .avatar-body')")
+    assert js("retrato.host.classList.contains('is-blinking')&&retrato.host.style.getPropertyValue('--look-x')==='2.000px'")
+    js("window.animacoesContinuas=retrato.host.getAnimations({subtree:true}).filter(a=>a.effect.getTiming().iterations===Infinity)")
+    assert js("animacoesContinuas.length>0")
+    for _ in range(4):
+        assert _ponte._publicar({"type": "state", "emotion": "alegre", "emotion_level": 3, "activity": "idle"})
+        QTest.qWait(40)
+    assert js("animacoesContinuas.every(a=>retrato.host.getAnimations({subtree:true}).includes(a))")
+    js("LaylayInterface.request('preferencia',{name:'reduzir_movimento',value:true})")
+    aguardar(lambda: js("LaylayInterface.state.preferences.reduced===true"))
+    QTest.qWait(60)
+    assert js("document.querySelector('.presence .avatar').dataset.expression") == "feliz"
+    assert js("document.querySelector('.presence .avatar').getAnimations({subtree:true}).length") == 0
+
+
+def test_expressoes_nao_autorizam_acao_e_desconexao_nao_confirma_emocao_antiga(conversa_web):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goPage('home')")
+    for emocao, expressao in (("irritada", "brava"), ("triste", "triste"), ("surpresa", "surpresa"), ("desconhecida", "neutra")):
+        js.estado_publicado.update(emotion=emocao, emotion_level=2)
+        aguardar(lambda: js("LaylayInterface.state.emotion===" + json.dumps(emocao)))
+        aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.expression===" + json.dumps(expressao)))
+    js.estado_publicado.update(emotion="irritada", emotion_level=3)
+    aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.expression==='brava'"))
+    janela.worker.conectado.emit(False)
+    aguardar(lambda: js("LaylayInterface.state.connected===false"))
+    aguardar(lambda: js("document.querySelector('.presence .avatar').dataset.expression==='neutra'"))
+    assert entradas == [], "Uma expressão não concede autorização nem emite comandos"
+
+
+def test_mouse_real_move_olhar_nos_dois_eixos_e_reduced_o_centraliza(request):
+    import os
+    import subprocess
+    import sys
+
+    # Entrada nativa exige uma QApplication própria: após centenas de widgets
+    # da suíte, QTest.mouseMove pode não entregar nenhum pointermove ao WebView.
+    # Executamos as MESMAS asserções num processo limpo, sem simular eventos JS.
+    if os.environ.get("LAYLAY_TEST_OLHAR_ISOLADO") != "1":
+        ambiente = dict(os.environ, LAYLAY_TEST_OLHAR_ISOLADO="1")
+        resultado = subprocess.run(
+            [sys.executable, "-m", "pytest", str(Path(__file__).resolve()) + "::" + request.node.name, "-q"],
+            cwd=Path(__file__).parents[2], env=ambiente, capture_output=True,
+            text=True, encoding="utf-8", errors="replace", timeout=60,
+        )
+        assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+        return
+
+    from PySide6.QtCore import QPoint
+    from PySide6.QtTest import QTest
+
+    conversa_web = request.getfixturevalue("conversa_web")
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goPage('home')")
+    janela.activateWindow()
+    janela.web.setFocus()
+    aguardar(lambda: js("document.hasFocus()"))
+    js("window.olharHost=document.querySelector('.presence .avatar');window.eventosOlhar=[];window.addEventListener('pointermove',e=>eventosOlhar.push([e.pointerType,e.clientX,e.clientY]))")
+    receptor = janela.web.focusProxy() or janela.web
+    # Começar em outro ponto garante um deslocamento real na primeira amostra.
+    QTest.mouseMove(receptor, QPoint(receptor.width() // 2, receptor.height() // 2))
+    QTest.qWait(30)
+
+    def mover(x, y, eixo, sinal):
+        QTest.mouseMove(receptor, QPoint(x, y))
+        try:
+            aguardar(lambda: js(
+                f"parseFloat(olharHost.style.getPropertyValue('--look-{eixo}'))*{sinal}>0.2"))
+        except AssertionError:
+            pytest.fail(str(js("JSON.stringify({events:eventosOlhar,look:olharHost.getAttribute('style'),connected:olharHost.isConnected,body:document.body.className,focus:document.hasFocus(),hidden:document.hidden,reduced:LaylayInterface.state.preferences.reduced,visible:LaylayInterface.state.windowVisible})")))
+        assert js(f"parseFloat(getComputedStyle(olharHost.querySelector('.face')).translate.split(' ')[{0 if eixo == 'x' else 1}])*{sinal}>0.2")
+
+    mover(5, 5, "x", -1)
+    mover(receptor.width() - 5, 5, "x", 1)
+    mover(receptor.width() // 2, 5, "y", -1)
+    mover(receptor.width() // 2, receptor.height() - 5, "y", 1)
+    js("LaylayInterface.request('preferencia',{name:'reduzir_movimento',value:true})")
+    aguardar(lambda: js("olharHost.style.getPropertyValue('--look-x')==='0.000px'&&olharHost.style.getPropertyValue('--look-y')==='0.000px'"))
+    QTest.mouseMove(receptor, QPoint(5, 5))
+    QTest.qWait(150)
+    assert js("olharHost===document.querySelector('.presence .avatar')&&olharHost.dataset.emotion==='calma'")
+    assert js("olharHost.style.getPropertyValue('--look-x')==='0.000px'")
+    assert entradas == [], "Olhar para o mouse não altera emoção nem autoriza ações"
+
+
 def test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao(conversa_web):
     janela, ponte, entradas, js, aguardar = conversa_web
     from PySide6.QtTest import QTest
@@ -77,7 +190,7 @@ def test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao(conversa_
       input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();input.setSelectionRange(5,8);
       window.prova={feed:document.getElementById('chat-history'),input,
         message:document.querySelector('.message:not(.user)'),avatar:document.querySelector('.message:not(.user) .avatar')};
-      prova.animation=prova.message.getAnimations()[0];prova.clock=prova.animation?.currentTime;
+      prova.animationCount=prova.message.getAnimations().length;
       return true;
     })()""")
     for indice in range(6):
@@ -95,14 +208,17 @@ def test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao(conversa_
       input:prova.input===document.getElementById('composer-input'),
       message:prova.message===document.querySelector('.message:not(.user)'),
       avatar:prova.avatar===document.querySelector('.message:not(.user) .avatar'),
-      animation:!!prova.animation&&prova.animation===prova.message.getAnimations()[0],
-      advanced:!!prova.animation&&prova.animation.currentTime>=prova.clock,
+      animationCount:prova.message.getAnimations().length,
+      originalAnimationCount:prova.animationCount,
       draft:prova.input.value,cursor:[prova.input.selectionStart,prova.input.selectionEnd],focused:document.activeElement===prova.input,
       status:document.querySelector('.titlebar .status').textContent
     }))())"""))
     assert observado["feed"] and observado["message"], observado
     assert observado["input"] and observado["avatar"], observado
-    assert observado["animation"] and observado["advanced"], observado
+    # A prévia refinada aprovada usa balões estáticos (animation:none).
+    # O contrato continua exigindo identidade/rascunho/foco, e agora também
+    # impede que ticks instalem uma animação de entrada/reinício na mensagem.
+    assert observado["originalAnimationCount"] == observado["animationCount"] == 0, observado
     assert observado["draft"] == "Rascunho com cursor"
     assert observado["cursor"] == [5, 8] and observado["focused"]
     assert "Pronta" in observado["status"]
@@ -138,12 +254,12 @@ def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conver
     js("LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho'})")
     aguardar(lambda: js("document.querySelectorAll('.message').length===16"))
     js("window.resposta=document.querySelector('.message:last-child');LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho atualizado'})")
-    QTest.qWait(40)
+    aguardar(lambda: js("document.querySelector('.message:last-child').textContent.includes('atualizado')"))
     assert js("primeira===document.querySelector('.message')&&enviada===document.querySelector('.message.user')")
     assert js("resposta===document.querySelector('.message:last-child')&&resposta.textContent.includes('atualizado')")
     assert js("feed.scrollTop===posicao")
     assert js("enviada.textContent.includes('Resposta recebida')")
-    assert js("!!resposta.getAnimations()[0]")
+    assert js("resposta.getAnimations().length") == 0
     # IDs iguais em outra conversa não reutilizam a bolha da conversa anterior.
     outra = {"type": "conversations_state", "success": True, "action": "select", "conversations": {"active_id": "22222222222222222222222222222222", "items": [], "messages": [{"id": "novo", "role": "assistant", "content": "Outra conversa"}]}}
     js("LaylayInterface.receiveEvent(" + json.dumps(outra) + ")")
@@ -250,7 +366,7 @@ def test_observacoes_em_burst_nao_renderizam_sincronamente_nem_bloqueiam_receipt
     # Uma conversa longa já carregada não precisa ser reprojectada para exibir logs em outra página.
     messages = [{"id": str(i), "role": "assistant", "text": "Histórico de conversa para validar o custo das observações."} for i in range(200)]
     js("LaylayInterface.receiveEvent(" + json.dumps({"type": "snapshot", "messages": messages}) + ")")
-    QTest.qWait(50)
+    aguardar(lambda: js("document.querySelectorAll('.message').length===200"))
     js("""window.templateCount=0;window.originalCreate=document.createElement.bind(document);
       document.createElement=function(name,...args){if(name==='template')templateCount++;return originalCreate(name,...args)};
       for(let i=0;i<30;i++){

@@ -13,6 +13,11 @@ from mente_laylay.memoria_mental.resultado_acao import (
     STATUS_RESULTADO_JA_SATISFEITO,
 )
 from mente_laylay.personalidade.fala_operacional import estilizar_fala_operacional
+from mente_laylay.cognicao.explicacao_fala_historica import (
+    realizar_medicoes_observadas, realizar_nao_qualificacoes_medicao,
+    realizar_expectativas_resultado, realizar_comparacoes_resultado,
+)
+from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado, avaliar_comparacoes_resultado
 
 
 @dataclass(frozen=True)
@@ -262,8 +267,8 @@ def _garantir_resultado_explicito(fala: str, resultado: ResultadoAcao, classe: s
 
 
 def fala_resultado_por_aspectos(resultado: ResultadoAcao) -> str:
-    """Realiza alcances explícitos; uma parte não substitui a conclusão global."""
-    if not resultado.aspectos:
+    """Realiza alcances e medidas; observação não substitui conclusão global."""
+    if not resultado.tem_observacoes_do_executor:
         return ""
     classe = classificar_resultado(resultado)
     # Cancelamento não desfaz as partes já observadas desta ocorrência.
@@ -274,6 +279,16 @@ def fala_resultado_por_aspectos(resultado: ResultadoAcao) -> str:
         prefixo = ("Confirmação registrada de" if aspecto.confirmado is True else
                    "Sem confirmação de" if aspecto.confirmado is False else "Confirmação desconhecida de")
         partes.append(f"{prefixo} {json.dumps(aspecto.escopo, ensure_ascii=False)}.")
+    if resultado.expectativas:
+        partes.append(realizar_expectativas_resultado(resultado.expectativas))
+    if resultado.medicoes:
+        partes.append(realizar_medicoes_observadas(resultado.medicoes))
+    if resultado.expectativas or resultado.medicoes:
+        fontes = FontesComparacaoResultado(resultado.id_solicitacao, resultado.expectativas,
+            resultado.medicoes, resultado.inicio_execucao)
+        partes.append(realizar_comparacoes_resultado(avaliar_comparacoes_resultado(fontes)))
+    if resultado.nao_qualificacoes_medicao:
+        partes.append(realizar_nao_qualificacoes_medicao(resultado.nao_qualificacoes_medicao))
     return " ".join(partes)
 
 
@@ -326,7 +341,7 @@ def planejar_resposta_acao(
     )
     fala = _contextualizar_turno_misto(fala, resultado.texto_usuario)
 
-    if resultado.aspectos:
+    if resultado.tem_observacoes_do_executor:
         fala = fala_resultado_por_aspectos(resultado)
 
     return PlanoResposta(
@@ -352,7 +367,7 @@ def fala_factual_resultados_compostos(
         status = str(item.status or "").casefold()
         # Abrir um alvo não confirma foco nem reprodução. No novo caminho
         # composto a contingência declara apenas o efeito mínimo do receipt.
-        if item.aspectos:
+        if item.tem_observacoes_do_executor:
             partes.append(fala_resultado_por_aspectos(item))
             continue
         if classe == "sucesso" and "abert" in status and "focad" not in status:

@@ -37,6 +37,7 @@ DEPENDENCIAS_ESTADO_CONTEXTO = (
 )
 
 DEPENDENCIAS_ADAPTADORES_APLICACAO = (
+    "_uso_confirmado_runtime",
     "_registrar_mente_curta_base", "_derivar_mente_curta", "_motor_aprendizado_runtime", "_corpo_motor_runtime",
     "_rede_associativa_runtime", "print",
     "_registrar_resultado_execucao_base", "_estado_compartilhado_runtime",

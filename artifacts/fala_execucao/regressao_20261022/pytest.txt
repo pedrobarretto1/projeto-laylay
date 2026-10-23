@@ -1,0 +1,73 @@
+........................................................................ [ 12%]
+........................................................................ [ 25%]
+........................................................................ [ 38%]
+........................................................................ [ 51%]
+........................................................................ [ 64%]
+........................................................................ [ 77%]
+.................................................FF..................... [ 90%]
+..................................................                       [100%]
+================================== FAILURES ===================================
+_ test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts[3] _
+
+quantidade = 3
+
+    @pytest.mark.parametrize("quantidade", [3, 5])
+    def test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts(quantidade):
+        from mente_laylay.integracao.composicao_inteligencia_externa import ComposicaoInteligenciaExternaRuntime
+        import requests
+        payloads = []
+        alvos = ["Calculadora", "agenda", "editor", "navegador", "bloco"][:quantidade]
+        trechos = ["Abri " + alvo for alvo in alvos]
+        fala = "; ".join(trechos) + "."
+        def post(_url, **kwargs):
+            payloads.append(kwargs["json"])
+            resposta = requests.Response()
+            resposta.status_code = 200
+            resposta._content = json.dumps({"choices": [{"message": {"content": json.dumps({"fala": fala, "trechos": trechos})}}]}).encode()
+            return resposta
+        def contexto_proibido(*_a, **_k):
+            raise AssertionError("Autoria de receipts não consulta memória ou contexto externo")
+        runtime = ComposicaoInteligenciaExternaRuntime(base_url="http://localhost:11434/v1", model="qwen3-vl:4b-instruct", api_key="local", http_referer="http://localhost", app_title="Laylay", normalizar_texto_curto=str.casefold, requests_get=contexto_proibido, requests_post=post, ao_finalizar_conversa_modo_jogo=lambda: None, env_getter=lambda _k, d="": d, log=lambda *_a: None)
+        modelo = runtime.conectar_cliente(memoria_inteligente=SimpleNamespace(resumo_do_dia="", data_atual=""), normalizar_texto=str.casefold, mapear_pastas=contexto_proibido, contexto_logs_getter=contexto_proibido, contexto_navegador_relevante=contexto_proibido, contexto_sistema_getter=contexto_proibido, obter_contexto_paginas=contexto_proibido, resumo_mente_integrada=contexto_proibido)
+        itens = [ResultadoAcao(intent="APP_OPEN", status="app_aberto", alvo=alvo, executou=True, confirmado=True, origem="executor", id_solicitacao="pedido-" + str(i)) for i, alvo in enumerate(alvos)]
+        resultado = personalizar_confirmacao_composta_llm(itens, "fallback", enviar_mensagem=modelo.enviar)
+>       assert resultado.usada_llm, resultado.motivo_fallback
+E       AssertionError: estrutura_composta_invalida
+E       assert False
+E        +  where False = ConfirmacaoPersonalizada(fala='fallback', emocao='calma', nivel=1, usada_llm=False, motivo_fallback='estrutura_composta_invalida').usada_llm
+
+scripts\tests\test_resposta_operacional_composta.py:535: AssertionError
+_ test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts[5] _
+
+quantidade = 5
+
+    @pytest.mark.parametrize("quantidade", [3, 5])
+    def test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts(quantidade):
+        from mente_laylay.integracao.composicao_inteligencia_externa import ComposicaoInteligenciaExternaRuntime
+        import requests
+        payloads = []
+        alvos = ["Calculadora", "agenda", "editor", "navegador", "bloco"][:quantidade]
+        trechos = ["Abri " + alvo for alvo in alvos]
+        fala = "; ".join(trechos) + "."
+        def post(_url, **kwargs):
+            payloads.append(kwargs["json"])
+            resposta = requests.Response()
+            resposta.status_code = 200
+            resposta._content = json.dumps({"choices": [{"message": {"content": json.dumps({"fala": fala, "trechos": trechos})}}]}).encode()
+            return resposta
+        def contexto_proibido(*_a, **_k):
+            raise AssertionError("Autoria de receipts não consulta memória ou contexto externo")
+        runtime = ComposicaoInteligenciaExternaRuntime(base_url="http://localhost:11434/v1", model="qwen3-vl:4b-instruct", api_key="local", http_referer="http://localhost", app_title="Laylay", normalizar_texto_curto=str.casefold, requests_get=contexto_proibido, requests_post=post, ao_finalizar_conversa_modo_jogo=lambda: None, env_getter=lambda _k, d="": d, log=lambda *_a: None)
+        modelo = runtime.conectar_cliente(memoria_inteligente=SimpleNamespace(resumo_do_dia="", data_atual=""), normalizar_texto=str.casefold, mapear_pastas=contexto_proibido, contexto_logs_getter=contexto_proibido, contexto_navegador_relevante=contexto_proibido, contexto_sistema_getter=contexto_proibido, obter_contexto_paginas=contexto_proibido, resumo_mente_integrada=contexto_proibido)
+        itens = [ResultadoAcao(intent="APP_OPEN", status="app_aberto", alvo=alvo, executou=True, confirmado=True, origem="executor", id_solicitacao="pedido-" + str(i)) for i, alvo in enumerate(alvos)]
+        resultado = personalizar_confirmacao_composta_llm(itens, "fallback", enviar_mensagem=modelo.enviar)
+>       assert resultado.usada_llm, resultado.motivo_fallback
+E       AssertionError: estrutura_composta_invalida
+E       assert False
+E        +  where False = ConfirmacaoPersonalizada(fala='fallback', emocao='calma', nivel=1, usada_llm=False, motivo_fallback='estrutura_composta_invalida').usada_llm
+
+scripts\tests\test_resposta_operacional_composta.py:535: AssertionError
+=========================== short test summary info ===========================
+FAILED scripts/tests/test_resposta_operacional_composta.py::test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts[3]
+FAILED scripts/tests/test_resposta_operacional_composta.py::test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts[5]
+2 failed, 552 passed, 1 deselected in 34.15s

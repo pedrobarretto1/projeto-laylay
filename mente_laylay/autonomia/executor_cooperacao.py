@@ -54,6 +54,8 @@ class ExecutorPlanoCooperativoRuntime:
         ],
         *,
         contexto_execucao: Mapping[str, Any] | None = None,
+        antes_da_etapa: Callable[[Mapping[str, Any], Mapping[str, Any]], Any] | None = None,
+        etapa_vigente: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         plano = self.quadro.obter_plano(plano_id)
         if not plano:
@@ -162,6 +164,35 @@ class ExecutorPlanoCooperativoRuntime:
             else:
                 inicio_etapa = self._agora()
                 self.quadro.atualizar_etapa(plano_id, etapa_id, "executando")
+                if callable(antes_da_etapa):
+                    try:
+                        antes_da_etapa(plano_atual, etapa)
+                    except Exception as erro:
+                        self.log(f"⚠️ [COOPERAÇÃO] anúncio indisponível: {type(erro).__name__}")
+                # Esperar voz não conserva autorização, prazo ou vigência.
+                plano_atual = self.quadro.obter_plano(plano_id) or {}
+                try:
+                    vigente = etapa_vigente is None or etapa_vigente() is True
+                except Exception:
+                    vigente = False
+                cancelado = (plano_atual.get("cancelamento_solicitado")
+                             or plano_atual.get("estado") == "cancelado" or not vigente)
+                expirado = (not plano_atual or plano_atual.get("estado") == "expirado"
+                            or self._agora() >= limite_total)
+                autorizacao_atual = self.governanca.avaliar_autorizacao(
+                    plano_atual, etapa, contexto_execucao,
+                ) if (not cancelado and not expirado
+                      and (antes_da_etapa is not None or etapa_vigente is not None)) else autorizacao
+                if cancelado or expirado or not autorizacao_atual.get("permitido"):
+                    status = ("cancelamento_solicitado" if cancelado else
+                              "orcamento_total_excedido" if expirado else "autorizacao_negada")
+                    estado_fim = "cancelado" if cancelado else "expirado" if expirado else "falhou"
+                    self.quadro.atualizar_etapa(plano_id, etapa_id, estado_fim,
+                                               resultado={"status": status, "confirmado": False})
+                    final = self.quadro.atualizar_plano(plano_id, estado_fim,
+                        resultado={"status": status, "confirmado": False}) or plano_atual
+                    self.governanca.finalizar(final, decisao=estado_fim, motivo=status)
+                    return {"ok": False, "estado": estado_fim, "status": status}
                 try:
                     retorno = dict(executor(etapa, plano_atual) or {})
                 except Exception as erro:
@@ -209,13 +240,16 @@ class ExecutorPlanoCooperativoRuntime:
         )
         if falhas and obrigatorias_ok:
             self.quadro.registrar_falha_parcial()
-        if expirou and not obrigatorias_ok:
+        if plano_final.get("cancelamento_solicitado"):
+            estado_final = "cancelado"
+        elif expirou and not obrigatorias_ok:
             estado_final = "expirado"
         elif obrigatorias_ok:
             estado_final = "confirmado"
         else:
             estado_final = "falhou"
         status_final = (
+            "cancelamento_solicitado" if estado_final == "cancelado" else
             "plano_confirmado_com_falha_parcial"
             if estado_final == "confirmado" and falhas
             else "plano_confirmado"

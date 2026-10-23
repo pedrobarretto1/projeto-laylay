@@ -7,12 +7,13 @@ from __future__ import annotations
 
 from time import monotonic
 from pathlib import Path
+from typing import Callable
 
-from PySide6.QtCore import QObject, QRectF, Qt, QTimer, QUrl, Signal
-from PySide6.QtGui import QColor, QDesktopServices, QImage, QKeySequence, QPainter, QPainterPath, QShortcut
+from PySide6.QtCore import QObject, QRectF, Qt, QTimer, QUrl, Signal, QEvent
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QImage, QKeySequence, QPainter, QPainterPath, QShortcut
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QMessageBox, QPushButton,
-    QSizePolicy, QVBoxLayout, QWidget,
+    QSizePolicy, QVBoxLayout, QWidget, QBoxLayout, QScrollArea,
 )
 from cliente.terminal_2.theme import PALETA
 from cliente.terminal_2.streaming_fontes import FontesStreaming, calcular_recorte, medir_margens_nativas
@@ -166,11 +167,17 @@ class VisorStreaming(QWidget):
 
 
 class PaginaStreaming(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, expandir_no_host: Callable[[bool], None] | None = None) -> None:
         super().__init__(parent)
+        self._host_rolagem = parent if isinstance(parent, QScrollArea) else None
+        self._expandir_no_host = expandir_no_host
+        self._host_ampliado = False
+        self._visibilidade_integrada: list = []
         self.setObjectName("streamingPage")
+        self.setFont(QFont('Segoe UI', 10))
         p = PALETA
         self.setStyleSheet(f"""
+            #streamingPage {{ font-family: 'Segoe UI'; font-size: 12px; }}
             #streamingPage QPushButton {{
                 background: {p['elevada']}; color: {p['texto']};
                 border: 1px solid {p['borda']}; border-radius: 8px;
@@ -211,9 +218,11 @@ class PaginaStreaming(QWidget):
         titulo.setStyleSheet("font-size: 24px; font-weight: 700; color: #EEEAFB;")
         raiz.addWidget(titulo)
         subtitulo = QLabel("Só o vídeo. Enquadramento automático, no seu ritmo.")
+        subtitulo.setWordWrap(True)
         subtitulo.setStyleSheet("color: #A8AFC4; font-size: 13px;")
         raiz.addWidget(subtitulo)
         origem = QHBoxLayout()
+        self._origem_layout = origem
         origem.setSpacing(8)
         self.janelas = QComboBox()
         self.janelas.setMinimumWidth(140)
@@ -238,10 +247,15 @@ class PaginaStreaming(QWidget):
         self._visor_layout.addWidget(self.visor)
         raiz.addLayout(self._visor_layout, 1)
         controles = QHBoxLayout()
+        self._controles_layout = controles
         self.automatico = QLabel("✦ Enquadramento automático")
+        self.automatico.setWordWrap(True)
         self.automatico.setStyleSheet(f"color: {p['violeta']}; font-weight: 600;")
         self.flutuante = QPushButton("Janela flutuante")
         self.tela_cheia = QPushButton("Tela cheia")
+        if expandir_no_host is not None:
+            self.flutuante.setText('Ampliar no painel')
+            self.tela_cheia.setText('Só o vídeo')
         controles.addWidget(self.automatico)
         controles.addStretch()
         for botao in (self.flutuante, self.tela_cheia):
@@ -256,6 +270,7 @@ class PaginaStreaming(QWidget):
         ajuda.setStyleSheet("color: #8993AB; font-size: 12px;")
         raiz.addWidget(ajuda)
         self.extensao = QPushButton("Atualizar extensão da Laylay")
+        self.extensao.setAccessibleName('Atualizar extensão da Laylay')
         self.extensao.setToolTip("chrome://extensions → Recarregar a extensão Laylay existente")
         self.extensao.clicked.connect(self.abrir_extensao)
         raiz.addWidget(self.extensao, 0, Qt.AlignLeft)
@@ -274,6 +289,51 @@ class PaginaStreaming(QWidget):
         self._prazo_conexao.setInterval(6000)
         self._prazo_conexao.timeout.connect(self._conexao_ausente)
         self._prazo_conexao.start()
+        self._atalho_integrado = QShortcut(QKeySequence('Escape'), self, activated=lambda: self._expandir_no_host(False) if self._expandir_no_host is not None else None)
+        self._atalho_integrado.setEnabled(False)
+        if self._host_rolagem is not None:
+            self._host_rolagem.viewport().installEventFilter(self)
+        QTimer.singleShot(0, self._ajustar_layout_responsivo)
+
+    def resizeEvent(self, evento) -> None:  # noqa: N802
+        super().resizeEvent(evento)
+        self._ajustar_layout_responsivo()
+
+    def eventFilter(self, objeto, evento) -> bool:  # noqa: N802
+        if self._host_rolagem is not None and objeto is self._host_rolagem.viewport() and evento.type() == QEvent.Resize:
+            self._ajustar_layout_responsivo(evento.size().width())
+        return super().eventFilter(objeto, evento)
+
+    def _ajustar_layout_responsivo(self, largura: int | None = None) -> None:
+        # O sizeHint horizontal não pode ser o juiz da própria responsividade:
+        # ele impedia a página de ficar estreita e, portanto, de trocar direção.
+        if largura is None:
+            largura = self._host_rolagem.viewport().width() if self._host_rolagem is not None else self.width()
+        direcao = QBoxLayout.TopToBottom if largura < 620 else QBoxLayout.LeftToRight
+        rotulo_extensao = 'Atualizar extensão' if largura < 620 else 'Atualizar extensão da Laylay'
+        if self.extensao.text() != rotulo_extensao:
+            self.extensao.setText(rotulo_extensao)
+            self.updateGeometry()
+        if self._origem_layout.direction() != direcao:
+            self._origem_layout.setDirection(direcao)
+            self._controles_layout.setDirection(direcao)
+            self.updateGeometry()
+
+    def ampliar_integrado(self, ativo: bool) -> None:
+        """Enquadramento interno; não destaca o visor em outra janela."""
+        if self._expandir_no_host is None or ativo == self._host_ampliado:
+            return
+        self._host_ampliado = ativo
+        self._atalho_integrado.setEnabled(ativo)
+        if ativo:
+            self._visibilidade_integrada = [(w, not w.isHidden()) for w in self.findChildren(QWidget, options=Qt.FindDirectChildrenOnly) if w is not self.visor]
+            for widget, _visivel in self._visibilidade_integrada:
+                widget.hide()
+        else:
+            for widget, visivel in self._visibilidade_integrada:
+                widget.setVisible(visivel)
+            self._visibilidade_integrada.clear()
+        self.visor.show()
 
     def _conexao_ausente(self) -> None:
         self._conexao_demora = True
@@ -303,7 +363,7 @@ class PaginaStreaming(QWidget):
         self.janelas.setPlaceholderText("Escolha um vídeo…" if self._janelas else
                                        "Nenhum vídeo visível nesta aba" if self.fontes.conectada else
                                        "Extensão da Laylay não conectada")
-        self.extensao.setVisible(not self.fontes.conectada)
+        self.extensao.setVisible(not self.fontes.conectada and not self._host_ampliado)
         self.transmitir.setEnabled(bool(self._janelas) and self.captura.estado in {"parado", "erro"})
         if not self.fontes.disponivel:
             self._aplicar_estado("erro", "Canal local ocupado. Feche a outra aba Streaming e reabra o Terminal.")
@@ -393,6 +453,9 @@ class PaginaStreaming(QWidget):
 
     def abrir_player(self, tela_cheia: bool = False) -> None:
         if self.captura.estado != "transmitindo" or self._popup is not None:
+            return
+        if self._expandir_no_host is not None:
+            self._expandir_no_host(tela_cheia)
             return
         popup = QDialog(self)
         popup.setWindowTitle("Streaming Laylay")

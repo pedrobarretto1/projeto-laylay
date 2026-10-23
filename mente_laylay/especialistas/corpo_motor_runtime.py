@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Mapping, Protocol
 from mente_laylay.autonomia.companhia_corporal import CompanhiaCorporalRuntime
-from mente_laylay.memoria_mental.experiencia_corporal_runtime import criar_experiencia_corporal_runtime
+from mente_laylay.memoria_mental.experiencia_corporal_runtime import criar_experiencia_corporal_runtime, expectativas_corpo_observadas
+from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado, FalhaExecucaoComFontes
 
 
 class PortaTransporteCorpo(Protocol):
@@ -177,12 +178,25 @@ class CorpoMotorRuntime:
             return {}
 
     def _executar_manual_observado(self, ocorrencia: Mapping[str, Any], intent: str, callback: Callable[[], Any]) -> dict[str, Any]:
+        # Captura tipada antes do efeito. A projeção do transporte não pode
+        # substituir a meta validada, nem fornecer um envelope já certificado.
+        fontes = FontesComparacaoResultado(ocorrencia["id"], expectativas_corpo_observadas(ocorrencia),
+            iniciada_em=ocorrencia["iniciada_em"])
         try:
-            retorno = self.confirmar_receipt(callback(), intent)
+            bruto = callback()
+            if isinstance(bruto, dict):
+                bruto = dict(bruto)
+                bruto.pop("_fontes_resultado", None)
+            retorno = self.confirmar_receipt(bruto, intent)
         except Exception as erro:
             self.registrar_experiencia(ocorrencia, {"ok": False, "motivo": type(erro).__name__}, [])
+            if fontes.expectativas:
+                raise FalhaExecucaoComFontes(fontes) from erro
             raise
         self.registrar_experiencia(ocorrencia, retorno, [retorno], parada=intent == "CORPO_PARAR")
+        retorno.pop("_fontes_resultado", None)
+        if fontes.expectativas:
+            retorno["_fontes_resultado"] = fontes
         return retorno
 
     def confirmar_receipt(self, retorno: Any, intent: str) -> dict[str, Any]:
@@ -212,11 +226,12 @@ class CorpoMotorRuntime:
                         or type(pwm) is not int or not 90 <= pwm <= 200 or duracao != 5000
                         or not callable(getattr(self.transporte, "girar_corpo", None))):
                     return {"ok": False, "motivo": "giro_medido_indisponivel_ou_invalido"}
+                angulo_assinado = angulo if direcao == "esquerda" else -angulo
                 ocorrencia = self.experiencias.iniciar(nome=f"giro_medido_{direcao}", origem_intencao="pedido_usuario",
-                                                      perfil=self.companhia.perfil_corporal)
+                    perfil=self.companhia.perfil_corporal, angulo_solicitado_graus=angulo_assinado)
                 self.companhia.revogar("movimento_manual_prioritario")
                 return self._executar_manual_observado(ocorrencia, intent,
-                    lambda: self.transporte.girar_corpo(angulo if direcao == "esquerda" else -angulo, pwm=pwm))
+                    lambda: self.transporte.girar_corpo(angulo_assinado, pwm=pwm))
             if (direcao not in {"frente", "tras", "esquerda", "direita"}
                     or type(pwm) is not int or not 1 <= pwm <= 255
                     or type(duracao) is not int or not 50 <= duracao <= 500):

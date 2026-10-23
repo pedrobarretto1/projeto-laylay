@@ -1,0 +1,443 @@
+{
+  "mente_iniciada": false,
+  "dados_instrumentados": true,
+  "entradas_externas": 0,
+  "startup_native": [
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.0,
+      "entry": false,
+      "visible": true,
+      "phase": "starting"
+    },
+    {
+      "opacity": 0.12549019607843137,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.1607843137254902,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.3254901960784314,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.40784313725490196,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.4588235294117647,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.5058823529411764,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.6235294117647059,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.6588235294117647,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.7176470588235294,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.7490196078431373,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.8235294117647058,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.8431372549019608,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.8627450980392157,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.8941176470588236,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9294117647058824,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9411764705882353,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9529411764705882,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9686274509803922,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9803921568627451,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9882352941176471,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9921568627450981,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.9921568627450981,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.996078431372549,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.996078431372549,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.996078431372549,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 0.996078431372549,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": true,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    },
+    {
+      "opacity": 1.0,
+      "entry": false,
+      "visible": true,
+      "phase": "idle"
+    }
+  ],
+  "startup_frames": "",
+  "home": "",
+  "ok": false,
+  "error": "TypeError(\"string indices must be integers, not 'str'\")"
+}

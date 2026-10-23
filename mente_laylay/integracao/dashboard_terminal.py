@@ -268,6 +268,7 @@ class DashboardTerminalRuntime:
         musica_getter: Callable[[], Mapping[str, Any]] | None = None,
         playlists_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
         playlist_queue_getter: Callable[[], Sequence[Mapping[str, Any]]] | None = None,
+        uso_confirmado_getter: Callable[[], Mapping[str, Any]] | None = None,
         audio_output_getter: Callable[[], Mapping[str, Any]] | None = None,
         volume_getter: Callable[[], Any] | None = None,
         iot_getter: Callable[[], Mapping[str, Any]] | None = None,
@@ -297,6 +298,7 @@ class DashboardTerminalRuntime:
         self.musica_getter = musica_getter
         self.playlists_getter = playlists_getter
         self.playlist_queue_getter = playlist_queue_getter
+        self.uso_confirmado_getter = uso_confirmado_getter
         self.audio_output_getter = audio_output_getter
         self.volume_getter = volume_getter
         self.iot_getter = iot_getter
@@ -1719,6 +1721,11 @@ class DashboardTerminalRuntime:
             falhas_secoes += 1
             acoes_rapidas = list(anterior.get("quick_actions") or [])
         try:
+            home = self._chamar_limitado("home", self.uso_confirmado_getter, timeout_s=0.25) if callable(self.uso_confirmado_getter) else {}
+        except Exception:
+            home = deepcopy(anterior.get("home") or {})
+            home["freshness"] = "stale" if home.get("observed_at") else "unavailable"
+        try:
             iot = self._chamar_limitado(
                 "iot", lambda: self._iot(agora), timeout_s=0.25,
             )
@@ -1828,6 +1835,7 @@ class DashboardTerminalRuntime:
                 "context": contexto,
                 "memory_recent": memoria_recente,
                 "quick_actions": list(acoes_rapidas or []),
+                "home": home,
                 "music": musica,
                 "routines": rotinas,
                 "iot": iot,
