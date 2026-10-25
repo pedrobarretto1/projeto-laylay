@@ -59,7 +59,19 @@ def test_limite_de_observacao_e_fonte_compartilhada_sem_redacao_factual_livre(te
     "Como está o sistema solar organizado?", "Como está o corpo humano dividido?",
     "Qual é o estado da música brasileira no século XIX?"])
 def test_outros_atos_nao_sao_substituidos_pelo_limite_de_observacao(texto):
-    assert preparar(texto).contexto_fechado is False
+    pacote = preparar(texto)
+    # Presença discursiva possui agora seu próprio contrato fechado. O
+    # controle continua proibindo usar a ausência de leitura de um recurso.
+    if texto == "como você está?":
+        assert pacote.contrato_saida is not None
+        dados = pacote.contrato_saida.decodificar_json(json.dumps({"comandos": [],
+            "suporte_proposicoes": [{"texto": "Estou aqui conversando com você.", "fontes": []}]}))
+        assert dados["fala"] == "Estou aqui conversando com você."
+        with pytest.raises(ValueError):
+            pacote.contrato_saida.decodificar_json(json.dumps({"comandos": [],
+                "suporte_proposicoes": [{"texto": "Ainda não tenho uma leitura atual desse estado para responder com segurança.", "fontes": []}]}))
+    else:
+        assert pacote.contexto_fechado is False
 
 
 def test_pacote_de_outro_turno_nao_recebe_fonte_do_estado_atual():

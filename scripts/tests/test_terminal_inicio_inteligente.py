@@ -197,3 +197,139 @@ def test_biblioteca_preserva_cards_capas_e_play_sobreposto_apos_refinamento(pagi
         assert js.janela.grab().save(str(destino/f'biblioteca-{largura}.png'))
     js("document.querySelector('[data-tp-action=catalog-all]').click()")
     esperar(lambda: js("document.querySelectorAll('.tp-playlist').length===6"))
+
+
+@pytest.mark.parametrize('largura', [390, 1280])
+def test_b1_exibe_capas_publicadas_sem_inventar_ranking(paginas_reais, largura, tmp_path):
+    from pathlib import Path
+    import tempfile
+    from PySide6.QtGui import QColor, QImage
+    from PySide6.QtTest import QTest
+    from PySide6.QtWebEngineCore import QWebEngineSettings
+
+    js, esperar, _recebidas = paginas_reais
+    js.janela.capas_locais.diretorio = tmp_path
+    js.janela.web.settings().setAttribute(QWebEngineSettings.AutoLoadImages, True)
+    catalogo = []
+    for indice, nome in enumerate(('alternativo', 'anime', 'brisa da madrugada')):
+        entry = {'name': nome, 'count': indice + 5}
+        if indice < 2:
+            token = f'{indice + 8:024x}.png'
+            image = QImage(240, 240, QImage.Format_RGB32)
+            image.fill(QColor.fromHsv(210 + indice * 50, 105, 140))
+            assert image.save(str(tmp_path / token))
+            entry['artwork_url'] = 'laylay-playlist-artwork://' + token
+        catalogo.append(entry)
+    js.dashboard['music'].update(catalog=catalogo, catalog_available=True, catalog_play_available=False)
+    js.dashboard['home'] = {
+        'freshness': 'fresh', 'periods': {
+            str(days): {'playlists': [], 'actions': []} for days in (7, 30)
+        },
+    }
+    js.janela.resize(largura, 920)
+    js("LaylayInterface.goPage('home')")
+    esperar(lambda: js("document.querySelectorAll('.home-catalog-showcase .playlist-card').length===3"))
+    assert js("document.querySelectorAll('.home-catalog-showcase .playlist-spotlight').length===1")
+    assert js("document.querySelectorAll('.playlist-ranking .playlist-card').length===0")
+    assert js("document.querySelector('.home-catalog-showcase').textContent.includes('Ainda sem reproduções confirmadas')")
+    esperar(lambda: js("Array.from(document.querySelectorAll('.home-catalog-showcase .cover img')).length===2 && Array.from(document.querySelectorAll('.home-catalog-showcase .cover img')).every(img=>img.complete && img.naturalWidth>0)"))
+    assert js("document.querySelectorAll('.home-catalog-showcase .cover:not(:has(img))').length===1")
+    assert js("document.querySelector('.home-catalog-showcase .playlist-spotlight .playlist-info strong').textContent==='alternativo'")
+    assert js("document.querySelector('.home-catalog-showcase').textContent.includes('5 faixas na biblioteca')")
+    assert js("document.querySelectorAll('.home-catalog-showcase [data-tp-action=playlist-play]').length===0")
+    assert js("(()=>{const p=document.getElementById('page-content');return p.scrollWidth<=p.clientWidth+1})()")
+    js("document.querySelector('.home-catalog-showcase').scrollIntoView({block:'start'})")
+    QTest.qWait(250)
+    dest = Path(tempfile.gettempdir()) / 'laylay_home_b1_20261023'
+    dest.mkdir(exist_ok=True)
+    assert js.janela.grab().save(str(dest / f'home-catalogo-{largura}.png'))
+    js("document.querySelector('.home-catalog-showcase [data-home-pin=\"playlist:alternativo\"]').click()")
+    esperar(lambda: 'playlist:alternativo' in js.janela.preferencias_publicas()['home']['pinned_ids'])
+
+
+def test_b1_ranking_evidencia_reproducoes_com_play_bloqueado_sem_catalogo(paginas_reais):
+    js, esperar, _recebidas = paginas_reais
+    js.dashboard['home'] = {'freshness': 'fresh', 'periods': {
+        str(days): {'playlists': [
+            {'name':'Trilha principal','confirmed_plays':9},
+            {'name':'Outra trilha','confirmed_plays':4}
+        ], 'actions': []} for days in (7,30)
+    }}
+    js.dashboard['music'].update(catalog=[], catalog_play_available=False)
+    js("LaylayInterface.goPage('home')")
+    # Publicação de teste, sem autorizar reprodução ou modificar a mente.
+    js("LaylayInterface.receiveEvent(" + json.dumps({'type':'dashboard_state', 'dashboard':js.dashboard}) + ")")
+    esperar(lambda: js("document.querySelectorAll('.playlist-ranking .playlist-card').length===2"))
+    assert js("document.querySelector('.playlist-ranking .playlist-spotlight .playlist-info strong').textContent==='Trilha principal'")
+    assert js("document.querySelector('.playlist-ranking').textContent.includes('9 reproduções iniciadas confirmadas')")
+    assert js("Array.from(document.querySelectorAll('.playlist-ranking [data-tp-action=playlist-play]')).every(b=>b.disabled)")
+    assert js("document.querySelectorAll('.playlist-ranking .cover img').length===0")
+    assert js("!document.querySelector('.home-catalog-showcase')")
+
+
+@pytest.mark.parametrize('largura', [390, 1280])
+def test_f1_fixados_com_capa_real_e_desafixar_sem_executar(paginas_reais, largura, tmp_path):
+    from pathlib import Path
+    import tempfile
+    from PySide6.QtGui import QColor, QImage
+    from PySide6.QtTest import QTest
+    from PySide6.QtWebEngineCore import QWebEngineSettings
+
+    js, esperar, _eventos = paginas_reais
+    js.janela.capas_locais.diretorio = tmp_path
+    js.janela.web.settings().setAttribute(QWebEngineSettings.AutoLoadImages, True)
+    image = QImage(240, 240, QImage.Format_RGB32)
+    image.fill(QColor('#765c92'))
+    token = '0000000000000000000000f1.png'
+    assert image.save(str(tmp_path / token))
+    js.dashboard['music'].update(catalog=[
+        {'name':'alternativo','count':8,'artwork_url':'laylay-playlist-artwork://'+token},
+        {'name':'anime','count':27}
+    ], catalog_available=True, catalog_play_available=False)
+    js.janela.resize(largura,900)
+    js("LaylayInterface.goPage('home')")
+    js("LaylayInterface.receiveEvent("+json.dumps({'type':'dashboard_state','dashboard':js.dashboard})+")")
+    js.janela.definir_preferencia('inicio_inteligente', {
+        'version':1,'period_days':30,'pinned_ids':['playlist:alternativo','playlist:anime'],
+        'hidden_ids':[],
+    })
+    # Publicação das preferências, sem enviar comando para a mente.
+    js("LaylayInterface.receiveEvent("+json.dumps({'type':'preferencias_ui',
+        'preferences':js.janela.preferencias_publicas()})+")")
+    esperar(lambda: js("document.querySelectorAll('.pinned-mini-list .pinned-mini-card').length===2"))
+    esperar(lambda: js("(()=>{const img=document.querySelector('.pinned-mini-list img');return img?.complete&&img.naturalWidth>0})()"))
+    assert js("document.querySelector('.pinned-mini-list .pinned-mini-card strong').textContent==='alternativo'")
+    assert js("document.querySelectorAll('.pinned-mini-list img').length===1")
+    assert js("document.querySelector('.pinned-mini-list').textContent.includes('8 faixas')")
+    assert js("document.querySelector('.pinned-mini-list').textContent.includes('27 faixas')")
+    assert js("document.querySelectorAll('.pinned-mini-list .pinned-card-remove').length===2")
+    assert js("document.querySelectorAll('.pinned-mini-list [data-tp-action=playlist-play]').length===0")
+    assert js("document.querySelectorAll('.pinned-mini-list [data-page=music]').length===2")
+    js("document.querySelector('.pinned-mini-list').scrollIntoView({block:'start'})")
+    QTest.qWait(180)
+    dest=Path(tempfile.gettempdir())/'laylay_home_f1_20261023'
+    dest.mkdir(exist_ok=True)
+    assert js.janela.grab().save(str(dest/f'fixados-{largura}.png'))
+    assert js("(()=>{const p=document.getElementById('page-content');return p.scrollWidth<=p.clientWidth+1})()")
+    js("document.querySelector('[data-pinned-id=\"playlist:alternativo\"] [data-home-pin]').click()")
+    esperar(lambda: js("document.querySelectorAll('.pinned-mini-card').length===1"))
+    assert js.janela.preferencias_publicas()['home']['pinned_ids']==['playlist:anime']
+
+
+def test_f1_fixado_sem_catalogo_e_atalho_continuam_visiveis_e_inertes(paginas_reais):
+    js, esperar, _eventos=paginas_reais
+    js.janela.definir_preferencia('inicio_inteligente', {
+        'version':1,'period_days':30,
+        'pinned_ids':['playlist:brisa da madrugada','action:briefing'],
+        'hidden_ids':[],
+    })
+    js("LaylayInterface.goPage('home')")
+    js("LaylayInterface.receiveEvent("+json.dumps({'type':'preferencias_ui',
+        'preferences':js.janela.preferencias_publicas()})+")")
+    esperar(lambda: js("document.querySelectorAll('.pinned-mini-card').length===2"))
+    assert js("document.querySelector('[data-pinned-id=\"playlist:brisa da madrugada\"] strong').textContent==='brisa da madrugada'")
+    assert js("document.querySelector('[data-pinned-id=\"playlist:brisa da madrugada\"] .pinned-card-copy').textContent.includes('indisponível')")
+    assert js("document.querySelectorAll('.pinned-mini-list img').length===0")
+    assert js("!!document.querySelector('[data-pinned-id=\"action:briefing\"]')")
+    assert js("document.querySelector('[data-pinned-id=\"action:briefing\"] [data-home-execute]').disabled")
+    assert js("document.querySelectorAll('.pinned-mini-list .pinned-card-remove').length===2")

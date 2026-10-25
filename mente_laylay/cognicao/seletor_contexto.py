@@ -19,6 +19,7 @@ class ContextoCandidato:
     pontuacao: float
     aceito: bool
     evidencia: str
+    ocorrencia_fala_id: str = ""
 
 
 def _normalizar(texto: str) -> str:
@@ -45,6 +46,45 @@ def _sobreposicao(a: str, b: str, *, somente_conteudo: bool = False) -> float:
     if not ta or not tb:
         return 0.0
     return len(ta & tb) / max(1, min(len(ta), len(tb)))
+
+
+def selecionar_fontes_dialogo(
+    mensagens: list[Dict[str, Any]], *, indice_usuario_atual: int,
+) -> list[int]:
+    """Recupera um intervalo de falas do usuário, sem inferir fatos ou autoridade.
+
+    Esta é recuperação lexical, não validação semântica. Os índices referem-se
+    à lista recebida e preservam identidade, papel e texto originais. Falas da
+    IA e instruções antigas não são promovidas a declarações do usuário.
+    Desde a primeira âncora (com uma fala anterior) até o fim do histórico,
+    nenhuma fala do usuário é omitida: isso preserva correções elípticas mesmo
+    depois de mudanças de assunto. O orçamento aceita ou rejeita o intervalo
+    inteiro; não resolvemos
+    aqui quem é ``ele`` nem qual declaração corrigiu outra.
+    """
+    if not 0 <= indice_usuario_atual < len(mensagens):
+        return []
+    from mente_laylay.cognicao.referencias_linguagem import pedido_consulta_fala_usuario
+    if pedido_consulta_fala_usuario(str(mensagens[indice_usuario_atual].get('content') or '')):
+        # O referente é o ato de dizer: palavras da pergunta podem não estar
+        # na declaração. Recuperar o intervalo inteiro não classifica seu
+        # conteúdo e impede que outra pergunta vire âncora no lugar da fonte.
+        return [i for i in range(indice_usuario_atual) if mensagens[i].get('role') == 'user']
+    gramaticais = {
+        "como", "esta", "estao", "estou", "foi", "era", "ser", "estar",
+        "qual", "quais", "quem", "onde", "quando", "mesmo", "disse",
+        "falei", "tem", "tinha", "ficou", "vamos", "pode", "entao",
+    }
+    consulta = _tokens(str(mensagens[indice_usuario_atual].get("content") or "")) - gramaticais
+    if not consulta:
+        return []
+    usuarios = [i for i in range(indice_usuario_atual)
+        if str(mensagens[i].get("role") or "").casefold() == "user"]
+    ancoras = [pos for pos, i in enumerate(usuarios)
+        if consulta & _tokens(str(mensagens[i].get("content") or ""))]
+    if not ancoras:
+        return []
+    return usuarios[max(0, min(ancoras) - 1):]
 
 
 def _idade(mente: Dict[str, Any], chave: str, padrao: float = 999999.0) -> float:
@@ -77,6 +117,7 @@ def selecionar_contexto_turno(
     mente: Dict[str, Any] | None,
     contexto_perceptivo: Dict[str, Any] | None = None,
     limite: int = 3,
+    agora: float | None = None,
 ) -> Dict[str, Any]:
     """Pontua fontes de contexto e devolve somente as justificadas."""
     turno = dict(turno or {})
@@ -129,6 +170,7 @@ def selecionar_contexto_turno(
         idade_s: float,
         relacao: str,
         base: float,
+        ocorrencia_fala_id: str = "",
     ) -> None:
         conteudo = re.sub(r"\s+", " ", str(conteudo or "")).strip()
         if not conteudo:
@@ -187,18 +229,24 @@ def selecionar_contexto_turno(
         candidatos.append(ContextoCandidato(
             origem, dominio, conteudo[:500], idade_s, relacao,
             round(score, 3), aceito, evidencia,
+            ocorrencia_fala_id,
         ))
 
     # A fala efetivamente entregue vence rótulos semânticos mais antigos.
     # Antes, uma afirmação velha podia ocultar uma explicação operacional
     # recém-falada e quebrar continuidades como "explica isso melhor".
-    ultima_fala = str(mente.get("ultima_resposta") or "").strip() or " ".join(
+    from mente_laylay.memoria_mental.registro_semantico import selecionar_fala_observada
+    observada = selecionar_fala_observada(mente.get('registro_semantico'), agora=agora)
+    ultima_fala = str(observada.get('fala') or mente.get("ultima_resposta") or "").strip() or " ".join(
         filter(None, [
             str(mente.get("ultima_afirmacao") or ""),
             str(mente.get("ultima_pergunta") or ""),
         ])
     )
-    adicionar("ultima_fala", "conversa", ultima_fala, _idade(mente, "continuidade_fala_ts"), "fala_imediata", 0.40)
+    idade_fala = ((time.time() if agora is None else agora) - observada['ts']
+                  if observada else _idade(mente, 'continuidade_fala_ts'))
+    adicionar("ultima_fala", "conversa", ultima_fala, idade_fala, "fala_imediata", 0.40,
+              ocorrencia_fala_id=observada.get('id', ''))
     adicionar("pergunta_aberta", "conversa", str(mente.get("pergunta_aberta_texto") or ""), _idade(mente, "pergunta_aberta_ts"), "resposta_esperada", 0.56)
     adicionar("promessa", "conversa", str(mente.get("ultima_promessa_texto") or ""), _idade(mente, "ultima_promessa_ts"), "divida_conversacional", 0.60)
     adicionar("topico_ativo", "conversa", str(ctx.get("topico_ativo") or ""), _idade(mente, "ultimo_topico_ts"), "topico_historico", 0.24)

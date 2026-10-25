@@ -263,7 +263,22 @@ def extrair_resultados_youtube_busca(
             continue
 
         selecao_longa = str(tipo_resultado or "").strip().lower() == "selecao_longa"
-        if selecao_longa:
+        album = str(tipo_resultado or '').strip().lower() == 'album'
+        if album:
+            titulo_norm = normalizar_query_musical(titulo, normalizar_texto_cb)
+            if not re.search(r'\b(?:full album|album completo|álbum completo)\b', titulo_norm):
+                continue
+            query_norm = normalizar_query_musical(query, normalizar_texto_cb)
+            tokens_query = set(re.findall(r'\w+', query_norm)) - {'full', 'album', 'álbum', 'completo'}
+            tokens_titulo = set(re.findall(r'\w+', titulo_norm))
+            if not tokens_query or not tokens_query <= tokens_titulo:
+                continue
+            # Formato não é evidência de identidade ou de uma variação pedida.
+            # O bônus de álbum só pode ordenar candidatos já compatíveis.
+            variacoes = {'cover', 'instrumental', 'karaoke', 'tribute', 'remix', 'mix', 'sped', 'slowed', '8d'}
+            if (tokens_titulo & variacoes) - set(re.findall(r'\w+', query_norm)):
+                continue
+        elif selecao_longa:
             titulo_norm = normalizar_query_musical(titulo, normalizar_texto_cb)
             termos_longos = (
                 "mix", "playlist", "full album", "album completo", "1 hour",
@@ -284,7 +299,7 @@ def extrair_resultados_youtube_busca(
         # O pontuador comum pune mixes para proteger buscas de faixas únicas.
         # Aqui o formato longo foi pedido de propósito, então revertemos essa
         # penalização sem permitir resultados classificados como não musicais.
-        if selecao_longa and score > -400:
+        if (selecao_longa or album) and score > -400:
             score += 100
         if score < 15:
             continue

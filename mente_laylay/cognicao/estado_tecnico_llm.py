@@ -95,6 +95,8 @@ def categoria_estado_tecnico_llm(valor: Any) -> str:
     return {
         "laylayllmtimeout": "timeout",
         "laylayllmindisponivel": "indisponivel",
+        "laylayllmlimitecontexto": "limite_contexto",
+        "laylayllmrequisicaorecusada": "requisicao_recusada",
         # Também usado pelo orçamento/obsolescência: não comprova carga alta.
         "laylayllmocupada": "chamada_nao_disponivel",
     }.get(compacto, "")

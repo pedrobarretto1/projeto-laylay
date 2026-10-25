@@ -172,6 +172,7 @@ def test_mapa_recursos_reconhece_quantas_e_nome_repetido_de_playlist() -> None:
         arquivo="playlists.json",
         descricao="playlists reais",
         termos=("playlist", "musicas salvas"),
+        objetos_consulta=("musica", "faixa"),
         leitor=lambda texto: {
             "detalhe": (
                 {"nome": "sendo sendo", "titulos": ["Faixa real"]}

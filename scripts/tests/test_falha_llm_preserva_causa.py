@@ -13,6 +13,8 @@ FALHAS = [
     ("__LAYLAY_LLM_TIMEOUT__", "tempo"),
     ("__LAYLAY_LLM_INDISPONIVEL__", "indisponível"),
     ("__LAYLAY_LLM_OCUPADA__", "disponível"),
+    ("__LAYLAY_LLM_LIMITE_CONTEXTO__", "acomodar"),
+    ("__LAYLAY_LLM_REQUISICAO_RECUSADA__", "preparação"),
 ]
 
 

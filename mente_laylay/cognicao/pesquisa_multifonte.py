@@ -71,6 +71,27 @@ def extrair_consulta_didatica(texto: str, *, pedido_anterior: str = "") -> str:
     return assunto[:180] if len(assunto) >= 3 else ""
 
 
+def consulta_didatica_autossuficiente(consulta: str, *, foco: str = "") -> bool:
+    """Recorte conservador: não enviar referências locais como tema de busca.
+
+    Não resolve pessoas, histórico ou valores particulares por plausibilidade.
+    Até termos pessoais em uma comparação ambígua exigem contexto explícito;
+    este teste lexical não certifica que todo texto aceito seja conhecimento.
+    """
+    texto = str(consulta or "").strip()
+    if not texto:
+        return False
+    conjunto = texto + " " + str(foco or "")
+    return not bool(re.search(
+        r"\b(?:eu|mim|comigo|meu|minha|meus|minhas|nosso|nossa|nossos|nossas|"
+        r"voc[eê]|voc[eê]s|tu|teu|tua|seu|sua|seus|suas|contigo|"
+        r"isso|isto|aquilo|esse|essa|esses|essas|este|esta|estes|estas|"
+        r"dele|dela|deles|delas|aqui|a[ií]|laylay)\b|"
+        r"https?://|[\w.+-]+@[\w.-]+\.[a-z]{2,}|[a-z]:[\\/]|(?:^|\s)/[\w.-]+/",
+        conjunto, re.I,
+    ))
+
+
 def extrair_foco_didatico(texto: str) -> str:
     """Foco de exemplo pedido agora; não substitui o conceito da aula."""
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
@@ -196,15 +217,20 @@ class _TextoPagina(HTMLParser):
         super().__init__()
         self.ignorar = 0
         self.em_paragrafo = 0
+        self._blocos: list[str] = []
+        self._bloco_invalido = False
         self.partes: list[str] = []
         self.paragrafos: list[str] = []
 
     def handle_starttag(self, tag: str, attrs) -> None:
         if tag in {"script", "style", "nav", "footer", "header", "form", "svg", "noscript"}:
             self.ignorar += 1
-        elif not self.ignorar and tag in {"p", "li", "h1", "h2", "h3", "dd"} and not self.em_paragrafo:
-            self.em_paragrafo = 1
-            self.partes = []
+        elif not self.ignorar and tag in {"p", "li", "h1", "h2", "h3", "dd"}:
+            if not self.em_paragrafo:
+                self.partes = []
+                self._bloco_invalido = False
+            self._blocos.append(tag)
+            self.em_paragrafo = len(self._blocos)
 
     def handle_data(self, data: str) -> None:
         if self.em_paragrafo and not self.ignorar:
@@ -213,10 +239,26 @@ class _TextoPagina(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style", "nav", "footer", "header", "form", "svg", "noscript"}:
             self.ignorar = max(0, self.ignorar - 1)
-        elif self.em_paragrafo and tag in {"p", "li", "h1", "h2", "h3", "dd"}:
+        elif not self.ignorar and self.em_paragrafo and tag in {"p", "li", "h1", "h2", "h3", "dd"}:
+            # Fechar um filho não encerra o contêiner que iniciou a leitura.
+            # Fronteira incoerente invalida o bloco inteiro, nunca um prefixo.
+            if tag not in self._blocos:
+                self._bloco_invalido = True
+                return
+            if self._blocos[-1] != tag:
+                self._bloco_invalido = True
+            while self._blocos[-1] != tag:
+                self._blocos.pop()
+            self._blocos.pop()
+            self.em_paragrafo = len(self._blocos)
+            if self.em_paragrafo:
+                return
             parte = re.sub(r"\s+", " ", html.unescape(" ".join(self.partes))).strip()
-            if len(parte) >= 40 and not _INSTRUCAO_EXTERNA.search(parte):
-                self.paragrafos.append(parte[:900])
+            # O bloco é indivisível para evidência. Um prefixo pode excluir
+            # justamente a ressalva que limita uma frase bem ranqueada.
+            if (not self._bloco_invalido and 40 <= len(parte) <= 850
+                    and not _INSTRUCAO_EXTERNA.search(parte)):
+                self.paragrafos.append(parte)
             self.em_paragrafo = 0
             self.partes = []
 
@@ -319,13 +361,13 @@ def _ler_fonte(hit: dict, consulta: str, get) -> dict | None:
         ]
         pontuados = sorted(
             (
-                (pontuacao(frase, indice), frase)
+                (pontuacao(frase, indice), indice, frase)
                 for indice, frase in frases_origem
             ),
             key=lambda par: par[0], reverse=True,
         )
         trechos = [
-            frase for score, frase in pontuados
+            (indice, frase) for score, indice, frase in pontuados
             if score > 0 and (not alvo or _frase_afirma_sobre_alvo(frase, alvo))
         ][:1]
         if "|" in alvo:
@@ -334,34 +376,38 @@ def _ler_fonte(hit: dict, consulta: str, get) -> dict | None:
                 nome_parte = parte.strip()
                 pontuados_parte = sorted(
                     (
-                        (pontuacao(frase, indice, nome_parte), frase)
+                        (pontuacao(frase, indice, nome_parte), indice, frase)
                         for indice, frase in frases_origem
                         if _frase_afirma_sobre_alvo(frase, nome_parte)
                     ),
                     key=lambda par: par[0], reverse=True,
                 )
-                trecho_parte = pontuados_parte[0][1] if pontuados_parte else ""
+                trecho_parte = pontuados_parte[0][1:] if pontuados_parte else None
                 if trecho_parte and trecho_parte not in trechos:
                     trechos.append(trecho_parte)
         if alvo and not all(
-            any(_alvo_presente(parte.strip(), frase) for frase in trechos)
+            any(_alvo_presente(parte.strip(), frase) for _, frase in trechos)
             for parte in alvo.split("|")
         ):
             return None
         if not trechos:
             return None
-        if not alvo and len(termos & _tokens(trechos[0])) < min(2, len(termos)):
+        if not alvo and len(termos & _tokens(trechos[0][1])) < min(2, len(termos)):
             return None
-        trecho_final = " ".join(trechos)
-        if len(trecho_final) > 300:
+        # Frases localizam relevância, não comprovam independência de contexto.
+        # Preservar os blocos correspondentes inteiros, na ordem da página,
+        # inclusive quando várias âncoras pertencem ao mesmo bloco.
+        ancora_final = " ".join(frase for _, frase in trechos)
+        trecho_final = " ".join(parser.paragrafos[i] for i in sorted({i for i, _ in trechos}))
+        if len(trecho_final) > 850:
             return None
         nome = alvo.split("|", 1)[0] if alvo else consulta
-        nome_tokens = sorted(_tokens(nome) & _tokens(trecho_final), key=len, reverse=True)
+        nome_tokens = sorted(_tokens(nome) & _tokens(ancora_final), key=len, reverse=True)
         definicao_informativa = bool(
             any(
                 re.search(
                     rf"\b{re.escape(termo)}\b.{{0,100}}\b(?:refere-se|representa|consiste|significa|means|represents|refers)\b",
-                    trecho_final, re.I,
+                    ancora_final, re.I,
                 )
                 for termo in nome_tokens
             )
@@ -370,7 +416,7 @@ def _ler_fonte(hit: dict, consulta: str, get) -> dict | None:
             any(
                 re.search(
                     rf"\b{re.escape(termo)}\b.{{0,70}}\b(?:é\s+(?:um|uma|o|a)|is\s+(?:a|an|the))\b",
-                    trecho_final, re.I,
+                    ancora_final, re.I,
                 )
                 for termo in nome_tokens
             )

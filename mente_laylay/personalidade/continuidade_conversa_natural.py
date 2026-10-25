@@ -145,6 +145,9 @@ def contexto_recente_indica_email(ctx: Dict[str, Any]) -> bool:
 
 def _pede_explicacao_da_fala_anterior(texto_normalizado: str) -> bool:
     """Distingue uma referência elíptica de uma pergunta com assunto novo."""
+    from mente_laylay.cognicao.referencias_linguagem import pedido_sentido_fala_propria
+    if pedido_sentido_fala_propria(texto_normalizado):
+        return True
     t = re.sub(r"\s+", " ", str(texto_normalizado or "")).strip(" .!?;:")
     if not t:
         return False

@@ -131,11 +131,27 @@ def texto_deve_evitar_llm_de_comando(ctx: Dict[str, Any], texto: str) -> bool:
         return True
     decisao = _decisao_turno(ctx)
     modalidade = str(decisao.get("modalidade_geral") or decisao.get("modalidade") or "").lower()
+    segmentos = [
+        segmento for segmento in list(decisao.get("segmentos") or [])
+        if isinstance(segmento, dict)
+    ]
+    # Misto descreve a composição da fala, não uma demanda operacional.
+    # Só a classificação completa por atos permite dispensar o analisador;
+    # ausência dessa evidência preserva a resolução de entradas ambíguas.
+    misto_sem_ato_operacional = bool(
+        modalidade == "misto"
+        and segmentos
+        and all("autoriza_execucao" in segmento for segmento in segmentos)
+        and not any(autoriza_execucao_efetiva(segmento) for segmento in segmentos)
+    )
     if decisao and (
         decisao.get("requer_esclarecimento")
         or (
-            modalidade in {"conversa", "pergunta", "deliberacao", "correcao", "reacao"}
-            and not decisao.get("autoriza_execucao")
+            (
+                modalidade in {"conversa", "pergunta", "deliberacao", "correcao", "reacao"}
+                or misto_sem_ato_operacional
+            )
+            and not autoriza_execucao_efetiva(decisao)
         )
     ):
         return True

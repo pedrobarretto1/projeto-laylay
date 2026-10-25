@@ -51,6 +51,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     valor_e_referencia_contextual,
 )
 from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
 from mente_laylay.memoria_mental.continuidade_geral import (
     resolver_fechamento_ordinal_aberturas_recentes,
     resolver_continuacao_aditiva,
@@ -122,6 +123,11 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     def compativel(candidato):
         return bool(isinstance(candidato, dict) and candidato.get("intent")
                     and candidato_respeita_tipo_recurso(candidato, tipo_pedido))
+    consulta_recurso = _call(ctx, "resolver_consulta_recurso_local", texto)
+    if isinstance(consulta_recurso, Mapping) and consulta_recurso.get("destino") == "ia":
+        # Finalidade vem antes de qualquer atalho de alvo ou domínio. Uma
+        # referência ordinal, por exemplo, não comprova o objeto solicitado.
+        return None
     bloqueio_iot_original = bloqueia_controle_iot_por_modalidade(texto)
     # Entidades do corpo são resolvidas antes do filtro de conversa curta.
     # A autoridade continua no turno/árbitro e é validada pelo executor.
@@ -153,6 +159,22 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
         return consulta_lista_iot
 
     mente_previa = _get(ctx, "mente_integrada_estado", {})
+    retrato_reproducao = dict((mente_previa or {}).get('retrato_turno_atual') or {})
+    turno_reproducao = dict((mente_previa or {}).get('turno_atual') or {})
+    if (retrato_reproducao.get('operacao_explicita') == 'reproduzir_referente'
+        and turno_reproducao.get('id')
+        and turno_reproducao.get('id') == retrato_reproducao.get('id')
+        and normalizar_texto_basico(texto) == normalizar_texto_basico(retrato_reproducao.get('texto') or '')):
+        referente = dict(retrato_reproducao.get('referencia_resolvida') or {})
+        tipo_referente = referente.get('tipo')
+        nome_referente = str(referente.get('nome') or '').strip()
+        if nome_referente and tipo_referente in {'album', 'artista', 'cantor', 'cantora', 'banda', 'musica', 'playlist'}:
+            if tipo_referente == 'playlist':
+                return {'intent': 'PLAYLIST_PLAY', 'params': {'nome_playlist': nome_referente}}
+            params = {'query': nome_referente, 'referencia_contextual': True}
+            if tipo_referente == 'album':
+                params['formato'] = 'album'
+            return {'intent': 'MUSIC_SEARCH', 'params': params}
     candidato_email = _call(ctx, "detectar_email", texto)
     if compativel(candidato_email):
         return candidato_email
@@ -299,7 +321,6 @@ def detectar_intencao_deterministica_mente(texto: str, ctx: Mapping[str, Any]) -
     # O catálogo de recursos conhece seus dados reais e o intent de leitura.
     # Perguntas naturais de consulta precisam chegar aqui antes dos filtros
     # genéricos de conversa, sem conceder nenhuma operação de escrita.
-    consulta_recurso = _call(ctx, "resolver_consulta_recurso_local", texto)
     if compativel(consulta_recurso):
         return consulta_recurso
 

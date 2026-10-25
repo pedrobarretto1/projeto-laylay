@@ -165,6 +165,9 @@ def refinar_consulta_musical(
     texto = _normalizar(f"{query} {texto_original}")
     if not normalizada:
         return {"query": "", "origem": "vazia", "tipo_resultado": ""}
+    formato = _normalizar(str(dados.get('formato') or dados.get('format') or ''))
+    if formato in {'album', 'album completo', 'full album'}:
+        return {'query': str(query or normalizada).strip(), 'origem': 'explicita', 'tipo_resultado': 'album'}
     if _parece_titulo_explicito(normalizada, texto_original):
         return {"query": str(query or normalizada).strip(), "origem": "explicita", "tipo_resultado": "faixa"}
 

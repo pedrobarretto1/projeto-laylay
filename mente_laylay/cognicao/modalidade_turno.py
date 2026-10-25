@@ -124,6 +124,44 @@ def _consulta_significado_do_ato(texto: str) -> bool:
     return _intervalo_objeto_consulta_significado(texto) is not None
 
 
+def _para_inicial_e_adjunto(texto: str) -> bool:
+    """Distingue preposição de imperativo pela oração, antes do léxico.
+
+    O infinitivo de finalidade ou uma oração com sujeito/futuro/pergunta
+    após o complemento não são objetos do verbo parar. Não escolhe ação,
+    alvo ou executor. Fronteiras independentes continuam na segmentação.
+    """
+    t = _normalizar_p0_ato_fala(texto)
+    if not re.match(r"^para\s+", t):
+        return False
+    # O conteúdo de um nome literal não pode se tornar sujeito da oração.
+    pares = mapear_pares_aspas_globais(t) or {}
+    for inicio, fim in sorted(pares.items(), reverse=True):
+        t = t[:inicio] + " " * (fim - inicio + 1) + t[fim + 1:]
+    complemento = t[5:].strip()
+    # ``devagar`` é advérbio; o sufixo isolado não o torna infinitivo.
+    if re.match(
+        r"(?!(?:devagar)\b)(?:[a-z]+(?:ar|er|ir)|"
+        r"(?:re|com|de|dis|pro|su|trans|inter|ante|contra|justa|pos)?por)\b", complemento,
+    ):
+        return True
+    # A oração principal pode vir após um adjunto nominal, com ou sem
+    # vírgula. Causais/relativas pertencem ao complemento de uma ordem
+    # ("para a música porque eu vou dormir"), não provam finalidade.
+    matriz = re.search(
+        r"\s+(?:(?:eu|voce|tu|ele|ela|nos|voces|eles|elas|a\s+gente)\s+|"
+        r"(?:vou|vai|vamos|vao|irei|iremos)\s+[a-z]+(?:ar|er|ir|or)\b|"
+        r"(?:qual|quais|como|quem|onde|quando|por\s+que)\b)",
+        complemento,
+    )
+    if matriz is None:
+        return False
+    adjunto = complemento[:matriz.start()].strip(" ,")
+    return bool(adjunto) and not re.search(
+        r"[;.!?]|\b(?:porque|pois|que|se|senao|mas|e)\b", adjunto,
+    )
+
+
 def analisar_protecao_operacional(
     texto: str,
     *,
@@ -170,6 +208,13 @@ def analisar_protecao_operacional(
             "modalidade": "deliberacao",
             "natureza_acao": "condicao_nao_verificada",
             "motivo": "a ação depende de condição não verificada neste pedido",
+        }
+    if _para_inicial_e_adjunto(texto):
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "pergunta" if "?" in texto else "conversa",
+            "natureza_acao": "adjunto_finalidade",
+            "motivo": "preposição introduz finalidade; não é ordem de parar",
         }
     if re.search(
         r"^(?:nao|não)\s+\w+.*\b(?:(?:o\s+)?qu[eê]|qual|por que)\b",
@@ -1245,6 +1290,20 @@ def _classificar_ato_estrutural(
         )
 
     if classe == "protegida":
+        if (str(getattr(cand, 'regra', '')) == 'pergunta'
+            and texto_tem_relevancia_musical(texto_estrutural)):
+            geral = _classificar_atomo_geral(texto_estrutural,
+                normalizar_texto=normalizar_texto,
+                texto_tem_comando_explicito=texto_tem_comando_explicito,
+                confirmacao_contextual_valida=confirmacao_contextual_valida)
+            if geral.get('natureza_acao') == 'consulta' and not turno_tem_veto_execucao(geral):
+                # O guard especializado veda a ordem musical, não a leitura
+                # reconhecida pelo owner geral. Nenhuma permissão mutante é
+                # herdada dessa consulta; o mapa ainda deve provar finalidade/alvo.
+                return {**geral, 'modalidade': 'pergunta', 'modalidade_geral': 'pergunta',
+                    'ato_principal': 'pergunta', 'atos': ['pergunta'],
+                    'acao_explicita': False, 'autoriza_execucao': False,
+                    'veto_execucao_operacional': False}
         protecao_real = dict(
             analisar_protecao_operacional(
                 texto_estrutural,
@@ -1436,11 +1495,69 @@ def _tem_consequencia_condicional(
     return False
 
 
+def _separar_matriz_apos_adjunto(
+    bloco: str,
+    *,
+    normalizar_texto: Callable[[str], str] | None,
+):
+    """A pausa escrita é opcional entre finalidade e pedido principal.
+
+    Reusa a evidência do ato inteiro. Sujeito, futuro, pergunta, condição ou
+    negação no prefixo impedem extrair como ordem um verbo subordinado.
+    """
+    if not re.match(r"^para\s+", bloco, flags=re.IGNORECASE):
+        return None
+    from mente_laylay.cognicao.gramatica_corpo import analisar_pedido_corporal
+    pares = mapear_pares_aspas_globais(bloco) or {}
+    for m in re.finditer(r"\s+", bloco):
+        if any(i < m.start() < f for i, f in pares.items()):
+            continue
+        esquerda, direita = bloco[:m.start()].strip(), bloco[m.end():].strip()
+        complemento = _normalizar_p0_ato_fala(esquerda)[5:]
+        if not complemento or re.search(
+            r"[,;.!?]|\b(?:eu|voce|tu|ele|ela|nos|voces|eles|elas|"
+            r"vou|vai|vamos|vao|irei|iremos|qual|quais|como|quem|onde|quando|"
+            r"porque|pois|que|se|senao|mas|e|nao|nunca|jamais|talvez)\b",
+            complemento,
+        ) or re.match(r"(?:de|com|agora|ja|ai|devagar)\b", complemento):
+            continue
+        infinitivo = re.match(r"^[a-z]+(?:ar|er|ir|or)\b(?P<resto>.*)", complemento)
+        if infinitivo and (resto := infinitivo["resto"].strip()):
+            # Um nome entre finalidade e verbo pode ser o sujeito deste
+            # último ("para estudar o Leo abre..."). Não o descartar como
+            # objeto. O grupo plural explícito abaixo não é sujeito de um
+            # imperativo singular; casos nominais ambíguos ficam fechados.
+            plural_sem_sujeito_compativel = re.fullmatch(
+                r"(?:os|as|uns|umas|meus|minhas|seus|suas)\s+(?:\w+s\s+)*\w+s",
+                resto,
+            )
+            # A flexão formal regular (abra/crie/organize) não é a forma
+            # indicativa de um sujeito nominal. Derivá-la do léxico canônico
+            # evita cadastrar outra lista de comandos neste leitor.
+            primeira = re.match(r"(?:por\s+favor\s+)?(\w+)", _normalizar_p0_ato_fala(direita))
+            forma_formal = bool(primeira) and any(
+                primeira[1] == verbo[:-2] + ("e" if verbo.endswith("ar") else "a")
+                for verbo in re.findall(r"[a-z]+", _P0_VERBOS_INFINITIVO_OPERACIONAL)
+            )
+            if not plural_sem_sujeito_compativel and not forma_formal:
+                continue
+        # Uma parada já reconhecida como ato completo não é um adjunto.
+        musical = analisar_gramatica_musical(esquerda)
+        if getattr(musical, "classe", "") == "pedido_direto" or analisar_pedido_corporal(esquerda):
+            continue
+        if _evidencia_ato_operacional(direita, normalizar_texto=normalizar_texto)[0]:
+            return m, esquerda, direita, "MATRIZ_APOS_ADJUNTO"
+    return None
+
+
 def _separar_primeira_fronteira_forte(
     bloco: str,
     *,
     normalizar_texto: Callable[[str], str] | None,
 ):
+    matriz = _separar_matriz_apos_adjunto(bloco, normalizar_texto=normalizar_texto)
+    if matriz is not None:
+        return matriz
     pares_aspas = mapear_pares_aspas_globais(bloco) or {}
     for m in re.finditer(
         r"(?P<sep>[,;!?]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
@@ -1677,6 +1794,7 @@ def _segmentar_turno_misto(
     texto_estrutural: str,
     *,
     normalizar_texto: Callable[[str], str] | None = None,
+    papeis_segmentos: dict[int, str] | None = None,
 ) -> list[str]:
     """
     A2+A3: boundary estrutural + pontuação semântica preservada.
@@ -1700,13 +1818,16 @@ def _segmentar_turno_misto(
     ):
         return [t]
 
-    segmentos = [t]
+    segmentos = [(t, "")]
 
     for _ in range(8):
         mudou = False
         novos = []
 
-        for bloco in segmentos:
+        for bloco, papel in segmentos:
+            if papel:
+                novos.append((bloco, papel))
+                continue
             corte = _separar_primeira_fronteira_forte(
                 bloco,
                 normalizar_texto=normalizar_texto,
@@ -1714,19 +1835,25 @@ def _segmentar_turno_misto(
             if corte is None:
                 limpo = _limpar_ato_semantico(bloco)
                 if limpo:
-                    novos.append(limpo)
+                    novos.append((limpo, ""))
                 continue
 
             _m, esquerda, direita, _origem = corte
-            novos.extend([esquerda, direita])
+            papel_esquerda = "adjunto_finalidade" if _origem == "MATRIZ_APOS_ADJUNTO" else ""
+            novos.extend([(esquerda, papel_esquerda), (direita, "")])
             mudou = True
 
-        segmentos = [s for s in novos if s]
+        segmentos = [(s, papel) for s, papel in novos if s]
         if not mudou:
             break
 
     finais = []
-    for bloco in segmentos:
+    for bloco, papel in segmentos:
+        if papel:
+            if papeis_segmentos is not None:
+                papeis_segmentos[len(finais)] = papel
+            finais.append(bloco)
+            continue
         if _consulta_significado_do_ato(bloco):
             # Toda a coordenação é o objeto da consulta. Separá-la primeiro
             # concederia autoridade a uma operação apenas mencionada.
@@ -1852,22 +1979,36 @@ def _classificar_modalidade_turno_composta_base(
 
     # Um literal integral é um só objeto mencionado. A projeção normal do
     # turno conserva identidade/texto; seus verbos internos não viram atos.
+    papeis_segmentos: dict[int, str] = {}
     segmentos_texto = [bruto] if texto_e_citacao_integral(bruto) else _segmentar_turno_misto(
         estrutural,
         normalizar_texto=normalizar_texto,
+        papeis_segmentos=papeis_segmentos,
     )
 
     segmentos = []
     resultados = []
     for indice, trecho in enumerate(segmentos_texto):
-        res = _classificar_ato_estrutural(
-            trecho,
-            normalizar_texto=normalizar_texto,
-            texto_tem_comando_explicito=texto_tem_comando_explicito,
-            confirmacao_contextual_valida=(
-                confirmacao_contextual_valida
-            ),
-        )
+        if papeis_segmentos.get(indice) == "adjunto_finalidade":
+            # O papel foi demonstrado junto da matriz. Reclassificar o
+            # prefixo nominal isolado perderia essa evidência e converteria
+            # novamente a preposição em imperativo.
+            res = {
+                "modalidade": "conversa", "natureza_acao": "adjunto_finalidade",
+                "confianca": 0.99, "autoriza_execucao": False,
+                "acao_explicita": False, "requer_esclarecimento": False,
+                "depende_contexto": False,
+                "motivo": "adjunto da oração principal; não é ordem de parar",
+            }
+        else:
+            res = _classificar_ato_estrutural(
+                trecho,
+                normalizar_texto=normalizar_texto,
+                texto_tem_comando_explicito=texto_tem_comando_explicito,
+                confirmacao_contextual_valida=(
+                    confirmacao_contextual_valida
+                ),
+            )
         resultados.append(res)
         segmentos.append(
             _segmento_estrutural(trecho, res, indice)

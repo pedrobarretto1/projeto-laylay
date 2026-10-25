@@ -87,6 +87,16 @@ def texto_tem_relevancia_musical(texto: str) -> bool:
     return bool(re.match(r"^(?:por\s+favor\s+)?bota\b", normalizado))
 
 
+def pedido_reproducao_referente(texto: str) -> bool:
+    """Relação diretiva objeto/finalidade; não resolve alvo nem autoriza efeito."""
+    return bool(re.fullmatch(
+        r"(?:por favor\s+)?(?:(?:pode|poderia|consegue|conseguiria)\s+)?"
+        r"(?:coloca|coloque|colocar|bota|bote|botar|poe|ponha|por)\s+"
+        r"(?:ele|ela|isso|esse|essa)\s+(?:para|pra)\s+"
+        r"(?:mim|eu|nos|a gente)\s+(?:ouvir|escutar)[?!.]*",
+        normalizar_gramatica_musical(texto)))
+
+
 # Molduras que explicitamente NÃO são ordens atuais.
 _NEGACAO_INICIAL = re.compile(
     r"^(?:nao|nem|nunca|jamais)\b",

@@ -4,7 +4,7 @@ from copy import deepcopy
 import pytest
 
 from mente_laylay.integracao.preparacao_llm import preparar_payload_llm
-from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO
+from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_COMPACTO
 
 
 @pytest.mark.parametrize("texto", [
@@ -20,7 +20,7 @@ def test_perfil_local_normal_seleciona_base_compacta_sem_cortar_contexto(texto):
     antes = deepcopy(mensagens)
     p = preparar_payload_llm(mensagens, model="qwen3:4b-instruct", max_tokens=1024,
                             endpoint_local=True, modo_rapido=False)
-    assert p["messages"][0]["content"] == BASE_SYSTEM_PROMPT_RAPIDO + fonte
+    assert p["messages"][0]["content"] == BASE_SYSTEM_PROMPT_COMPACTO + fonte
     assert p["messages"][1:] == mensagens[1:]
     assert mensagens == antes
 
@@ -47,3 +47,30 @@ def test_instrucao_prioritaria_anteposta_nao_vira_perfil_simples():
     p = preparar_payload_llm([{"role": "system", "content": sistema},
                              {"role": "user", "content": "dois atos"}], model="modelo", endpoint_local=True)
     assert p["messages"][0]["content"] == sistema
+
+
+@pytest.mark.parametrize('texto', ['explica a diferença entre eu e mim',
+    'agora explica a diferença entre eu e mim', 'então me ensina a usar vírgulas',
+    'ensina a diferença entre esses dois exemplos'])
+def test_pedido_de_ensino_no_imperativo_nao_herda_resposta_rapida(texto):
+    from mente_laylay.personalidade.proporcao_resposta import classificar_proporcao
+    from mente_laylay.autonomia.fluxos_conversa import usar_modo_rapido_conversa
+    assert classificar_proporcao(texto) == 'explicativa'
+    assert not usar_modo_rapido_conversa(texto)
+
+
+@pytest.mark.parametrize('texto', ['pode colocar ele para mim ouvir',
+    'abre esse aplicativo', 'salva isso no arquivo'])
+def test_compactacao_normal_preserva_proposta_operacional_condicionada_ao_turno(texto):
+    p = preparar_payload_llm([{'role': 'system', 'content': BASE_SYSTEM_PROMPT},
+        {'role': 'system', 'content': 'Turno atual: autoriza_execucao=True; sem receipt.'},
+        {'role': 'user', 'content': texto}], model='qwen3:4b-instruct', endpoint_local=True)
+    sistema = p['messages'][0]['content']
+    assert 'Retorne comandos vazios.' not in sistema
+    assert 'Pedido real gera um comando' in sistema
+    assert 'Não conclua antes do executor' in sistema
+
+
+def test_rota_rapida_conversacional_continua_sem_propor_operacao():
+    from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT_RAPIDO
+    assert 'Retorne comandos vazios.' in BASE_SYSTEM_PROMPT_RAPIDO

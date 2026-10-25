@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import hashlib
 import time
 from typing import Any, Dict, Iterable
 
@@ -160,6 +161,23 @@ def planejar_turno(
     leitura = dict(turno or {})
     veto_execucao = turno_tem_veto_execucao(leitura)
     estado = dict(mente or {})
+    relatos_usuario = [dict(item) for item in dict(estado.get('registro_semantico') or {}).get('alegacoes', [])
+        if isinstance(item, dict) and item.get('autor') == 'usuario']
+    from mente_laylay.cognicao.proveniencia_informacao import classificar_proveniencia_informacao
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    relatos_bloqueados = {normalizar_texto_basico(str(item.get('texto') or ''))
+        for item in relatos_usuario if classificar_proveniencia_informacao(item).get('bloqueada')}
+    # O registro semântico pode conter uma normalização, não o enunciado
+    # original. A ocorrência literal da conversa mantém pontuação, ressalvas
+    # e autoria; não reconstituir essa fonte a partir da fala da IA.
+    for indice, item in enumerate(estado.get('messages') or []):
+        if isinstance(item, dict) and item.get('role') == 'user' and type(item.get('content')) is str:
+            texto_fonte = item['content']
+            if (texto_fonte and len(texto_fonte) < 500
+                and normalizar_texto_basico(texto_fonte) not in relatos_bloqueados):
+                relatos_usuario.append({'id':f'dialogo:usuario:{indice}:' + hashlib.sha256(texto_fonte.encode('utf8')).hexdigest(),
+                    'autor':'usuario', 'origem':'historico_conversa', 'status':'relatado_pelo_usuario',
+                    'texto':texto_fonte})
     funcao_comunicativa = dict(leitura.get("funcao_comunicativa") or {})
     identidade = dict(leitura.get("identidade") or {})
     segmentos = leitura.get("segmentos") if isinstance(leitura.get("segmentos"), list) else []
@@ -252,6 +270,7 @@ def planejar_turno(
         dominio_turno = dominio_referencia
 
     plano = {
+        "relatos_usuario": relatos_usuario,
         "id": int(leitura.get("id") or time.time_ns()),
         "origem_entrada": str(leitura.get("origem_entrada") or "desconhecida"),
         "texto_usuario": str(texto or "").strip()[:500],
@@ -410,6 +429,7 @@ def _verificar_fala_turno_base(
         }
 
     problemas: list[str] = []
+    revisoes_relatos_usuario: list[dict[str, Any]] = []
     if detectar_consulta_horario(texto_usuario):
         horario_correto = responder_consulta_horario()
         if ajustada != horario_correto:
@@ -441,6 +461,34 @@ def _verificar_fala_turno_base(
             "problemas": ["fala_vazia"],
             "pontuacao": 0.0,
         }
+
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    fala_contrato = dict(contrato.get('contrato_fala') or {})
+    fonte_canal = fala_contrato.get('perspectiva_enunciador')
+    relato_literal = ''
+    if (type(fonte_canal) is PerspectivaEnunciador
+        and fonte_canal.vigente(texto_usuario, contrato.get('id'))
+        and str(fala_contrato.get('turno_id')) == fonte_canal.turno_id
+        and fala_contrato.get('origem') == 'mente_unica'
+        and fala_contrato.get('funcao') == 'informacao'
+        and set(fala_contrato.get('atos') or ()) == {'conversa'}
+        and contrato.get('autoriza_execucao') is False
+        and not contrato.get('requer_execucao') and not contrato.get('comandos')
+        and 0 < len(texto_usuario) < 500
+        and not any(c in texto_usuario for c in '«»\r\n')):
+        relato_literal = f'Você contou: «{texto_usuario}».'
+
+    def concluir_relato_literal() -> dict[str, Any]:
+        # Realização limitada do canal: citar não confirma o fato contado,
+        # não adota a primeira pessoa e não autoriza repetir uma ação citada.
+        return {'aceita':True, 'fala':relato_literal, 'acao':'ajustada',
+            'problemas':['parafrase_nao_conferida_relato_preservado'], 'pontuacao':1.0,
+            'conclusao':'relato_usuario_atual_citado', 'autoriza_execucao':False,
+            'comprova_fato':False, 'semantica_verificada':False, 'prova_implicacao':False,
+            'fonte':{'falante':'usuario','origem':'fala_atual','texto':texto_usuario}}
+
+    if relato_literal and ajustada == relato_literal:
+        return concluir_relato_literal()
 
     # Bloqueie o protocolo interno antes de qualquer reparo factual. Um JSON
     # vazado contém aspas e títulos aparentes; se chegar primeiro à validação
@@ -508,7 +556,8 @@ def _verificar_fala_turno_base(
             "resumo": "",
             "confiavel": False,
         }
-    if not recomendacao and isinstance(fundamentacao, dict) and fundamentacao.get("tema"):
+    if not recomendacao:
+        possui_base_factual = isinstance(fundamentacao, dict) and bool(fundamentacao.get("tema"))
         contrato_fala = dict(contrato.get("contrato_fala") or {})
         roteiro_fala = dict(contrato_fala.get("roteiro_concreto") or {})
         documentacao_capacidades = ""
@@ -525,24 +574,37 @@ def _verificar_fala_turno_base(
             # Fonte já selecionada pelo contrato canônico deste turno. Não
             # recuperar catálogo de outro contexto nem confiar no rascunho.
             documentacao_capacidades = str(contrato_fala.get("documentacao_capacidades") or "")
+        fontes_pessoais = list(contrato.get('relatos_usuario') or ())
+        if relato_literal:
+            # Mesmo vínculo tipado que permite citar a entrada atual. Esta
+            # projeção efêmera não cria alegação persistente nem fonte externa.
+            fontes_pessoais.append({'id':f'entrada:usuario:{fonte_canal.turno_id}:'
+                + hashlib.sha256(texto_usuario.encode('utf8')).hexdigest(),
+                'autor':'usuario', 'origem':'fala_atual', 'status':'relatado_pelo_usuario',
+                'texto':texto_usuario})
         validacao_factual = validar_fala_com_fundamentacao(
             ajustada,
-            fundamentacao=fundamentacao,
+            fundamentacao=fundamentacao if possui_base_factual else None,
             texto_usuario=texto_usuario,
             documentacao_capacidades=documentacao_capacidades,
             contexto_obra=contrato.get("dominio") == "musica",
+            relatos_usuario=fontes_pessoais,
+            apenas_relatos_usuario=not possui_base_factual,
             contexto_metalinguistico=(
                 str(roteiro_fala.get("estrategia") or "")
                 == "resposta_metalinguistica"
             ),
         )
+        revisoes_relatos_usuario = list(validacao_factual.get('revisao_relatos_usuario') or [])
         problemas_fatuais = list(validacao_factual.get("problemas") or [])
         if problemas_fatuais:
+            if relato_literal:
+                return concluir_relato_literal()
             problemas.extend(problemas_fatuais)
             ajustada = str(validacao_factual.get("fala") or ajustada).strip()
         candidatos_fatuais = [
             str(item or "").strip()
-            for item in list(fundamentacao.get("candidatos") or [])
+            for item in list((fundamentacao if isinstance(fundamentacao, dict) else {}).get("candidatos") or [])
             if str(item or "").strip()
         ]
         if (
@@ -665,5 +727,6 @@ def _verificar_fala_turno_base(
         "problemas": problemas,
         "pontuacao": round(max(0.0, 1.0 - (0.18 * len(problemas))), 2),
         "aderencia_contrato": aderencia_contrato,
+        **({"revisao_relatos_usuario": revisoes_relatos_usuario} if revisoes_relatos_usuario else {}),
         **({"comparacao_recomendacao": comparacao_recomendacao} if recomendacao else {}),
     }

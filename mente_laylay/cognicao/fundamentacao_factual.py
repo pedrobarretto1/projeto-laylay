@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 import time
 import unicodedata
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Iterable
 
 from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
 from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
@@ -764,6 +765,42 @@ def _titulos_citados(texto: str) -> list[str]:
     return extrair_titulos_citados(texto)
 
 
+def _predicados_sem_copula_de_foco_prospectivo(frase: str, tema: str) -> str:
+    """Distingue foco de participante futuro de uma atribuição ao tema.
+
+    Em ``X é quem P``/``é X quem P``/``quem P é X`` (também com ``que``
+    nas duas primeiras formas), a cópula destaca X, não todo objeto
+    presente em P. Somente ``ir no presente + infinitivo`` participa
+    deste recorte: um plano futuro não confirma ocorrência passada ou efeito.
+    Mascara apenas a cópula quando o foco não contém o tema; os predicados
+    restantes continuam nas mesmas regras factuais. Não confere X, não resolve
+    pronomes, não declara apoio do histórico nem autoriza executar o plano.
+    """
+    palavra = r"[\wÀ-ÿ]+(?:['’-][\wÀ-ÿ]+)*"
+    foco = rf"(?P<foco>{palavra}(?:\s+{palavra}){{0,7}})"
+    inicio = r"(?:^|[.!?;:,]\s*)"
+    perifrase = r"(?:vai|vão|vao|vou|vamos)\s+[\wÀ-ÿ]+r\b"
+    prospectivo = rf"(?:quem|que)\s+{perifrase}"
+    formas = (
+        rf"{inicio}{foco}\s+(?P<copula>é|e|foi|era)\s+{prospectivo}",
+        rf"{inicio}(?P<copula>é|e|foi|era)\s+{foco}\s+{prospectivo}",
+        rf"{inicio}quem\s+{perifrase}(?:\s+{palavra}){{0,18}}?\s+"
+        rf"(?P<copula>é|e|foi|era)\s+{foco}(?=\s*(?:$|[.!?;:,]))",
+    )
+    intervalos = []
+    tema_normalizado = _normalizar(tema)
+    for forma in formas:
+        for m in re.finditer(forma, frase, flags=re.IGNORECASE):
+            foco_normalizado = _normalizar(m['foco'])
+            if (tema_normalizado and re.search(
+                r"(?<!\w)" + re.escape(tema_normalizado) + r"(?!\w)", foco_normalizado)):
+                continue
+            intervalos.append(m.span('copula'))
+    for inicio_copula, fim_copula in sorted(set(intervalos), reverse=True):
+        frase = frase[:inicio_copula] + ' ' * (fim_copula-inicio_copula) + frase[fim_copula:]
+    return _normalizar(frase)
+
+
 def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
     t = _normalizar(frase)
     if len(t.split()) < 4:
@@ -780,7 +817,7 @@ def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
     if tema_norm and tema_norm in t and not subjetiva and re.search(
         r"\b(?:e|foi|era|tem|teve|possui|produz|fabrica|criou|fundou|desenvolveu|"
         r"publicou|lancou|participou|trabalhou|pertence|fica|funciona)\b",
-        t,
+        _predicados_sem_copula_de_foco_prospectivo(frase, tema),
     ):
         return True
     return bool(re.search(
@@ -991,6 +1028,178 @@ _EXPLICACAO_METALINGUISTICA = re.compile(
 )
 
 
+_PREDICADOS_PREFERENCIA = {'gosto': 'gostar', 'gosta': 'gostar', 'gostava': 'gostar',
+        'prefiro': 'preferir', 'prefere': 'preferir', 'preferia': 'preferir',
+        'curto': 'curtir', 'curte': 'curtir', 'curtia': 'curtir',
+        'adoro': 'adorar', 'adora': 'adorar', 'adorava': 'adorar',
+        'gostar':'gostar', 'preferir':'preferir', 'curtir':'curtir', 'adorar':'adorar'}
+_INICIO_RELATO_PREFERENCIA = (
+    r"(?:(?:l[aá]\s+)?no\s+(?:come[cç]o|in[ií]cio),?\s+)?"
+    r"voc[eê]\s+"
+)
+_VERBO_RELATO_PREFERENCIA = r"(?:disse|falou|contou|mencionou|relatou)\s+"
+_CABECALHO_RELATO_PREFERENCIA = (
+    _INICIO_RELATO_PREFERENCIA + _VERBO_RELATO_PREFERENCIA +
+    r"(?:(?:(?:l[aá]\s+)?no\s+(?:come[cç]o|in[ií]cio)|antes)\s+)?"
+)
+
+
+def _ler_preferencia_atribuida(texto: str, *, relato: bool) -> Dict[str, Any] | None:
+    """Leitura integral de campos opacos; nenhum alinhamento é proposto pela IA."""
+    normalizado = re.sub(r'\s+', ' ', str(texto or '')).strip()
+    valor = r"(?P<valor>[\wÀ-ÿ '’&-]{1,100})"
+    foco = r"(?:,\s*(?:principalmente|especialmente|sobretudo)\s+(?P<foco>[\wÀ-ÿ '’&-]{1,100}))?"
+    argumentos = rf"\s+(?:de\s+)?{valor}{foco}[.!]?"
+    negacao = r"(?P<negacao>n[aã]o\s+)?"
+    formas = (
+        ('relato_indicativo', _CABECALHO_RELATO_PREFERENCIA + r"que\s+" + negacao
+            + r"(?P<predicado>gosta|gostava|prefere|preferia|curte|curtia|adora|adorava)" + argumentos),
+        ('relato_infinitivo', _CABECALHO_RELATO_PREFERENCIA + negacao
+            + r"(?P<predicado>gostar|preferir|curtir|adorar)" + argumentos),
+    ) if relato else (
+        ('declaracao_usuario', r"(?:(?:para|pra)\s+[\wÀ-ÿ]+r\s+)?(?:eu\s+)?" + negacao
+            + r"(?P<predicado>gosto|prefiro|curto|adoro)" + argumentos),
+    )
+    for forma, padrao in formas:
+        m = re.fullmatch(padrao, normalizado, re.I)
+        if m is None:
+            continue
+        valores = {k:str(m.group(k) or '').strip().casefold() for k in ('valor','foco')}
+        if any(re.search(r'\b(?:e|ou|se|quando|mas|porque|pois|apesar|embora|n[aã]o|que|sem)\b', v)
+               for v in valores.values()):
+            return None
+        from mente_laylay.cognicao.referencias_linguagem import texto_tem_referencia_contextual
+        if any(texto_tem_referencia_contextual(v) or re.search(
+            r'\b(?:meu|minha|meus|minhas|seu|sua|seus|suas|teu|tua|teus|tuas|'
+            r'nosso|nossa|nossos|nossas|vosso|vossa|eu|tu|voc[eê]|n[oó]s|'
+            r'hoje|ontem|amanh[aã]|agora)\b',v) for v in valores.values() if v):
+            # Um campo dependente do enunciador/momento não é identificador
+            # opaco. Igualdade de palavras não confere a identidade referida.
+            return None
+        return {'forma':forma, 'texto_normalizado':normalizado,
+            'papeis':{'predicado':_PREDICADOS_PREFERENCIA[m['predicado'].casefold()],
+                'negada':bool(m['negacao']), **valores},
+            'intervalos':{k:list(m.span(k)) for k in ('predicado','negacao','valor','foco')}}
+    return None
+
+
+def _texto_relato_usuario_qualificado(item: Any) -> str | None:
+    """Validação comum da fonte pessoal; não decide apoio ou verdade."""
+    if (not isinstance(item, dict) or item.get('autor') != 'usuario'
+        or not (str(item.get('id') or '').startswith('alegacao:') or (
+            str(item.get('id') or '').startswith('dialogo:usuario:') and item.get('origem') == 'historico_conversa') or (
+            str(item.get('id') or '').startswith('entrada:usuario:') and item.get('origem') == 'fala_atual'))
+        or not classificar_proveniencia_informacao(item).get('pode_sustentar_contexto_pessoal')):
+        return None
+    texto = item.get('texto')
+    if type(texto) is not str or not texto or len(texto) >= 500:
+        return None
+    if str(item['id']).startswith('dialogo:usuario:') and not re.fullmatch(
+        r'dialogo:usuario:\d+:' + hashlib.sha256(texto.encode('utf8')).hexdigest(), item['id']):
+        return None
+    if str(item['id']).startswith('entrada:usuario:') and not re.fullmatch(
+        r'entrada:usuario:[^:\s]+:' + hashlib.sha256(texto.encode('utf8')).hexdigest(), item['id']):
+        return None
+    return texto
+
+
+def avaliar_relato_preferencia_usuario(
+    fala: str, relatos: Iterable[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Distingue fora do recorte, relato sem apoio e transformação conferida.
+
+    Concordância de campos numa declaração pessoal não certifica verdade
+    externa, preferência atual ou implicação livre. A fonte e o destino são
+    lidos integralmente; a finalidade inicial da fonte permanece no snapshot.
+    """
+    normalizado = re.sub(r'\s+', ' ', str(fala or '')).strip()
+    # Detectar o recorte não é conferir equivalência. Operadores sobre o
+    # próprio relato permanecem visíveis e não passam à revisão factual
+    # externa; somente a leitura integral abaixo pode conferir apoio.
+    escopo = re.match(_INICIO_RELATO_PREFERENCIA + r"(?:[\wÀ-ÿ]+\s+){0,3}"
+        + _VERBO_RELATO_PREFERENCIA + r"(?:[\wÀ-ÿ]+\s+){0,5}(?:"
+        + '|'.join(_PREDICADOS_PREFERENCIA) + r")\b", normalizado, re.I)
+    resultado = {'estado':'fora_do_recorte', 'texto':fala,
+        'pode_confirmar_fato_externo':False, 'semantica_verificada':False,
+        'prova_implicacao':False, 'autoriza_execucao':False}
+    if escopo is None or normalizado.endswith('?'):
+        return resultado
+    destino = _ler_preferencia_atribuida(fala, relato=True)
+    resultado['estado'] = 'sem_apoio' if destino is not None else 'cobertura_incompleta'
+    if destino is None:
+        return resultado
+    for item in relatos:
+        texto = _texto_relato_usuario_qualificado(item)
+        if texto is None:
+            continue
+        origem = _ler_preferencia_atribuida(texto, relato=False)
+        if origem is not None and origem['papeis'] == destino['papeis']:
+            conferencia = {'fonte_id':item['id'], 'texto_fonte':texto, 'texto_destino':fala,
+                'alcance':'relato_pessoal_atribuido',
+                'pode_confirmar_fato_externo':False, 'semantica_verificada':False,
+                'prova_implicacao':False, 'autoriza_execucao':False,
+                'derivacao':{'regra':'preservacao_preferencia_atribuida_v1',
+                    'fonte_sha256':hashlib.sha256(texto.encode('utf8')).hexdigest(),
+                    'destino_sha256':hashlib.sha256(fala.encode('utf8')).hexdigest(),
+                    'fonte':origem, 'destino':destino,
+                    'alinhamento_estrutural_conferido':True, 'prova_semantica_livre':False}}
+            return {**resultado, 'estado':'conferido', 'conferencia':conferencia}
+    return resultado
+
+
+LIMITE_CONFERENCIA_RELATO_USUARIO = "Não consegui conferir essa resposta com o que você contou."
+
+
+def avaliar_nucleo_retomada_usuario(fala: str, *, plano: Dict[str, Any]) -> Dict[str, Any] | None:
+    """Ato retrospectivo exigido não é satisfeito por ausência de conferência.
+
+    Confere somente o núcleo: afirmações adicionais continuam nos respectivos
+    revisores. A gramática existente sustenta paráfrases; citação integral
+    preserva apenas o dizer. Nenhum desses passos certifica verdade externa.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador, pedido_consulta_fala_usuario
+    contrato = dict(plano.get('contrato_fala') or {})
+    fonte = contrato.get('perspectiva_enunciador')
+    pedido = str(plano.get('texto_usuario') or '')
+    if (type(fonte) is not PerspectivaEnunciador or not fonte.vigente(pedido, plano.get('id'))
+        or str(contrato.get('turno_id')) != fonte.turno_id or contrato.get('origem') != 'mente_unica'
+        or set(contrato.get('atos') or ()) != {'pergunta'}
+        or plano.get('requer_execucao') or plano.get('comandos')
+        or {'evidencia_fala_historica', 'explicacao_ocorrencia', 'revisao_alegacao',
+            'explicacoes_historicas_por_ato'}.intersection(contrato)
+        or not pedido_consulta_fala_usuario(pedido)):
+        return None
+    original = str(fala or '').strip()
+    resultado = {'admissivel': False, 'estado': 'nucleo_nao_conferido',
+        'semantica_verificada': False, 'prova_implicacao': False,
+        'pode_confirmar_fato_externo': False, 'autoriza_execucao': False}
+    if original == LIMITE_CONFERENCIA_RELATO_USUARIO:
+        return {**resultado, 'admissivel': True, 'estado': 'limite_de_conferencia'}
+    relatos = tuple(r for r in plano.get('relatos_usuario') or ()
+                    if isinstance(r, dict) and r.get('origem') != 'fala_atual')
+    citacao = re.match(r'Voc[eê]\s+(?:disse|contou):\s*«([^«»\r\n]+)»\.', original, re.I)
+    if citacao is not None:
+        for item in relatos:
+            texto = _texto_relato_usuario_qualificado(item)
+            if texto is not None and texto == citacao[1]:
+                return {**resultado, 'admissivel': True, 'estado': 'citacao_integral_atribuida',
+                    'fonte_id': item['id'], 'texto_fonte': texto,
+                    'fonte_sha256': hashlib.sha256(texto.encode('utf8')).hexdigest()}
+    primeira = re.split(r'(?<=[.!?])\s+', original, maxsplit=1)[0]
+    conferencia = avaliar_relato_preferencia_usuario(primeira, relatos)
+    if conferencia['estado'] == 'conferido':
+        return {**resultado, 'admissivel': True, 'estado': 'parafrase_atribuida_conferida',
+                'conferencia': conferencia['conferencia']}
+    return {**resultado, 'revisao_nucleo': conferencia}
+
+
+def conferir_relato_preferencia_usuario(
+    fala: str, relatos: Iterable[Dict[str, Any]],
+) -> Dict[str, Any] | None:
+    """Compatibilidade: ausência de conferência não equivale a aprovação."""
+    return avaliar_relato_preferencia_usuario(fala, relatos).get('conferencia')
+
+
 def validar_fala_com_fundamentacao(
     fala: str,
     *,
@@ -1000,6 +1209,8 @@ def validar_fala_com_fundamentacao(
     contexto_metalinguistico: bool = False,
     documentacao_capacidades: str = "",
     contexto_obra: bool = False,
+    relatos_usuario: Iterable[Dict[str, Any]] = (),
+    apenas_relatos_usuario: bool = False,
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
@@ -1029,6 +1240,9 @@ def validar_fala_com_fundamentacao(
     problemas: list[str] = []
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     rejeitadas: list[str] = []
+    relatos_conferidos: list[dict[str, Any]] = []
+    revisoes_relatos: list[dict[str, Any]] = []
+    relatos_usuario = tuple(relatos_usuario or ())
     evidencia_lista_candidatos = bool(
         base.get("confiavel")
         and base.get("candidatos")
@@ -1051,6 +1265,18 @@ def validar_fala_com_fundamentacao(
     for frase_original in frases:
         inicio_frase = original.index(frase_original, fim_frase)
         fim_frase = inicio_frase + len(frase_original)
+        revisao_relato = avaliar_relato_preferencia_usuario(frase_original, relatos_usuario)
+        if revisao_relato['estado'] != 'fora_do_recorte':
+            revisoes_relatos.append(revisao_relato)
+            if revisao_relato['estado'] == 'conferido':
+                relatos_conferidos.append(revisao_relato['conferencia'])
+            else:
+                problemas.append('relato_usuario_sem_apoio')
+                rejeitadas.append(frase_original)
+            # Pesquisa do assunto não pode suprir a declaração do usuário.
+            continue
+        if apenas_relatos_usuario:
+            continue
         # Datas/medidas dentro de um exemplo de pedido também são conteúdo
         # citado, não afirmações factuais. O restante continua sendo validado.
         frase = _sem_enunciados_didaticos(frase_original, posicoes={
@@ -1145,7 +1371,9 @@ def validar_fala_com_fundamentacao(
                 problemas.append("descricao_obra_sem_evidencia")
 
     if not rejeitadas:
-        return {"fala": original, "problemas": [], "acao": "aceita"}
+        return {"fala": original, "problemas": [], "acao": "aceita",
+                "relatos_usuario_conferidos": relatos_conferidos,
+                "revisao_relatos_usuario": revisoes_relatos}
 
     if reparo_recomendacao and {
         "obra_sem_evidencia", "descricao_obra_sem_evidencia",
@@ -1164,11 +1392,15 @@ def validar_fala_com_fundamentacao(
     fala_segura = " ".join(restantes).strip()
     # Saudações soltas como "isso é ótimo" não sustentam a resposta depois
     # que os detalhes inventados são removidos.
-    if len(_normalizar(fala_segura).split()) < 7:
-        fala_segura = _fallback_sem_inventar(tema, texto_usuario)
+    possui_relato_conferido = any(r['texto_destino'] in restantes for r in relatos_conferidos)
+    if len(_normalizar(fala_segura).split()) < 7 and not possui_relato_conferido:
+        fala_segura = ('Não consegui conferir essa preferência no que você contou.'
+            if 'relato_usuario_sem_apoio' in problemas else _fallback_sem_inventar(tema, texto_usuario))
     return {
         "fala": fala_segura,
         "problemas": list(dict.fromkeys(problemas)),
         "acao": "ajustada",
         "trechos_rejeitados": rejeitadas,
+        "relatos_usuario_conferidos": relatos_conferidos,
+        "revisao_relatos_usuario": revisoes_relatos,
     }

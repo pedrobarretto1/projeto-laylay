@@ -31,7 +31,52 @@ class RevisaoSuporteAutoria:
 
 
 _LIMITE = "Não consegui verificar se as fontes citadas sustentam essas afirmações."
+_LIMITE_EXPLICACAO = "Não consegui conferir o apoio dessa explicação. Preciso de uma fonte para responder com segurança."
 _APOIOS_CONFERIDOS = frozenset({"literal_integral_na_fonte", "parafrase_estrutural_conferida"})
+
+
+def _relato_da_consulta_modo_pessoal(plano: dict[str, Any]) -> dict[str, Any] | None:
+    """Vínculo conservador de assunto pessoal, nunca prova dos detalhes pedidos."""
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador, predicado_consulta_modo_pessoal
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    contrato = dict(plano.get("contrato_fala") or {})
+    perspectiva = contrato.get("perspectiva_enunciador")
+    texto = str(plano.get("texto_usuario") or "")
+    if (type(perspectiva) is not PerspectivaEnunciador
+        or not perspectiva.vigente(texto, plano.get("id"))
+        or str(contrato.get("turno_id")) != perspectiva.turno_id
+        or plano.get("requer_execucao") or plano.get("comandos")):
+        return None
+    predicado = predicado_consulta_modo_pessoal(texto)
+    if not predicado:
+        return None
+    relacionadas = []
+    for fonte in plano.get("relatos_usuario") or ():
+        if (not isinstance(fonte, dict) or fonte.get("autor") != "usuario"
+            or fonte.get("origem") != "historico_conversa"
+            or not classificar_proveniencia_informacao(fonte).get("pode_sustentar_contexto_pessoal")):
+            continue
+        conteudo = fonte.get("texto")
+        if type(conteudo) is not str or not conteudo.strip() or len(conteudo) > 1000:
+            continue
+        digest = hashlib.sha256(conteudo.encode("utf8")).hexdigest()
+        identidade = fonte.get("id")
+        if type(identidade) is not str or re.fullmatch(r"dialogo:usuario:\d+:" + digest, identidade) is None:
+            continue
+        normalizado = normalizar_texto_basico(conteudo).strip(" .!?")
+        if not (normalizado == predicado or normalizado.startswith(predicado + " ")
+                or normalizado.startswith(predicado + ",")):
+            continue
+        if classificar_modalidade_turno(conteudo).get("modalidade") not in {"conversa", "correcao"}:
+            continue
+        relacionadas.append({"id": identidade, "texto": conteudo, "autor": "usuario",
+            "origem": "historico_conversa", "fonte_sha256": digest,
+            "alcance": "citacao_integral_de_relato_pessoal", "modo_verificado": False,
+            "autoriza_execucao": False, "pode_confirmar_fato_externo": False})
+    # Atribuição registra o dizer, sem anunciar que este é o estado atual ou
+    # resolver eventuais divergências entre relatos anteriores.
+    return relacionadas[-1] if relacionadas else None
 
 
 def _derivar_parafrase_estrutural(fonte: str, proposicao: str) -> dict[str, Any] | None:
@@ -90,28 +135,48 @@ def revisar_suporte_autoria(
     ou implicação livre. Resumo agregado, opinião da LLM, nome de rota e
     referências internas não substituem conteúdo observado.
     """
+    from mente_laylay.cognicao.contrato_fala import explicacao_exige_apoio_individual
+    obrigacao_explicativa = explicacao_exige_apoio_individual(plano)
+    from mente_laylay.cognicao.fundamentacao_factual import (
+        avaliar_nucleo_retomada_usuario, LIMITE_CONFERENCIA_RELATO_USUARIO,
+    )
+    retomada_usuario = avaliar_nucleo_retomada_usuario(fala, plano=plano)
+    limite = _LIMITE_EXPLICACAO if obrigacao_explicativa else _LIMITE
     suporte = plano.get("suporte_autoria_proposto")
     revisada = plano.get("autoria_revisada_proposta")
     if type(revisada) is AutoriaRevisadaProposta:
         suporte = revisada.suporte_composto()
-    if type(suporte) is not SuporteAutoriaProposto:
-        return None
-
     def resultado(estado: str, proposicoes: list[dict[str, Any]], fontes: list[dict[str, Any]],
                   realizada: str = fala, aplicar: bool = False) -> RevisaoSuporteAutoria:
         return RevisaoSuporteAutoria(SnapshotComandoIA({
             "estado": estado, "turno_id": str(plano.get("id") or ""),
             "proposicoes": proposicoes, "fontes_lidas": fontes,
+            "obrigacao_fonte_individual": obrigacao_explicativa,
+            "retomada_usuario": retomada_usuario,
             "pode_confirmar_fato_externo": False,
         }), realizada, aplicar)
 
+    if retomada_usuario is not None and not retomada_usuario['admissivel']:
+        return resultado('retomada_usuario_sem_nucleo_conferido', [], [],
+                         LIMITE_CONFERENCIA_RELATO_USUARIO, True)
+
+    relato_pessoal = _relato_da_consulta_modo_pessoal(plano)
+    if relato_pessoal is not None:
+        realizada = ("Você contou: «" + relato_pessoal["texto"]
+            + "». Esse relato não confirma outros detalhes da sua rotina.")
+        return resultado("consulta_modo_pessoal_limitada_ao_relato", [], [relato_pessoal], realizada, True)
+
+    if type(suporte) is not SuporteAutoriaProposto:
+        return (resultado("declaracao_ausente", [], [], limite, True)
+                if obrigacao_explicativa else None)
     if (suporte.turno_id != str(plano.get("id") or "")
         or suporte.texto_usuario != plano.get("texto_usuario")):
-        return resultado("autoria_de_outra_ocorrencia", [], [], _LIMITE,
-                         fala == suporte.fala_original)
+        return resultado("autoria_de_outra_ocorrencia", [], [], limite,
+                         obrigacao_explicativa or fala == suporte.fala_original)
     declaracao = suporte.declaracao.como_dict()
     if declaracao.get("estado") != "revisao_semantica_pendente" or declaracao.get("cobertura_textual") is not True:
-        return resultado("declaracao_sem_cobertura", [], [])
+        return resultado("declaracao_sem_cobertura", [], [],
+                         limite if obrigacao_explicativa else fala, obrigacao_explicativa)
 
     fundamentacao = plano.get("fundamentacao_factual")
     base = avaliar_validade_fundamentacao(fundamentacao if isinstance(fundamentacao, dict) else {}, agora=agora)
@@ -202,8 +267,8 @@ def revisar_suporte_autoria(
         elif estado == "parafrase_estrutural_conferida":
             parafrases.append(texto)
 
-    requer_revisao = bool(tem_referencia or fontes or base.get("requer_evidencia_recente"))
-    realizada = _LIMITE
+    requer_revisao = bool(obrigacao_explicativa or tem_referencia or fontes or base.get("requer_evidencia_recente"))
+    realizada = limite
     if literais or parafrases or atos_sociais:
         if parafrases or atos_sociais:
             # Citação e paráfrase têm atribuições distintas; agrupá-las por
@@ -220,15 +285,16 @@ def revisar_suporte_autoria(
             separador = " " if realizada.endswith(".") else ". "
             realizada += separador + "Há outras afirmações cujo apoio não consegui verificar."
         if len(realizada) > 4000:
-            realizada = _LIMITE
+            realizada = limite
     # Só a própria emissão ou a realização limitada deste mesmo contrato pode
     # receber este julgamento. Não tomar o suporte para fala de outro owner.
     if fala not in {suporte.fala_original, realizada}:
         # Ausência de vínculo não cancela a obrigação de fonte da conversa.
         # Não julgar o texto novo com a prova do antigo, nem substituir aqui
         # a conclusão operacional cujo owner valida os receipts.
-        limitar = bool(requer_revisao and not plano.get("requer_execucao") and not plano.get("comandos"))
+        limitar = bool(requer_revisao and not plano.get("requer_execucao")
+                       and (obrigacao_explicativa or not plano.get("comandos")))
         return resultado("fala_nao_vinculada", proposicoes, snapshots,
-                         _LIMITE if limitar else fala, limitar)
+                         limite if limitar else fala, limitar)
     return resultado("revisao_limitada" if requer_revisao else "sem_obrigacao_de_fonte_individual",
                      proposicoes, snapshots, realizada if requer_revisao else fala, requer_revisao)

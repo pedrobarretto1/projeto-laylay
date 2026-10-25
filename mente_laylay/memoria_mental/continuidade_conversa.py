@@ -198,6 +198,19 @@ def detectar_comentario_resultado_operacional(
             "executou": mente.get("ultima_acao_ok"),
             "confirmado": mente.get("ultima_acao_confirmada"),
         }
+    # Recência fornece um candidato, não o ato comunicativo nem seu alvo.
+    # Reutilizar a leitura do turno somente quando pertence a este literal;
+    # chamadas diretas/estado antigo passam pelo mesmo intérprete canônico.
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+
+    turno = dict(mente.get("turno_atual") or {})
+    if str(turno.get("texto") or "").strip() != bruto:
+        turno = classificar_modalidade_turno(bruto)
+    atos = set(turno.get("atos") or ())
+    atos.update(str(s.get("modalidade") or "") for s in turno.get("segmentos", ()) if isinstance(s, dict))
+    atos.add(str(turno.get("modalidade") or ""))
+    if atos - {"", "conversa"}:
+        return None
     # Uma pergunta sobre a aba que sobreviveu exige percepção atual do
     # navegador. ``ficou`` também aparece em comentários subjetivos, mas aqui
     # o substantivo observável e a forma interrogativa provam que não se trata
@@ -218,14 +231,38 @@ def detectar_comentario_resultado_operacional(
     # Os sinais descrevem palavras ou locuções completas. Busca por substring
     # fazia ``parece`` casar dentro de ``aparece`` e convertia uma observação
     # metalinguística em reação ao último efeito operacional.
-    if not any(
-        re.search(rf"(?<!\w){re.escape(sinal)}(?!\w)", t)
-        for sinal in sinais
-    ):
+    sinal = re.search(
+        rf"(?<!\w)(?:{'|'.join(re.escape(s) for s in sorted(sinais, key=len, reverse=True))})(?!\w)",
+        t,
+    )
+    if sinal is None:
         return None
 
     params = dict(mente.get("ultima_acao_params") or {})
     alvo = str(mente.get("ultima_acao_alvo") or params.get("alvo") or "o resultado").strip()
+    # O predicado elíptico ("ficou melhor") pode comentar a tentativa recente.
+    # Um sujeito nomeado diferente não pode ser substituído por esse candidato.
+    # Pronomes exigem a resolução já publicada pelo owner de referências.
+    sujeito = t[:sinal.start()].strip(" ,.!:;")
+    if sujeito:
+        from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+        from mente_laylay.cognicao.referencias_linguagem import valor_e_referencia_contextual
+
+        referencia = dict(turno.get("referencia_resolvida") or {})
+        nome_referencia = str(referencia.get("nome") or "").strip()
+        alvo_normalizado = normalizar_texto_basico(alvo)
+        sujeito_normalizado = normalizar_texto_basico(sujeito)
+        mesmo_alvo = bool(alvo_normalizado and (
+            sujeito_normalizado == alvo_normalizado
+            or sujeito_normalizado in {"o " + alvo_normalizado, "a " + alvo_normalizado}
+        ))
+        pronome_vinculado = bool(
+            valor_e_referencia_contextual(sujeito)
+            and nome_referencia
+            and normalizar_texto_basico(nome_referencia) == alvo_normalizado
+        )
+        if not (mesmo_alvo or pronome_vinculado):
+            return None
     comentario: Dict[str, Any] = {
         "intent": intent,
         "alvo": alvo,

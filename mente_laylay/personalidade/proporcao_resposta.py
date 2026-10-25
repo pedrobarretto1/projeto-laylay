@@ -27,6 +27,9 @@ def parece_problema_matematico(texto: str) -> bool:
 
 def parece_pedido_reexplicacao(texto: str) -> bool:
     """Reconhece correções curtas que pedem uma nova explicação completa."""
+    from mente_laylay.cognicao.referencias_linguagem import pedido_sentido_fala_propria
+    if pedido_sentido_fala_propria(texto):
+        return True
     base = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
     if not base:
         return False
@@ -55,6 +58,9 @@ def classificar_proporcao(texto_usuario: str, tipo_interacao: str = "") -> str:
         return "matematica"
     if parece_pedido_reexplicacao(texto):
         return "explicativa"
+    if re.match(r'^(?:(?:agora|ent[aã]o|por favor)\s+)*(?:me\s+)?'
+                r'(?:explica|explique|ensina|ensine|detalha|detalhe)\b', base):
+        return 'explicativa'
     # A necessidade de aprender é independente do assunto e do tamanho da
     # frase. Isso só dimensiona a resposta; não classifica autorização.
     if re.search(

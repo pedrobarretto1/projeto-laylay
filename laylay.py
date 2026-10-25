@@ -1371,6 +1371,7 @@ _mapa_recursos_runtime.registrar(
         "músicas salvas", "arquivo playlists",
     ),
     leitor=_registro_musica_leitura_runtime.retrato_usuario,
+    objetos_consulta=("musica", "faixa"),
     escrita_via="comandos de playlist",
     intent_consulta="PLAYLIST_LIST",
     parametro_detalhe="nome_playlist",
@@ -1380,7 +1381,7 @@ _mapa_recursos_runtime.registrar(
     arquivo="memoria/playlists_laylay/playlists_da_laylay.json",
     descricao="curadorias musicais montadas pela própria Laylay a partir do histórico confirmado",
     termos=(
-        "suas playlists", "playlist da laylay", "playlists da laylay",
+        "sua playlist", "suas playlists", "playlist da laylay", "playlists da laylay",
         "playlist que voce criou", "playlist que você criou",
         "playlists que voce criou", "playlists que você criou",
         "playlists voce criou", "playlists você criou",
@@ -1389,6 +1390,7 @@ _mapa_recursos_runtime.registrar(
         "xodos que eu separei", "climas que combinam comigo",
     ),
     leitor=_registro_musica_leitura_runtime.retrato_laylay,
+    objetos_consulta=("musica", "faixa"),
     escrita_via="curadoria musical da Laylay",
     intent_consulta="LAYLAY_PLAYLIST_LIST",
     parametro_detalhe="nome_playlist",
@@ -2894,7 +2896,7 @@ _mapa_recursos_runtime.registrar(
     parametro_detalhe="nome",
     executor_consulta=_registro_memoria_pessoas_runtime.reexecutar,
 )
-_resolver_consulta_recurso_local = _mapa_recursos_runtime.resolver_consulta
+_resolver_consulta_recurso_local = _mapa_recursos_runtime.avaliar_consulta_antecipada
 _executar_consulta_recurso_local = _mapa_recursos_runtime.executar_consulta
 
 _fala_playlist_conteudo_estilosa = _fala_playlist_conteudo_estilosa_mente

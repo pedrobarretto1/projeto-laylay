@@ -660,6 +660,11 @@ def construir_contrato_semantico_fala(
     bruto = _texto_curto(texto, 500)
     base = _normalizar(bruto)
     anterior = _texto_curto(estado.get("ultima_resposta"), 500)
+    from mente_laylay.memoria_mental.registro_semantico import construir_referencia_fala_consulta
+    referencia_observada = construir_referencia_fala_consulta(texto,
+        turno_id=planejamento.get('id') or leitura.get('id'), mente=estado)
+    if referencia_observada is not None:
+        anterior = _texto_curto(referencia_observada.conteudo, 500)
     funcao = _texto_curto(funcao_dados.get("funcao"), 64) or "informacao"
     # Contexto de fala, nunca identidade de arquivo, autoridade ou receipt.
     # Só a entrada imediatamente anterior e recente pode contextualizar uma
@@ -1067,6 +1072,22 @@ def construir_contrato_semantico_fala(
         fundamentacao_factual=planejamento.get("fundamentacao_factual"),
     )
     resultado = replace(contrato, roteiro_concreto=roteiro).como_dict()
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    if resultado.get("turno_id") and texto:
+        resultado["perspectiva_enunciador"] = PerspectivaEnunciador(
+            str(resultado["turno_id"]), str(texto),
+        )
+    if esclarecimento and referencia_observada is not None:
+        resultado['referencia_fala_observada'] = referencia_observada
+    from mente_laylay.cognicao.presenca_conversacional import construir_fonte_presenca
+    fonte_presenca = construir_fonte_presenca(bruto, turno=leitura, plano=planejamento, mente=estado)
+    if fonte_presenca is None and esclarecimento:
+        from mente_laylay.cognicao.presenca_conversacional import construir_fonte_sentido_presenca
+        from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
+        fonte_presenca = construir_fonte_sentido_presenca(bruto, contrato=resultado,
+            evidencia=recuperar_evidencia_da_fala(bruto, estado))
+    if fonte_presenca is not None:
+        resultado["fonte_presenca_conversacional"] = fonte_presenca
     avaliacao_social = dict(dict(funcao_comunicativa or {}).get("avaliacao_social") or {})
     if avaliacao_social:
         resultado["avaliacao_social"] = avaliacao_social
@@ -1174,6 +1195,26 @@ def atualizar_contrato_fala_com_resultados(
     return dados
 
 
+def explicacao_exige_apoio_individual(plano: Mapping[str, Any] | None) -> bool:
+    """Finalidade deliberada pelo host não depende de encontrar uma fonte.
+
+    Não classifica verdade, tema ou confiança do rascunho. O mesmo roteiro
+    semântico que solicita ensino exige apoio para a explicação proposta;
+    resultados operacionais continuam sob o contrato de seus receipts.
+    """
+    planejamento = dict(plano or {})
+    contrato = dict(planejamento.get("contrato_fala") or {})
+    roteiro = dict(contrato.get("roteiro_concreto") or {})
+    return bool(
+        planejamento.get("id")
+        and str(contrato.get("turno_id") or "") == str(planejamento["id"])
+        and contrato.get("origem") == "mente_unica"
+        and contrato.get("autoriza_execucao") is False
+        and roteiro.get("estrategia") in {"explicacao_didatica", "reensino_didatico"}
+        and not planejamento.get("requer_execucao")
+    )
+
+
 def formatar_contrato_fala_para_prompt(
     contrato: Mapping[str, Any] | None,
     *,
@@ -1208,6 +1249,23 @@ def formatar_contrato_fala_para_prompt(
             "sem perguntas, hipóteses, explicação sobre corpo ou negar a expressão. "
             "Não invente causa espontânea ou sentimento humano."
         )
+    instrucao_apoio = (
+        "Obrigação de apoio individual: ensino não dispensa fonte quando não houve pesquisa. "
+        "Declare somente referências disponíveis; sem apoio conferível, reconheça o limite. "
+        "Seu conhecimento, confiança ou declaração de suporte não são prova."
+        if explicacao_exige_apoio_individual({"id": dados.get("turno_id"), "contrato_fala": dados})
+        else ""
+    )
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    perspectiva = dados.get("perspectiva_enunciador")
+    linha_perspectiva = (
+        "Perspectiva do canal: o usuário é o enunciador da entrada; Laylay é a autora da resposta. "
+        "Planos, posses e relatos em primeira pessoa do usuário continuam dele ao responder. "
+        "Fale de si em primeira pessoa somente sobre a própria Laylay; preserve citações como citações. "
+        "Esses papéis não comprovam fatos nem autorizam ações."
+        if type(perspectiva) is PerspectivaEnunciador
+        and str(dados.get("turno_id")) == perspectiva.turno_id else ""
+    )
     if compacto:
         atos = ", ".join(str(item) for item in dados.get("atos") or []) or "conversa"
         referente = _texto_curto(dados.get("referente"), 160)
@@ -1222,6 +1280,10 @@ def formatar_contrato_fala_para_prompt(
             "--- CONTRATO SEMÂNTICO EFÊMERO DA FALA ---",
             f"Atos: {atos}.",
         ]
+        if linha_perspectiva:
+            linhas_compactas.append(linha_perspectiva)
+        if instrucao_apoio:
+            linhas_compactas.append(instrucao_apoio)
         if linha_emocional:
             linhas_compactas.append(linha_emocional)
         if referente:
@@ -1305,6 +1367,8 @@ def formatar_contrato_fala_para_prompt(
         f"Função: {dados.get('funcao') or 'informacao'}.",
         f"Atos: {', '.join(str(item) for item in dados.get('atos') or []) or 'conversa'}.",
     ]
+    if linha_perspectiva:
+        linhas.append(linha_perspectiva)
     if linha_emocional:
         linhas.append(linha_emocional)
     referente = _texto_curto(dados.get("referente"), 180)
@@ -1347,6 +1411,8 @@ def formatar_contrato_fala_para_prompt(
         )
     roteiro = normalizar_roteiro_geracao_concreta(dados.get("roteiro_concreto"))
     if roteiro:
+        if instrucao_apoio:
+            linhas.append(instrucao_apoio)
         linhas.append(
             f"Roteiro concreto: estratégia={roteiro.get('estrategia')}; "
             f"a primeira frase deve {roteiro.get('nucleo_resposta')}."

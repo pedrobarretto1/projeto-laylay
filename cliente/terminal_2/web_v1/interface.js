@@ -11,7 +11,7 @@ const state = {
   emotion:'calma',emotionLevel:1,interactionMode:'chat',voiceAvailable:false,microphoneLevel:0,messages:[],
   draft:'',dashboard:{},settings:{},conversations:{active_id:'',items:[]},events:[],
   preferences:{reduced:false,mascot:true,accent:'violet',sidebar:true,home:{version:1,period_days:30,pinned_ids:[],hidden_ids:[]}},pending:{},
-  actions:{},windowVisible:true,nativeWindow:false,availableWidth:0,availableHeight:0,desktopState:'compact',desktopPinned:false,desktopView:'overview',desktopPhase:'idle',desktopTransition:0,desktopTargetWidth:0,desktopTargetHeight:0,streamingOpen:false,streamingExpanded:false
+  actions:{},windowVisible:true,nativeWindow:false,availableWidth:0,availableHeight:0,desktopState:'compact',desktopMaterial:'fallback',desktopPinned:false,desktopView:'overview',desktopPhase:'idle',desktopTransition:0,desktopTargetWidth:0,desktopTargetHeight:0,streamingOpen:false,streamingExpanded:false
 };
 const pages = [['home','Início'],['chat','Conversa'],['lamp','Automação'],['music','Música'],
   ['streaming','Streaming'],['memory','Memória'],['system','Sistema'],['dev','DevConsole'],['settings','Configurações']];
@@ -26,6 +26,75 @@ const locationScroll=new Map();
 const presentationLocation=()=>state.mode+':'+(state.mode==='desktop'?state.desktopView+':':'')+state.page;
 let presentationAckFrame=0,presentationAckKey='',streamingViewportFrame=0,streamingViewportElement=null,streamingViewportObserver=null;
 let desktopDrag=null,suppressDesktopClick=false;
+// Motion M2: transições discretas, somente após o ACK da geometria do Qt.
+// A referência da página só é atualizada em estado idle, evitando flashes
+// durante resize, conversas em streaming ou mudanças de snapshot.
+let motionLocation='',motionDesktopState='compact';
+let motionRunCount=0;
+function motionAllowed() {
+  return !state.preferences.reduced &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function animateSafe(element,keyframes,options) {
+  if(!element||!motionAllowed()||typeof element.animate!=='function')return null;
+  // Evita animações concorrentes quando o usuário navega rapidamente.
+  for(const anim of element.getAnimations())if(anim.effect?.target===element)anim.cancel();
+  return element.animate(keyframes,{fill:'none',...options});
+}
+function animateDesktopMotion(location) {
+  if(state.mode!=='desktop') {
+    motionLocation='';motionDesktopState='compact';return;
+  }
+  if(state.desktopPhase!=='idle')return;
+  const prior=motionLocation,oldState=motionDesktopState;
+  motionLocation=location;motionDesktopState=state.desktopState;
+  if(!motionAllowed())return;
+  const island=document.querySelector('.desktop-island');
+  if(!island)return;
+  const expanded=state.desktopState==='expanded';
+  if(expanded&&oldState!=='expanded') {
+    // Motion compositor-friendly: a WebView é redimensionada pelo Qt antes
+    // do efeito. Evitar animar o scroll container ou vários cartões grandes.
+    const small=island.querySelector(
+      state.desktopView==='page'?'.desktop-page .context-bar':'.desktop-overview .desktop-presence-copy');
+    animateSafe(small,
+      [{opacity:.45,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:215,easing:'cubic-bezier(.2,.75,.25,1)'});
+    animateSafe(island.querySelector('.desktop-wordmark'),
+      [{opacity:.55,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:180,delay:20,easing:'cubic-bezier(.2,.75,.25,1)'});
+    motionRunCount++;return;
+  }
+  if(!expanded&&oldState==='expanded') {
+    animateSafe(island.querySelector('.desktop-compact-copy'),
+      [{opacity:.55,transform:'translateX(-7px)'},{opacity:1,transform:'translateX(0)'}],
+      {duration:190,easing:'cubic-bezier(.2,.78,.2,1)'});
+    animateSafe(island.querySelector('.desktop-miniature'),
+      [{transform:'scale(.92)'},{transform:'scale(1)'}],
+      {duration:210,easing:'cubic-bezier(.2,.78,.2,1)'});
+    motionRunCount++;return;
+  }
+  if(expanded&&prior!==location) {
+    // Sem transformar a viewport scrollável inteira; ela contém gráficos,
+    // capas e painéis complexos, caros de rasterizar em cada quadro.
+    const oldPage=prior.split(':').at(-1),currentPage=location.split(':').at(-1);
+    const before=pages.findIndex(([id])=>id===oldPage);
+    const after=pages.findIndex(([id])=>id===currentPage);
+    const direction=before<0||after>=before?1:-1;
+    const heading=island.querySelector(state.desktopView==='page'
+      ?'.desktop-page .context-bar':'.desktop-overview .desktop-presence-copy');
+    animateSafe(heading,
+      [{opacity:.42,transform:'translateX('+(direction*17)+'px)'},{opacity:1,transform:'translateX(0)'}],
+      {duration:215,easing:'cubic-bezier(.2,.78,.2,1)'});
+    if(state.desktopView==='page'&&state.page!=='chat') {
+      animateSafe(island.querySelector('.desktop-page-content .page-heading'),
+        [{opacity:.6,transform:'translateY(7px)'},{opacity:1,transform:'translateY(0)'}],
+        {duration:200,delay:25,easing:'cubic-bezier(.2,.78,.2,1)'});
+    }
+    motionRunCount++;
+  }
+}
+
 const escapeHTML=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const object=(v)=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
 const list=(v)=>Array.isArray(v)?v:[];
@@ -41,8 +110,49 @@ function avatar(size='') {
   const feeling=({listening:'hearing',thinking:'thinking',speaking:'speaking'})[activity]||'';
   return '<div class="avatar '+classes+' '+feeling+'" data-emotion="'+escapeHTML(emotion)+'" data-expression="'+expression+'" data-emotion-level="'+level+'" data-activity="'+escapeHTML(activity)+'" aria-hidden="true"><div class="mascot-figure"><div class="avatar-body"></div><i class="mascot-tuft"></i><i class="mascot-mark"></i><div class="face"><i class="eye"></i><i class="eye right"></i><i class="smile"></i><i class="cheek"></i><i class="cheek right"></i><i class="mascot-brow"></i><i class="mascot-brow right"></i></div><span class="mascot-emote"></span></div><i class="mascot-activity"></i></div>';
 }
+// Conexão da ponte não comprova disponibilidade da mente ou dos serviços.
+function connectionStatus() {
+  if(!state.connected)return {label:'Reconectando',kind:'offline',detail:'Ponte desconectada'};
+  const health=object(object(state.dashboard).health);
+  const model=object(health.llm);
+  const modelKnown=Object.keys(model).length>0;
+  const unavailable=modelKnown&&(model.freshness==='unavailable'||/indispon[ií]vel|falha|erro|offline/i.test(String(model.label||'')));
+  const inProgress=['speaking','listening','thinking','executing'].includes(state.activity);
+  const label=inProgress?(state.activityLabel||'Laylay em atividade'):unavailable?'Modelo indisponível':modelKnown?(state.activityLabel||'Ponte conectada'):'Ponte conectada';
+  const published=Object.keys(health).length>0;
+  const detail=['Ponte conectada',modelKnown?'Modelo: '+(model.label||'sem estado publicado'):'Modelo: sem leitura'];
+  if(published)for(const [key,name] of [['memory','Memória'],['microphone','Microfone']]) {
+    const item=object(health[key]);
+    detail.push(name+': '+(item.label||'sem leitura'));
+  }
+  return {label,kind:unavailable?'warning':'online',detail:detail.join(' · ')};
+}
 function status() {
-  return '<span class="status '+(state.connected?'':'offline')+'" title="'+escapeHTML(state.connected?'Ponte conectada · '+state.emotion:'Sem conexão com a mente')+'"><i></i>'+escapeHTML(state.connected?state.activityLabel:'Reconectando')+'</span>';
+  const indicator=connectionStatus();
+  return '<span class="status '+(indicator.kind==='online'?'':indicator.kind)+'" title="'+escapeHTML(indicator.detail)+'"><i></i>'+escapeHTML(indicator.label)+'</span>';
+}
+// Atualização pontual: telemetria pode mudar no chat sem remontar balões/inputs.
+function refreshStatusNodes() {
+  const indicator=connectionStatus();
+  for (const element of document.querySelectorAll('span.status')) {
+    element.classList.toggle('offline',indicator.kind==='offline');
+    element.classList.toggle('warning',indicator.kind==='warning');
+    element.title=indicator.detail;
+    const label=Array.from(element.childNodes).find(node=>node.nodeType===3);
+    if(label) {
+      if(label.nodeValue!==indicator.label)label.nodeValue=indicator.label;
+    } else element.appendChild(document.createTextNode(indicator.label));
+  }
+}
+function operationalStrip() {
+  const health=object(object(state.dashboard).health);
+  const items=[
+    ['Ponte',state.connected?'Conectada':'Desconectada'],
+    ['Modelo',object(health.llm).label||'Sem leitura'],
+    ['Memória',object(health.memory).label||'Sem leitura'],
+    ['Microfone',object(health.microphone).label||'Sem leitura'],
+  ];
+  return '<div class="operational-strip" role="status" aria-label="Estado observado dos serviços">'+items.map(([name,value],index)=>'<span class="operational-item"><small>'+escapeHTML(name)+'</small><strong class="'+((index===0&&!state.connected)||/indispon[ií]vel|erro|falha/i.test(value)?'operational-unavailable':'')+'">'+escapeHTML(value)+'</strong></span>').join('')+'</div>';
 }
 function pageHeading(eyebrow,title,subtitle,tag='') {
   return '<header class="page-heading"><div><div class="eyebrow">'+escapeHTML(eyebrow)+'</div><h2>'+escapeHTML(title)+'</h2>'+(subtitle?'<p>'+escapeHTML(subtitle)+'</p>':'')+'</div>'+(tag?'<span class="tag">'+escapeHTML(tag)+'</span>':'')+'</header>';
@@ -100,21 +210,87 @@ function home() {
   const controls=(id,reason)=>'<button class="icon-button" data-home-why="'+escapeHTML(id)+'" data-reason="'+escapeHTML(reason)+'" aria-label="Por que apareceu?" title="Por que apareceu?">'+icon('info')+'</button><button class="icon-button '+(pref.pinned_ids.includes(id)?'is-pinned':'')+'" data-home-pin="'+escapeHTML(id)+'" aria-label="'+(pref.pinned_ids.includes(id)?'Desafixar':'Fixar')+'" title="'+(pref.pinned_ids.includes(id)?'Desafixar':'Fixar')+'">'+icon('pin')+'</button><button class="icon-button" data-home-hide="'+escapeHTML(id)+'" aria-label="Ocultar sugestão" title="Ocultar sugestão">'+icon('close')+'</button>';
   const artwork=(url,title)=>{const safe=safeArtwork(url);return '<div class="cover">'+(safe?'<img src="'+escapeHTML(safe)+'" alt="">':'<span>'+escapeHTML((title||'♪').slice(0,1))+'</span>')+'</div>';};
   const playlists=ranked.filter(item=>!hidden.has('playlist:'+item.name));
-  const playlistRows=playlists.map((item,index)=>{const found=catalog.find(entry=>entry.name===item.name),available=state.connected&&Boolean(found)&&m.catalog_play_available===true;return '<article class="playlist-card" data-render-key="home-playlist:'+escapeHTML(item.name)+'"><span class="rank">'+(index+1)+'</span>'+artwork(found?.artwork_url,item.name)+'<div class="playlist-info"><strong>'+escapeHTML(item.name)+'</strong><p>'+escapeHTML(item.confirmed_plays)+(Number(item.confirmed_plays)===1?' reprodução iniciada confirmada':' reproduções iniciadas confirmadas')+'</p></div><div class="playlist-buttons">'+controls('playlist:'+item.name,item.reason||'Reproduções iniciadas e confirmadas nos últimos '+pref.period_days+' dias.')+'<button class="round-play small" data-tp-action="playlist-play" data-name="'+escapeHTML(item.name)+'" aria-label="Tocar '+escapeHTML(item.name)+'" '+(!available?'disabled':'')+'>'+icon('play')+'</button></div></article>';}).join('');
+  // Capas reais vêm exclusivamente do catálogo observado. Sem capa, mostra arte abstrata local.
+  function playlistShowcaseCard(item,position,featured=false,fromRanking=true) {
+    const found=catalog.find(entry=>entry.name===item.name);
+    const name=String(item.name||'Playlist sem nome');
+    const id='playlist:'+name, pinned=pref.pinned_ids.includes(id);
+    const count=Number(item.confirmed_plays)||0;
+    const catalogCount=Number(found?.count);
+    const available=state.connected&&Boolean(found)&&m.catalog_play_available===true;
+    const label=fromRanking
+      ?(featured?'MAIS PRESENTE NESTE PERÍODO':'ENTRE AS MAIS OUVIDAS')
+      :(featured?'DA SUA BIBLIOTECA':'PARA REDESCOBRIR');
+    const detail=fromRanking
+      ?count+' '+(count===1?'reprodução iniciada confirmada':'reproduções iniciadas confirmadas')
+      :(Number.isFinite(catalogCount)&&catalogCount>=0
+        ?catalogCount+' '+(catalogCount===1?'faixa na biblioteca':'faixas na biblioteca')
+        :'Disponível na sua biblioteca');
+    const why=fromRanking?controls(id,item.reason||'Reproduções iniciadas e confirmadas nos últimos '+pref.period_days+' dias.'):
+      '<button class="spotlight-pin '+(pinned?'is-pinned':'')+'" data-home-pin="'+escapeHTML(id)+'" aria-label="'+(pinned?'Desafixar ':'Fixar ')+escapeHTML(name)+'" aria-pressed="'+pinned+'" title="'+(pinned?'Desafixar':'Fixar')+'">'+icon('pin')+'</button>';
+    const play=available?
+      '<button class="showcase-play" data-tp-action="playlist-play" data-name="'+escapeHTML(name)+'" aria-label="Tocar '+escapeHTML(name)+'">'+icon('play')+(featured?'<span>Ouvir agora</span>':'')+'</button>':
+      fromRanking?'<button class="showcase-play" data-tp-action="playlist-play" data-name="'+escapeHTML(name)+'" aria-label="Reprodução indisponível para '+escapeHTML(name)+'" title="A reprodução ainda não foi confirmada pela biblioteca" disabled>'+icon('play')+(featured?'<span>Indisponível</span>':'')+'</button>':
+      '<button class="showcase-play showcase-open" data-page="music" aria-label="Abrir Música para ver '+escapeHTML(name)+'">'+icon('music')+'<span>'+(featured?'Ver na Música':'Ver')+'</span></button>';
+    return '<article class="playlist-card playlist-showcase-card '+(featured?'playlist-spotlight':'playlist-tile')+'" data-render-key="home-playlist:'+escapeHTML(name)+'"><div class="showcase-cover">'+artwork(found?.artwork_url,name)+'</div><div class="playlist-info"><div class="showcase-kicker">'+(fromRanking?'<span class="showcase-rank">'+(position+1)+'</span>':'')+escapeHTML(label)+'</div><strong title="'+escapeHTML(name)+'">'+escapeHTML(name)+'</strong><p>'+escapeHTML(detail)+'</p></div><div class="playlist-buttons">'+why+play+'</div></article>';
+  }
+  const playlistRows=playlists.length
+    ?playlistShowcaseCard(playlists[0],0,true)
+      +(playlists.length>1?'<div class="playlist-showcase-grid">'+playlists.slice(1,4).map((item,index)=>playlistShowcaseCard(item,index+1)).join('')+'</div>':'')
+      +(playlists.length>4?'<button class="showcase-library-link" data-page="music">Explorar a biblioteca '+icon('arrow')+'</button>':'')
+    :'';
   const actionItems=actions.length?actions:list(d.quick_actions).filter(item=>homeAction(item.id)).map(item=>({...item,shortcut:true}));
   const frequent=actionItems.filter(item=>!hidden.has('action:'+item.id)).map(item=>{const action=homeAction(item.id);return '<article class="home-action-item"><button class="quick-action" data-home-execute="action:'+escapeHTML(item.id)+'" '+(!action.available?'disabled':'')+'>'+icon(action.icon)+'<span><strong>'+escapeHTML(action.title)+'</strong><small>'+escapeHTML(item.shortcut?'Acesso rápido · você escolhe quando usar':item.confirmed_uses+' usos confirmados · '+(action.page?'abrir controles':'neste período'))+'</small></span></button><div class="home-action-tools">'+controls('action:'+item.id,item.reason||(item.shortcut?'Atalho publicado pela Laylay. Ainda não há histórico suficiente para um ranking.':'Execuções confirmadas nos últimos '+pref.period_days+' dias.'))+'</div></article>';}).join('');
-  const availablePins=pref.pinned_ids.map(id=>{if(id.startsWith('playlist:')){const pl=catalog.find(item=>item.name===id.slice(9));return pl?{id,title:pl.name,playlist:true,available:state.connected&&m.catalog_play_available===true}:null;}if(id.startsWith('action:')){const action=homeAction(id.slice(7));return action?{id,...action}:null;}return null;}).filter(Boolean);
-  const pins=availablePins.map(item=>'<span class="pin"><button '+(item.playlist?'data-tp-action="playlist-play" data-name="'+escapeHTML(item.title)+'"':'data-home-execute="'+escapeHTML(item.id)+'"')+' '+(!item.available?'disabled':'')+'>'+icon('pin')+escapeHTML(item.title)+'</button><button data-home-pin="'+escapeHTML(item.id)+'" aria-label="Desafixar '+escapeHTML(item.title)+'">×</button></span>').join('');
+  // Uma preferência fixada não desaparece apenas porque o catálogo está offline.
+  const availablePins=pref.pinned_ids.map(id=>{
+    if(id.startsWith('playlist:')) {
+      const title=id.slice(9),pl=catalog.find(item=>item.name===title);
+      return {id,title,playlist:true,artwork_url:pl?.artwork_url||'',count:pl?.count,
+        known:Boolean(pl),available:state.connected&&Boolean(pl)&&m.catalog_play_available===true};
+    }
+    if(id.startsWith('action:')) {
+      const action=homeAction(id.slice(7));
+      return action?{id,...action,playlist:false}:null;
+    }
+    return null;
+  }).filter(Boolean);
+  const pins=availablePins.map(item=>{
+    const title=String(item.title||'Atalho');
+    const safe= item.playlist?safeArtwork(item.artwork_url):'';
+    const cover=item.playlist
+      ?'<div class="pinned-card-cover">'+(safe?'<img src="'+escapeHTML(safe)+'" alt="" loading="lazy">':'<span aria-hidden="true">'+escapeHTML(title.slice(0,1).toUpperCase()||'♪')+'</span>')+'</div>'
+      :'<div class="pinned-card-cover pinned-action-cover">'+icon(item.icon||'spark')+'</div>';
+    const count=Number(item.count);
+    const subtitle=item.playlist
+      ?(!item.known?'Biblioteca temporariamente indisponível':
+        Number.isFinite(count)&&count>=0
+          ?count+' '+(count===1?'faixa':'faixas')+' · fixada'
+          :'Playlist fixada por você')
+      :'Atalho fixado por você';
+    const main=item.playlist
+      ?(item.available
+        ?'<button class="pinned-card-action pinned-card-play" data-tp-action="playlist-play" data-name="'+escapeHTML(title)+'" title="Tocar playlist" aria-label="Tocar '+escapeHTML(title)+'">'+icon('play')+'</button>'
+        :'<button class="pinned-card-action" data-page="music" title="Ver na Música" aria-label="Abrir Música para '+escapeHTML(title)+'">'+icon('music')+'</button>')
+      :'<button class="pinned-card-action" data-home-execute="'+escapeHTML(item.id)+'" title="'+escapeHTML(item.available?'Executar atalho':'Atalho indisponível')+'" aria-label="Executar '+escapeHTML(title)+'" '+(!item.available?'disabled':'')+'>'+icon(item.icon||'spark')+'</button>';
+    return '<article class="pinned-mini-card" data-pinned-id="'+escapeHTML(item.id)+'">'+cover+
+      '<div class="pinned-card-copy"><strong title="'+escapeHTML(title)+'">'+escapeHTML(title)+'</strong><small>'+escapeHTML(subtitle)+'</small></div>'+
+      '<div class="pinned-card-actions">'+main+
+      '<button class="pinned-card-action pinned-card-remove" data-home-pin="'+escapeHTML(item.id)+'" title="Desafixar" aria-label="Desafixar '+escapeHTML(title)+'">'+icon('close')+'</button></div></article>';
+  }).join('');
+
   const routine=object(d.routines),agenda=(routine.freshness==='unavailable'?[]:list(routine.items)).slice(0,3).map(item=>'<div class="agenda-item"><time>'+escapeHTML(item.time||item.date||'—')+'</time><div><strong>'+escapeHTML(item.name||'Compromisso')+'</strong><p>'+escapeHTML(item.active===false?'Desativado':item.date||list(item.days).join(', ')||'Agenda publicada')+'</p></div></div>').join('');
   const context=object(m.context_music),moment=Boolean(context.summary)&&!hidden.has('moment:context_music');
-  const shortlist=catalog.slice(0,3).map(item=>'<span class="pin"><button data-home-pin="playlist:'+escapeHTML(item.name)+'">'+icon('pin')+escapeHTML(item.name)+'</button></span>').join('');
-  return '<div class="page-content home-inteligente"><header class="home-welcome"><div class="home-mascot presence">'+avatar()+'</div><div><span class="eyebrow">UM ESPAÇO COM O SEU RITMO</span><h1>'+greeting+(name?', <span>'+escapeHTML(name)+'.</span>':'.')+'</h1><p>'+escapeHTML(hasHistory?'Com o que importa por perto.':'Seu Início ganha forma conforme você usa a Laylay.')+'</p></div><div class="date">'+escapeHTML(day)+'<span>'+status()+'</span></div></header><div class="home-layout"><div class="home-primary">'+
+  const shortlist=catalog.slice(0,3);
+  const catalogCards=shortlist.length?playlistShowcaseCard(shortlist[0],0,true,false)
+    +(shortlist.length>1?'<div class="playlist-showcase-grid">'+shortlist.slice(1).map((item,index)=>playlistShowcaseCard(item,index+1,false,false)).join('')+'</div>':''):'';
+
+  return '<div class="page-content home-inteligente"><header class="home-welcome"><div class="home-mascot presence">'+avatar()+'</div><div><span class="eyebrow">UM ESPAÇO COM O SEU RITMO</span><h1>'+greeting+(name?', <span>'+escapeHTML(name)+'.</span>':'.')+'</h1><p>'+escapeHTML(hasHistory?'Com o que importa por perto.':'Seu Início ganha forma conforme você usa a Laylay.')+'</p></div><div class="date">'+escapeHTML(day)+'<span>'+status()+'</span></div></header>'+operationalStrip()+'<div class="home-layout"><div class="home-primary">'+
     (resume?'<section>'+sectionHead('Continuar de onde parou','<small>O que ficou por perto</small>')+'<div class="resume-grid">'+(last||conversation?'<article class="resume-card"><div class="resume-label">'+icon('chat')+' CONVERSA RECENTE</div><h3>'+escapeHTML(conversation?.title||'Nossa conversa')+'</h3><p class="home-resume-excerpt">'+escapeHTML(last?.text||'Seu histórico está disponível na conversa.')+'</p><button class="text-button" data-page="chat">Retomar conversa '+icon('arrow')+'</button></article>':'')+(musicVisible?'<article class="resume-card music music-card"><div class="resume-label">'+icon('music')+' SUA ÚLTIMA TRILHA</div><div class="music-resume">'+artwork(m.artwork_url,m.title)+'<div class="music-info"><h3>'+escapeHTML(m.title)+'</h3><p>'+escapeHTML(m.channel||'')+'</p></div><button class="round-play music-play" data-action="music-toggle" aria-label="'+(m.state==='playing'?'Pausar música':'Continuar música')+'" '+(!state.connected||m.controls_available!==true?'disabled':'')+'>'+icon(m.state==='playing'?'pause':'play')+'</button></div><div class="progress"><span style="width:'+(Number(m.duration_seconds)>0?Math.min(100,Math.max(0,100*Number(m.position_seconds||0)/Number(m.duration_seconds))):0)+'%"></span></div><p class="home-track-context">'+escapeHTML(m.playlist||'Reprodução observada')+'</p></article>':'')+'</div></section>':'')+
     (!hasHistory?'<section class="empty">'+icon('spark')+'<h2>Seu jeito, com o tempo.</h2><p>Ainda não há uso confirmado suficiente para organizar suas sugestões. Você pode conversar, explorar sua música e fixar atalhos.</p><button class="primary" data-page="chat">Começar uma conversa '+icon('arrow')+'</button></section>':'')+
-    '<section><div class="section-head"><div><h2>Sua trilha favorita</h2><small>Reproduções iniciadas · últimos '+pref.period_days+' dias'+(data.freshness==='stale'?' · leitura anterior':'')+'</small></div><div class="segment" aria-label="Período do ranking">'+[7,30].map(days=>'<button data-home-period="'+days+'" class="'+(pref.period_days===days?'active':'')+'" aria-pressed="'+(pref.period_days===days)+'">'+days+' dias</button>').join('')+'</div></div><div class="playlist-ranking">'+(playlistRows||'<p class="help-line">'+(ranked.length?'As sugestões deste período foram ocultadas.':'As playlists mais reproduzidas aparecerão conforme houver confirmações.')+'</p>')+'</div>'+(!ranked.length&&shortlist?'<div class="home-catalog-pins"><p class="help-line">Da sua biblioteca · fixe para encontrar aqui</p><div class="pins">'+shortlist+'</div></div>':'')+'</section>'+
+    '<section><div class="section-head"><div><h2>Sua trilha favorita</h2><small>Reproduções iniciadas · últimos '+pref.period_days+' dias'+(data.freshness==='stale'?' · leitura anterior':'')+'</small></div><div class="segment" aria-label="Período do ranking">'+[7,30].map(days=>'<button data-home-period="'+days+'" class="'+(pref.period_days===days?'active':'')+'" aria-pressed="'+(pref.period_days===days)+'">'+days+' dias</button>').join('')+'</div></div><div class="playlist-ranking">'+(playlistRows||(!ranked.length&&!catalogCards?'<p class="help-line">Suas playlists aparecerão quando a biblioteca estiver disponível.</p>':ranked.length?'<p class="help-line">As sugestões deste período foram ocultadas.</p>':''))+'</div>'+(!ranked.length&&catalogCards?'<div class="home-catalog-showcase"><p class="showcase-empty-note">Ainda sem reproduções confirmadas neste período. Enquanto isso, conheça suas playlists.</p><div class="playlist-catalog-grid">'+catalogCards+'</div></div>':'')+'</section>'+
     '<section>'+sectionHead('Você usa bastante','<button class="text-button" data-page="system">Ver ações '+icon('arrow')+'</button>')+'<div class="quick-actions">'+(frequent||'<p class="help-line">Seus atalhos frequentes aparecem quando houver execuções confirmadas.</p>')+'</div></section></div><aside class="home-aside">'+
     '<section class="aside-moment"><span class="eyebrow">'+(moment?'PARA ESTE MOMENTO':'ESCOLHA O QUE FICA')+'</span><h3>'+escapeHTML(moment?'Encontre o seu ritmo.':'Comece pelos seus favoritos.')+'</h3><p>'+escapeHTML(moment?context.summary:'Fixe playlists e ações que quer encontrar aqui. Você continua escolhendo o que executar.')+'</p><div class="moment-actions"><button class="text-button" data-page="music">Abrir música '+icon('arrow')+'</button>'+(moment?'<button class="text-button" data-home-why="moment:context_music" data-reason="'+escapeHTML(context.recommendation||'Contexto musical publicado pela Laylay com base em '+list(context.basis).join(', '))+ '" aria-label="Por que esta sugestão apareceu?">'+icon('info')+'</button><button class="text-button" data-home-hide="moment:context_music" aria-label="Ocultar sugestão de momento">'+icon('close')+'</button>':'')+'</div></section>'+
-    '<section>'+sectionHead('Seu dia','<small>Sua agenda</small>')+(agenda||'<p class="help-line">Nenhum compromisso publicado agora.</p>')+'<button class="text-button" data-page="lamp">Ver agenda '+icon('arrow')+'</button></section><section>'+sectionHead('Fixados por você','<small>Sempre por perto</small>')+'<div class="pins">'+(pins||'<p class="help-line">Use o alfinete em uma playlist ou ação para mantê-la aqui.</p>')+'</div></section></aside></div><footer class="home-controls"><span>Você escolhe o que fica por perto.</span><button class="text-button" data-home-restore>'+icon('refresh')+' Restaurar sugestões</button></footer></div>';
+    '<section>'+sectionHead('Seu dia','<small>Sua agenda</small>')+(agenda||'<p class="help-line">Nenhum compromisso publicado agora.</p>')+'<button class="text-button" data-page="lamp">Ver agenda '+icon('arrow')+'</button></section><section>'+sectionHead('Fixados por você','<small>Sempre por perto</small>')+'<div class="pinned-mini-list">'+(pins||'<div class="pinned-empty">'+icon('pin')+'<p>Fixe uma playlist ou ação para encontrá-la aqui.</p></div>')+'</div>'+(availablePins.some(item=>item.playlist)?'<button class="pinned-explore" data-page="music">Explorar biblioteca '+icon('arrow')+'</button>':'')+'</section></aside></div><footer class="home-controls"><span>Você escolhe o que fica por perto.</span><button class="text-button" data-home-restore>'+icon('refresh')+' Restaurar sugestões</button></footer></div>';
 }
 function homePreferences(){const value=object(state.preferences.home);return {version:1,period_days:value.period_days===7?7:30,pinned_ids:list(value.pinned_ids).filter(id=>typeof id==='string'),hidden_ids:list(value.hidden_ids).filter(id=>typeof id==='string')};}
 function homeAction(id){
@@ -145,11 +321,11 @@ function full() {
   const view=views[state.page]||({home,chat}[state.page]);
   const content=typeof view==='function'?view():pageHeading('',pageLabel(),'Aguardando a página da interface.');
   const name=profileName();
-  return '<section class="window" aria-label="Interface completa"><aside class="sidebar"><div class="brand"><span class="mark" aria-hidden="true"></span>laylay</div><div class="nav-group-label">Por perto</div><nav class="nav" aria-label="Páginas da Laylay">'+pages.map(p=>'<button class="'+(state.page===p[0]?'active':'')+'" data-page="'+p[0]+'" '+(state.page===p[0]?'aria-current="page"':'')+'>'+icon(p[0])+'<span>'+p[1]+'</span></button>').join('')+'</nav>'+conversationList()+'<div class="sidebar-foot"><span class="profile">'+escapeHTML(name.slice(0,1)||'U')+'</span><div><strong>'+escapeHTML(name||'Seu espaço')+'</strong><small>Laylay · interface 1.0</small></div><button class="icon-btn" data-page="settings" aria-label="Abrir configurações">'+icon('settings')+'</button></div></aside><div class="main"><div class="titlebar"><div class="breadcrumb"><span>Laylay</span>'+icon('chevron')+'<span>'+pageLabel()+'</span></div><div class="window-actions">'+voiceSwitch()+status()+'<span class="separator"></span><button class="icon-btn" data-mode="quick" aria-label="Recolher para painel rápido" title="Painel rápido">'+icon('collapse')+'</button><button class="icon-btn" data-mode="island" aria-label="Recolher para ilha" title="Recolher para ilha">'+icon('minus')+'</button></div></div><div class="page" id="page-content">'+content+'</div><footer class="main-footer"><span>'+icon('shield')+' Seu espaço, no seu tempo.</span><span class="right-footer bridge-label">'+escapeHTML(state.connected?'Ponte conectada':'Reconectando')+' <span style="color:#9f8cb4">✧</span></span></footer></div></section>';
+  return '<section class="window" aria-label="Interface completa"><aside class="sidebar"><div class="brand"><span class="mark" aria-hidden="true"></span>laylay</div><div class="nav-group-label">Por perto</div><nav class="nav" aria-label="Páginas da Laylay">'+pages.map(p=>(p[0]==='system'?'<div class="nav-group-label nav-advanced-label">Ferramentas</div>':'')+'<button class="'+(state.page===p[0]?'active':'')+'" data-page="'+p[0]+'" '+(state.page===p[0]?'aria-current="page"':'')+'>'+icon(p[0])+'<span>'+p[1]+'</span></button>').join('')+'</nav>'+conversationList()+'<div class="sidebar-foot"><span class="profile">'+escapeHTML(name.slice(0,1)||'U')+'</span><div><strong>'+escapeHTML(name||'Seu espaço')+'</strong><small>Laylay · interface 1.0</small></div><button class="icon-btn" data-page="settings" aria-label="Abrir configurações">'+icon('settings')+'</button></div></aside><div class="main"><div class="titlebar"><div class="breadcrumb"><span>Laylay</span>'+icon('chevron')+'<span>'+pageLabel()+'</span></div><div class="window-actions">'+voiceSwitch()+status()+'<span class="separator"></span><button class="icon-btn" data-mode="quick" aria-label="Recolher para painel rápido" title="Painel rápido">'+icon('collapse')+'</button><button class="icon-btn" data-mode="island" aria-label="Recolher para ilha" title="Recolher para ilha">'+icon('minus')+'</button></div></div><div class="page" id="page-content">'+content+'</div><footer class="main-footer"><span>'+icon('shield')+' Seu espaço, no seu tempo.</span><span class="right-footer bridge-label">'+escapeHTML(state.connected?'Ponte conectada':'Reconectando')+' <span style="color:#9f8cb4">✧</span></span></footer></div></section>';
 }
 function quick() {
   const name=profileName();
-  return '<section class="quick-window" aria-label="Painel rápido"><header class="quick-top"><span class="quick-brand">laylay<span class="online-dot '+(state.connected?'':'offline')+'"></span></span><div class="quick-tools"><button class="icon-btn" data-mode="full" aria-label="Abrir interface completa">'+icon('expand')+'</button><button class="icon-btn" data-mode="island" aria-label="Recolher para ilha">'+icon('minus')+'</button></div></header><div class="quick-greeting">'+avatar('avatar-small')+'<div><h2>Estou por aqui'+(name?', '+escapeHTML(name):'')+'.</h2><p>'+status()+'</p></div></div><div class="quick-history" id="chat-history" tabindex="0" role="region" aria-label="Histórico da conversa">'+messages()+'</div><div class="quick-bottom">'+musicCard(true)+compose()+'<div class="simulation-bar"><span>'+escapeHTML(state.connected?'Conversa conectada':'Reconectando')+'</span>'+voiceSwitch()+'</div><button class="quick-expand" data-mode="full">Abrir meu espaço '+icon('arrow')+'</button></div></section>';
+  return '<section class="quick-window" aria-label="Painel rápido"><header class="quick-top"><span class="quick-brand">laylay<span class="online-dot '+(state.connected?'':'offline')+'"></span></span><div class="quick-tools"><button class="icon-btn" data-mode="full" aria-label="Abrir interface completa">'+icon('expand')+'</button><button class="icon-btn" data-mode="island" aria-label="Recolher para ilha">'+icon('minus')+'</button></div></header><div class="quick-greeting">'+avatar('avatar-small')+'<div><h2>Estou por aqui'+(name?', '+escapeHTML(name):'')+'.</h2><p>'+status()+'</p></div></div><div class="quick-history" id="chat-history" tabindex="0" role="region" aria-label="Histórico da conversa">'+messages()+'</div><div class="quick-bottom">'+musicCard(true)+compose()+'<div class="simulation-bar"><span>'+escapeHTML(state.connected?'Ponte conectada':'Reconectando')+'</span>'+voiceSwitch()+'</div><button class="quick-expand" data-mode="full">Abrir meu espaço '+icon('arrow')+'</button></div></section>';
 }
 function fullWithMobileNavigation() {
   const label=state.mobileNavOpen?'Fechar navegação':'Abas';
@@ -159,7 +335,7 @@ function fullWithMobileNavigation() {
   return markup;
 }
 function island() {
-  return '<div class="island-wrap"><button class="island" data-mode="quick" aria-label="Laylay '+escapeHTML(state.connected?state.activityLabel:'Reconectando')+'. Abrir painel rápido">'+avatar('avatar-mini')+'<span><strong>Laylay</strong><small>'+escapeHTML(state.connected?state.activityLabel:'Reconectando')+'</small></span><span class="online-dot '+(state.connected?'':'offline')+'"></span></button></div>';
+  return '<div class="island-wrap"><button class="island" data-mode="quick" aria-label="Laylay '+escapeHTML(connectionStatus().label)+'. Abrir painel rápido">'+avatar('avatar-mini')+'<span><strong>Laylay</strong><small>'+escapeHTML(connectionStatus().label)+'</small></span><span class="online-dot '+(state.connected?'':'offline')+'"></span></button></div>';
 }
 function fieldKey(el,index) {return el.id?'#'+el.id:el.getAttribute('data-field')?'field:'+el.getAttribute('data-field'):el.name?'name:'+el.name:'index:'+index;}
 function desktop() {
@@ -169,13 +345,15 @@ function desktop() {
   const view=views[state.page]||({home,chat}[state.page]);
   const content=pageView&&typeof view==='function'?view():'';
   const tabs=pages.map(([id,label])=>'<button data-page="'+id+'" class="'+(pageView&&state.page===id?'active':'')+'" '+(pageView&&state.page===id?'aria-current="page"':'')+'>'+icon(id)+'<span>'+label+'</span></button>').join('');
-  return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="'+state.desktopState+'" data-desktop-view="'+(pageView?'page':'overview')+'">'+
-    '<button class="desktop-compact" data-desktop-drag title="Arraste para mover. Clique para expandir." data-desktop="expandir" aria-label="Expandir Laylay"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small>'+escapeHTML(state.connected?state.activityLabel:'Reconectando')+'</small></span><span class="desktop-signal '+(state.connected?'online':'')+'"></span>'+icon('chevron')+'</button>'+
+  const liveActivity=['idle','speaking','thinking','listening','executing','reconnecting'].includes(state.activity)?state.activity:'idle';
+  const indicator=connectionStatus();
+  return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="'+state.desktopState+'" data-desktop-material="'+state.desktopMaterial+'" data-activity="'+liveActivity+'" data-desktop-view="'+(pageView?'page':'overview')+'">'+
+    '<button class="desktop-compact" data-desktop-drag title="Arraste para mover. Clique para expandir." data-desktop="expandir" aria-label="Expandir Laylay · '+escapeHTML(indicator.label)+'"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small title="'+escapeHTML(indicator.detail)+'">'+escapeHTML(indicator.label)+'</small></span><span class="desktop-signal '+(indicator.kind==='online'?'online':indicator.kind)+'" aria-hidden="true"></span><span class="desktop-expand-icon">'+icon('chevron')+'</span></button>'+
     '<div class="desktop-expanded"><header class="desktop-toolbar window-head" data-desktop-drag title="Arraste esta área para mover a Laylay."><span class="desktop-wordmark wordmark">laylay<span>por perto</span></span><div class="desktop-toolbar-actions"><button class="desktop-overview-button icon-btn '+(!pageView?'active':'')+'" data-desktop="resumo" aria-label="Visão rápida" title="Visão rápida">'+icon('island')+'</button><span class="desktop-divider"></span>'+voiceSwitch()+'<button class="icon-btn" data-desktop="recolher" aria-label="Recolher Laylay" title="Recolher · Esc">'+icon('minus')+'</button></div></header>'+
     '<div class="desktop-window-body window-body"><nav class="desktop-tabs" aria-label="Abas da Laylay"><div class="nav-caption">SEU ESPAÇO</div>'+tabs+'<div class="nav-bottom">'+status()+'</div></nav>'+
     '<div class="desktop-overview"><div class="desktop-content"><section class="desktop-presence"><div class="desktop-portrait">'+avatar()+'</div><div class="desktop-presence-copy"><strong>Estou por aqui.</strong>'+status()+'</div></section><section class="desktop-context" aria-label="Sua trilha"><div class="desktop-section-label">SUA TRILHA<button data-page="music" aria-label="Ver biblioteca">'+icon('arrow')+'</button></div>'+musicCard(true)+'</section></div>'+
     '<div class="desktop-message" role="status"><span>'+icon(pending?'clock':'chat')+'</span><p>'+escapeHTML(pending?'Aguardando a Laylay…':recent?.text||'Uma conversa, uma ideia ou só companhia.')+'</p><button data-page="chat" aria-label="Ver conversa completa">'+icon('arrow')+'</button></div>'+
-    '<div class="desktop-composer">'+(!pageView?compose():'')+'</div><footer class="desktop-foot"><span>'+escapeHTML(state.connected?'Conectada à Laylay':'Aguardando conexão com a Laylay')+'</span><span title="Recolhe após 20 segundos sem interação. Esc recolhe agora.">20s sem interação</span></footer></div>'+
+    '<div class="desktop-composer">'+(!pageView?compose():'')+'</div><footer class="desktop-foot"><span>'+escapeHTML(state.connected?'Ponte conectada':'Aguardando ponte')+'</span><span title="Ao mudar de aplicativo, Laylay recolhe, exceto durante a fala ou transmissão ativa. Esc recolhe manualmente.">Recolhe ao mudar de app</span></footer></div>'+
     '<div class="desktop-page main-column"><div class="context-bar"><span>Laylay <b>›</b> '+escapeHTML(pageLabel())+'</span><span class="context-state">'+status()+'</span></div><details class="desktop-conversations" '+(state.page==='chat'?'':'hidden')+'><summary>'+icon('chat')+' Suas conversas</summary>'+conversationList()+'</details><div class="desktop-page-content page" id="page-content" data-page="'+state.page+'" data-render-key="desktop-page:'+state.page+'">'+content+'</div><footer class="window-foot"><span>Seu espaço, no seu tempo.</span><span>'+escapeHTML(state.connected?'Conectada à Laylay':'Aguardando conexão')+'</span></footer></div></div></div></section>';
 }
 paths.pin='<path d="m9 3 6 0-1 5 4 4v2H6v-2l4-4-1-5ZM12 14v7"/>';
@@ -365,12 +543,13 @@ function render(options={}) {
       const node=entry.key.startsWith('.')?root.querySelector(entry.key):document.getElementById(entry.key);
       if(node)node.scrollTop=entry.top;
     }
-    document.getElementById('page-content')?.animate([{opacity:.55,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],{duration:state.preferences.reduced||window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:180,easing:'ease-out'});
+    if(state.mode!=='desktop')document.getElementById('page-content')?.animate([{opacity:.55,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],{duration:state.preferences.reduced||window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:180,easing:'ease-out'});
     if(state.page==='chat'&&!locationScroll.has(location))scrollChat();
   }
   document.title='Laylay · '+(state.mode==='quick'?'Painel rápido':state.mode==='island'?'Ilha':pageLabel());
   if(location!==previousLocation)document.querySelector(state.mode==='desktop'?'.desktop-tabs [aria-current="page"]':'.nav [aria-current="page"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
   previousLocation=location;
+  animateDesktopMotion(location);
   avatarMotion.refresh();
   desktopEditing();
   queuePresentationCommit();
@@ -529,6 +708,7 @@ function receiveEvent(input) {
   if(type==='apresentacao') {
     if(['full','quick','island','desktop'].includes(msg.mode))state.mode=msg.mode;
     if(['compact','expanded'].includes(msg.desktop_state))state.desktopState=msg.desktop_state;
+    if(['acrylic','mica','fallback'].includes(msg.desktop_material))state.desktopMaterial=msg.desktop_material;
     if(['overview','page'].includes(msg.desktop_view))state.desktopView=msg.desktop_view;
     if(Object.hasOwn(nativePages,msg.desktop_page))state.page=msg.desktop_page;
     if(typeof msg.desktop_pinned==='boolean')state.desktopPinned=msg.desktop_pinned;
@@ -638,6 +818,7 @@ function receiveEvent(input) {
   if(type==='music_meter')repaint=false; // o componente de áudio projeta suas barras localmente
   if(type==='dev_events')repaint=['full','desktop'].includes(state.mode)&&state.page==='dev';
   if(type==='dashboard_state')repaint=state.mode==='quick'||(state.mode==='desktop'&&state.desktopView==='overview')||(['full','desktop'].includes(state.mode)&&state.page!=='chat');
+  if(type==='dashboard_state'||type==='state')refreshStatusNodes();
   if(repaint)scheduleRender();
 }
 function onEvent(fn) {
@@ -763,7 +944,7 @@ window.addEventListener('resize',queueStreamingViewport,{passive:true});
 document.addEventListener('scroll',queueStreamingViewport,{passive:true,capture:true});
 paths.mic='<path d="M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>';
 paths.more='<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>';
-window.LaylayInterface={state,icon,escapeHTML,pageHeading,avatar,status,compose,musicCard,render,invalidate:scheduleRender,goPage,goMode,toast,request,views,onEvent,receiveEvent,confirm:confirmDialog,safeArtwork};
+window.LaylayInterface={state,icon,escapeHTML,pageHeading,avatar,status,compose,musicCard,render,invalidate:scheduleRender,goPage,goMode,toast,request,views,onEvent,receiveEvent,confirm:confirmDialog,safeArtwork,motionStats:()=>({count:motionRunCount,location:motionLocation,desktopState:motionDesktopState})};
 const avatarMotion=(()=>{
  const reducedQuery=window.matchMedia('(prefers-reduced-motion: reduce)');
  let avatars=[],frame=0,blinkTimer=0,lastFrame=0,targetsDirty=true,pointer=null,environment='';

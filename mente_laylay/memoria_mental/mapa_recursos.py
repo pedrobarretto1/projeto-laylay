@@ -25,8 +25,17 @@ class MapaRecursosRuntime:
         self._lock = RLock()
 
     @staticmethod
+    def _referencia_sem_posicao(texto: str) -> str:
+        """Projeta referência qualificada; nunca deve normalizar a projeção pedida."""
+        return re.sub(r"\b(?:primeir[oa]|segund[oa]|terceir[oa]|quart[oa]|quint[oa]|\d+[ao]?)\s+",
+                      "", _normalizar(texto))
+
+    @staticmethod
     def _termo_mencionado(consulta: str, termo: str) -> bool:
         """Aceita pequenas palavras de ligação dentro de um termo conhecido."""
+        if termo in consulta:
+            return True
+        consulta = MapaRecursosRuntime._referencia_sem_posicao(consulta)
         if termo in consulta:
             return True
         partes = termo.split()
@@ -47,6 +56,7 @@ class MapaRecursosRuntime:
         escrita_via: str = "",
         intent_consulta: str = "",
         parametro_detalhe: str = "",
+        objetos_consulta: tuple[str, ...] = (),
         executor_consulta: Callable[[dict[str, Any], str], bool] | None = None,
     ) -> None:
         chave = _normalizar(nome).replace(" ", "_")
@@ -62,41 +72,116 @@ class MapaRecursosRuntime:
                 "escrita_via": str(escrita_via or "").strip(),
                 "intent_consulta": str(intent_consulta or "").upper().strip(),
                 "parametro_detalhe": str(parametro_detalhe or "").strip(),
+                "objetos_consulta": tuple(_normalizar(t) for t in objetos_consulta if _normalizar(t)),
                 "executor_consulta": executor_consulta if callable(executor_consulta) else None,
             }
 
     @staticmethod
-    def _parece_pedido_de_dados(texto: str) -> bool:
+    def _pedido_de_dados(texto: str) -> tuple[str, str] | None:
+        """Extrai somente a gramática fechada de leitura antecipada.
+
+        Retorna objeto e escopo pedidos, sem consultar nomes catalogados.
+        Fora desta gramática, a interpretação pertence à IA principal. Uma
+        interrogação ou menção ao recurso nunca decide a finalidade sozinha.
+        """
         consulta = _normalizar(texto)
         if not consulta:
-            return False
+            return None
         # Um nome conhecido pelo catálogo (por exemplo, a playlist ``rock``)
         # não transforma uma pergunta de opinião numa consulta operacional.
         # Além de preservar a conversa, isto impede que o dado real citado
         # escolha silenciosamente uma habilidade só por compartilhar o nome.
         if texto_pede_opiniao(texto):
-            return False
+            return None
         # Negação, hipótese e perguntas sobre capacidade não autorizam nem
         # mesmo consultas locais. Elas pertencem à conversa/deliberação.
         if re.match(r"^(?:nao|nem)\s+(?:me\s+)?(?:fala|fale|diga|mostra|mostre|lista|liste)\b", consulta):
-            return False
+            return None
         if re.search(
             r"\b(?:voce|laylay|lay)\s+(?:consegue|pode|sabe|e capaz)\b|"
             r"\bse eu (?:pedir|mandar|quiser|quisesse)\b|"
             r"^(?:como|o que) (?:eu )?(?:faria|faco|posso|poderia)\b",
             consulta,
         ):
-            return False
-        return bool(
-            "?" in str(texto or "")
-            or re.search(
-                r"^(?:o que|oque|quais?|quant[oa]s?|qual e|como esta|como ta|"
-                r"mostra|mostre|lista|liste|fala|fale|diga|conte|"
-                r"me mostra|me mostre|me lista|me liste|me fala|me fale|me diga|me conte|"
-                r"quero ver|gostaria de ver|tem algo|ha algo)\b",
-                consulta,
-            )
+            return None
+        corpo = r"([^?!.;]+)[?!.]*"
+        conteudo = re.fullmatch(
+            r"(?:e\s+)?(?:o que|oque)\s+(?:eu\s+)?(?:tenho|tem|ha|existe|existem)\s+"
+            r"(?:(?:dentro|salvo|guardado)\s+)?(?:em|na|no|nas|nos|da|do)\s+" + corpo,
+            consulta,
         )
+        if conteudo:
+            return "", conteudo[1].strip()
+        pedido = re.fullmatch(
+            r"(?:(?:quais?|quant[oa]s?)(?:\s+(?:sao|e))?|como\s+(?:esta|ta)|"
+            r"(?:me\s+)?(?:mostra|mostre|lista|liste|fala|fale|diga|conte)|"
+            r"quero ver|gostaria de ver)\s+" + corpo,
+            consulta,
+        )
+        if not pedido:
+            return None
+        objeto = re.sub(r"^quais?\s+(?:(?:sao|e)\s+)?", "", pedido[1].strip())
+        existencia = re.fullmatch(
+            r"(.+?)\s+(?:tem|tenho|ha|existe|existem)\s+"
+            r"(?:(?:em|na|no|nas|nos)\s+)?(.+)", objeto,
+        )
+        return (existencia[1], existencia[2]) if existencia else (objeto, "")
+
+    @staticmethod
+    def _parece_pedido_de_dados(texto: str) -> bool:
+        return MapaRecursosRuntime._pedido_de_dados(texto) is not None
+
+    @staticmethod
+    def _vinculo_do_pedido(
+        pedido: tuple[str, str], recurso: Mapping[str, Any], retrato: Mapping[str, Any],
+        *, referencia_qualificada: bool = False,
+    ) -> bool:
+        """Confirma o objeto inteiro pedido, nunca uma menção subordinada.
+
+        A gramática determina a finalidade; o leitor confirma nome e filtros.
+        Isso separa a evidência sobre o alvo da decisão de consultar seus dados.
+        """
+        def chave(valor: str) -> str:
+            return " ".join(p for p in _normalizar(valor).split()
+                            if p not in {"a", "as", "o", "os", "minha", "minhas",
+                                         "meu", "meus", "de", "do", "da", "que",
+                                         "eu", "estao", "foram"})
+
+        termos = [chave(t) for t in recurso.get("termos") or () if chave(t)]
+        detalhe = retrato.get("detalhe")
+        nome = chave(str(detalhe.get("nome") or "")) if isinstance(detalhe, Mapping) else ""
+
+        def recurso_inteiro(valor: str, *, aceita_nome: bool) -> bool:
+            if referencia_qualificada:
+                # A posição qualifica a referência, nunca o objeto/projeção.
+                # Aqui só se admite seguir ao owner ordinal; não se resolve
+                # alvo nem se produz uma listagem genérica sem o ordinal.
+                valor = MapaRecursosRuntime._referencia_sem_posicao(valor)
+            alvo = chave(valor)
+            if not alvo:
+                return False
+            if aceita_nome and nome and alvo == nome:
+                return True
+            return any(
+                re.fullmatch(re.escape(termo) + r"s?", alvo)
+                or (aceita_nome and nome and re.fullmatch(
+                    re.escape(termo) + r"s?\s+" + re.escape(nome), alvo))
+                for termo in termos
+            )
+
+        objeto, escopo = pedido
+        if not escopo:
+            return recurso_inteiro(objeto, aceita_nome=True)
+        objetos = tuple(recurso.get("objetos_consulta") or ()) + tuple(recurso.get("termos") or ())
+        objeto_suportado = not objeto or any(
+            re.fullmatch(re.escape(chave(t)) + r"s?", chave(objeto)) for t in objetos if chave(t))
+        if objeto_suportado and recurso_inteiro(escopo, aceita_nome=True):
+            return True
+        filtros = retrato.get("parametros_consulta")
+        return bool(recurso_inteiro(objeto, aceita_nome=False)
+                    and isinstance(filtros, Mapping)
+                    and any(isinstance(v, str) and chave(v) == chave(escopo)
+                            for v in filtros.values()))
 
     def executar_consulta(self, resultado: Mapping[str, Any], texto: str) -> bool:
         """Executa um leitor registrado sem conhecer seu domínio concreto."""
@@ -122,7 +207,8 @@ class MapaRecursosRuntime:
         Cada recurso registrado declara seu intent de leitura. Um nome citado
         só é aceito quando o leitor do próprio recurso o devolve em ``detalhe``.
         """
-        if not self._parece_pedido_de_dados(texto):
+        pedido = self._pedido_de_dados(texto)
+        if pedido is None:
             return None
         consulta = _normalizar(texto)
         with self._lock:
@@ -136,6 +222,8 @@ class MapaRecursosRuntime:
             try:
                 retrato = dict(recurso["leitor"](texto) or {})
             except Exception:
+                continue
+            if not self._vinculo_do_pedido(pedido, recurso, retrato):
                 continue
             parametros_retrato = retrato.get("parametros_consulta")
             parametros_retrato = (
@@ -178,6 +266,32 @@ class MapaRecursosRuntime:
         melhor_pontuacao = max(pontuacao for pontuacao, _ in gerais)
         melhores = [resultado for pontuacao, resultado in gerais if pontuacao == melhor_pontuacao]
         return melhores[0] if len(melhores) == 1 else None
+
+    def avaliar_consulta_antecipada(self, texto: str) -> dict[str, Any] | None:
+        """Distingue ausência de recurso de pergunta que exige interpretação.
+
+        ``destino=ia`` encerra a tentativa determinística deste texto. Sem
+        essa distinção, um detector posterior poderia reinterpretar a mesma
+        menção recusada pelo contrato de finalidade e recuperar a falsa leitura.
+        Pedidos operacionais fora de leitura mantêm seus roteadores normais.
+        """
+        candidato = self.resolver_consulta(texto)
+        if candidato is not None:
+            return candidato
+        consulta = _normalizar(texto)
+        pergunta = bool("?" in consulta or re.match(
+            r"^(?:qual|quais|quant[oa]s?|como|por que|porque|o que|oque|quem)\b", consulta))
+        if not (pergunta or texto_pede_opiniao(texto) or self._parece_pedido_de_dados(texto)):
+            return None
+        with self._lock:
+            recursos = [dict(item) for item in self._recursos.values()]
+            mencao = any(self._termo_mencionado(consulta, termo)
+                         for item in recursos for termo in item["termos"])
+        pedido = self._pedido_de_dados(texto)
+        if pedido is not None and any(self._vinculo_do_pedido(
+                pedido, item, {}, referencia_qualificada=True) for item in recursos):
+            return {"destino": "roteador", "motivo": "referencia_qualificada_sem_alvo_resolvido"}
+        return {"destino": "ia", "motivo": "finalidade_de_consulta_nao_comprovada"} if mencao else None
 
     @staticmethod
     def _formatar_retrato(retrato: Mapping[str, Any]) -> list[str]:
@@ -287,8 +401,9 @@ class MapaRecursosRuntime:
         with self._lock:
             recursos = [dict(item) for item in self._recursos.values()]
         relevantes: list[tuple[dict[str, Any], Mapping[str, Any]]] = []
-        pedido_dados = self._parece_pedido_de_dados(texto)
         for item in recursos:
+            pedido = self._pedido_de_dados(texto)
+            pedido_dados = pedido is not None
             mencao_generica = any(
                 self._termo_mencionado(consulta, termo)
                 for termo in item.get("termos") or ()
@@ -304,9 +419,9 @@ class MapaRecursosRuntime:
                 except Exception:
                     retrato = {}
             detalhe = retrato.get("detalhe") if isinstance(retrato, Mapping) else None
-            detalhe_confirmado = bool(
-                isinstance(detalhe, Mapping) and str(detalhe.get("nome") or "").strip()
-            )
+            detalhe_confirmado = bool(pedido is not None
+                and self._vinculo_do_pedido(pedido, item, retrato)
+                and isinstance(detalhe, Mapping) and str(detalhe.get("nome") or "").strip())
             if pedido_catalogo or mencao_generica or detalhe_confirmado:
                 relevantes.append((item, retrato))
         if not relevantes:

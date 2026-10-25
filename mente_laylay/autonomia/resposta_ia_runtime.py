@@ -398,6 +398,10 @@ class RespostaIARuntime:
 
             modo_rapido_cb = _get(ctx, "usar_modo_rapido")
             modo_rapido = bool(modo_rapido_cb(t)) if callable(modo_rapido_cb) else False
+            prompt_runtime = (
+                _get(ctx, "preparacao_conversa")
+                or _get(ctx, "contexto_prompt_runtime")
+            )
             instrucao_rapida = ""
             depende_contexto_cb = _get(ctx, "texto_depende_de_contexto")
             try:
@@ -442,6 +446,17 @@ class RespostaIARuntime:
                     self._log("⚡ [CONVERSA:JOGO] resposta social local imediata.")
                     return
 
+            # O orçamento governa somente o caminho LLM. Uma resposta social
+            # local já admitida pelo porteiro não precisa recuperar arquivo.
+            exige_contexto_amplo = getattr(prompt_runtime, "exige_contexto_amplo", None)
+            if modo_rapido and callable(exige_contexto_amplo):
+                try:
+                    if exige_contexto_amplo(t):
+                        modo_rapido = False
+                except Exception as erro:
+                    modo_rapido = False
+                    self._log(f"⚠️ [PROMPT:PERFIL] avaliação de contexto falhou: {type(erro).__name__}")
+
             _registrar_metrica(
                 ctx,
                 "roteamento_pre_llm",
@@ -451,10 +466,6 @@ class RespostaIARuntime:
                 rota="llm_rapida" if modo_rapido else "llm_normal",
             )
 
-            prompt_runtime = (
-                _get(ctx, "preparacao_conversa")
-                or _get(ctx, "contexto_prompt_runtime")
-            )
             if not modo_rapido:
                 if prompt_runtime is None:
                     raise RuntimeError("Contexto do prompt ainda não foi inicializado.")

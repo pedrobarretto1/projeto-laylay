@@ -228,29 +228,65 @@ def test_prazo_de_inatividade_e_vinte_segundos_e_telemetria_nao_renova(interface
     assert enviadas == []
 
 
-def test_atividade_humana_renova_prazo_e_pin_nao_impede_recolher(interface_web, monkeypatch):
-    from PySide6.QtCore import Qt, QPoint
-    from PySide6.QtGui import QCursor
+def test_foco_fala_e_transmissao_protegem_desktop_e_troca_de_app_recolhe(interface_web, monkeypatch):
+    from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
 
     _app, _worker, janela, enviadas, _eventos = interface_web
     janela.show()
-    janela.apresentar("desktop")
-    monkeypatch.setattr(QCursor, "pos", lambda: QPoint(-10000, -10000))
+    janela.apresentar('desktop')
     janela.expandir_desktop(fixar=True)
+    janela._foco_desktop_observado = True
     timer = janela._inatividade_desktop_timer
+    monkeypatch.setattr(janela, '_desktop_em_foco', lambda: True)
     timer.setInterval(160)
     timer.start()
     QTest.qWait(90)
     QTest.keyClick(janela.web.focusProxy() or janela.web, Qt.Key_A)
     QTest.qWait(90)
-    assert janela.estado_desktop == "expanded", "Teclado deve renovar o prazo local"
-    assert timer.remainingTime() > 19_000, "Interação humana sempre deve renovar20s"
-    # Prova a ligação do timeout sem esperar20s em cada regressão. O validador
-    # Windows mede o prazo real com vídeo vivo, heartbeat e rascunho.
+    assert janela.estado_desktop == 'expanded'
+    assert timer.remainingTime() > 19_000
+
+    # Mesmo quando o prazo antigo termina, a janela em foco não recolhe.
     timer.timeout.emit()
-    assert janela.estado_desktop == "compact", "Foco, pin ou rascunho não mantêm a ilha aberta indefinidamente"
-    assert not timer.isActive()
+    assert janela.estado_desktop == 'expanded'
+
+    # Fora de foco, ela espera a frase terminar.
+    monkeypatch.setattr(janela, '_desktop_em_foco', lambda: False)
+    monkeypatch.setattr(janela, '_fala_em_andamento', lambda: True)
+    janela._recolher_por_perda_de_foco()
+    assert janela.estado_desktop == 'expanded'
+    assert janela._recolher_foco_timer.isActive()
+
+    # Uma transmissão em andamento também não pode ser encerrada por troca de app.
+    monkeypatch.setattr(janela, '_fala_em_andamento', lambda: False)
+    monkeypatch.setattr(janela, '_streaming_em_transmissao', lambda: True)
+    janela._recolher_por_perda_de_foco()
+    assert janela.estado_desktop == 'expanded'
+
+    # Depois da fala/transmissão, mudar de aplicativo recolhe.
+    monkeypatch.setattr(janela, '_streaming_em_transmissao', lambda: False)
+    janela._recolher_por_perda_de_foco()
+    assert janela.estado_desktop == 'compact'
+    assert not janela._recolher_foco_timer.isActive()
+    assert enviadas == []
+
+
+def test_ativacao_e_desativacao_armam_recolhimento_de_foco(interface_web):
+    from PySide6.QtCore import QEvent
+    from PySide6.QtWidgets import QApplication
+
+    _app, _worker, janela, enviadas, _eventos = interface_web
+    janela.show()
+    janela.apresentar('desktop')
+    janela.expandir_desktop(fixar=True)
+    QApplication.sendEvent(janela, QEvent(QEvent.WindowActivate))
+    assert janela._foco_desktop_observado
+    QApplication.sendEvent(janela, QEvent(QEvent.WindowDeactivate))
+    assert janela._recolher_foco_timer.isActive()
+    QApplication.sendEvent(janela, QEvent(QEvent.WindowActivate))
+    assert not janela._recolher_foco_timer.isActive()
+    assert janela.estado_desktop == 'expanded'
     assert enviadas == []
 
 
@@ -676,3 +712,297 @@ print('ENTRYPOINT_DESKTOP_OK')
     assert resultado.returncode == 0, resultado.stdout + resultado.stderr
     assert "ENTRYPOINT_DESKTOP_OK" in resultado.stdout
 
+
+def test_material_fluent_fica_na_mesma_ilha_e_respeita_estados_reais(conversa_web):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop')
+    aguardar(lambda: js("!!document.querySelector('.desktop-island .desktop-compact-copy')"))
+    material = janela.apresentacao_publica()['desktop_material']
+    assert material in {'acrylic', 'mica', 'fallback'}
+    aguardar(lambda: js("document.querySelector('.desktop-island')?.dataset.desktopMaterial") == material)
+    assert js("document.querySelector('.desktop-compact .desktop-expand-icon svg')!==null")
+    assert js("document.querySelector('.desktop-compact .desktop-miniature .avatar')!==null")
+    assert js("document.querySelector('.desktop-compact').getAttribute('aria-label').includes('Laylay')")
+    assert js("getComputedStyle(document.querySelector('.desktop-compact-copy')).flexDirection==='column'")
+    assert js("getComputedStyle(document.querySelector('.desktop-island')).borderRadius!=='0px'")
+    assert js("(()=>{const e=document.querySelector('.desktop-island');return e.scrollWidth<=e.clientWidth+1})()")
+    import os
+    if os.environ.get('LAYLAY_FLUENT_CAPTURE') == '1':
+        from pathlib import Path
+        path = Path(os.environ['TEMP']) / 'laylay_fluent_test_20261023.png'
+        assert janela.grab().save(str(path))
+    handle=int(janela.winId())
+    js("LaylayInterface.receiveEvent({type:'state',activity:'speaking',activity_label:'Falando'})")
+    aguardar(lambda: js("document.querySelector('.desktop-island')?.dataset.activity==='speaking'"))
+    assert js("document.querySelector('.desktop-compact-copy small').textContent.includes('Falando')")
+    janela.expandir_desktop(fixar=True)
+    assert int(janela.winId()) == handle
+    janela.recolher_desktop()
+    assert int(janela.winId()) == handle
+    assert entradas == []
+
+def test_painel_expandido_tem_canvas_opaco_sem_pontos_transparentes(interface_web):
+    """Isola o compositor do desktop enquanto a janela maior está visível."""
+    from PySide6.QtTest import QTest
+
+    app, _worker, janela, enviados, _eventos = interface_web
+    janela.show()
+    janela.apresentar('desktop')
+    assert janela.estado_desktop == 'compact'
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    assert janela._fundo_desktop_opaco is False
+    hwnd = int(janela.winId())
+    for pagina in ('home', 'music', 'system', 'chat'):
+        janela.selecionar_pagina_desktop(pagina)
+        assert janela.estado_desktop == 'expanded'
+        assert janela._fundo_desktop_opaco is True
+        assert janela.pagina_web.backgroundColor().alpha() == 255
+        assert janela.pagina_web.backgroundColor().name() == '#10141b'
+        app.processEvents()
+        QTest.qWait(30)
+        assert int(janela.winId()) == hwnd
+        assert janela._fundo_desktop_opaco is True
+
+    janela.recolher_desktop()
+    assert janela.estado_desktop == 'compact'
+    # A camada opaca fica até o último frame do encolhimento ser confirmado.
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+    assert janela._desktop_fase == 'committing'
+    janela.confirmar_transicao_desktop(janela._desktop_sequencia, janela.web.width(), janela.web.height())
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    assert janela._fundo_desktop_opaco is False
+    assert int(janela.winId()) == hwnd
+    assert enviados == []
+
+
+def test_ao_sair_do_desktop_canvas_transparente_e_ponte_sao_preservados(interface_web):
+    app, worker, janela, enviados, _eventos = interface_web
+    janela.show()
+    janela.apresentar('desktop')
+    janela.expandir_desktop(fixar=True)
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+    html_page, canal, web = janela.pagina_web, janela.canal, janela.web
+    janela.apresentar('full')
+    app.processEvents()
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    assert not janela._fundo_desktop_opaco
+    assert (janela.pagina_web, janela.canal, janela.web)==(html_page, canal, web)
+    assert enviados == []
+
+
+def test_m2_entrada_expansao_abas_e_recolhimento_preservam_hwnd_e_glitch_guard(conversa_web):
+    from PySide6.QtTest import QTest
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop')
+    js("LaylayInterface.state.preferences.reduced=false")
+    hwnd = int(janela.winId())
+    assert janela._animacao_desktop.duration() == 230
+    assert janela._animacao_entrada.duration() == 235
+    assert janela.estado_desktop == 'compact'
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    import os
+    from pathlib import Path
+    if os.environ.get('LAYLAY_M2_CAPTURE') == '1':
+        aguardar(lambda: js("document.querySelector('.desktop-island')?.dataset.desktopState==='compact'"))
+        QTest.qWait(60)
+        assert janela.grab().save(str(Path(os.environ['TEMP']) / 'laylay_motion_m2_compact.png'))
+
+    janela.expandir_desktop(fixar=True)
+    aguardar(lambda: janela.estado_desktop == 'expanded' and janela._desktop_fase == 'idle')
+    aguardar(lambda: js("LaylayInterface.motionStats().desktopState") == 'expanded')
+    initial=js("LaylayInterface.motionStats().count")
+    assert initial >= 1
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+    assert int(janela.winId()) == hwnd
+    assert js("!!document.querySelector('.desktop-island .desktop-page-content')")
+    if os.environ.get('LAYLAY_M2_CAPTURE') == '1':
+        QTest.qWait(230)
+        assert janela.grab().save(str(Path(os.environ['TEMP']) / 'laylay_motion_m2_expanded.png'))
+
+    janela.selecionar_pagina_desktop('music')
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.state.page") == 'music')
+    aguardar(lambda: js("LaylayInterface.motionStats().location") == 'desktop:page:music')
+    second=js("LaylayInterface.motionStats().count")
+    assert second == initial + 1
+    assert js("document.querySelector('.desktop-island').getAttribute('data-desktop-state')==='expanded'")
+
+    # Telemetria e redraws recorrentes não devem repetir o movimento.
+    js("LaylayInterface.receiveEvent({type:'state',activity:'thinking',activity_label:'Pensando'})")
+    QTest.qWait(60)
+    assert js("LaylayInterface.motionStats().count") == second
+
+    janela.selecionar_pagina_desktop('system')
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.motionStats().location") == 'desktop:page:system')
+    assert js("LaylayInterface.motionStats().count") == second + 1
+    assert int(janela.winId()) == hwnd
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+
+    janela.recolher_desktop()
+    aguardar(lambda: janela.estado_desktop == 'compact' and janela._desktop_fase == 'idle')
+    aguardar(lambda: js("LaylayInterface.motionStats().desktopState") == 'compact')
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    assert int(janela.winId()) == hwnd
+    assert entradas == []
+
+
+def test_m2_pref_reduzido_impede_efeitos_de_apresentacao(conversa_web):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop')
+    js("LaylayInterface.state.preferences.reduced=true")
+    before=js("LaylayInterface.motionStats().count")
+    janela.expandir_desktop(fixar=True)
+    aguardar(lambda: janela.estado_desktop == 'expanded' and janela._desktop_fase == 'idle')
+    janela.selecionar_pagina_desktop('music')
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.state.page") == 'music')
+    assert js("LaylayInterface.motionStats().count") == before
+    assert js("getComputedStyle(document.body).getPropertyValue('--none') !== 'garbage'")
+    janela.recolher_desktop()
+    aguardar(lambda: janela.estado_desktop == 'compact' and janela._desktop_fase == 'idle')
+    assert js("LaylayInterface.motionStats().count") == before
+    assert entradas == []
+
+
+def test_m2_animacao_real_usada_apos_mudanca_de_aba(conversa_web):
+    """Captura chamadas reais ao Web Animations API, sem depender de polling de frames."""
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop')
+    js("LaylayInterface.state.preferences.reduced=false")
+    janela.selecionar_pagina_desktop('music')
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.motionStats().desktopState") == 'expanded')
+    js("""(()=>{
+        window.__m2observed=[];
+        const native=Element.prototype.animate;
+        Element.prototype.animate=function(frames,options){
+            if(this.matches('.desktop-page-content,.desktop-tabs,.desktop-overview,.context-bar,.page-heading'))
+                window.__m2observed.push({className:this.className,frames:JSON.stringify(frames),
+                  duration:options.duration,playState:'called'});
+            return native.call(this,frames,options);
+        };
+    })()""")
+    janela.selecionar_pagina_desktop('system')
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.motionStats().location") == 'desktop:page:system')
+    aguardar(lambda: js("window.__m2observed.some(a=>String(a.className).includes('context-bar'))"))
+    records=json.loads(js("JSON.stringify(window.__m2observed)"))
+    assert any(a['duration']==215 and '17px' in a['frames'] for a in records),records
+    assert not any('desktop-page-content' in a['className'] for a in records),records
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+    assert entradas == []
+
+
+def test_m2_entrada_visivel_com_css_de_chegada(conversa_web):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao=='desktop')
+    js("LaylayInterface.state.preferences.reduced=false; LaylayInterface.state.desktopEntry=true; LaylayInterface.invalidate()")
+    aguardar(lambda: js("document.body.classList.contains('desktop-entering')"))
+    animation=json.loads(js("""JSON.stringify((()=>{
+      const island=document.querySelector('.desktop-island');
+      const css=getComputedStyle(island);
+      return {name:css.animationName,duration:css.animationDuration,
+        keyframes:island.getAnimations().map(a=>a.effect.getKeyframes())};
+    })())"""))
+    assert 'laylay-m2-arrive' in animation['name'],animation
+    assert '0.47s' in animation['duration'],animation
+    js("LaylayInterface.state.desktopEntry=false; LaylayInterface.invalidate()")
+    assert entradas==[]
+
+
+def test_transicao_suave_congela_apenas_pintura_encoberta_e_restaura(interface_web, monkeypatch):
+    """Uma única pintura WebEngine no destino, sem bloquear ponte ou alterar HWND."""
+    from PySide6.QtCore import QAbstractAnimation
+
+    app, _worker, janela, entradas, _eventos = interface_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    janela.show()
+    janela.apresentar('desktop')
+    janela.ponte_web.pronto()
+    janela.expandir_desktop(fixar=True)
+    assert janela._transicao_cobertura is not None
+    assert janela._animacao_desktop.state() == QAbstractAnimation.Running
+    assert janela._web_pintura_congelada is True
+    assert not janela.web.updatesEnabled()
+    hwnd = int(janela.winId())
+
+    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration())
+    app.processEvents()
+    assert janela._web_pintura_congelada is False
+    assert janela.web.updatesEnabled()
+    assert janela._desktop_fase == 'committing'
+    assert int(janela.winId()) == hwnd
+
+    janela.ponte_web.transicao_pronta(
+        janela._desktop_sequencia, janela.web.width(), janela.web.height())
+    assert janela._desktop_fase == 'idle'
+    assert janela._transicao_cobertura is None
+
+    janela.recolher_desktop()
+    assert janela._web_pintura_congelada
+    janela.apresentar('full')  # Interrupção segura: nunca deixar a página congelada.
+    assert not janela._web_pintura_congelada
+    assert janela.web.updatesEnabled()
+    assert entradas == []
+
+
+def test_transicao_suave_e_interrompida_por_nova_navegacao(interface_web, monkeypatch):
+    from PySide6.QtCore import QAbstractAnimation
+    app, _worker, janela, entradas, _eventos = interface_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    janela.show()
+    janela.apresentar('desktop')
+    janela.ponte_web.pronto()
+    janela.expandir_desktop(fixar=True)
+    assert janela._web_pintura_congelada
+    janela.recolher_desktop()
+    assert janela._animacao_desktop.state() == QAbstractAnimation.Running
+    assert janela._web_pintura_congelada
+    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration())
+    app.processEvents()
+    assert janela.web.updatesEnabled()
+    assert not janela._web_pintura_congelada
+    assert entradas == []
+
+
+def test_rollback_m21_restabelece_expansao_segura_e_limpa_cobertura(interface_web, monkeypatch):
+    """Regressão: a animação por máscara M2.1 não deve voltar a expor quadros pretos."""
+    from PySide6.QtCore import QAbstractAnimation
+    app, _worker, janela, comandos, _eventos = interface_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    janela.show()
+    janela.apresentar('desktop')
+    janela.ponte_web.pronto()
+    origem = janela.geometry()
+    hwnd = int(janela.winId())
+
+    assert not hasattr(janela, '_animacao_recorte')
+    assert not hasattr(janela, '_usar_recorte_desktop')
+    janela.expandir_desktop(fixar=True)
+    assert janela._animacao_desktop.state() == QAbstractAnimation.Running
+    assert janela._transicao_cobertura is not None
+    assert janela._web_pintura_congelada
+    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration())
+    app.processEvents()
+    assert janela.web.updatesEnabled()
+    janela.ponte_web.transicao_pronta(
+        janela._desktop_sequencia, janela.web.width(), janela.web.height())
+    assert janela._desktop_fase == 'idle'
+    assert janela._transicao_cobertura is None
+    assert janela.pagina_web.backgroundColor().alpha() == 255
+    assert janela.mask().contains(janela.rect().center())
+
+    janela.recolher_desktop()
+    assert janela._animacao_desktop.state() == QAbstractAnimation.Running
+    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration())
+    app.processEvents()
+    janela.ponte_web.transicao_pronta(
+        janela._desktop_sequencia, janela.web.width(), janela.web.height())
+    assert janela._desktop_fase == 'idle'
+    assert janela.geometry() == origem
+    assert janela._transicao_cobertura is None
+    assert janela.web.updatesEnabled()
+    assert janela.pagina_web.backgroundColor().alpha() == 0
+    assert int(janela.winId()) == hwnd
+    assert comandos == []

@@ -331,6 +331,17 @@ class InterpretacaoIntencaoRuntime:
         corrigido = normalizar(original) if callable(normalizar) else original
         estado = ctx.get("estado") or {}
         mente = dict(estado.get("mente_integrada_estado") or {})
+        turno_atual = dict(mente.get("turno_atual") or {})
+        plano_atual = dict(mente.get("plano_turno_atual") or {})
+        texto_turno = (
+            plano_atual.get("texto_usuario")
+            if turno_atual.get("id") and plano_atual.get("id") == turno_atual.get("id")
+            else turno_atual.get("texto")
+        )
+        interpretacao_interativa = bool(
+            turno_atual.get("id")
+            and str(texto_turno or "").strip() == original
+        )
         playlist_state = estado.get("playlist_state") or {}
         ultima_playlist = self._call(ctx, "musica_estado_get", "ultima_playlist", default="")
         continuidade = dict(mente.get("continuidade_geral") or {})
@@ -364,6 +375,7 @@ class InterpretacaoIntencaoRuntime:
         referencia_resolvida = dict(retrato_turno.get("referencia_resolvida") or {})
         chave_cache = "\x1f".join(
             (
+                str(turno_atual.get("id") or ""),
                 str(corrigido or original).casefold(),
                 dominio_ativo.casefold(),
                 ultima_intencao.casefold(),
@@ -447,6 +459,8 @@ class InterpretacaoIntencaoRuntime:
                 _com_tools=False,
                 max_tokens=140,
                 modo_rapido=True,
+                _prioridade_interativa=interpretacao_interativa,
+                _tipo_chamada="interpretacao",
             )
         except Exception as exc:
             self._cache_analise[chave_cache] = (agora, None)
@@ -555,8 +569,14 @@ class InterpretacaoIntencaoRuntime:
         if not deve_tentar:
             return None
 
+        mente_canonica = dict((ctx.get("estado") or {}).get("mente_integrada_estado") or {})
+        turno_canonico = dict(mente_canonica.get("turno_atual") or {})
+        if str(turno_canonico.get("texto") or "").strip() != bruto:
+            # Um retrato de outra fala não decide a admissão do pedido atual.
+            mente_canonica = {}
         status, resultado = analisar_intencao_com_porteiro(
             {
+                "mente_integrada_estado": mente_canonica,
                 "_texto_tem_comando_explicito": ctx.get("texto_tem_comando_explicito"),
                 "_texto_social_curto": ctx.get("texto_social_curto"),
                 "_texto_conversa_casual_sem_acao": (

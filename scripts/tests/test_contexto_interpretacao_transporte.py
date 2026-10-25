@@ -132,3 +132,63 @@ def test_falha_tecnica_nao_entra_no_decoder_e_eh_observavel():
     assert runtime.analisar("pode pausar a música") is None
     assert not decodificacoes
     assert any("geração não concluída" in log and "indisponivel" in log for log in logs)
+
+
+@pytest.mark.parametrize('texto', ['pode colocar ele para mim ouvir',
+    'abre esse aplicativo', 'salva isso no arquivo'])
+def test_interpretacao_do_turno_atual_nao_e_adiada_como_tarefa_secundaria(texto):
+    import requests
+    from mente_laylay.integracao.orcamento_llm_turno import OrcamentoLLMTurnoRuntime
+    transportes, pedidos = [], []
+    def post(*a, **k):
+        transportes.append(True)
+        r = requests.Response()
+        r.status_code = 200
+        r._content = json.dumps({'choices': [{'message': {'content': '{"intent":"NONE","params":{}}'}}]}).encode()
+        return r
+    orcamento = OrcamentoLLMTurnoRuntime(max_chamadas_turno=2)
+    orcamento.iniciar_turno('turno-atual')
+    cliente = ClienteLLMRuntime(endpoint_local_getter=lambda: True, interacao_ativa=lambda: True,
+        post_chat=post, orcamento_turno=orcamento, log=lambda *a: None)
+    def enviar(mensagens, **opcoes):
+        pedidos.append(opcoes)
+        return cliente.executar(RequisicaoTransporteLLM(payload={'messages': mensagens},
+            prioridade_interativa=bool(opcoes.get('_prioridade_interativa')),
+            tipo_chamada=opcoes.get('_tipo_chamada', 'principal'))).texto
+    turno = {'id': 'turno-atual', 'texto': texto, 'autoriza_execucao': True}
+    ctx = {'estado': {'mente_integrada_estado': {'turno_atual': turno}}, 'enviar_mensagem': enviar}
+    r = InterpretacaoIntencaoRuntime(contexto_getter=lambda: ctx, log=lambda *a: None)
+    assert r.analisar(texto) == {'intent': 'NONE', 'params': {}}
+    assert len(transportes) == 1
+    assert pedidos[0]['_tipo_chamada'] == 'interpretacao'
+    principal = cliente.executar(RequisicaoTransporteLLM(payload={'messages': []},
+        prioridade_interativa=True, tipo_chamada='principal'))
+    assert principal.sucesso and len(transportes) == 2
+
+
+@pytest.mark.parametrize('turno', [{}, {'id': 'antigo', 'texto': 'outro pedido'}])
+def test_interpretacao_sem_vinculo_ao_turno_nao_ganha_prioridade(turno):
+    pedidos = []
+    def enviar(*a, **opcoes):
+        pedidos.append(opcoes)
+        return '{"intent":"NONE","params":{}}'
+    ctx = {'estado': {'mente_integrada_estado': {'turno_atual': turno}}, 'enviar_mensagem': enviar}
+    InterpretacaoIntencaoRuntime(contexto_getter=lambda: ctx).analisar('pedido diferente')
+    assert not pedidos[0].get('_prioridade_interativa')
+
+
+@pytest.mark.parametrize('variante, esperado', [('atual', True), ('sufixo_divergente', False),
+    ('plano_de_outro_turno', False)])
+def test_prioridade_de_pedido_longo_exige_fonte_integral_do_mesmo_turno(variante, esperado):
+    texto = 'pode colocar ele para mim ouvir ' + 'detalhes do pedido ' * 36
+    atual = texto if variante != 'sufixo_divergente' else texto + 'sem tocar agora'
+    pedidos = []
+    def enviar(*a, **opcoes):
+        pedidos.append(opcoes)
+        return '{"intent":"NONE","params":{}}'
+    mental = {'turno_atual': {'id': 12, 'texto': texto[:500]},
+        'plano_turno_atual': {'id': 13 if variante == 'plano_de_outro_turno' else 12,
+            'texto_usuario': texto}}
+    ctx = {'estado': {'mente_integrada_estado': mental}, 'enviar_mensagem': enviar}
+    InterpretacaoIntencaoRuntime(contexto_getter=lambda: ctx).analisar(atual)
+    assert pedidos[0]['_prioridade_interativa'] is esperado

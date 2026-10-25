@@ -471,7 +471,41 @@ def preparar_resposta_para_execucao(
         enviar_mensagem=enviar_mensagem_cb,
     )
     contexto_com = dict(contexto_comunicacao or {})
+    contexto_com["mensagens"] = list(contexto_com.get("mensagens") or [])
     plano_autoria = dict(contexto_com.get("plano_turno") or {})
+    if (callable(enviar_mensagem_cb) and plano_autoria.get("id")
+        and plano_autoria.get("texto_usuario") == str(texto_usuario or "").strip()):
+        from mente_laylay.integracao.preparacao_llm import (
+            avaliar_historico_dialogo, formatar_fontes_dialogo,
+        )
+        historico_fontes = list(contexto_com["mensagens"])
+        # O preparador principal seleciona originais[1:]: o prompt permanente
+        # é moldura, não uma ocorrência do diálogo. Conservar os mesmos índices.
+        if (historico_fontes and isinstance(historico_fontes[0], dict)
+            and historico_fontes[0].get("role") == "system"):
+            historico_fontes = historico_fontes[1:]
+        if not (historico_fontes and historico_fontes[-1].get("role") == "user"
+                and historico_fontes[-1].get("content") == texto_usuario):
+            historico_fontes.append({"role": "user", "content": texto_usuario})
+        selecao_fontes = avaliar_historico_dialogo(
+            historico_fontes, limite_chars=2600, limite_mensagens=8)
+        fontes_reescrita = formatar_fontes_dialogo(selecao_fontes.fontes_usuario)
+        enviar_reescrita_original = enviar_mensagem_cb
+
+        def enviar_preservando_fontes(mensagens: list[Mapping[str, Any]], **kwargs: Any) -> Any:
+            if (fontes_reescrita and len(fontes_reescrita) <= 2600
+                and not kwargs.get("_contexto_fechado")
+                and kwargs.get("_tipo_chamada") in {
+                    "reparo_json", "reparo_comunicacao", "reparo_factual"}):
+                mensagens = [dict(m) for m in mensagens]
+                indice_usuario = next((i for i in range(len(mensagens)-1, -1, -1)
+                    if mensagens[i].get("role") == "user"), len(mensagens))
+                # A instrução junto à tarefa é atômica na preparação comum.
+                # Não recuperamos contexto da saída malformada da própria IA.
+                mensagens.insert(indice_usuario, {"role": "system", "content": fontes_reescrita})
+            return enviar_reescrita_original(mensagens, **kwargs)
+
+        enviar_mensagem_cb = enviar_preservando_fontes
     if (callable(enviar_mensagem_cb) and plano_autoria.get("id")
         and plano_autoria.get("texto_usuario") == str(texto_usuario or "").strip()
         and plano_autoria.get("fundamentacao_factual")):

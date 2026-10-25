@@ -221,7 +221,7 @@ def test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao(conversa_
     assert observado["originalAnimationCount"] == observado["animationCount"] == 0, observado
     assert observado["draft"] == "Rascunho com cursor"
     assert observado["cursor"] == [5, 8] and observado["focused"]
-    assert "Pronta" in observado["status"]
+    assert "Ponte conectada" in observado["status"], "A ponte conectada não prova que o modelo está pronto."
 
 
 def test_snapshot_preserva_entrega_falha_resposta_e_retry(conversa_web):
@@ -249,8 +249,9 @@ def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conver
       LaylayInterface.receiveEvent({type:'pedido_enviado',id:'novo',kind:'texto',text:'Pedido novo'});""")
     aguardar(lambda: js("document.querySelectorAll('.message').length===15"))
     js("window.enviada=document.querySelector('.message.user');LaylayInterface.receiveEvent({type:'input_ack',id:'novo',accepted:true})")
-    QTest.qWait(40)
-    assert js("enviada===document.querySelector('.message.user')&&enviada.textContent.includes('Recebida pela mente')")
+    # O QWebEngine atualiza assincronamente: 40 ms fixos falham sob carga
+    # mesmo com entrega correta. Esperar o efeito observado sem relaxar o assert.
+    aguardar(lambda: js("enviada===document.querySelector('.message.user')&&enviada.textContent.includes('Recebida pela mente')"))
     js("LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho'})")
     aguardar(lambda: js("document.querySelectorAll('.message').length===16"))
     js("window.resposta=document.querySelector('.message:last-child');LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho atualizado'})")
@@ -410,3 +411,22 @@ def test_invalidacoes_visiveis_sao_agrupadas_em_um_frame_sem_perder_ultima_leitu
     assert js("LaylayInterface.state.dashboard.system.cpu_percent.value") == 24
     assert js("document.querySelector('.tp-console').textContent.includes('Evento 24')")
     js("document.createElement=originalCreate")
+
+def test_estado_visual_distingue_ponte_modelo_e_fala(conversa_web):
+    janela, ponte, entradas, js, aguardar = conversa_web
+    js("""LaylayInterface.receiveEvent({
+      type:'dashboard_state',dashboard:{health:{
+        llm:{label:'Indisponível',freshness:'unavailable'},
+        memory:{label:'Indisponível',freshness:'unavailable'},
+        microphone:{label:'Indisponível',freshness:'unavailable'}
+      }}
+    })""")
+    aguardar(lambda: 'Modelo indisponível' in js("document.querySelector('.titlebar .status')?.textContent||''"))
+    js("LaylayInterface.goPage('home')")
+    aguardar(lambda: 'Ponte' in js("document.querySelector('.operational-strip')?.textContent||''"))
+    text=js("document.querySelector('.operational-strip').textContent")
+    assert 'Conectada' in text and 'Indisponível' in text
+    # Atividade publicada deve aparecer mesmo com diagnóstico parcial.
+    js("LaylayInterface.receiveEvent({type:'state',activity:'speaking',activity_label:'Falando'})")
+    aguardar(lambda: 'Falando' in js("document.querySelector('.titlebar .status')?.textContent||''"))
+    assert entradas == []

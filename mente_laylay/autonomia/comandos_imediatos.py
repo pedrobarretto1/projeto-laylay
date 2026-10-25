@@ -993,6 +993,44 @@ class ComandosImediatosRuntime:
 
         # Detectar uma intent não concede permissão para executá-la. Esta
         # barreira faz a rota determinística usar o mesmo dono do turno da LLM.
+        # O mapa já comprovou a finalidade da consulta e resolveu o alvo.
+        # Sua leitura deve alcançar o mesmo executor antes da barreira de
+        # mutação; a resolução não concede permissão para outros efeitos.
+        resolver_recurso = ns.get('_resolver_consulta_recurso_local')
+        if (not autoriza_execucao_efetiva(turno_atual)
+            and not turno_tem_veto_execucao(turno_atual)
+            and callable(resolver_recurso)):
+            try:
+                consulta = resolver_recurso(texto)
+                if (isinstance(consulta, dict)
+                    and str(consulta.get('intent') or '').upper() in INTENTS_SOMENTE_LEITURA
+                    and _candidato_prioritario_autorizado(consulta, turno_atual)):
+                    tratamento = _executar_intencao_com_contrato(
+                        ns, consulta, texto, origem='prioritario_consulta_recurso')
+                    if tratamento.tratado:
+                        print('🔎 [P0:RECURSO] consulta canônica somente leitura tratada')
+                        return True
+            except Exception as erro:
+                print(f'⚠️ [P0:RECURSO] consulta não concluída | tipo={type(erro).__name__}')
+
+        # Uma consulta sem permissão de mutação só pode sair desta admissão
+        # como leitura. Não liberar todas as portas operacionais seguintes
+        # apenas porque o classificador corretamente retirou um veto genérico.
+        if (not autoriza_execucao_efetiva(turno_atual)
+            and not turno_tem_veto_execucao(turno_atual)
+            and turno_atual.get('natureza_acao') == 'consulta'):
+            detectar = ns.get('detectar_intencao_deterministica')
+            try:
+                leitura = detectar(texto) if callable(detectar) else None
+                if (isinstance(leitura, dict)
+                    and str(leitura.get('intent') or '').upper() in INTENTS_SOMENTE_LEITURA
+                    and _candidato_prioritario_autorizado(leitura, turno_atual)):
+                    return _executar_intencao_com_contrato(
+                        ns, leitura, texto, origem='prioritario_consulta_sem_mutacao').tratado
+            except Exception as erro:
+                print(f'⚠️ [P0:CONSULTA] leitura não concluída | tipo={type(erro).__name__}')
+            return False
+
         normalizar_turno = ns.get("_normalizar_texto_com_apelidos")
         texto_tem_comando = ns.get("_texto_tem_comando_explicito")
         if bloqueia_execucao_operacional_prioritaria(

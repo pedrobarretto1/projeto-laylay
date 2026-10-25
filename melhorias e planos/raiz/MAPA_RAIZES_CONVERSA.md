@@ -1,5 +1,31 @@
 # Mapa causal da conversa — investigação por contratos
 
+## Finalidade antes de consulta antecipada — 23/10/2026
+
+Reprodução do relato “você gosta de rock?”: mapa tratava interrogação como pedido
+de dados e promovia nome catalogado a finalidade. Com owners anteriores,
+composição instalada e leitor real, publicou contagem 2 sem chamar a IA. A
+classificação inicial era pergunta sem autorização; Qwen não causou esse desvio.
+
+Contrato compartilhado: objeto/projeção e escopo antes do catálogo; fontes reais
+confirmam alvo, não o pedido. Ambiguidade chega à IA principal existente.
+Orquestrador respeita a decisão antes de atalhos; referência ordinal mantém seu
+owner e posição, sem intent/autorização no marcador de continuidade. Menção
+qualificada é protegida mesmo com só o registro da curadoria. Mesmo contrato
+testado em playlists, agenda e notas; não são três raízes novas.
+
+Quatro arquivos de produção, sem configuração/modelo/voz alterados. Foco94
+aprovados/1 xfail estrito; regressão17 módulos409 aprovados/4 REDs anteriores/
+1 xfail/22 subtestes aprovados. Quatro REDs reproduzidos com owners anteriores.
+Qwen final4 contínuos:4 publicações/4 HTTP200/zero executor/zero drift. Leitor
+real continua publicando contagem em “mostra/lista”. A natural “quantas/quais”
+detectada mas barrada na arbitragem já falhava no baseline; estudo separado,
+mantido em xfail. Fundamentação/qualidade livre posterior e famílias históricas
+F1/C5/C7/AUT seguem abertas; não inferir raiz comum por sintomas semelhantes.
+
+Owners, critérios, revisão, baseline e provas:
+`resultados_testes/conversa_opiniao_rock_20261023/RELATORIO.md`.
+
 20/09/2026. Pedido de Pedro: agrupar causas, não continuar somando correções por
 frase ou habilidade. Esta etapa é diagnóstico e plano; não é C19 nem correção
 de produção. Mantém os IDs históricos do registro central.
@@ -6485,7 +6511,7 @@ demonstrado antes, sem remover schema/aumentar janela. Orçamento geral aberto.
 
 Seis turnos reais originais passaram pelo limite+sentido controlados. Oito
 cotidianos revelaram perda na recuperação e na entrega, com REDs anteriores
-aos candidatos. Final: 14 entradas sem limpar histórico, 14 publicações,
+aos candidatos. Primeira série: 14 entradas sem limpar histórico, 14 publicações,
 zero pedidos ao executor, 16 HTTP/3 timeouts/zero 400, fontes estáveis. Relato
 dos exercícios permanece no assunto, mas opinião/esclarecimento ainda têm
 baixa qualidade. Focos recentes 166 e 126 aprovados; ampla 125 módulos em
@@ -6501,3 +6527,479 @@ latência e prioridade histórica continuam separadas. Sem áudio, hardware,
 efeitos externos ou validação do main pessoal; sem commit/restart/shutdown.
 Contratos, owners, REDs, controles, fontes e limites:
 `resultados_testes/conversa_continua_20261022/RELATORIO.md`.
+
+Revisão posterior: 9 REDs do candidato preservados; continuidade por conteúdo
+sem pronome não depende de recência; gramática passa a exigir a oração nominal
+inteira, preservando consulta científica/histórica; rejeição semântica
+bloqueante realmente observada também mantém sua fonte até a revisão final.
+108 testes de foco aprovados e reverificação independente limitada de 62
+aprovados/2 desmarcados. Mesmos owners/raízes, sem contar cada controle como
+causa nova. Ampla anterior interrompida para corrigir, depois repetida.
+
+Real revisado: 14 entradas, 14 publicações, 16 HTTP/4 timeouts/zero 400, zero
+pedidos ao executor, 18 fontes estáveis. Relato/opinião seguem nos exercícios;
+autoria livre ainda extrapola corpo offline para limitação geral em 1/2/4,
+aceita pelo juiz real (`red_autoria_livre.json`). Perfil e catálogo estavam no
+envio do turno 2; ablação da seção corporal não reproduziu o desvio em nenhuma
+variante. Não prova causa suficiente, não remove corpo nem altera timeout.
+Composição com owners anteriores também reproduz suas falhas, inclusive nos
+filhos da contraprova. Ampla integral/IDs no fechamento do mesmo artefato.
+Famílias gerais, prioridade histórica, latência e compreensão livre abertas.
+
+### F1 — presença atual não sustenta estado global; significado preservado,23/10
+
+`ae5b064f` incorporou os18 fontes anteriores sem drift. A autoria/revisão livre
+aceitava extrapolar corpo desconectado para incapacidade global. Contrato
+compartilhado `presenca_conversacional` agora vincula autoria atual a pergunta
+integral e confere toda realização. Proposta da IA não cria a fonte. Significado
+posterior exige uma fala integral observada e não afirma exclusividade.
+
+RED10/controles11 e sentido RED3/controles2. Transição de companhia também RED,
+protegida pelo retrato corporal canônico do mesmo turno, em envio e revisão.
+Revisões independentes limitadas44 e49 aprovados. Qwen18 contínuo:18
+publicações/20 HTTP200/zero executores/zero drift. Vizinhos corporais15 REDs
+reproduzidos com os cinco owners anteriores; nenhuma contagem de raízes reduzida.
+
+Próxima fronteira demonstrada: preview180 substitui identidade da fala396/806
+na seleção/recuperação e permite repetição em esclarecimento; controle69
+recupera fonte e rejeita cópia. Não é evidência de troca após veto nem de falha
+da publicação. Precisa estudar ocorrência canônica, incluindo entrega tardia,
+antes de corrigir. Não fundir automaticamente com outros IDs históricos.
+Provas e limites no relatório `conversa_continua_20261023_autodescricao`.
+
+### F3 — recusa de capacidade não é indisponibilidade, 23/10
+
+Servidor comprova HTTP400 histórico às14:02:57:4.155 tokens para janela4.096.
+Primeira fronteira RED é capacidade; categoria genérica do owner HTTP ainda
+promovia essa recusa a indisponibilidade. Não é causa de Edge TTS429.
+`llm_http`/`estado_tecnico_llm`/`contingencia_natural` preservam limite de
+contexto ou recusa genérica até publicação, sem retry permissivo/schema relaxado.
+
+Candidato de retirada de histórico opcional foi falsificado na composição:
+mesmo sem histórico, contexto obrigatório excedia a janela. Candidato removido,
+preparador restaurado ao baseline, evidências intermediárias preservadas.
+Após aferição dos mesmos pesos/template no hardware real, configuração do nome
+já selecionado `qwen3:4b-instruct` mudou4.096→8.192. Backup do modelo anterior
+verificado. Composição instalada aceitou4.455 tokens/HTTP200; ainda houve saída
+bruta incompleta do Qwen, sem efeito musical. Capacidade não prova compreensão.
+
+### Voz — recuperação transitória limitada, separada de F3, 23/10
+
+`voz_runtime` repete429 uma vez com mesma voz, texto e prazo original, respeita
+Retry-After e cancelamento; recusa persistente conserva texto/limite observável.
+Não percorre vozes neurais por429. Restante cancelado não autoriza fallback.
+Francisca e fallback local desabilitado preservados na composição instalada.
+Injeção inicial429 + SDK/provedor/player reais: primeiro áudio1,090s e entrega
+confirmada, sem prova de audição humana. Causa histórica dos20s continua aberta.
+
+Regressão final das duas causas:395 aprovados/15 falhas/1 xfailed. As15 falhas
+do perfil explicativo foram reproduzidas com owners anteriores, não encerradas.
+Somente quatro arquivos de produção alterados; sem commit ou reinício da sessão
+pessoal. Relatório, contratos, responsáveis, contraprovas e selo:
+`resultados_testes/indisponibilidade_voz_20261023/RELATORIO.md`.
+
+### Continuação de comunicação — identidade, finalidade e admissão, 23/10
+
+F1: ocorrência integral observada agora atravessa seleção/contrato/revisão,
+inclusive fala longa, TTL, canais e callbacks tardios. Fonte inválida bloqueia;
+preview não substitui identidade. Outra raiz de finalidade: pergunta sobre o
+sentido conserva complemento deítico e não vira retificação feita pelo usuário.
+Corretores legítimos e citações cobertos; não encerrar toda explicação livre.
+
+Representação compacta conserva a extensão e a proposta operacional do turno
+normal; rota rápida mantém sua política. Ensino imperativo recebe dimensão
+explicativa. Consulta natural musical alcança somente leitura canônica, sem
+liberar portas de mutação. Revisão fechou seis bypasses na admissão comum.
+
+F3 residual: capacidade recusada sem schema ou no retry genérico conserva a
+causa sem abrir circuito global. Causa distinta da interpretação atual adiada
+como fundo: pedido vinculado ao texto integral/ID usa prioridade e orçamento
+de interpretação, sem conferir autoridade operacional à proposta.
+
+Coleção de referentes conserva tipo+nome e concorrência; títulos citados não
+são divididos; escolha explícita renova grupo. Reprodução contextual congela
+operação antes de propostas e reaproveita alvo único. Mapeamento de domínio
+preserva álbum; refinador/seletor conservam formato, identidade e variações
+antes de pontuar candidatos. Álbum diferente não vence por bônus de formato.
+
+Final relevante924 aprovados/30subtests, um teste de import da root desmarcado
+por instância pessoal e aprovado separadamente na instalação isolada. Qwen
+seis turnos/5HTTP200/zero drift: Nevermind e In Utero chegam ao executor como
+álbuns após pedido único; ambiguidade não executa. Folhas externas recusadas:
+não comprova reprodução/audição. P19/segmentação com negação continuam com
+falhas de baseline, sem reduzir artificialmente pendências.
+
+Seleção de álbum também atravessou duas composições instaladas completas com
+metadados controlados: nome/tipo/operação até seletor real, abertura recusada,
+receipt negativo e publicação. Filtro final posterior à coleta Qwen validado
+nessa composição, sem alegar provedor ao vivo ou confirmação de áudio.
+
+Errata: ausência bruta de fala é prevista pelo codec suporte_proposicoes,
+não prova saída incompleta. Autoria factual livre permanece aberta: ablações
+com/sem histórico e prompt mínimo não eliminaram erros. Contratos, owners,
+REDs, falsificações e limites semânticos separados:
+`melhorias e planos/registro/RELATORIO_COMUNICACAO_20261023.md`.
+
+### C5 — obrigação didática independente de pesquisa, 23/10
+
+Contrato já reconhecia ensino; revisão dispensava apoio quando faltavam fontes,
+referências e atualidade. RED7/controles3 e seis ciclos instalados alcançaram a
+fronteira; quatro publicaram afirmações integrais sem apoio. No recorte
+linguístico havia compensação por contingência, sem consertar a obrigação.
+Não confundir esse mecanismo com a geração de conhecimento errado do modelo.
+
+Dois owners: contrato_fala conserva obrigação do roteiro didático/reensino
+vigente nas duas representações; revisao_suporte_autoria a mantém sem pesquisa,
+declaração válida ou vínculo de reescrita. RED4 adicional impediu dispensá-la
+por comando proposto/bloqueado. Fonte literal só permite atribuição; fonte
+irrelevante/autocertificação não vira prova. Proposta não é efeito ou verdade.
+
+41 focados,12 ciclos instalados; Qwen final3 turnos/4HTTP200/zero drift, uma
+publicação por turno, sem efeitos. Regressão1.286 GREEN/30subtests/12SKIP,
+2 REDs de reescritas repetidos com os owners anteriores. Import da root validado
+separadamente na instalação isolada. Não declarar suíte ampla verde.
+
+Sem fonte, a realização informa limite: não é correção factual geral nem
+garantia de utilidade. Aquisição de conteúdo e implicação livre seguem abertas;
+pesquisa multifonte/modelo/voz não alterados. Critérios, provas e limites:
+`melhorias e planos/registro/RELATORIO_AUTORIA_LIVRE_OBRIGACAO_20261023.md`.
+
+### C5/P01 — recuperação solicitada acoplada à influência ampla, 23/10
+
+Proteção histórica contra extrapolação mantida: modo multifonte amplo segue
+desativado. Host já reconhecia ensino, mas descartava a consulta por essa mesma
+configuração. Leitura agora é encaminhada após finalidade canônica, para tema
+autossuficiente, com orçamento/cache/coordenação existentes e revisão por
+proposição. Leitura não é prova nem autorização. Três owners: pesquisa_multifonte,
+pesquisa_contextual, orquestrador_turno_runtime; nenhum executor ou modelo novo.
+
+Primeira sonda desconectava o serviço por isolamento e não valia como prova;
+corrigida a ligação para a MESMA instância da factory. Contraprova com os três
+owners anteriores e SHA alcançou6 REDs; candidato alcançou GREEN sem reversão
+de worktree. Registrar essa cronologia, sem chamar o primeiro RED de causal.
+
+26 focados/12 ciclos instalados; regressão1.324 GREEN/30subtests/12SKIP e2 REDs
+anteriores reproduzidos em baseline; import desmarcado validado isoladamente.
+Qwen com web controlada recuperou fontes, mas limitou3/3 falas por falta de apoio.
+Web real2turnos/3HTTP200: primeira leitura pendente; reensino com5 páginas do
+cache publicou1 citação atribuída e reteve2 acréscimos.1 ConnectTimeout do
+provedor separado. Sem drift/ações mutantes/áudio. Não chamar isso de verdade
+factual geral ou ensino natural encerrado. Escopo conservador de referências
+contextuais e autoria apoiada seguem abertos. Relatório e critérios:
+`melhorias e planos/registro/RELATORIO_FONTES_EXPLICACAO_20261023.md`.
+
+### C5/P01 — escopo antes de reformulação natural, estudo de 23/10
+
+Ablação da exigência de exemplo não resolveu: Qwen real ainda limitou 3/3
+turnos com duas fontes disponíveis. Candidato de reordenação condicional
+passou no foco e em 16 ciclos instalados, mas a revisão independente e sua
+reprodução descobriram falsos aceites: preservação lexical não prova cláusula
+atômica nem alcance da condição. Unicode e aninhamento produziram oito REDs
+na composição instalada, nos dois assuntos e rotas. Candidato rejeitado e
+retirado por inteiro; produção byte a byte igual à base desta tarefa.
+
+Não transformar a falha em mais filtros de frases. Próxima fronteira é obter
+proposições e dependências de escopo com origem conferível antes de permitir
+transformações. Papéis/árvores/certificados propostos pela IA não são prova.
+Especificações positivas continuam RED no artefato; bloqueios de segurança
+preservados por novos regressivos. Ensino natural livre segue aberto, sem
+ativação ampla, mudança de modelo/voz ou encerramento artificial de C5/P01.
+`melhorias e planos/registro/RELATORIO_EXPLICACAO_NATURAL_20261023.md`.
+
+### C5/P01 — integridade do contexto perdido na coleta, 23/10
+
+Fonte já chegava recortada antes da autoria: ranking por frase descartava
+ressalvas do mesmo bloco, e o parser publicava prefixo até900 ou encerrava
+contêiner em uma tag filha. Separado do candidato de paráfrase rejeitado e do
+recorte anterior no prompt. Um owner: pesquisa_multifonte agora usa âncora
+para ranking e bloco inteiro para evidência, por índice/ordem, teto850 sem
+corte. Pilha aguarda fechamento correspondente e rejeita estrutura incoerente.
+
+35 REDs iniciais/44 controles GREEN antes do candidato; refinamento HTML com
+6 REDs; contraprova ampliada28 REDs com owner anterior.59 testes novos verdes
+na regressão final:1464 GREEN/30subtests/14SKIP e2 REDs anteriores reproduzidos
+em baseline; import separado1 GREEN. Qwen controlado3turnos/3HTTP200 preservou
+ressalvas, mas limitou3/3 falas. Web real2turnos/3HTTP200 Qwen: leitura pendente
+e reensino com5 páginas,2 citações atribuídas e1 acréscimo retido;1 timeout de
+leitura separado. Fontes íntegras no principal e reparo, zero drift/execução.
+
+Fechado somente o recorte estrutural do leitor. Contexto entre blocos, escopo
+semântico e autoria natural apoiada continuam abertos; não promover o parágrafo
+a prova de independência semântica. Sem alterar revisão/modelo/voz/configuração.
+`melhorias e planos/registro/RELATORIO_CONTEXTO_FONTES_EXPLICACAO_20261023.md`.
+
+### C7/C5/F1 — teste de coerência longa, diagnóstico de 23/10
+
+Pedido específico de Pedro:conversa longa com comandos simulados, sem ação
+real e sem voz.30 turnos na mesma sessão,30 respostas;2 APP_OPEN capturados
+com receipts negativos do adaptador real,0 efeitos/voz. Modelo real e todos
+os serviços cognitivos da factory restaurados; perfil e integrações externas
+isolados. Produção não alterada.32HTTP200/1timeout,527 fontes sem drift.
+
+Não passou a rubrica de retomadas:2 coerentes,2 parciais,5 divergentes e1
+inconclusiva por timeout. Falhas distintas: resposta anterior repetida com a
+entrada nova presente; correção pessoal classificada como ação; perda de fonte
+antiga no payload; perspectiva usuário/IA; novo plano consumido como feedback
+do último app. Não contar cada fala como raiz nova nem fundir essas fronteiras.
+
+No19/26/28 a fonte permanece no arquivo e PedidoModelo, mas some do envio.
+Controle curto12/13/19 transporta a função de Leo e responde música; longo
+inventa análise de dados. Demonstra fronteira de disponibilidade do contexto,
+não autoriza remover limites ou tratar uma segunda opinião da IA como prova.
+TimeoutF3 separado. Relatório com fontes, responsáveis e critérios:
+`melhorias e planos/registro/RELATORIO_COERENCIA_CONVERSA_LONGA_20261023.md`.
+
+### C7/C5 — recuperação literal antes do corte, 23/10
+
+Primeira fronteira reproduzida: fonte user antiga existe no PedidoModelo e
+some no HTTP. Seletor compartilhado recupera intervalo desde a primeira
+âncora lexical até a última fala do usuário; preparador publica pacote literal
+com ocorrência/papel/ordem, sem autoridade/receipt. Mesmo orçamento1200/2600,
+4/8msgs; aceita ou recusa intervalo inteiro, preservando correções elípticas.
+Candidato inicial por frases rejeitado após4RED de correção.27 testes novos,
+119 regressivos de continuidade GREEN; factory4RED baseline→4GREEN candidato.
+Regressão1493 GREEN/2 falhas anteriores reproduzidas nos owners congelados.
+
+Qwen30turnos/30respostas,32HTTP200,7 pacotes conferidos,0 voz/efeitos;19
+recupera12/13 e responde música para Leo.18/25/26/28 ainda recusam pacote
+grande no modo rápido; mesma seleção do baseline nesses pedidos. Próxima
+fronteira é decisão de modo versus necessidade de contexto, não subir limites
+ou tratar recuperação lexical como prova semântica. Perspectiva/modalidade/
+autoria/pré-fluxo e condição inicial sem sistema canônico seguem separados.
+Somente seletor_contexto/preparacao_llm alterados nesta etapa, sem commit.
+`melhorias e planos/registro/RELATORIO_RECUPERACAO_DIALOGO_20261023.md`.
+
+### C7/C5 — admissibilidade do modo com fonte recuperável, 24/10
+
+Continuação da disponibilidade de contexto, sem contar18/25/26/28 como novas
+raízes. Escolha baseada só na fala mantinha rápido quando seu pacote não cabia,
+mas o normal existente preservava fonte/correção.2RED/4controles na factory,
+mesmo resultado nos quatro owners congelados. Preparador informa necessidade
+pela mesma seleção/serialização/limites; registro repassa; orquestrador veta
+rápido somente quando normal recupera. Nenhum aumento de janela/prazo/modelo.
+
+Revisão encontrou desvio de saudação local do jogo;1RED e correção da ordem:
+orçamento só no caminhoLLM, após porteiro social.15 testes novos/133 focados
+GREEN;1554 regressivos GREEN,2 falhas anteriores reproduzidas no baseline.
+Qwen final30turnos/30conclusões,29HTTP200/2timeout,0voz/efeitos;16 pacotes
+conferidos por origem. Fontes18/25/26/28 chegaram;25 lembra Aurora/16h e19
+preserva música para Leo.18/26timeout e28inadequado com fonte disponível não
+provam ausência de contexto. Autoria/perspectiva/modalidade/pré-fluxo/F3 e
+intervalos acima do normal seguem abertos. Somente quatro owners de contexto/
+registro/orquestração alterados;sem commit. Critérios e limites:
+`melhorias e planos/registro/RELATORIO_PERFIL_CONTEXTO_DIALOGO_20261024.md`.
+
+### C7/C5/F1/F3 — respostas e prazos, progresso sem encerramento, 24/10
+
+Raízes preservadas e mecanismos separados: admissão descartava decisão não
+operacional, consumindo prazo antes da autoria; adjunto `para` virava parada;
+pergunta nova era feedback do app; autoria adotava pessoa do usuário; consulta
+de categoria virava nome; revisão externa retinha relato atribuído; composição
+perdia a fonte literal; recapitulação e reescritas perdiam fontes/ocorrências.
+Contratos compartilhados corrigidos após REDs e controles, não por nomes do
+roteiro. Detalhes por owner e falsificações no relatório abaixo.
+
+Última longa: 30 conclusões/32HTTP200,20 pacotes conferidos,dois receipts de
+recusa simulada,semvoz/efeitos/drift. Oito retomadas coerentes,uma parcial,uma
+divergente. Não houve transporte sem status nessa coleta, mas18levou26s e uma
+coleta intermediária teve timeout no resumo29. Não encerrar F3 geral. Depois
+da longa, dois refinamentos de perspectiva/índice tiveram RED→GREEN instalado;
+a versão longa fica explicitamente histórica.47 focados GREEN;regressão ampla
+inicial2000 GREEN/30subtests/14SKIP e1falha antiga de calculadora reproduzida
+no owner congelado. Import separado1GREEN. Sem commit/modelo/voz novos.
+
+Continuam abertos:18resposta correta no reparo ainda retida pela revisão como
+fato sobre `Azul`;22locução adverbial marcada incompleta e limite de tentativas;
+acesso inventado à agenda no controle curto;saída malformada longa e timeout
+residual;apoio/naturalidade da prosa livre. São fronteiras a estudar, não
+novas raízes fundidas por semelhança. Relatório, owners, artefatos e critérios:
+`melhorias e planos/registro/RELATORIO_RESPOSTAS_E_PRAZOS_20261024.md`.
+
+### C7/C5 — revisão do foco de participante prospectivo, 24/10
+
+Corrigido um falso indício no owner compartilhado fundamentacao_factual:
+tema mencionado + cópula em qualquer posição fazia `Bia é quem vai levar o
+livro` parecer propriedade externa do livro. Fonte ausente/erro de geração e
+extração de Azul não são causas necessárias: mesma resposta e factory com
+owner congelado reproduzem; jogo com nome explícito também falha na base.
+
+Candidato amplo de apagar cópula de qualquer clivagem rejeitado por liberar
+autoria sem fonte. Candidato final reconhece apenas foco prospectivo, conserva
+demais predicados e não certifica participante, fonte, efeito ou autoridade.
+Nove REDs/quinze controles na contraprova do owner;25 contratos finais GREEN,
+factory em dois assuntos com data falsa removida e flags forjadas recusadas.
+Regressão2028GREEN/30subtests/14SKIP,uma falha antiga de calculadora reproduzida
+anteriormente;importisolado1GREEN. Só um owner de produção mudou nesta tarefa.
+
+Qwen final30turnos/34HTTP200,17pacotes conferidos,527fontes sem drift,dois
+receipts negativos de simulação,semvoz/efeitos.18retoma Bia e preserva a fala.
+Não prova apoio de paráfrase livre:27limite de tentativas,28preferência com
+apoio não conferido e geração malformada lenta permanecem. Menção descritiva
+como título também não foi corrigida. Sem fechar C7/C5/F3 gerais ou contar
+outra raiz por nome/frase. Contrato, rejeição do candidato amplo e limites:
+`melhorias e planos/registro/RELATORIO_REVISAO_HISTORICO_20261024.md`.
+
+### C7/C5 — conferência estrutural de relato pessoal e separação de fontes, 24/10
+
+Na base congelada, ausência de conferência confundia fora do recorte com relato
+sem apoio; pesquisa externa sobre o assunto podia liberar preferência não
+declarada. Sem tema externo, o chamador pulava a revisão. Mesma factory/HTTP
+reproduziu publicação de preferência não declarada e inversão rock/Nirvana.
+
+Owners: fundamentacao_factual distingue estados e confere leitura integral de
+predicado/polaridade/valor/foco; plano_turno aplica com ou sem pesquisa e reutiliza
+o vínculo tipado para a entrada atual efêmera. Fonte deve ser do usuário e passar
+pela proveniência canônica; derivação registra hashes/campos/intervalos. Nenhum
+parecer da IA vira prova. Não aprova dêixis, operadores da atribuição ou inversão;
+pergunta não vira declaração. Não certifica prosa livre, pertinência ou efeitos.
+
+31 casos novos e 109 focados GREEN, incluindo factory em domínios distintos.
+Regressão2059GREEN/30subtests/14SKIP,uma falha antiga de calculadora mantida;
+importisolado1GREEN. Qwen30turnos/29HTTP200/30conclusões,527fontes sem drift,
+um receipt negativo simulado,semvoz/efeito.25 confere negação apoiada;26 repete
+frase apoiada mas não pertinente: não contar como coerência. Quatro formas sem
+cobertura retidas. Próxima fronteira C5/P01: fontes existentes no histórico/plano
+não entram no payload de certas perguntas naturais sobre preferências. Também
+persistem retomada operacional indevida e associações livres sem apoio; não
+fundir essas causas nem encerrar C7/C5/F1 gerais. Contratos, provas e limites:
+`melhorias e planos/registro/RELATORIO_PARAFRASES_HISTORICO_20261024.md`.
+
+### C5/P01 — consulta ao dizer antes da âncora lexical, 24/10
+
+Raiz demonstrada no seletor: consulta retrospectiva explícita dependia de
+palavra compartilhada. Pergunta categorial não achava declaração nominal, ou
+ancorava em pergunta posterior à declaração. Fontes já existiam no pedido/plano;
+os cinco intervalos cabiam no orçamento normal. Com a mesma factory e HTTP,
+owners congelados perdem5/5fontes; candidato entrega5/5.
+
+Owners referencias_linguagem/seletor_contexto: escopo do ato próprio antes da
+busca lexical, intervalo integral de usuário com ordem/correções/falante. Mesmos
+orçamentos/serialização/admissão de perfil, sem deduzir categoria/verdade/autoridade.
+Escopo inicial amplo rejeitado por temporais/metalinguagem/relato de terceiro;
+13REDs causais e3+2+16controles RED de escopo antes dos respectivos candidatos.
+128focados GREEN,49casos novos,review final sem bloqueio no recorte.
+Regressão2109GREEN/30subtests/14SKIP,uma falha antiga de calculadora;
+importisolado1GREEN. Não é suíte inteira ou coerência geral verde.
+
+Qwen30turnos com5fontes recuperadas, acertos Obsidian/café e falhas de geração
+mantidas. Última restrição de composto não mudou as30decisões, mas coleta final
+da versão atual é foco14turnos:11/12fontes e respostas corretas,semvoz/efeito,
+um receipt negativo.5/6revelam outra fronteira: pedido rápido começa user sem
+base canônica; a mesma perda existe nos owners congelados. Priorizar prova do
+writer dessa ausência, separada do seletor e da geração que ignora fonte recebida.
+Não encerrar C5/P01/C7/F1 gerais. Contratos, owners, falhas e artefatos:
+`melhorias e planos/registro/RELATORIO_CONSULTA_FALA_USUARIO_20261024.md`.
+
+### C5/P01 — base canônica no envio da rota rápida, 24/10
+
+Primeira fronteira demonstrada: normal chama preparar_pacote e inclui base;
+rápida prepara só instrução efêmera, e a projeção não garantia a base. Transporte
+recebia primeiro user/auxiliar, pulava seletor canônico e cortava fonte. Inserir
+somente a base no mesmo pedido restabelece ambas as fontes, sem mudar limites.
+
+Owner único alterado: ContextoPromptRuntime.preparar_envio_modelo. Envio aberto
+vinculado recebe base configurada se ausente, sem writer de memória e sem
+promover user a system. Reutiliza reconhecimento canônico; preserva bases e
+pacotes fechados,correlação,autoridade e receipts.6REDs/7controles na contraprova;
+14contratos finais GREEN incluindo factory sem base persistida e comando forjado
+recusado. Par instalado com mesmo HTTP:base perde2/2,candidato entrega2/2.
+
+Qwen final14iniciais e30contínuos,semvoz/efeitos,receipts negativos simulados.
+5/6do foco agora respondem Obsidian/café. Base auditada em todos pedidos abertos;
+transporte correto não certifica fidelidade. Regressão ampliada2222GREEN,
+30subtests/14SKIP,nove falhas anteriores confirmadas (oito expectativas vizinhas,
+calculadora antiga);importisolado1GREEN. Não apagar esses REDs nem contar9raízes.
+Próxima fronteira observada:pergunta sobre Atlas surge depois como opiniao no
+registro;provar momento/writer e vínculo do ato antes de corrigir. C7/F1/C5/P01
+gerais continuam abertos. Relatório e artefatos:
+`melhorias e planos/registro/RELATORIO_BASE_CANONICA_ROTA_RAPIDA_20261024.md`.
+
+### F1 — fonte literal na admissão da memória, 24/10
+
+Demonstrado o writer da opinião indevida: resolver_intencao enviava a projeção
+normalizada ao refinamento mental, removendo a interrogação antes do primeiro
+HTTP. O registrador rejeita a pergunta literal; a IA não é necessária para
+produzir esse registro. Corrigido somente o coordenador: memória recebe a fonte
+literal, enquanto consumidores de lookup conservam suas interfaces.
+
+Contraprova no owner congelado: 10 REDs e 2 controles; contrato final: 118 GREEN,
+incluindo 13 casos novos e factory instalada. Par de composição reproduz a
+admissão antes do HTTP na base e sua ausência no candidato. Qwen: 30 conclusões,
+sem voz ou efeitos reais, um receipt negativo simulado; pergunta sobre Atlas
+preservada no histórico sem virar opinião canônica. Regressão: 2.246 GREEN e as
+mesmas nove falhas anteriores, sem falha nova nesse conjunto.
+
+Esta causa local se relaciona a C7, sem unificar F1/C5/C7. Próxima fronteira:
+transmitir modalidade canônica à admissão de memória para perguntas sem '?'.
+Não houve migração de registros antigos nem encerramento da compreensão geral.
+`melhorias e planos/registro/RELATORIO_FONTE_LITERAL_MEMORIA_20261024.md`.
+
+### F1/C7 — modalidade canônica na admissão de perguntas, 24/10
+
+Raiz local seguinte demonstrada: fonte já preservada, classificação pergunta
+correta, porém memória usa filtro de pontuação e admite pergunta sem '?' como
+opinião antes do HTTP. Correção no contrato comum: contexto encaminha turno do
+usuário; registro de alegações consulta modalidade canônica, reutilizando-a
+somente para fonte literal íntegra. Sem parser de pergunta privado. Fonte no
+limite de truncamento não recebe vínculo por mera igualdade de prefixo.
+
+136 GREEN focados com 18 novos casos/factory; contrafactual final 12 REDs e
+5 controles. Review encontrou vínculo indevido na borda 500, reproduzido e
+corrigido antes da validação final. Composição instalada confirma ausência de
+admissão antes do HTTP em três domínios. Qwen: 30 conclusões, seis consultas
+conferidas sem alegação, cinco declarações preservadas, sem voz/efeitos reais,
+um receipt negativo simulado. Regressão: 2.264 GREEN e nove falhas anteriores.
+
+Sem fechar F1/C7 gerais. Próxima fronteira: fidelidade/perspectiva da resposta
+livre com fonte disponível; classificação de perguntas indiretas e condições
+permanece separada. Não apagar registros antigos sem proveniência.
+`melhorias e planos/registro/RELATORIO_MODALIDADE_ADMISSAO_MEMORIA_20261024.md`.
+
+### F1/C7 — apoio de descrição pessoal do modo, 24/10
+
+Raiz local provada na admissão autoral: fonte e perspectiva corretas no plano,
+mas relato de atividade liberava descrição de método inventada em primeira ou
+segunda pessoa. O modelo é proponente; primeira fronteira autoritativa errada
+era publicar essa descrição como resposta sem apoio. Três domínios reproduzidos
+na factory: trabalho, estudo e organização de notas.
+
+Contrato comum em referências linguísticas/revisão de suporte: consulta de modo
+com pessoa explícita vinculada a relato íntegro fica limitada ao relato
+atribuível. Integridade, autor, origem, proveniência e ocorrência conferidos;
+citação não comprova rotina, condição, detalhes livres, verdade ou efeito.
+Sem lista por habilidade/verbo de domínio ou nova memória/pesquisa privada.
+
+342 GREEN focados/4 SKIP, 24 novos casos/factory; contrafactual final 6 REDs e
+17 controles. Qwen: 30 conclusões, turno 9 com fonte/hash e limite conferidos,
+sem voz/efeitos, um receipt negativo simulado. Regressão: 2.288 GREEN e as mesmas
+nove falhas anteriores; import isolado GREEN. Revisão sem bloqueio no recorte.
+
+F1/C7 gerais abertos: outras retomadas ainda trocam pessoa, adotam premissa ou
+recapitulam inadequadamente. Estudar primeiro troca de pessoa em relato
+composto/negado, sem unificar essas observações como causa única nem chamar
+vínculo textual de prova semântica. Relatos sem vínculo permanecem limite.
+`melhorias e planos/registro/RELATORIO_MODO_PESSOAL_APOIO_RELATO_20261024.md`.
+
+### F1/C7 — núcleo de retomada não conferido não é aprovação, 24/10
+
+Raiz demonstrada: consulta ao dizer do usuário reconhecida e fonte/perspectiva
+presentes, mas inversão fora da gramática de relato passava por ausência de
+conferência. Contrato comum exige núcleo atribuído com apoio no histórico;
+reutiliza leitor canônico e gramática existente ou citação integral qualificada.
+Qualidade pede reparo com fontes, sem reintroduzir rascunho como premissa;
+revisão final confere novamente. Nenhuma troca textual de pronome ou exceção por
+nome/frase. Conferência do núcleo não certifica frases adicionais/pertinência.
+
+117 GREEN focados, 22 novos casos com duas factories; contrafactual 12 REDs e
+8 controles. Baseline instalado publicou quatro inversões e quatro controles;
+candidato retém inversões e preserva controles. Folha positiva entrega quatro
+reparos corretos, um por turno. Review sem bloqueio. Regressão: 2.310 GREEN e
+mesmas nove falhas anteriores; import isolado GREEN.
+
+Qwen: 30 conclusões, sem voz/efeitos e um receipt negativo simulado. As quatro
+retomadas-alvo foram retidas, mas terminaram em limite de tentativas: nenhuma
+resposta apoiada concluída nelas. Fonte estava no payload do reparo. Isso não
+fecha autoria/coerência geral. Próxima fronteira é autoria de reparo útil com
+realização apoiada; não aumentar orçamento nem tratar fonte presente/proposta
+da IA como prova de apoio ou pertinência.
+`melhorias e planos/registro/RELATORIO_RETOMADA_PESSOA_RELATO_20261024.md`.

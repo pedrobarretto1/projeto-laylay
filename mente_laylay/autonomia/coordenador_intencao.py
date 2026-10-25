@@ -331,7 +331,9 @@ def resolver_intencao(texto: str, origem: str, ctx: Dict[str, Any]) -> Tuple[Dic
     if turno_tem_veto_execucao(turno_congelado):
         return None, "veto_operacional_turno"
     texto_norm = _call(ctx, "normalizar_texto", texto, default=str(texto or ""))
-    _call(ctx, "refinar_contexto_mental", texto_norm)
+    # A projeção lexical serve aos detectores. Memória observa a fonte, com
+    # pontuação, caixa e limites de frase que preservam o ato de fala.
+    _call(ctx, "refinar_contexto_mental", texto)
     retrato_atual = dict(ctx.get("retrato_turno_atual") or {})
     # P0_REVISAO_INTRA_TURNO_V1_1_20260816
     revisao_turno = (

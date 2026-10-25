@@ -11,6 +11,8 @@ import tempfile
 import threading
 import time
 from collections import deque
+from email.utils import parsedate_to_datetime
+import math
 from queue import Empty, Queue
 from typing import Any, Callable, Mapping, Optional
 
@@ -597,19 +599,31 @@ class VozRuntime:
         prazo = time.monotonic() + self.tts_timeout_s
         for indice, voice in enumerate(vozes):
             try:
-                communicate = self._criar_comunicacao_edge(
-                    texto,
-                    voice=voice,
-                    rate=rate,
-                    pitch=pitch,
-                    volume=volume,
-                )
-                restante = prazo - time.monotonic()
-                if restante <= 0:
-                    raise TimeoutError("tempo total da sintese neural esgotado")
-                asyncio.run(asyncio.wait_for(communicate.save(caminho), timeout=restante))
-                return voice
+                for tentativa in range(2):
+                    progresso = self._progresso_reproducao
+                    if (self.interrupt_event.is_set() or self.stop_event.is_set()
+                            or progresso is not None and not progresso.pode_emitir()):
+                        raise InterruptedError('síntese cancelada antes de nova conexão')
+                    communicate = self._criar_comunicacao_edge(
+                        texto, voice=voice, rate=rate, pitch=pitch, volume=volume)
+                    restante = prazo - time.monotonic()
+                    if restante <= 0:
+                        raise TimeoutError("tempo total da sintese neural esgotado")
+                    try:
+                        asyncio.run(asyncio.wait_for(communicate.save(caminho), timeout=restante))
+                        return voice
+                    except Exception as erro:
+                        if getattr(erro, 'status', None) != 429 or tentativa:
+                            raise
+                        espera = self._espera_limite_tts(erro)
+                        if espera >= prazo - time.monotonic():
+                            raise  # não agendar áudio para depois do prazo do pedido
+                        self.log('⚠️ [VOZ] HTTP 429; uma nova tentativa com a mesma voz e prazo original.')
+                        if self.interrupt_event.wait(espera):
+                            raise InterruptedError('síntese interrompida durante espera')
             except Exception as erro:
+                if isinstance(erro, InterruptedError) or getattr(erro, 'status', None) == 429:
+                    raise  # limitação do serviço não autoriza percorrer outras vozes
                 ultimo_erro = erro
                 if isinstance(erro, (TimeoutError, asyncio.TimeoutError)):
                     self.log(
@@ -626,6 +640,18 @@ class VozRuntime:
         if ultimo_erro is not None:
             raise ultimo_erro
         raise RuntimeError("nenhuma voz neural foi configurada")
+
+    @staticmethod
+    def _espera_limite_tts(erro: Exception) -> float:
+        valor = str((getattr(erro, 'headers', None) or {}).get('Retry-After', '')).strip()
+        try:
+            espera = float(valor)
+        except ValueError:
+            try:
+                espera = parsedate_to_datetime(valor).timestamp() - time.time()
+            except (ValueError, TypeError, OverflowError):
+                espera = 0.5
+        return max(0.05, espera) if math.isfinite(espera) else float('inf')
 
     def combinar_falas_batch(self, itens: list) -> tuple[str, str, int]:
         falas = []
@@ -828,6 +854,10 @@ class VozRuntime:
                         else:
                             fallback_restante = segmentos[1]
                             erro_restante = restante_estado.get("erro")
+                            if isinstance(erro_restante, InterruptedError):
+                                interrompida = True
+                                cancelar_restante.set()
+                                break
                             self.log(
                                 "⚠️ [VOZ] segundo trecho neural falhou: "
                                 f"{type(erro_restante).__name__}"
@@ -876,10 +906,16 @@ class VozRuntime:
                 else:
                     self.log("⚠️ [VOZ] texto preservado; não vou trocar a voz para completar o áudio.")
 
+        except InterruptedError:
+            cancelar_restante.set()
+            self.ajustar_estado_fala_cb('audio_playing', False)
+            self.log('🛑 [VOZ] síntese cancelada; áudio não confirmado.')
         except Exception as e:
             cancelar_restante.set()
             self.ajustar_estado_fala_cb("audio_playing", False)
-            self.log(f"❌ [FALA] Erro no áudio: {type(e).__name__} → {e}")
+            status = getattr(e, 'status', None)
+            detalhe = f'HTTP {status}' if isinstance(status, int) else str(e)
+            self.log(f"❌ [FALA] Erro no áudio: {type(e).__name__} → {detalhe}")
             if callable(self.registrar_falha_cb):
                 self.registrar_falha_cb(
                     "tts", "falha_audio", erro=e,

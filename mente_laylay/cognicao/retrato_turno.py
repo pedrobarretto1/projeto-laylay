@@ -9,6 +9,8 @@ from typing import Any, Dict
 from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_pontuada
 from mente_laylay.cognicao.evidencia_operacional import detectar_consulta_lista_iot
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.cognicao.referencias_linguagem import intervalos_citados
+from mente_laylay.cognicao.gramatica_musical import pedido_reproducao_referente
 from mente_laylay.cognicao.gramatica_operacional import tipo_recurso_pedido_direto, candidato_respeita_tipo_recurso
 from mente_laylay.memoria_mental.continuidade_contexto import (
     estrutura_arquivo_recente,
@@ -56,6 +58,53 @@ def _nome_apresentacao(nome: str) -> str:
     return limpo[:120]
 
 
+def _extrair_mencoes_categorizadas(texto: str) -> list[dict]:
+    """Preserva menções concorrentes antes de tentar escolher um referente."""
+    categorias = {
+        "album": r"álbum|album",
+        "artista": r"artista|cantor|cantora|músico|musico|banda|grupo",
+        "jogo": r"jogo|game", "filme": r"filme",
+        "serie": r"série|serie", "livro": r"livro",
+    }
+    padrao = r"\b(?:" + "|".join(f"(?P<{tipo}>{rotulos})" for tipo, rotulos in categorias.items()) + r")\s+(?:chamad[oa]\s+)?"
+    bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    citacoes = intervalos_citados(bruto)
+    marcas = []
+    for marca in re.finditer(padrao, bruto, flags=re.IGNORECASE):
+        if any(inicio <= marca.start() < fim for inicio, fim in citacoes):
+            continue
+        if not marcas or re.search(
+            r"[,.;!?]|\b(?:e|ou)\s+(?:(?:o|a|um|uma)\s+)?$",
+            bruto[marcas[-1].end():marca.start()], flags=re.IGNORECASE,
+        ):
+            marcas.append(marca)
+    mencoes = []
+    for indice, marca in enumerate(marcas):
+        fim = marcas[indice + 1].start() if indice + 1 < len(marcas) else len(bruto)
+        titulo_citado = next(((inicio, final) for inicio, final in citacoes
+            if inicio == marca.end() and final <= fim), None)
+        trecho = (bruto[titulo_citado[0] + 1:titulo_citado[1] - 1] if titulo_citado else
+            re.split(r"[,.!?;]", bruto[marca.end():fim], maxsplit=1)[0])
+        if not titulo_citado and indice + 1 < len(marcas):
+            trecho = re.sub(r"\s+(?:(?:e|ou)\s+)?(?:o|a|um|uma)?\s*$", "", trecho).strip()
+        designacao = bool(re.search(r"\bchamad[oa]\s*$", marca.group(0), re.IGNORECASE))
+        if not titulo_citado and not designacao and (
+            re.search(r"\b(?:qual|quais)\s*$", bruto[:marca.start()], re.IGNORECASE)
+            or re.match(r"^(?:que|cujo|cuja|cujos|cujas|onde)\b", trecho, re.IGNORECASE)
+        ):
+            # O tipo de uma incógnita e a oração que a restringe não nomeiam
+            # uma entidade. Aspas ou designação explícita mantêm qualquer
+            # nome literal, mesmo quando ele contém essas formas gramaticais.
+            continue
+        nome = _nome_apresentacao(trecho[:100])
+        if not nome or re.match(r"^(?:É|Está|Foi|Parece|Tem|Tá)\b", nome, flags=re.IGNORECASE):
+            continue
+        item = {"tipo": marca.lastgroup, "nome": nome, "origem": "nome_explicito"}
+        if not any(e['tipo'] == item['tipo'] and e['nome'].casefold() == nome.casefold() for e in mencoes):
+            mencoes.append(item)
+    return mencoes
+
+
 def extrair_entidade_explicita(texto: str) -> dict:
     """Extrai a entidade que o usuário nomeou neste turno.
 
@@ -66,25 +115,9 @@ def extrair_entidade_explicita(texto: str) -> dict:
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
     if not bruto:
         return {}
-    categorias = {
-        "artista": r"artista|cantor|cantora|músico|musico|banda|grupo",
-        "jogo": r"jogo|game",
-        "filme": r"filme",
-        "serie": r"série|serie",
-        "livro": r"livro",
-    }
-    for tipo, rotulos in categorias.items():
-        achado = re.search(
-            rf"\b(?:{rotulos})\s+(?:chamad[oa]\s+)?([^,.!?;]{{2,100}})",
-            bruto,
-            flags=re.IGNORECASE,
-        )
-        if achado:
-            nome = _nome_apresentacao(achado.group(1))
-            if re.match(r"^(?:É|Está|Foi|Parece|Tem|Tá)\b", nome, flags=re.IGNORECASE):
-                continue
-            if nome:
-                return {"tipo": tipo, "nome": nome, "origem": "nome_explicito"}
+    mencoes = _extrair_mencoes_categorizadas(bruto)
+    if mencoes:
+        return mencoes[0] if len(mencoes) == 1 else {}
 
     achado = re.search(
         r"\b(?:gosta|curte|conhece|ouve|escuta)\s+(?:d[oa]|de)\s+([^,.!?;]{2,100})",
@@ -172,6 +205,8 @@ def _operacao_explicita_por_termos(
     texto: str, *, modalidade: str = "",
 ) -> tuple[str, tuple[str, ...]]:
     t = str(texto or "").casefold()
+    if modalidade == 'comando' and pedido_reproducao_referente(texto):
+        return 'reproduzir_referente', ('MUSIC_SEARCH', 'PLAYLIST_PLAY')
     if (
         re.search(r"\b(?:coloca|coloque|bota|toque|toca|põe|poe)\b", t)
         and re.search(r"\b(?:música|musica|som|faixa|canção|cancao)\b", t)
@@ -321,20 +356,28 @@ def construir_retrato_turno(
             dados={"exe": exe, "titulo": titulo, "assunto": percepcao.get("assunto")},
         )
 
-    explicita = extrair_entidade_explicita(texto)
-    if not explicita:
+    explicitas = _extrair_mencoes_categorizadas(texto)
+    explicita = (explicitas[0] if len(explicitas) == 1 else {}) if explicitas else extrair_entidade_explicita(texto)
+    if not explicita and not explicitas:
         explicita = _entidade_curta_ja_conhecida(
             texto,
             entidades_recentes=recentes,
             registro_semantico=estado.get("registro_semantico"),
         )
-    if explicita:
-        tipo_explicito = str(explicita.get("tipo") or "referencia_nomeada")
-        recentes[tipo_explicito] = _entidade(
+    if explicita and not explicitas:
+        explicitas = [explicita]
+    for indice, entidade_nomeada in enumerate(explicitas):
+        tipo_explicito = str(entidade_nomeada.get("tipo") or "referencia_nomeada")
+        recentes = {chave: item for chave, item in recentes.items()
+            if not (item.get('tipo') == tipo_explicito
+                and str(item.get('nome') or '').casefold() == str(entidade_nomeada.get('nome') or '').casefold())}
+        chave_explicita = tipo_explicito if len(explicitas) == 1 else f'{tipo_explicito}:{indice}'
+        recentes[chave_explicita] = _entidade(
             tipo_explicito,
-            str(explicita.get("nome") or ""),
+            str(entidade_nomeada.get("nome") or ""),
             origem="nome_explicito",
             ts=instante,
+            dados={'turno_mencao': str((turno or {}).get('id') or '')},
         )
 
     t = str(texto or "").casefold()
@@ -383,11 +426,13 @@ def construir_retrato_turno(
             operacao=operacao,
             agora=instante,
         )
-        referencia = str(resolucao.get("chave") or "")
+        referencia = str(resolucao.get("chave") or "contextual")
         referencia_resolvida = dict(resolucao.get("resolvida") or {})
         referencia_candidatos = list(resolucao.get("candidatos") or [])
     if not referencia_resolvida:
         referencia_resolvida = dict(recentes.get(referencia) or {})
+    if operacao == 'reproduzir_referente':
+        intents_permitidos = ('PLAYLIST_PLAY',) if referencia_resolvida.get('tipo') == 'playlist' else ('MUSIC_SEARCH',)
     snapshot = {
         "id": int((turno or {}).get("id") or time.time_ns()),
         "texto": str(texto or "").strip()[:500],
@@ -397,6 +442,7 @@ def construir_retrato_turno(
         "referencia_resolvida": referencia_resolvida,
         "referencia_candidatos": referencia_candidatos,
         "entidade_explicita": dict(explicita),
+        "entidades_explicitas": [dict(e) for e in explicitas],
         "operacao_explicita": operacao,
         "intents_permitidos": list(intents_permitidos),
         "atualidade_factual": classificar_atualidade_factual(texto, turno=turno),

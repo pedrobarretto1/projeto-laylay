@@ -452,17 +452,23 @@ _MARCADORES_DISCURSIVOS_RELATO = {
 
 def _relato_informativo_sem_ancora(
     usuario: str, resposta: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any],
+    *, turno_id: Any = None,
 ) -> bool:
     """Detecta perda literal do assunto em uma reação a relato conversacional.
 
     É uma prova limitada: falta de termos em comum pede reparo, mas presença
     deles não atesta que a resposta compreendeu o relato.
     """
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    perspectiva = contrato.get('perspectiva_enunciador')
+    fonte_atual = bool(type(perspectiva) is PerspectivaEnunciador
+        and perspectiva.vigente(usuario, turno_id)
+        and str(contrato.get('turno_id')) == perspectiva.turno_id)
     if not (
         contrato.get("funcao") == "informacao"
         and set(contrato.get("atos") or ()) == {"conversa"}
         and roteiro.get("estrategia") == "resposta_direta"
-        and roteiro.get("ancora_literal") == usuario
+        and (roteiro.get("ancora_literal") == usuario or fonte_atual)
         and "?" not in usuario
     ):
         return False
@@ -728,9 +734,20 @@ def validar_aderencia_contrato_fala(
     contrato_fala: Mapping[str, Any] | None,
     ultima_resposta: str = "",
     turno_id: Any = None,
+    modelo_corporal: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
+    from mente_laylay.cognicao.presenca_conversacional import realizacoes_presenca
+    presenca = realizacoes_presenca(str(texto_usuario or ""), contrato=contrato,
+                                   turno_id=turno_id, modelo_corporal=modelo_corporal)
+    if presenca:
+        aceita = fala in presenca
+        return {"avaliado": True, "aceita": aceita, "requer_reparo": not aceita,
+                "problemas": [] if aceita else ["presenca_conversacional_sem_suporte"],
+                "estrategia": "presenca_conversacional", "nucleo_atendido": aceita,
+                "contrato_reparo": {"realizacoes_permitidas": list(presenca), "autoriza_execucao": False},
+                "autoriza_execucao": False}
     if {"evidencia_fala_historica", "explicacao_ocorrencia", "explicacoes_historicas_por_ato", "revisao_alegacao"}.intersection(contrato):
         from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
         # Esta API verifica comunicação, sem poder validar execução. O guardião
@@ -764,6 +781,17 @@ def validar_aderencia_contrato_fala(
     partes = _frases(resposta)
     primeira = partes[0] if partes else ""
     problemas: list[str] = []
+    from mente_laylay.cognicao.referencias_linguagem import (
+        PerspectivaEnunciador, divergencias_perspectiva_enunciador,
+    )
+    perspectiva = contrato.get("perspectiva_enunciador")
+    divergencias_pessoa = ()
+    if (type(perspectiva) is PerspectivaEnunciador
+        and perspectiva.vigente(texto_usuario, turno_id)
+        and str(contrato.get("turno_id")) == perspectiva.turno_id):
+        divergencias_pessoa = divergencias_perspectiva_enunciador(usuario, resposta)
+        if divergencias_pessoa:
+            problemas.append("perspectiva_enunciador_invertida")
     contradicoes_capacidade = _contradicoes_capacidade(usuario, resposta, contrato, turno_id)
     if contradicoes_capacidade:
         problemas.append("capacidade_documentada_negada")
@@ -817,7 +845,7 @@ def validar_aderencia_contrato_fala(
 
     if resposta and _FALLBACK_GENERICO.search(resposta):
         problemas.append("resposta_generica_sem_conteudo")
-    if _relato_informativo_sem_ancora(usuario, resposta, contrato, roteiro):
+    if _relato_informativo_sem_ancora(usuario, resposta, contrato, roteiro, turno_id=turno_id):
         problemas.append("relato_atual_sem_ancora")
     resposta_autoral = _TRECHO_CITADO.sub(" ", resposta)
     if (
@@ -957,6 +985,15 @@ def validar_aderencia_contrato_fala(
 
     if estrategia == "esclarecimento_literal":
         anterior = str(contrato.get("fala_anterior_relevante") or ultima_resposta or "")
+        referencia = contrato.get('referencia_fala_observada')
+        if referencia is not None:
+            from mente_laylay.memoria_mental.registro_semantico import ReferenciaFalaConsulta
+            if (isinstance(referencia, ReferenciaFalaConsulta)
+                and referencia.vigente(texto_usuario, turno_id)
+                and str(contrato.get('turno_id')) == str(turno_id)):
+                anterior = referencia.conteudo
+            else:
+                problemas.append('referencia_fala_observada_invalida')
         ancora = _termos_ancora(anterior)
         resposta_ancoras = _termos_ancora(resposta)
         if (not primeira or ("?" in primeira and len(partes) == 1)
@@ -1053,6 +1090,7 @@ def validar_aderencia_contrato_fala(
 
     problemas = list(dict.fromkeys(problemas))
     nucleares = {
+        "perspectiva_enunciador_invertida",
         "avaliacao_social_alvo_invertido",
         "avaliacao_social_nao_reconhecida",
         "avaliacao_social_anulada",
@@ -1110,6 +1148,12 @@ def validar_aderencia_contrato_fala(
                      r"n[aã]o, eu n[aã]o recebi)\b", fala, re.I):
             problemas.append("expressao_solicitada_virou_recusa")
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if divergencias_pessoa:
+        contrato_reparo["perspectiva_enunciador"] = {
+            **perspectiva.para_prompt(), "divergencias": list(divergencias_pessoa),
+            "limite": "refaça a autoria preservando o usuário como dono de seu relato ou plano; "
+                      "primeira pessoa da Laylay e citações permanecem legítimas; não invente fatos",
+        }
     if estrategia == "expressao_solicitada":
         contrato_reparo.update(
             preservar_identidade_emocional=True,

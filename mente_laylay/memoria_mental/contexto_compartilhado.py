@@ -696,6 +696,7 @@ def registrar_mente_curta(
         fonte_resposta=fonte_factual,
         suporte_autoria=dict(estado.get("plano_turno_atual") or {}).get("suporte_autoria_proposto"),
         turno_id=str(dict(estado.get("turno_atual") or {}).get("id") or ""),
+        turno_usuario=estado.get("turno_atual"),
     )
 
     if texto_usuario:

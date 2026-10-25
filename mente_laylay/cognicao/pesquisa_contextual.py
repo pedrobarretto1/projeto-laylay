@@ -618,7 +618,7 @@ class PesquisaContextualRuntime:
             clock=self.clock,
         )
 
-    def pesquisar_evidencias_multifonte(self, consulta: str, ttl_s: float = 1800.0, *, foco: str = "") -> dict:
+    def pesquisar_evidencias_multifonte(self, consulta: str, ttl_s: float = 1800.0, *, foco: str = "", somente_cache: bool = False) -> dict:
         """Evidência de páginas lidas, separada do cache de resumos antigos."""
         from mente_laylay.cognicao.pesquisa_multifonte import pesquisar_evidencias_multifonte
 
@@ -630,6 +630,8 @@ class PesquisaContextualRuntime:
             resultado = dict(item.get("data") or {})
             resultado["evidencia_cache"] = True
             return resultado
+        if somente_cache:
+            return {}
         resultado = pesquisar_evidencias_multifonte(
             consulta, foco=foco, requests_get=self.requests_get, clock=self.clock,
         )
@@ -637,6 +639,19 @@ class PesquisaContextualRuntime:
         with self._prefetch_lock:
             self.cache_tema[chave] = {"ts": agora, "ttl_s": validade, "data": dict(resultado)}
         return resultado
+
+    def pesquisar_apoio_explicacao(self, consulta: str, *, foco: str = "") -> dict:
+        """Leitura solicitada, com o orçamento e a coordenação já existentes."""
+        from mente_laylay.cognicao.pesquisa_multifonte import consulta_didatica_autossuficiente
+        if not consulta_didatica_autossuficiente(consulta, foco=foco):
+            return {"ok": False, "motivo": "consulta_contextual_nao_resolvida"}
+        encontrado = self.pesquisar_evidencias_multifonte(consulta, foco=foco, somente_cache=True)
+        if encontrado:
+            return encontrado
+        evento, recipiente, _ = self._iniciar_pesquisa(consulta, 1800.0, foco_explicacao=foco)
+        if evento is not None and evento.wait(timeout=self.orcamento_interativo_s):
+            return dict(recipiente.get("resultado") or {"ok": False, "motivo": "sem_resultado_leitura"})
+        return {"ok": False, "tema": consulta, "motivo": "pesquisa_em_background", "pesquisa_pendente": True}
 
     def _pesquisar_contexto_tema_direto(self, tema: str, ttl_s: float) -> dict:
         return pesquisar_contexto_tema(
@@ -652,10 +667,14 @@ class PesquisaContextualRuntime:
         self,
         tema: str,
         ttl_s: float,
+        *,
+        foco_explicacao: str | None = None,
     ) -> tuple[threading.Event | None, dict, bool]:
         consulta = normalizar_tema_pesquisa(tema)
         normalizar = self.normalizar_texto_curto or _normalizar_texto_curto_basico
         chave = normalizar(consulta)
+        if foco_explicacao is not None:
+            chave = "apoio_explicacao:" + normalizar(consulta + "|" + foco_explicacao)
         if not chave:
             return None, {}, False
 
@@ -669,7 +688,10 @@ class PesquisaContextualRuntime:
 
         def executar() -> None:
             try:
-                recipiente["resultado"] = self._pesquisar_contexto_tema_direto(tema, ttl_s)
+                recipiente["resultado"] = (
+                    self.pesquisar_evidencias_multifonte(tema, ttl_s, foco=foco_explicacao)
+                    if foco_explicacao is not None else self._pesquisar_contexto_tema_direto(tema, ttl_s)
+                )
             except Exception as erro:
                 recipiente["resultado"] = {
                     "ok": False,

@@ -595,6 +595,16 @@ def texto_pede_opiniao(texto: str) -> bool:
     t = normalizar_texto_basico(texto)
     if not t:
         return False
+    # Predicados de gosto dirigidos ao interlocutor são atos subjetivos,
+    # independentemente do domínio do complemento. Não procurar o verbo
+    # dentro de nomes, citações de comandos ou relatos de terceiros.
+    sujeito = r"(?:voce|vc|tu|laylay|lay)"
+    gosto = r"(?:gosta|curte|prefere|aprecia)"
+    if (re.match(rf"^(?:e\s+)?(?:{sujeito}\s+)?(?:nao\s+)?{gosto}\b", t)
+        or re.match(rf"^(?:de\s+que|do\s+que|o\s+que)\s+{sujeito}\s+{gosto}\b", t)
+        or re.match(r"^qual\s+(?:e\s+)?(?:o\s+|a\s+)?(?:seu|sua)\s+"
+                    r"[^?!.;]{0,100}\b(?:favorit[oa]|preferid[oa])\b", t)):
+        return True
     return bool(re.search(
         r"(?:^|\b)(?:o\s+que|oque)\s+(?:voce\s+)?acha\b|"
         r"^(?:e\s+)?(?:voce\s+)?acha\s+(?:que\b|(?:de|do|da|dos|das|sobre)\b|"

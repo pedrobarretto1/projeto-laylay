@@ -89,6 +89,7 @@ class OrquestradorFalaRuntime:
         self._observadores_texto_final: list[Callable[..., Any]] = []
         self._observadores_entrega_resultados: list[Callable[..., Any]] = []
         self._textos_publicados_turno: dict[str, list[str]] = {}
+        self._sequencia_emissao_fala = 0
         self._progressos: dict[str, ProgressoFala] = {}
         self._lote_resultados: ContextVar[_LoteResultadosOperacionais | None] = ContextVar(
             "lote_resultados_operacionais", default=None,
@@ -689,6 +690,15 @@ class OrquestradorFalaRuntime:
             operacional=bool(plano_antes.get("requer_execucao")),
             modo_jogo_ativo=bool(mental_antes.get("modo_jogo_ativo")),
         )
+        # A emissão precede consumidores reentrantes e callbacks de áudio.
+        # Ordem explícita não depende de timestamp embutido no id nem de chegada.
+        with self._lock_confirmacoes:
+            ordens = [f.get('ordem_emissao', 0) for f in
+                dict(mental_antes.get('registro_semantico') or {}).get('falas_observadas', ())
+                if isinstance(f, Mapping) and type(f.get('ordem_emissao')) is int]
+            self._sequencia_emissao_fala = max(self._sequencia_emissao_fala, *ordens, 0) + 1
+            ordem_emissao_fala = self._sequencia_emissao_fala
+        ocorrencia_fala_id = f"{mensagem_id}:{time.time_ns()}"
         inicio_publicacao_texto = time.perf_counter()
         texto_publicado = False
         for observador in tuple(self._observadores_texto_final):
@@ -714,7 +724,6 @@ class OrquestradorFalaRuntime:
                 while len(self._textos_publicados_turno) > 64:
                     self._textos_publicados_turno.pop(next(iter(self._textos_publicados_turno)))
         registrar_entrega = ns.get("_registrar_entrega_comunicativa")
-        ocorrencia_fala_id = f"{mensagem_id}:{time.time_ns()}"
         sessao_fala = mental_antes.get("sessao_conversa_ts")
         def concluir_entrega(entregue: bool, texto_entregue: str, canal: str) -> None:
             if _proativa or not mensagem_id:
@@ -733,7 +742,7 @@ class OrquestradorFalaRuntime:
                             mental.get("registro_semantico"),
                             ocorrencia_id=ocorrencia_fala_id, turno_id=turno_id,
                             fala=texto_entregue, resultados=resultados_entrega,
-                            canal=canal,
+                            canal=canal, ordem_emissao=ordem_emissao_fala,
                         )
                         return registrar_esclarecimento_proposicao_entregue(
                             {**mental, "registro_semantico": registro},

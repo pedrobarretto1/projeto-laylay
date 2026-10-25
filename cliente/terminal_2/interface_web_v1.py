@@ -25,6 +25,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QDialog, QFileDialog, QMainWindow, QSystemTrayIcon, QMenu, QApplication, QScrollArea, QWidget, QLabel, QPushButton
 
 from cliente.terminal_2.apresentacao_desktop import geometria_desktop, permitir_ativacao_desktop, botao_esquerdo_pressionado
+from cliente.terminal_2.material_windows import aplicar_material_windows, restaurar_material_windows
 
 from mente_laylay.integracao.desktop_bridge import (
     ErroProtocoloDesktop, TIPOS_BACKEND, validar_mensagem_cliente,
@@ -580,18 +581,21 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._telas_observadas = set()
         self._animacao_desktop = QPropertyAnimation(self, b'geometry', self)
         self._animacao_desktop.setEasingCurve(QEasingCurve.OutCubic)
-        self._animacao_desktop.setDuration(300)
+        self._animacao_desktop.setDuration(230)
         self._animacao_desktop.finished.connect(self._geometria_desktop_concluida)
         self._desktop_fase = 'idle'
         self._desktop_sequencia = 0
         self._desktop_destino = QRect()
         self._transicao_cobertura: QLabel | None = None
+        # A cobertura já esconde a WebView no resize; não gastar pintura de
+        # Chromium em cada tamanho intermediário da janela.
+        self._web_pintura_congelada = False
         self._entrada_pendente = False
         self._entrada_exibida = False
         self._desktop_entrada_ativa = False
         self._entrada_visual_timer = QTimer(self)
         self._entrada_visual_timer.setSingleShot(True)
-        self._entrada_visual_timer.setInterval(650)
+        self._entrada_visual_timer.setInterval(840)
         self._entrada_visual_timer.timeout.connect(self._concluir_entrada_visual)
         self._erro_entrada: QPushButton | None = None
         self._prazo_entrada = QTimer(self)
@@ -599,8 +603,13 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._prazo_entrada.setInterval(5000)
         self._prazo_entrada.timeout.connect(self._entrada_indisponivel)
         self._animacao_entrada = QPropertyAnimation(self, b'windowOpacity', self)
-        self._animacao_entrada.setDuration(520)
+        self._animacao_entrada.setDuration(235)
         self._animacao_entrada.setEasingCurve(QEasingCurve.OutCubic)
+        self._foco_desktop_observado = False
+        self._recolher_foco_timer = QTimer(self)
+        self._recolher_foco_timer.setSingleShot(True)
+        self._recolher_foco_timer.setInterval(350)
+        self._recolher_foco_timer.timeout.connect(self._recolher_por_perda_de_foco)
         self._inatividade_desktop_timer = QTimer(self)
         self._inatividade_desktop_timer.setSingleShot(True)
         self._inatividade_desktop_timer.setInterval(20_000)
@@ -618,6 +627,12 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._cursor_desktop_timer.setInterval(40)
         self._cursor_desktop_timer.timeout.connect(self._observar_cursor_desktop)
         self._tray = None
+        self._material_desktop = 'fallback'
+        # A ilha compacta precisa de transparência; o painel expandido, não.
+        # Pintar o fundo do painel também no host evita blocos do Windows atrás
+        # vazarem durante frames atrasados do WebEngine acelerado por GPU.
+        self._fundo_desktop_opaco = False
+        self._cor_fundo_desktop = QColor('#10141b')
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setWindowTitle("Laylay — Interface 1.0")
         self.setMinimumSize(375, 620)
@@ -823,6 +838,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             "available_width": disponivel.width(),
             "available_height": disponivel.height(),
             "desktop_state": self.estado_desktop,
+            "desktop_material": self._material_desktop if self.modo_apresentacao == "desktop" else "fallback",
             "desktop_entry": self._desktop_entrada_ativa,
             "desktop_pinned": self.desktop_fixado,
             "desktop_page": self.desktop_pagina,
@@ -837,6 +853,24 @@ class JanelaInterfaceWebV1(QMainWindow):
             "visible": self.isVisible(),
         }
 
+    def _definir_fundo_desktop(self, opaco: bool) -> None:
+        # Somente a cor do canvas WebEngine muda; nenhum HWND, ponte, sessão,
+        # gesto ou widget é recriado. O modo compacto segue com alpha zero.
+        opaco = bool(opaco)
+        if self._fundo_desktop_opaco == opaco:
+            return
+        self._fundo_desktop_opaco = opaco
+        self.pagina_web.setBackgroundColor(
+            QColor(self._cor_fundo_desktop) if opaco else QColor(Qt.transparent))
+        self.update()
+
+    def paintEvent(self, evento) -> None:  # noqa: N802
+        super().paintEvent(evento)
+        if getattr(self, '_fundo_desktop_opaco', False):
+            pintor = QPainter(self)
+            pintor.fillRect(evento.rect(), self._cor_fundo_desktop)
+            pintor.end()
+
     @Slot(str)
     def apresentar(self, modo: str) -> None:
         if modo not in {"full", "quick", "island", "desktop"} or modo == self.modo_apresentacao:
@@ -848,6 +882,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._flags_completa = self.windowFlags()
         self.parar_streaming()
         self._animacao_desktop.stop()
+        self._retomar_pintura_web_desktop()
         self._cancelar_arrasto_desktop()
         self._inatividade_desktop_timer.stop()
         self._remover_cobertura_transicao()
@@ -861,9 +896,14 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._recolher_desktop_timer.stop()
         self._abrir_desktop_timer.stop()
         self.clearMask()
+        # Restaurar o canvas transparente ao voltar para a ilha compacta,
+        # tela cheia ou outras apresentações.
+        self._definir_fundo_desktop(False)
         self.setAttribute(Qt.WA_ShowWithoutActivating, modo == 'desktop')
         if self.modo_apresentacao == 'desktop':
             permitir_ativacao_desktop(int(self.winId()), True)
+            restaurar_material_windows(int(self.winId()))
+            self._material_desktop = 'fallback'
         self.modo_apresentacao = modo
         flags = self._flags_completa if modo == "full" else self._flags_completa | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
         if modo == 'desktop':
@@ -896,6 +936,10 @@ class JanelaInterfaceWebV1(QMainWindow):
             self.showMaximized() if modo == "full" and self._estado_completo & Qt.WindowMaximized else self.show()
         if modo == 'desktop':
             permitir_ativacao_desktop(int(self.winId()), False)
+            self._material_desktop = aplicar_material_windows(int(self.winId()))
+            if self._material_desktop == 'fallback':
+                # Sem o backdrop retangular do DWM: Qt/CSS desenha só a cápsula.
+                restaurar_material_windows(int(self.winId()))
             self._atualizar_mascara_desktop()
             self._cursor_desktop_timer.start()
             self._garantir_tray()
@@ -980,6 +1024,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         if self._fechada or self.modo_apresentacao != 'desktop' or self._arrastando_desktop:
             return
         self._animacao_desktop.stop()
+        self._retomar_pintura_web_desktop()
         self._desktop_sequencia += 1
         self._desktop_destino = QRect(self.geometry())
         self._desktop_fase = 'committing'
@@ -1067,6 +1112,12 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.desktop_fixado = self.desktop_fixado or bool(fixar)
         self._desktop_transitorio = not self.desktop_fixado
         self.estado_desktop = 'expanded'
+        # O compositor recebe pixels opacos antes de aumentar o HWND.
+        self._definir_fundo_desktop(True)
+        # A ativação pode anteceder a troca da apresentação completa para a ilha.
+        # Não depender de um segundo WindowActivate para observar o foco real.
+        self._foco_desktop_observado = self._foco_desktop_observado or self._desktop_em_foco()
+        self._recolher_foco_timer.stop()
         self.registrar_atividade_desktop()
         self._animar_geometria_desktop()
 
@@ -1081,6 +1132,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.estado_desktop = 'compact'
         self._desktop_edicao = False
         self._inatividade_desktop_timer.stop()
+        self._recolher_foco_timer.stop()
         self.parar_streaming()
         permitir_ativacao_desktop(int(self.winId()), False)
         self._animar_geometria_desktop()
@@ -1095,19 +1147,62 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._desktop_adiamentos = 0
             self._inatividade_desktop_timer.start(20_000)
 
+    def _desktop_em_foco(self) -> bool:
+        return self.isActiveWindow()
+
+    def _fala_em_andamento(self) -> bool:
+        estado = getattr(self.controlador, '_estado_mais_recente', None) or {}
+        return isinstance(estado, dict) and estado.get('activity') == 'speaking'
+
+    def _streaming_em_transmissao(self) -> bool:
+        return bool(self._streaming_aberto and self._pagina_web_ativa == 'streaming'
+                    and self._streaming_pagina is not None
+                    and self._streaming_pagina.captura.estado == 'transmitindo')
+
+    def _recolher_por_perda_de_foco(self) -> None:
+        if (self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded'
+                or self._fechada or self._arrastando_desktop or not self._foco_desktop_observado):
+            return
+        if self._desktop_em_foco():
+            return
+        # Nunca interromper uma frase, uma transmissão observada ou diálogos Qt.
+        if (self._fala_em_andamento() or self._streaming_em_transmissao()
+                or self._desktop_compondo or QApplication.activeModalWidget() is not None
+                or QApplication.activePopupWidget() is not None):
+            self._recolher_foco_timer.start(750)
+            return
+        self.recolher_desktop()
+
+    def event(self, evento):  # noqa: N802
+        # Perda real de foco, não heartbeat, cursor parado ou pintura, governa recolhimento.
+        if evento.type() == QEvent.WindowActivate and getattr(self,'modo_apresentacao',None) == 'desktop':
+            self._foco_desktop_observado = True
+            if hasattr(self,'_recolher_foco_timer'):
+                self._recolher_foco_timer.stop()
+        elif evento.type() == QEvent.WindowDeactivate and getattr(self,'_foco_desktop_observado',False):
+            if (getattr(self,'modo_apresentacao',None) == 'desktop'
+                    and getattr(self,'estado_desktop',None) == 'expanded'
+                    and not getattr(self,'_fechada',True)):
+                self._recolher_foco_timer.start(350)
+        return super().event(evento)
+
     def _recolher_por_inatividade(self) -> None:
         if self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded' or self._fechada or self._arrastando_desktop:
             return
-        # Foco/rascunho/pin não estendem o prazo. Uma composição IME ou modal
-        # em andamento termina antes do recolhimento, com rechecagem curta.
-        if (self._desktop_compondo or QApplication.activeModalWidget() is not None) and self._desktop_adiamentos < 10:
-            self._desktop_adiamentos += 1
-            self._inatividade_desktop_timer.start(300)
+        # A janela em uso permanece aberta: sem recolher no meio da digitação.
+        if self._desktop_em_foco():
+            self._inatividade_desktop_timer.start(20_000)
             return
-        if self._desktop_compondo:
-            QApplication.inputMethod().commit()
-            self._desktop_compondo = False
-        self.recolher_desktop()
+        # Fala e transmissão ativa são exceções mesmo quando outro app recebe foco.
+        if self._fala_em_andamento() or self._streaming_em_transmissao():
+            self._inatividade_desktop_timer.start(20_000)
+            return
+        if self._foco_desktop_observado:
+            self._recolher_por_perda_de_foco()
+            return
+        # Não recolher antes de observar o primeiro foco real da janela.
+        self._inatividade_desktop_timer.start(20_000)
+        return
 
     def eventFilter(self, objeto, evento) -> bool:  # noqa: N802
         if self.modo_apresentacao == 'desktop' and self.estado_desktop == 'expanded' and not self._fechada:
@@ -1123,6 +1218,17 @@ class JanelaInterfaceWebV1(QMainWindow):
                     self._ampliar_streaming(False)
                     return True
         return super().eventFilter(objeto, evento)
+
+    def _pausar_pintura_web_desktop(self) -> None:
+        if self._transicao_cobertura is not None and not self._web_pintura_congelada:
+            self.web.setUpdatesEnabled(False)
+            self._web_pintura_congelada = True
+
+    def _retomar_pintura_web_desktop(self) -> None:
+        if self._web_pintura_congelada:
+            self._web_pintura_congelada = False
+            self.web.setUpdatesEnabled(True)
+            self.web.update()
 
     def _animar_geometria_desktop(self) -> None:
         tela = self._resolver_tela_desktop()
@@ -1141,6 +1247,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             self.ponte_web.publicar(self.apresentacao_publica())
             return
         self._animacao_desktop.stop()
+        self._retomar_pintura_web_desktop()
         self._desktop_destino = destino
         self._desktop_sequencia += 1
         if self.isVisible() and self.ponte_web._pronta:
@@ -1151,6 +1258,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             self.setGeometry(destino)
             self._geometria_desktop_concluida()
         else:
+            self._pausar_pintura_web_desktop()
             self._animacao_desktop.setStartValue(self.geometry())
             self._animacao_desktop.setEndValue(destino)
             self._animacao_desktop.start()
@@ -1179,6 +1287,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             cobertura.deleteLater()
 
     def _geometria_desktop_concluida(self) -> None:
+        self._retomar_pintura_web_desktop()
         if self.modo_apresentacao != 'desktop' or self._fechada:
             return
         self._desktop_fase = 'committing'
@@ -1192,6 +1301,10 @@ class JanelaInterfaceWebV1(QMainWindow):
         if self._desktop_fase not in {'committing', 'starting'}:
             return
         self._remover_cobertura_transicao()
+        # Manter opaco durante todo o shrink, inclusive frames intermediários.
+        # Só a geometria compacta confirmada volta ao canvas transparente.
+        if self.estado_desktop == 'compact':
+            self._definir_fundo_desktop(False)
         if self._entrada_pendente:
             self._prazo_entrada.stop()
             self._entrada_pendente = False
@@ -1234,6 +1347,11 @@ class JanelaInterfaceWebV1(QMainWindow):
         if self.modo_apresentacao == 'desktop':
             self._cursor_desktop_timer.start()
             permitir_ativacao_desktop(int(self.winId()), False)
+            # Algumas trocas de flags recriam o HWND: reaplicar só à janela atual.
+            self._material_desktop = aplicar_material_windows(int(self.winId()))
+            if self._material_desktop == 'fallback':
+                # Sem o backdrop retangular do DWM: Qt/CSS desenha só a cápsula.
+                restaurar_material_windows(int(self.winId()))
 
     def hideEvent(self, evento) -> None:  # noqa: N802
         self._cursor_desktop_timer.stop()
@@ -1335,6 +1453,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._arrasto_timer.stop()
             self._remover_cobertura_transicao()
             self._inatividade_desktop_timer.stop()
+            self._recolher_foco_timer.stop()
             QApplication.instance().removeEventFilter(self)
             self._cursor_desktop_timer.stop()
             self._recolher_desktop_timer.stop()

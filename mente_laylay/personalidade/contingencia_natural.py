@@ -249,6 +249,8 @@ def fala_falha_geracao(motivo_falha: str) -> str:
     conclusoes = {
         "timeout": "Minha resposta não ficou pronta dentro do tempo disponível.",
         "indisponivel": "O serviço que gera minha resposta está indisponível agora.",
+        "limite_contexto": "Não consegui acomodar o contexto necessário para gerar esta resposta.",
+        "requisicao_recusada": "Uma falha na preparação da resposta impediu que eu a concluísse.",
         "chamada_nao_disponivel": "A geração desta resposta não está disponível neste momento.",
         "falha_tecnica": "Houve uma falha ao gerar minha resposta.",
         "reparo_rejeitado": "Não consegui formular uma resposta confiável desta vez.",

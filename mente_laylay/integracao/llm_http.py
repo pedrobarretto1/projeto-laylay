@@ -21,6 +21,15 @@ from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE
 FALHA_LLM_TIMEOUT = "__LAYLAY_LLM_TIMEOUT__"
 FALHA_LLM_INDISPONIVEL = "__LAYLAY_LLM_INDISPONIVEL__"
 FALHA_LLM_OCUPADA = "__LAYLAY_LLM_OCUPADA__"
+FALHA_LLM_CONTEXTO = "__LAYLAY_LLM_LIMITE_CONTEXTO__"
+FALHA_LLM_REQUISICAO = "__LAYLAY_LLM_REQUISICAO_RECUSADA__"
+
+
+def _recusa_por_capacidade(resposta: Any) -> bool:
+    """Reconhece somente a recusa de capacidade demonstrada pelo backend."""
+    return bool(getattr(resposta, 'status_code', None) == 400 and re.search(
+        r'request \(\d+ tokens\) exceeds the available context size \(\d+ tokens\)',
+        str(getattr(resposta, 'text', '') or '')))
 
 
 class RespostaLLMFallback:
@@ -433,6 +442,9 @@ def post_chat_llm(
                 pass
         resp = _post(payload_envio)
         if resp.status_code == 400:
+            if _recusa_por_capacidade(resp):
+                print_fn("⚠️ [IA] capacidade recusada pelo modelo; causa preservada sem retry nem circuito global.")
+                return resp, float(bad_request_until or 0.0)
             if _tem_schema_saida(payload_envio):
                 print_fn("⚠️ [IA] 400 em saída estruturada; contrato preservado, sem retry permissivo.")
                 return resp, float(bad_request_until or 0.0)
@@ -453,6 +465,8 @@ def post_chat_llm(
                 except Exception:
                     pass
             resp_retry = _post(retry_data)
+            if _recusa_por_capacidade(resp_retry):
+                return resp_retry, float(bad_request_until or 0.0)
             if resp_retry.status_code != 400:
                 print_fn("✓ [IA] Requisição local recuperada com payload compacto.")
                 return resp_retry, float(bad_request_until or 0.0)
@@ -774,6 +788,12 @@ def executar_chat_llm(
                     fallback="aviso_credencial",
                 )
             return "Cheque sua chave do OpenRouter."
+        if response.status_code == 400:
+            capacidade = _recusa_por_capacidade(response)
+            if callable(registrar_falha):
+                registrar_falha('llm_http', 'limite_contexto' if capacidade else 'requisicao_recusada',
+                    classe='defeito', impacto='turno', fallback='aviso_falha_geracao')
+            return FALHA_LLM_CONTEXTO if capacidade else FALHA_LLM_REQUISICAO
         if response.status_code == 404 and not endpoint_local:
             modelo = re.sub(
                 r"[^A-Za-z0-9._:/-]+", "",

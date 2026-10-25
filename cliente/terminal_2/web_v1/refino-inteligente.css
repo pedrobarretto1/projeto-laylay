@@ -344,3 +344,403 @@ body.refined-ui .tp-terminal-title .terminal-dots i:nth-child(3){background:#5e9
 @media(max-width:520px){body.refined-ui .pr-device.device{grid-template-columns:38px minmax(0,1fr) 38px;gap:12px}.terminal-caption small{display:none}}
 @media(prefers-reduced-motion:reduce){body.desktop-entering .desktop-island,body.desktop-entering .desktop-miniature .avatar{animation:none!important}}
 
+
+
+/* Leitura e estados observados: ponte online nao e sinonimo de mente pronta. */
+.operational-strip { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 22px; }
+.operational-item { display:flex; align-items:center; gap:8px; min-width:0;
+  padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+.operational-item small { color:var(--muted); font-size:12px; }
+.operational-item strong { font-size:12px; font-weight:550; color:var(--ink); }
+.operational-item .operational-unavailable { color:#e3bc88; }
+.status.warning { color:#e3bc88; }
+.status.warning i { background:#e3bc88; box-shadow:none; }
+.chat-history .message .bubble, .desktop-page .message .bubble { font-size:14px; line-height:1.65; max-width:74ch; }
+.composer input { font-size:14px; }
+.page-heading p, .home-inteligente p { font-size:max(12px,0.875rem); }
+@media(max-width:760px){
+  .operational-strip { gap:6px; margin:9px 0 14px; }
+  .operational-item { padding:8px 10px; }
+  .chat-history .message .bubble, .desktop-page .message .bubble { font-size:13px; }
+}
+
+/* Navegacao com ferramentas avancadas separadas sem esconder paginas. */
+.sidebar .nav-advanced-label{margin-top:14px;padding:10px 13px 4px;border-top:1px solid var(--line);font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase}
+@media(max-width:760px){.sidebar .nav-advanced-label{display:none}}
+
+
+/* Laylay B1 — vitrines musicais discretas, somente capas publicadas na biblioteca. */
+.home-inteligente .playlist-ranking,
+.home-inteligente .playlist-catalog-grid {
+  display:grid; gap:12px; min-width:0;
+}
+.home-inteligente .playlist-showcase-grid {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; min-width:0;
+}
+.home-inteligente .playlist-showcase-card {
+  position:relative; display:grid; gap:12px; align-items:center; min-width:0;
+  padding:13px; border:1px solid #303747; border-radius:16px;
+  background:linear-gradient(140deg,#1a1e29,#151c25);
+  overflow:hidden; box-shadow:0 8px 25px #05070c13;
+}
+.home-inteligente .playlist-spotlight {
+  grid-template-columns:134px minmax(0,1fr);
+  grid-template-rows:minmax(74px,auto) auto;
+  gap:11px 17px; padding:17px;
+  background:radial-gradient(circle at 5% 5%,rgba(179,145,231,.14),transparent 65%),
+    linear-gradient(118deg,#222230,#151c25 85%);
+  border-color:#514761;
+}
+.home-inteligente .playlist-showcase-card .showcase-cover {min-width:0;grid-row:1 / -1;align-self:stretch}
+.home-inteligente .playlist-showcase-card .cover {
+  width:100%; height:100%; min-height:78px; aspect-ratio:1; display:grid;place-items:center;
+  position:relative; overflow:hidden; border-radius:12px; border:1px solid #ffffff20;
+  background:linear-gradient(150deg,#665474 0%,#393852 46%,#1e3441 100%);
+  box-shadow:0 10px 18px #0002;
+}
+.home-inteligente .playlist-showcase-card .cover:before {
+  content:''; position:absolute; inset:15%; border:1px solid #ffffff1c;
+  border-radius:50%; pointer-events:none;z-index:0;
+}
+.home-inteligente .playlist-showcase-card .cover:after {
+  content:''; position:absolute; inset:28%; border:1px solid #ffffff16;
+  border-radius:50%; pointer-events:none;z-index:0;
+}
+.home-inteligente .playlist-showcase-card .cover img {
+  width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;z-index:1;
+}
+.home-inteligente .playlist-showcase-card .cover:has(img):before,
+.home-inteligente .playlist-showcase-card .cover:has(img):after {display:none}
+.home-inteligente .playlist-showcase-card .cover span {
+  position:relative; z-index:1; font-size:28px; color:#ece2ff;
+  text-shadow:0 2px 9px #0a071855;
+}
+.home-inteligente .playlist-spotlight .cover {min-height:134px;}
+.home-inteligente .playlist-showcase-card .playlist-info {align-self:end;min-width:0;}
+.home-inteligente .playlist-showcase-card .showcase-kicker {
+  display:flex;align-items:center;gap:7px; margin-bottom:7px;
+  font-size:9px;letter-spacing:.09em;font-weight:650;color:#b8a8d9;
+}
+.home-inteligente .playlist-showcase-card .showcase-rank {
+  border-radius:6px;background:#bca5e521;color:#d1b9fb; padding:2px 6px;
+}
+.home-inteligente .playlist-showcase-card .playlist-info strong {
+  display:block; font-size:15px;line-height:1.3; font-weight:620;
+  color:#eeeaf6; overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.home-inteligente .playlist-spotlight .playlist-info strong {font-size:20px;letter-spacing:-.03em;white-space:normal;}
+.home-inteligente .playlist-showcase-card .playlist-info p {
+  color:#aeb9c9; margin-top:7px; font-size:11px;line-height:1.45;
+}
+.home-inteligente .playlist-showcase-card .playlist-buttons {
+  display:flex;align-items:center;justify-content:flex-end;gap:4px;
+  align-self:end;min-width:0; flex-wrap:wrap;
+}
+.home-inteligente .playlist-showcase-card .icon-button,
+.home-inteligente .playlist-showcase-card .spotlight-pin {
+  display:grid;place-items:center;flex:0 0 auto;width:32px;height:32px;min-width:32px;
+  background:#ffffff07;border:1px solid #ffffff11;border-radius:9px;color:#aaa4be;
+}
+.home-inteligente .playlist-showcase-card .spotlight-pin svg,
+.home-inteligente .playlist-showcase-card .icon-button svg {width:15px;height:15px;}
+.home-inteligente .playlist-showcase-card .spotlight-pin.is-pinned,
+.home-inteligente .playlist-showcase-card .icon-button.is-pinned {color:#cdb2fa;background:#b69deb22;}
+.home-inteligente .playlist-showcase-card .showcase-play {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-width:34px;min-height:34px; padding:7px 9px;flex:0 0 auto;
+  border:1px solid #baa4e1a3;border-radius:10px;
+  color:#171321;background:#c4aeec;font-size:12px;font-weight:620;
+}
+.home-inteligente .playlist-showcase-card .showcase-play svg {width:15px;height:15px;}
+.home-inteligente .playlist-showcase-card .showcase-play:hover:not(:disabled) {background:#dbc9ff;}
+.home-inteligente .playlist-showcase-card .showcase-play:disabled {
+  opacity:.5;background:#4b4558;color:#cfc7dc;border-color:#655c70;cursor:not-allowed;
+}
+.home-inteligente .playlist-tile {
+  grid-template-columns:74px minmax(0,1fr);
+  grid-template-rows:auto auto;
+}
+.home-inteligente .playlist-tile .showcase-cover {grid-row:1 / -1;align-self:center;}
+.home-inteligente .playlist-tile .cover {min-height:74px;}
+.home-inteligente .playlist-tile .playlist-info strong {font-size:13px;}
+.home-inteligente .playlist-tile .showcase-kicker {font-size:8px;letter-spacing:.03em;}
+.home-inteligente .playlist-tile .playlist-buttons {grid-column:2;justify-content:flex-start;align-self:start;}
+.home-inteligente .home-catalog-showcase {display:grid;gap:12px;margin-top:0;}
+.home-inteligente .showcase-empty-note {color:#97a4b6;font-size:12px;line-height:1.6;}
+.home-inteligente .showcase-library-link {
+  display:inline-flex;align-items:center;gap:8px;justify-self:start;color:#c3acee;font-size:12px;
+}
+.home-inteligente .showcase-library-link svg {width:14px;height:14px;}
+@media(max-width:1100px) {
+  .home-inteligente .playlist-showcase-grid {grid-template-columns:1fr;}
+  .home-inteligente .playlist-spotlight {grid-template-columns:112px minmax(0,1fr);}
+  .home-inteligente .playlist-spotlight .cover {min-height:112px;}
+}
+@media(max-width:520px) {
+  .home-inteligente .playlist-spotlight {grid-template-columns:90px minmax(0,1fr);gap:9px 12px;padding:12px;}
+  .home-inteligente .playlist-spotlight .cover {min-height:90px;}
+  .home-inteligente .playlist-spotlight .playlist-info strong {font-size:16px;}
+  .home-inteligente .playlist-spotlight .playlist-buttons {grid-column:1 / -1;justify-content:flex-start;}
+  .home-inteligente .playlist-tile {grid-template-columns:64px minmax(0,1fr);}
+  .home-inteligente .playlist-tile .cover {min-height:64px;}
+}
+@media(prefers-reduced-motion:reduce){
+  .home-inteligente .playlist-showcase-card,
+  .home-inteligente .playlist-showcase-card * {transition:none!important;animation:none!important;}
+}
+
+
+/* Laylay F1 — fixados com mini capas reais, texto e ações discretas. */
+.home-inteligente .pinned-mini-list {
+  display:grid; grid-template-columns:minmax(0,1fr);gap:10px;min-width:0;
+}
+.home-inteligente .pinned-mini-card {
+  display:grid; grid-template-columns:54px minmax(0,1fr);grid-template-rows:auto auto;
+  column-gap:11px;row-gap:2px;align-items:center;
+  width:100%;min-width:0;min-height:79px;padding:11px 12px;
+  border:1px solid #353548;border-radius:13px;
+  background:linear-gradient(120deg,#1d202c,#161b26);
+  box-shadow:0 8px 20px #05081212;
+}
+.home-inteligente .pinned-mini-card .pinned-card-cover {
+  display:grid;place-items:center;grid-row:1 / span 2;
+  width:54px;height:54px;position:relative;overflow:hidden;
+  border-radius:10px;border:1px solid #ffffff23;
+  background:linear-gradient(145deg,#6b507e,#3b3a58 58%,#1a3943);
+  color:#f0dfff;
+}
+.home-inteligente .pinned-mini-card .pinned-card-cover:has(img) {background:#242a35;}
+.home-inteligente .pinned-mini-card .pinned-card-cover img {
+  width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;
+}
+.home-inteligente .pinned-mini-card .pinned-card-cover>span {
+  font-size:24px;letter-spacing:-.03em;text-shadow:0 2px 7px #07070a50;
+}
+.home-inteligente .pinned-mini-card .pinned-action-cover {
+  background:linear-gradient(135deg,#304554,#32283f);
+  color:#d1b9ee;
+}
+.home-inteligente .pinned-mini-card .pinned-action-cover svg{width:24px;height:24px;}
+.home-inteligente .pinned-mini-card .pinned-card-copy {min-width:0;align-self:end;}
+.home-inteligente .pinned-mini-card .pinned-card-copy strong {
+  display:block;overflow-wrap:anywhere;font-size:13px;line-height:1.3;
+  font-weight:620;color:#eeeaf5;
+}
+.home-inteligente .pinned-mini-card .pinned-card-copy small {
+  display:block;margin-top:4px;font-size:10px;line-height:1.4;color:#a1adc0;
+}
+.home-inteligente .pinned-mini-card .pinned-card-actions {
+  grid-column:2;display:flex;gap:6px;min-width:0;align-items:center;
+  align-self:end;justify-content:flex-end;margin-top:5px;
+}
+.home-inteligente .pinned-mini-card .pinned-card-action {
+  display:grid;place-items:center;min-width:31px;min-height:31px;
+  border:1px solid #564866;border-radius:8px;
+  background:#baa0e51b;color:#cdb6ed;
+}
+.home-inteligente .pinned-mini-card .pinned-card-action:hover:not(:disabled) {
+  background:#bfa6eb30;color:#f0e0ff;
+}
+.home-inteligente .pinned-mini-card .pinned-card-action:disabled {
+  opacity:.45;cursor:not-allowed;
+}
+.home-inteligente .pinned-mini-card .pinned-card-action svg{width:14px;height:14px;}
+.home-inteligente .pinned-mini-card .pinned-card-play {
+  color:#282136;background:#c8b1f1;border-color:#c8b1f1;
+}
+.home-inteligente .pinned-mini-card .pinned-card-play:hover:not(:disabled) {
+  color:#221b30;background:#e0cbff;
+}
+.home-inteligente .pinned-mini-card .pinned-card-remove {
+  border-color:#ffffff12;background:#ffffff07;color:#a8a3b6;
+}
+.home-inteligente .pinned-explore {
+  display:inline-flex;align-items:center;gap:7px;margin-top:12px;
+  padding:7px 2px;color:#c4aee8;font-size:11px;text-align:left;
+}
+.home-inteligente .pinned-explore svg{width:14px;height:14px;}
+.home-inteligente .pinned-empty {
+  display:flex;align-items:center;gap:10px;padding:15px 13px;
+  border:1px dashed #383447;border-radius:12px;background:#191b2666;
+  color:#b8a1d8;
+}
+.home-inteligente .pinned-empty svg{width:18px;height:18px;flex:none;}
+.home-inteligente .pinned-empty p{font-size:11px;line-height:1.6;color:#a4a6b7;}
+@media(max-width:520px) {
+  .home-inteligente .pinned-mini-card {padding:10px;}
+  .home-inteligente .pinned-mini-card .pinned-card-copy strong {font-size:12px;}
+}
+@media(prefers-reduced-motion:reduce){
+  .home-inteligente .pinned-mini-card *{animation:none!important;transition:none!important;}
+}
+
+/* Laylay Fluent — ilha compacta do Windows 11, acabamento com fallback opaco. */
+body.refined-ui .desktop-island[data-desktop-state="compact"] {
+  --fluent-border:rgba(213,190,255,.22);
+  position:relative;
+  isolation:isolate;
+  color:#f4effa;
+  border:1px solid var(--fluent-border);
+  border-radius:24px;
+  background:linear-gradient(112deg,#262434 0%,#1a202c 57%,#171e28 100%);
+  box-shadow:inset 0 1px 0 #ffffff22,inset 0 -1px 0 #04070c42;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"][data-desktop-material="acrylic"] {
+  background:rgba(24,25,36,.73);
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"][data-desktop-material="mica"] {
+  background:rgba(25,28,38,.82);
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact {
+  height:100%; width:100%; display:flex;align-items:center;gap:9px;
+  padding:0 12px 0 10px;border-radius:23px;
+  background:linear-gradient(108deg,rgba(159,120,204,.16),rgba(75,80,110,.045) 52%,transparent 100%);
+  color:inherit;
+  cursor:grab;
+  transition:background .18s ease;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:hover {
+  background:linear-gradient(108deg,rgba(179,137,223,.24),rgba(88,99,135,.10) 60%,rgba(255,255,255,.045) 100%);
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:active {
+  cursor:grabbing;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:focus-visible {
+  outline:2px solid #d6baf7;
+  outline-offset:-4px;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-miniature {
+  flex:0 0 37px;width:37px;height:37px;display:grid;place-items:center;
+  border-radius:13px;border:1px solid rgba(225,200,255,.25);
+  background:radial-gradient(ellipse at 30% 15%,rgba(208,177,251,.20),transparent 70%),
+    rgba(120,91,160,.14);
+  box-shadow:inset 0 1px 0 #ffffff1b;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-miniature .avatar-mini {
+  width:33px;height:31px; margin:0;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact-copy {
+  min-width:0;flex:1;display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;gap:1px;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact-copy strong {
+  display:block;color:#f3eefb;font-size:13px;line-height:17px;
+  font-weight:650;letter-spacing:-.025em;white-space:nowrap;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact-copy small {
+  display:block;width:100%;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-size:10px;line-height:14px;color:#b6b8c9;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-signal {
+  width:6px;height:6px;flex:0 0 6px;border-radius:50%;
+  background:#ba966b;box-shadow:0 0 0 3px #ba966b14;
+  margin:0 0 0 1px;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-signal.online {
+  background:#85ceb0;box-shadow:0 0 0 3px #85ceb01b;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-signal.warning {
+  background:#e2c38b;box-shadow:0 0 0 3px #e2c38b1a;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-expand-icon {
+  display:grid;place-items:center;flex:0 0 22px;width:22px;height:24px;
+  border-radius:7px;color:#aba4bd; background:rgba(255,255,255,.03);
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-expand-icon svg {
+  width:12px;height:12px;rotate:90deg;opacity:.88;
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:hover .desktop-expand-icon {
+  color:#e5d4ff;background:rgba(213,182,255,.12);
+}
+@keyframes laylay-fluent-speaking {
+  0%,100% {box-shadow:0 0 0 2px rgba(157,209,191,.10)}
+  50% {box-shadow:0 0 0 4px rgba(157,209,191,.23)}
+}
+body.refined-ui .desktop-island[data-desktop-state="compact"][data-activity="speaking"] .desktop-signal.online,
+body.refined-ui .desktop-island[data-desktop-state="compact"][data-activity="listening"] .desktop-signal.online {
+  animation:laylay-fluent-speaking 1.6s ease-in-out infinite;
+}
+@media(prefers-reduced-motion:reduce) {
+  body.refined-ui .desktop-island[data-desktop-state="compact"] *,
+  body.refined-ui .desktop-island[data-desktop-state="compact"] *:before,
+  body.refined-ui .desktop-island[data-desktop-state="compact"] *:after {
+    animation:none!important;transition:none!important;
+  }
+}
+body.reduced .desktop-island[data-desktop-state="compact"] .desktop-signal {
+  animation:none!important;
+}
+
+
+/* Motion M2 — entrada delicada e assinatura sutil sem ocultar a WebView nativa. */
+body.refined-ui.desktop-entering .desktop-island[data-desktop-state="compact"]{
+  transform-origin:center center;
+  animation:laylay-m2-arrive 470ms cubic-bezier(.18,.79,.22,1) both;
+}
+body.refined-ui.desktop-entering .desktop-island[data-desktop-state="compact"] .desktop-miniature .avatar{
+  animation:laylay-m2-mascot 400ms 65ms cubic-bezier(.2,.8,.25,1) both;
+}
+body.refined-ui.desktop-entering .desktop-island[data-desktop-state="compact"]::after{
+  content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;
+  background:radial-gradient(ellipse at 16% 52%,rgba(206,155,255,.20),transparent 68%);
+  pointer-events:none;animation:laylay-m2-aura 480ms ease-out both;
+}
+body.refined-ui.desktop-entering .desktop-island[data-desktop-state="compact"] .desktop-compact {
+  position:relative;z-index:1;
+}
+@keyframes laylay-m2-arrive {
+  0% {opacity:0;transform:translateY(16px) scale(.91,.78);}
+  52% {opacity:1;transform:translateY(-3px) scale(1.018,1.035);}
+  78% {opacity:1;transform:translateY(1px) scale(.996,.995);}
+  100% {opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes laylay-m2-mascot {
+  0% {opacity:0;transform:translateY(8px) scale(.71);}
+  66% {opacity:1;transform:translateY(-3px) scale(1.12);}
+  100% {opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes laylay-m2-aura {
+  0% {opacity:0;} 35%{opacity:.7;} 100%{opacity:0;}
+}
+/* O fade de geometria só acontece após o ACK do WebEngine; a janela
+   segue coberta por snapshot durante resize e jamais fica vazada. */
+body.refined-ui .desktop-island[data-desktop-state="expanded"] {
+  box-shadow:inset 0 1px #ffffff12,inset 0 0 0 1px #0000000c;
+}
+body.refined-ui .desktop-island[data-desktop-state="expanded"] .desktop-tabs button.active {
+  transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease;
+}
+body.refined-ui .desktop-island[data-desktop-state="expanded"] .desktop-toolbar .icon-btn {
+  transition:background-color 150ms ease,color 150ms ease;
+}
+@media(prefers-reduced-motion:reduce){
+  body.refined-ui.desktop-entering .desktop-island,
+  body.refined-ui.desktop-entering .desktop-island::after,
+  body.refined-ui.desktop-entering .desktop-miniature .avatar {
+    animation:none!important;
+  }
+}
+body.reduced.desktop-entering .desktop-island,
+body.reduced.desktop-entering .desktop-island::after,
+body.reduced.desktop-entering .desktop-miniature .avatar {
+  animation:none!important;
+}
+
+
+/* M2 motion clarity: the selected tab gets one soft arrival pulse. */
+body.refined-ui .desktop-island[data-desktop-state="expanded"] .desktop-tabs button.active {
+  position:relative;
+}
+body.refined-ui .desktop-island[data-desktop-state="expanded"] .desktop-tabs button.active::before{
+  content:'';position:absolute;left:1px;top:22%;bottom:22%;width:3px;
+  border-radius:4px;background:#d3affb;box-shadow:0 0 9px #b68fe354;
+  animation:laylay-m2-tab-arrive 410ms cubic-bezier(.16,.82,.2,1) both;
+}
+@keyframes laylay-m2-tab-arrive{
+  from{opacity:0;transform:scaleY(.24) translateX(-5px)}
+  to{opacity:1;transform:scaleY(1) translateX(0)}
+}
+@media(prefers-reduced-motion:reduce){
+ body.refined-ui .desktop-island .desktop-tabs button.active::before{animation:none!important}
+}
+body.reduced .desktop-island .desktop-tabs button.active::before{animation:none!important}

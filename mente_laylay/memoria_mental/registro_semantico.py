@@ -37,6 +37,30 @@ VERSAO_REGISTRO = 1
 
 
 @dataclass(frozen=True, slots=True)
+class ReferenciaFalaConsulta:
+    """Snapshot textual entregue, vinculado à consulta; não prova a proposição."""
+
+    turno_consulta: str
+    texto_consulta: str
+    ocorrencia_id: str
+    turno_origem: str
+    conteudo: str
+    ts: float
+    autoriza_execucao: bool = field(default=False, init=False)
+
+    def vigente(self, texto: str, turno_id: Any, *, agora: float | None = None) -> bool:
+        instante = time.time() if agora is None else agora
+        return (all(type(v) is str and v.strip() for v in (
+                    self.turno_consulta, self.texto_consulta, self.ocorrencia_id,
+                    self.turno_origem, self.conteudo))
+                and len(self.conteudo) <= 4000 and self.texto_consulta == texto
+                and self.turno_consulta == str(turno_id)
+                and type(self.ts) in (int, float) and math.isfinite(self.ts)
+                and type(instante) in (int, float) and math.isfinite(instante)
+                and 0 <= instante - self.ts <= 900)
+
+
+@dataclass(frozen=True, slots=True)
 class RevisaoAlegacaoConsulta:
     """Estado da alegação selecionada pelo owner, nunca prova de sua falsidade.
 
@@ -124,6 +148,7 @@ def estado_registro_semantico_inicial() -> Dict[str, Any]:
         "declaracoes_suporte_autoria": [],
         "revisao_alegacao_atual": {},
         "falas_observadas": [],
+        "ultima_fala_observada_id": "",
         "entidade_ativa_id": "",
         "foco_contextual_tipado": {},
         "assunto_ativo_id": "",
@@ -150,7 +175,7 @@ def _registro(dados: Dict[str, Any] | None) -> Dict[str, Any]:
 def registrar_fala_observada(
     registro: Dict[str, Any] | None, *, ocorrencia_id: str, turno_id: str,
     fala: str, resultados: tuple[ResultadoAcao, ...], canal: str,
-    agora: float | None = None,
+    agora: float | None = None, ordem_emissao: int | None = None,
 ) -> Dict[str, Any]:
     """Liga conteúdo entregue aos receipts capturados na mesma publicação.
 
@@ -164,7 +189,8 @@ def registrar_fala_observada(
         or not isinstance(fala, str) or not fala.strip() or len(fala) > 4000
         or type(resultados) is not tuple or len(resultados) > 16
         or canal not in {"texto_publicado", "audio_reproducao_confirmada"}
-        or type(instante) not in (int, float) or not math.isfinite(instante)):
+        or type(instante) not in (int, float) or not math.isfinite(instante)
+        or (ordem_emissao is not None and (type(ordem_emissao) is not int or ordem_emissao < 1))):
         raise ValueError("Fala observada exige ocorrência, conteúdo e canal válidos.")
     snapshots = []
     for resultado in resultados:
@@ -179,20 +205,71 @@ def registrar_fala_observada(
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     historico = [EstadoCompartilhadoRuntime._copiar_valor(dict(item)) for item in estado["falas_observadas"]
                  if isinstance(item, Mapping)]
-    anterior = next((item for item in historico if item.get("id") == ocorrencia_id), None)
+    anteriores = [item for item in historico if item.get("id") == ocorrencia_id]
+    if len(anteriores) > 1:
+        raise ValueError("Identidade de fala duplicada no registro.")
+    anterior = anteriores[0] if anteriores else None
     if anterior is not None:
         if (anterior.get("fala") != fala or anterior.get("turno_id") != turno_id
-            or anterior.get("resultados") != snapshots):
+            or anterior.get("resultados") != snapshots
+            or (ordem_emissao is not None and anterior.get("ordem_emissao") != ordem_emissao)):
             raise ValueError("Outra publicação não pode reescrever a ocorrência da fala.")
         anterior["canais"] = list(dict.fromkeys([*anterior.get("canais", []), canal]))
     else:
+        ordens = [item['ordem_emissao'] for item in historico
+                  if type(item.get('ordem_emissao')) is int and item['ordem_emissao'] > 0]
+        ordem = ordem_emissao if ordem_emissao is not None else max(ordens, default=0) + 1
+        if ordem in ordens:
+            raise ValueError("Duas ocorrências não podem compartilhar ordem de emissão.")
         historico.append({"id": ocorrencia_id, "turno_id": turno_id, "fala": fala,
             "resultados": snapshots, "canais": [canal], "ts": instante,
-            "autoriza_execucao": False})
+            "autoriza_execucao": False, "ordem_emissao": ordem})
+        atual = next((i for i in historico if i.get('id') == estado['ultima_fala_observada_id']), {})
+        if ordem > (atual.get('ordem_emissao') or 0):
+            estado['ultima_fala_observada_id'] = ocorrencia_id
+    historico.sort(key=lambda item: item.get('ordem_emissao') or 0)
     estado["falas_observadas"] = historico[-24:]
     for resultado in resultados:
         estado = _registrar_proposicoes_resultado(estado, resultado, fala, instante)
     return estado
+
+
+def selecionar_fala_observada(
+    registro: Mapping[str, Any] | None, *, agora: float | None = None,
+) -> Dict[str, Any]:
+    """Resolve a referência do owner, sem inferir identidade por texto/recência."""
+    if not isinstance(registro, Mapping):
+        return {}
+    ident = registro.get('ultima_fala_observada_id')
+    candidatos = [f for f in registro.get('falas_observadas', ())
+                  if isinstance(f, Mapping) and f.get('id') == ident] if ident else []
+    if len(candidatos) != 1:
+        return {}
+    fala = candidatos[0]
+    instante = time.time() if agora is None else agora
+    ts = fala.get('ts')
+    if (type(instante) not in (int, float) or not math.isfinite(instante)
+        or type(ts) not in (int, float) or not math.isfinite(ts) or not 0 <= instante-ts <= 900
+        or fala.get('autoriza_execucao') is not False
+        or type(fala.get('fala')) is not str or not fala['fala'] or len(fala['fala']) > 4000
+        or type(fala.get('turno_id')) is not str or not fala['turno_id']
+        or not fala.get('canais')
+        or any(c not in {'texto_publicado', 'audio_reproducao_confirmada'} for c in fala['canais'])):
+        return {}
+    from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
+    return EstadoCompartilhadoRuntime._copiar_valor(dict(fala))
+
+
+def construir_referencia_fala_consulta(
+    texto: str, *, turno_id: Any, mente: Mapping[str, Any],
+) -> ReferenciaFalaConsulta | None:
+    evidencia = recuperar_evidencia_da_fala(texto, mente)
+    falas = evidencia.get('falas', ())
+    if not turno_id or evidencia.get('referencia_ambigua') is not False or len(falas) != 1:
+        return None
+    fala = falas[0]
+    fonte = ReferenciaFalaConsulta(str(turno_id), texto, fala['id'], fala['turno_id'], fala['fala'], fala['ts'])
+    return fonte if fonte.vigente(texto, turno_id) else None
 
 
 def _id_proposicao_resultado(vinculo: Mapping[str, Any]) -> str:
@@ -290,14 +367,15 @@ def recuperar_evidencia_da_fala(
                and _normalizar(item["fala"]) in normalizado]
     if not citados:
         selecao = selecionar_contexto_turno(
-            texto, turno=dict(mente.get("turno_atual") or {}), mente=dict(mente),
+            texto, turno=dict(mente.get("turno_atual") or {}), mente=dict(mente), agora=instante,
         )
-        fala_selecionada = next((item.get("conteudo") for item in selecao.get("selecionados", [])
+        id_selecionado = next((item.get("ocorrencia_fala_id") for item in selecao.get("selecionados", [])
                                 if item.get("origem") == "ultima_fala"), "")
         # Sem referência contextual, uma coincidência de assunto não seleciona
         # o histórico da própria fala nem expõe receipts em assuntos novos.
-        if selecao.get("referencia_contextual") and fala_selecionada:
-            citados = [item for item in recentes if item["fala"] == fala_selecionada][-1:]
+        if selecao.get("referencia_contextual") and id_selecionado:
+            encontrados = [item for item in recentes if item['id'] == id_selecionado]
+            citados = encontrados if len(encontrados) == 1 else []
     if not citados:
         return {}
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
@@ -409,13 +487,14 @@ def registrar_entidade(
     # registro anterior em vez de criar duas pessoas diferentes.
     nome_norm = _normalizar(nome)
     entidades = dict(estado.get("entidades") or {})
-    existente_id = next(
-        (
+    existentes = [
             chave for chave, item in entidades.items()
             if isinstance(item, dict) and _normalizar(item.get("nome")) == nome_norm
-        ),
-        "",
-    )
+            and (item.get('tipo') == tipo or item.get('tipo') == 'referencia_nomeada'
+                 or tipo == 'referencia_nomeada')
+    ]
+    exatos = [chave for chave in existentes if entidades[chave].get('tipo') == tipo]
+    existente_id = exatos[0] if len(exatos) == 1 else (existentes[0] if len(existentes) == 1 else '')
     entidade_id = existente_id or _id_entidade(tipo, nome)
     anterior = dict(entidades.get(entidade_id) or {})
     tipo_anterior = str(anterior.get("tipo") or "")
@@ -1091,6 +1170,7 @@ def registrar_alegacao(
     fonte: str = "",
     confianca: float | None = None,
     agora: float | None = None,
+    turno_fala: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     estado = _registro(registro)
     conteudo = re.sub(r"\s+", " ", str(texto or "")).strip()
@@ -1105,6 +1185,22 @@ def registrar_alegacao(
         return estado
     tipo = _tipo_alegacao(conteudo)
     if tipo == "comentario":
+        return estado
+    # Ausência de '?' não transforma um ato interrogativo em afirmação.
+    # Só reutilizar a leitura do host quando pertence à mesma fonte literal;
+    # chamadas diretas e frases separadas consultam o mesmo owner canônico.
+    leitura = turno_fala if (
+        isinstance(turno_fala, Mapping)
+        # O campo do turno é limitado a 500: nesse limite, igualdade pode
+        # ser só coincidência com o prefixo de outra fonte maior.
+        and len(str(texto or "").strip()) < 500
+        and turno_fala.get("texto") == str(texto or "").strip()
+        and turno_fala.get("modalidade")
+    ) else None
+    if leitura is None:
+        from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+        leitura = classificar_modalidade_turno(texto)
+    if leitura.get("modalidade") == "pergunta":
         return estado
     instante = float(agora if agora is not None else time.time())
     autor_norm = str(autor or "desconhecido").casefold()
@@ -1230,9 +1326,20 @@ def atualizar_registro_turno(
     instante = float(agora if agora is not None else time.time())
     estado = _registro(registro)
     snapshot = dict(retrato or {})
+    explicitas = list(snapshot.get('entidades_explicitas') or [])
     explicita = dict(snapshot.get("entidade_explicita") or {})
-    if explicita:
-        estado = registrar_entidade(estado, explicita, fonte="usuario", agora=instante)
+    if len(explicitas) > 1:
+        for entidade in explicitas:
+            dados_mencao = dict(entidade.get('dados') or {})
+            if snapshot.get('id'):
+                dados_mencao['turno_mencao'] = str(snapshot['id'])
+            estado = registrar_entidade(estado, {**entidade, 'dados': dados_mencao}, fonte='usuario', agora=instante)
+        estado['entidade_ativa_id'] = ''
+    elif explicita:
+        dados_mencao = dict(explicita.get('dados') or {})
+        if snapshot.get('id'):
+            dados_mencao['turno_mencao'] = str(snapshot['id'])
+        estado = registrar_entidade(estado, {**explicita, 'dados': dados_mencao}, fonte="usuario", agora=instante)
         entidade_id = str(estado.get("entidade_ativa_id") or "")
         estado = atualizar_assunto_semantico(
             estado, titulo=str(explicita.get("nome") or ""), entidade_id=entidade_id, agora=instante,
@@ -1283,6 +1390,7 @@ def renovar_registro_semantico_sessao(
         revisao_alegacao_atual={},
         declaracoes_suporte_autoria=[],
         falas_observadas=[],
+        ultima_fala_observada_id="",
         assunto_ativo_id="",
         ultima_renovacao_motivo=str(motivo or "nova_sessao")[:80],
         atualizado_ts=instante,
@@ -1300,6 +1408,7 @@ def registrar_interacao_semantica(
     suporte_autoria: Any = None,
     turno_id: str = "",
     agora: float | None = None,
+    turno_usuario: Mapping[str, Any] | None = None,
 ) -> Dict[str, Any]:
     instante = float(agora if agora is not None else time.time())
     estado = contestar_alegacao_recente(registro, texto_usuario, agora=instante)
@@ -1311,6 +1420,7 @@ def registrar_interacao_semantica(
         for indice, frase in enumerate(frases_usuario):
             estado = registrar_alegacao(
                 estado, frase, autor="usuario", sujeito=assunto, agora=instante + indice / 1000000.0,
+                turno_fala=turno_usuario,
             )
     if resposta_laylay:
         declaracao = None
@@ -1357,6 +1467,7 @@ _TTL_TIPO = {
     "iot": 600.0,
     "playlist": 600.0,
     "musica": 600.0,
+    "album": 600.0,
     "jogo": 900.0,
     "artista": 1800.0,
     "cantor": 1800.0,
@@ -1390,6 +1501,7 @@ def resolver_referencia_pontuada(
         nome_item = str(item.get("nome") or "")
         if any(
             _normalizar(recente.get("nome")) == _normalizar(nome_item)
+            and recente.get('tipo') == tipo
             for recente in recentes.values()
         ):
             continue
@@ -1400,6 +1512,7 @@ def resolver_referencia_pontuada(
             "origem": "registro_semantico",
             "ts": float(item.get("ultima_mencao_ts") or 0.0),
             "entidade_id": entidade_id,
+            "dados": dict(item.get('dados') or {}),
         })
 
     t = _normalizar(texto)
@@ -1412,7 +1525,7 @@ def resolver_referencia_pontuada(
     dominio = ""
     if texto_discute_evidencia_textual(texto):
         dominio = "texto"
-    elif op.startswith("playlist") or op == "musica_do_referente":
+    elif op.startswith("playlist") or op in {"musica_do_referente", "reproduzir_referente"}:
         dominio = "musica"
     elif op == "iot":
         dominio = "iot"
@@ -1439,7 +1552,7 @@ def resolver_referencia_pontuada(
         "texto": TIPOS_REFERENCIA_TEXTUAL,
         "musica": {
             "artista", "cantor", "cantora", "banda", "referencia_nomeada",
-            "musica", "playlist", "midia",
+            "musica", "album", "playlist", "midia",
         },
         "iot": {"iot", "dispositivo"},
         "arquivo": {"arquivo", "pasta"},
@@ -1507,12 +1620,14 @@ def resolver_referencia_pontuada(
 
         if (dominio and not compativel) or not compativel_qualificador:
             score = 0.0
+        score_ordenacao = max(0.0, score)
         score = max(0.0, min(1.0, score))
         candidatos.append({
             "chave": chave,
             "nome": str(entidade.get("nome") or ""),
             "tipo": tipo,
             "pontuacao": round(score, 3),
+            "pontuacao_ordenacao": round(score_ordenacao, 6),
             "idade_s": round(idade, 1),
             "origem": origem,
             "dominio_restrito": dominio,
@@ -1522,7 +1637,7 @@ def resolver_referencia_pontuada(
         })
 
     candidatos.sort(
-        key=lambda item: float(item.get("pontuacao") or 0.0),
+        key=lambda item: float(item.get("pontuacao_ordenacao") or 0.0),
         reverse=True,
     )
     elegiveis = [
@@ -1535,6 +1650,16 @@ def resolver_referencia_pontuada(
         if elegiveis and float(elegiveis[0].get("pontuacao") or 0.0) >= 0.45
         else {}
     )
+    if melhor and any(
+        (x.get('pontuacao_ordenacao') == melhor.get('pontuacao_ordenacao')
+         or (dict(x['entidade'].get('dados') or {}).get('turno_mencao')
+             and dict(x['entidade'].get('dados') or {}).get('turno_mencao')
+                 == dict(melhor['entidade'].get('dados') or {}).get('turno_mencao')))
+        and (x.get('tipo'), _normalizar(x.get('nome')))
+            != (melhor.get('tipo'), _normalizar(melhor.get('nome')))
+        for x in elegiveis[1:]
+    ):
+        melhor = {}
     return {
         "resolvida": dict(melhor.get("entidade") or {}),
         "chave": str(melhor.get("chave") or ""),

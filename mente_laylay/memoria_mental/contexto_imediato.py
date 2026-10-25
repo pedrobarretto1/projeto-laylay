@@ -86,6 +86,7 @@ def _normalizar_dominio_referencia(dominio: str) -> str:
     return {
         "arquivos": "arquivo", "arquivo": "arquivo", "pasta": "arquivo",
         "musica": "musica", "música": "musica", "playlist": "musica",
+        "album": "musica", "álbum": "musica",
         "midia": "musica", "playlist_laylay": "musica",
         "iot": "iot", "dispositivo": "iot",
         "janela": "app", "app": "app", "site": "site", "navegador": "site",

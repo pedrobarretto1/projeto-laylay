@@ -1179,6 +1179,7 @@ def _iniciar_planejamento_turno(
     consulta_didatica = extrair_consulta_didatica(
         texto_cognitivo, pedido_anterior=pedido_anterior,
     )
+    consulta_apoio_solicitada = consulta_didatica
     foco_didatico = extrair_foco_didatico(texto_cognitivo)
     if not foco_didatico and re.search(r'\bn[aã]o entendi\b', str(texto_cognitivo or ''), re.I):
         foco_didatico = str(fundamento_anterior.get('foco_didatico') or '')[:100]
@@ -1317,7 +1318,13 @@ def _iniciar_planejamento_turno(
         especialistas['deliberacao'] = deliberacao
     turno['especialistas'] = especialistas
     assunto_estruturado = ns['_atualizar_assunto_estruturado_mente'](mente_antes_turno.get('assunto_estruturado_atual') if isinstance(mente_antes_turno.get('assunto_estruturado_atual'), dict) else {}, texto, turno=turno, retrato=retrato_turno, encerramento=encerramento_assunto)
-    plano = ns['_planejar_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, periodo=ns['_contexto_horario_atual']())
+    # Projeção efêmera: o histórico literal tem owner próprio e não pertence
+    # ao estado mental normalizado. O verificador precisa da origem inteira,
+    # sem reconstituir pontuação/ressalvas do registro semântico.
+    contexto_plano = {**mente_antes_turno, 'messages': list(
+        getattr(ns['_estado_compartilhado_runtime'], 'memoria_conversa', {}).get('messages', []) or []
+    )}
+    plano = ns['_planejar_turno_mente'](texto_cognitivo, turno=turno, mente=contexto_plano, periodo=ns['_contexto_horario_atual']())
     # O plano nasce semanticamente da proposta final, mas sua identidade pública
     # pertence à fala original. Não confundir conteúdo operacional com RG do turno.
     plano = alinhar_identidade_plano_revisao(
@@ -1425,6 +1432,39 @@ def _iniciar_planejamento_turno(
         explicacao_ocorrencia=explicacao_ocorrencia,
         recuperar_explicacao_ocorrencia=recuperar_explicacao,
     )
+    # A configuração histórica veta influência ampla, não a leitura pedida
+    # neste turno com obrigação independente de apoio. Deliberar a finalidade
+    # antes de buscar impede transformar menção/contexto em pedido de pesquisa.
+    from mente_laylay.cognicao.contrato_fala import explicacao_exige_apoio_individual
+    from mente_laylay.cognicao.pesquisa_multifonte import consulta_didatica_autossuficiente
+    plano['contrato_fala'] = contrato_fala
+    pesquisar_apoio = getattr(ns.get('_pesquisa_contextual_runtime'), 'pesquisar_apoio_explicacao', None)
+    if (not pesquisa_multifonte_ativa and consulta_apoio_solicitada
+            and explicacao_exige_apoio_individual(plano)
+            and consulta_didatica_autossuficiente(consulta_apoio_solicitada, foco=foco_didatico)
+            and callable(pesquisar_apoio)):
+        try:
+            leitura_apoio = pesquisar_apoio(consulta_apoio_solicitada, foco=foco_didatico)
+        except Exception as erro:
+            leitura_apoio = {'ok': False, 'motivo': f'falha_leitura:{type(erro).__name__}'}
+        fundamentacao_factual = ns['_montar_fundamentacao_mente'](
+            consulta_apoio_solicitada, leitura_apoio, atualidade=atualidade_factual,
+        )
+        fundamentacao_factual.update(pesquisa_didatica=True, foco_didatico=foco_didatico,
+            papel_cooperativo='enriquecimento_auxiliar', nao_substitui_resposta_principal=True)
+        plano['fundamentacao_factual'] = fundamentacao_factual
+        mente_antes_turno['fundamentacao_factual_turno'] = fundamentacao_factual
+        turno['tema_factual'] = consulta_apoio_solicitada
+        turno['pesquisa_apoio_explicacao'] = {
+            'motivo': str(leitura_apoio.get('motivo') or ''),
+            'fontes_lidas': len(leitura_apoio.get('fontes') or []), 'ok': bool(leitura_apoio.get('ok')),
+        }
+        # A evidência chegou depois da deliberação; atualizar pelo MESMO owner,
+        # sem emprestar fonte ao rascunho ou alterar autoridade operacional.
+        contrato_fala = construir_contrato_semantico_fala(texto, turno=turno, plano=plano,
+            funcao_comunicativa=funcao_comunicativa, mente=mente_antes_turno,
+            falas_recentes=falas_recentes, explicacao_ocorrencia=explicacao_ocorrencia,
+            recuperar_explicacao_ocorrencia=recuperar_explicacao)
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala
     turno = finalizar_especialista_neural_turno(ns, texto_cognitivo, turno)

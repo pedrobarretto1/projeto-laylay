@@ -87,6 +87,7 @@ class RequisicaoTransporteLLM:
 class PortaPreparacaoConversa(Protocol):
     def preparar_pacote(self, texto: str) -> PacotePrompt: ...
     def preparar_instrucao_rapida(self, texto: str) -> str: ...
+    def exige_contexto_amplo(self, texto: str) -> bool: ...
     def diagnostico(self) -> dict[str, Any]: ...
 
 
@@ -141,6 +142,12 @@ class RegistroPreparacaoConversa:
             # teste e extensões antigas continuam seguros e sem autoridade.
             return ""
         return str(preparar(str(texto or "")) or "").strip()
+
+    def exige_contexto_amplo(self, texto: str) -> bool:
+        avaliar = getattr(self.servico, "exige_contexto_amplo", None)
+        # Preparadores antigos continuam válidos; o serviço instalado expõe
+        # esta necessidade sem transferir memória ao orquestrador.
+        return bool(avaliar(str(texto or ""))) if callable(avaliar) else False
 
     def preparar_mensagens_modelo(
         self, mensagens: list[dict[str, Any]], *, turno_id: Any,

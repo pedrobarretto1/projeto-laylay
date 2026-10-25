@@ -7,6 +7,9 @@ import time
 from typing import Any, Callable, Dict
 
 from mente_laylay.arquivos.transacao_arquivos import caminho_criado_por_params
+from mente_laylay.cognicao.referencias_linguagem import (
+    trecho_retificacao_do_enunciador, texto_fora_de_citacoes,
+)
 
 
 INTENTS_REPARAVEIS = {
@@ -31,17 +34,16 @@ INTENTS_REPARAVEIS = {
 
 
 def _extrair_alvo_textual(texto: str) -> str:
+    retificacao = trecho_retificacao_do_enunciador(texto)
     padroes = (
         r"\b(?:eu\s+)?(?:estava|tava|to|tô)\s+falando\s+(?:de|do|da|sobre)\s+(.+)$",
-        r"\b(?:eu\s+)?(?:quis|quero)\s+dizer\s+(.+)$",
         r"\b(?:o alvo|o certo|era|e|é)\s+(?:o|a)?\s*(.+)$",
         r"^(?:(?:a|ah)\s+)?(?:nao|não)[,;:-]?\s+(?:lay\s*[,;:-]?\s*)?(?:o|a)?\s*(.+)$",
     )
-    for padrao in padroes:
-        achado = re.search(padrao, texto)
-        if not achado:
-            continue
-        alvo = re.split(r"[,.!?]", achado.group(1), maxsplit=1)[0].strip(" -'")
+    candidatos = ([retificacao] if retificacao else []) + [
+        achado.group(1) for padrao in padroes if (achado := re.search(padrao, texto))]
+    for candidato in candidatos:
+        alvo = re.split(r"[,.!?]", candidato, maxsplit=1)[0].strip(" -'")
         alvo = re.sub(
             r"\b(?:em\s+)?(?:tela\s+cheia|fullscreen|em\s+foco|pro\s+foco|para\s+frente)\b.*$",
             "",
@@ -288,20 +290,28 @@ def detectar_reparacao_conversacional(
     t = re.sub(r"\s+", " ", str(t or "")).strip()
     if not t:
         return None
+    estado = dict(estado_mental or {})
+    leitura = dict(estado.get('turno_atual') or {})
+    if (leitura.get('texto_original') or leitura.get('texto')) != bruto:
+        from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+        leitura = classificar_modalidade_turno(bruto)
+    if ((leitura.get('modalidade_geral') or leitura.get('modalidade')) == 'pergunta'
+        and leitura.get('autoriza_execucao') is not True):
+        return None
     sinais = (
         r"^(?:nao|não)\s+lay\b",
         r"^(?:nao|não)[,;:-]\s+",
         r"^(?:nao|não)\s+era\s+para\b",
         r"^(?:nao|não)\b.+[,;]\s*.+$",
         r"^(?:a|ah)\s+(?:nao|não)\s+lay\b",
-        r"\b(?:eu\s+)?(?:quis|quero)\s+dizer\b",
         r"\b(?:eu\s+)?(?:estava|tava|to|tô)\s+falando\s+(?:de|do|da|sobre)\b",
         r"\bna verdade\b",
     )
-    if not any(re.search(padrao, t) for padrao in sinais):
+    retificacao = trecho_retificacao_do_enunciador(t)
+    enunciado = texto_fora_de_citacoes(t)
+    if retificacao is None and not any(re.search(padrao, enunciado) for padrao in sinais):
         return None
 
-    estado = dict(estado_mental or {})
     try:
         recente = time.time() - float(estado.get("ts") or 0.0) <= ttl_s
     except Exception:
@@ -340,7 +350,7 @@ def detectar_reparacao_conversacional(
     if not alvo_novo and not correcao_so_parametro:
         correcao_direta = bool(
             re.search(r"^(?:(?:a|ah)\s+)?(?:nao|não)\s+lay\b", t)
-            or re.search(r"\b(?:quis|quero)\s+dizer\b", t)
+            or retificacao is not None
             or re.search(r"\b(?:estava|tava|to|tô)\s+falando\b", t)
         )
         if not correcao_direta:

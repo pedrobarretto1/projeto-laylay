@@ -367,6 +367,17 @@ class ContextoPromptRuntime:
         except Exception:
             return ""
 
+    def exige_contexto_amplo(self, texto: str) -> bool:
+        """Consulta o orçamento canônico sem preparar, persistir ou gerar fala."""
+        if not self.otimizacao_prompt_ativa:
+            return False
+        from mente_laylay.integracao.preparacao_llm import historico_recuperavel_exige_contexto_amplo
+
+        estado = self.estado_getter() or {}
+        return historico_recuperavel_exige_contexto_amplo(
+            list(estado.get("messages") or []), str(texto or ""),
+        )
+
     def preparar(self, texto: str) -> Tuple[List[Dict[str, Any]], str]:
         try:
             estado = self.estado_getter() or {}
@@ -593,6 +604,11 @@ class ContextoPromptRuntime:
             str(turno_id) == str(contrato["turno_id"]) == str(turno["id"])
         )
         if identidade_atual and autoria_atual and turno.get("autoriza_execucao") is False:
+            from mente_laylay.cognicao.presenca_conversacional import montar_pacote_presenca
+            pacote_presenca = montar_pacote_presenca(str(mensagens[-1]["content"]),
+                contrato=contrato, turno_id=turno_id, modelo_corporal=estado.get("modelo_corporal"))
+            if pacote_presenca is not None:
+                return concluir(pacote_presenca)
             plano_historico = estado.get("plano_turno_atual")
             if (isinstance(plano_historico, dict)
                 and str(plano_historico.get("id")) == str(turno_id)
@@ -653,6 +669,20 @@ class ContextoPromptRuntime:
                 pedidos_recentes=contrato.get("respostas_recentes_evitar") or (),
             )), contexto_fechado=True))
         projetadas = [dict(item) for item in mensagens]
+        if identidade_atual and autoria_atual and self.base_system_prompt.strip():
+            from mente_laylay.integracao.preparacao_llm import _eh_prompt_principal_laylay
+
+            primeira = projetadas[0] if projetadas else {}
+            conteudo = str(primeira.get("content") or "")
+            possui_base = primeira.get("role") == "system" and (
+                self.base_system_prompt in conteudo or _eh_prompt_principal_laylay(conteudo)
+            )
+            if not possui_base:
+                # A rota rápida pode começar com memória vazia ou só com a
+                # instrução efêmera. A base é responsabilidade deste owner,
+                # não uma declaração do usuário nem um writer do histórico.
+                # Projeções fechadas acima conservam seu protocolo próprio.
+                projetadas.insert(0, {"role": "system", "content": self.base_system_prompt})
         # Só a ocorrência atual recebe o formato mais rico. Esta instrução
         # pertence ao envio, não ao histórico, à personalidade ou à memória.
         # Projeções fechadas acima continuam sem interpretação operacional.

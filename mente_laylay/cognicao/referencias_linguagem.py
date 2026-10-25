@@ -3,8 +3,251 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import unicodedata
+
+
+def pedido_sentido_fala_propria(texto: str) -> bool:
+    """Lê sujeito, predicado de significado e objeto deítico de uma pergunta.
+
+    O complemento identifica a fala, sem transformar sentido em causa. Leitura
+    atômica limitada: outro agente, citação e atos adicionais não são adotados.
+    Não resolve ocorrência, comprova proposição nem concede autoridade.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+
+    bruto = str(texto or '').strip()
+    if re.search(r'["“”«»\']', bruto):
+        return False
+    base = normalizar_texto_basico(bruto)
+    objeto = r'(?:isso|aquilo|essa (?:frase|parte|resposta|expressao|ideia)|esse trecho)'
+    return bool(re.fullmatch(
+        rf'o que (?:(?:voce|tu) )?(?:quis|quer) dizer(?: com {objeto})?[?!.]*', base))
+
+
+def trecho_retificacao_do_enunciador(texto: str) -> str | None:
+    """Objeto de uma retificação assertiva do usuário, não de pergunta/citação.
+
+    Sujeito omitido só vale no início da declaração, com prefixo corretivo
+    opcional. O verbo dentro de uma pergunta sobre outro ato não corrige alvo.
+    """
+    bruto = re.sub(r'\s+', ' ', str(texto or '')).strip()
+    leitura = re.fullmatch(
+        r'(?:[^?;"“”«»\']+[,;]\s*)?(?:(?:a|ah)\s+)?(?:n[aã]o(?: lay(?:lay)?)?\s+)?'
+        r'(?:eu )?(?:quis|quero) dizer\s*[:,]?\s*(?P<objeto>[^?]+)?[.!]*',
+        bruto, re.IGNORECASE)
+    return str(leitura.group('objeto') or '').strip(' .!') if leitura else None
+
+
+_PADRAO_TRECHO_CITADO = re.compile(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\'[^\'\n]*\'|‘[^’\n]*’')
+
+
+def intervalos_citados(texto: str) -> tuple[tuple[int, int], ...]:
+    """Intervalos delimitados, incluindo aspas, sem interpretar seu conteúdo."""
+    return tuple(m.span() for m in _PADRAO_TRECHO_CITADO.finditer(str(texto or '')))
+
+
+def texto_fora_de_citacoes(texto: str) -> str:
+    """Projeção para ler o ato externo; conteúdo citado continua sendo dado."""
+    return _PADRAO_TRECHO_CITADO.sub(' [citacao] ', str(texto or ''))
+
+
+def pedido_recapitulacao_dialogo(texto: str) -> bool:
+    """Escopo retrospectivo explícito; não decide fatos, fontes ou ação.
+
+    O objeto pertence à conversa compartilhada, em vez de um plano externo.
+    A recuperação posterior continua limitada e preserva o intervalo inteiro.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+    if texto_e_metalinguistico(texto):
+        return False
+    base = normalizar_texto_basico(texto_fora_de_citacoes(texto))
+    return bool(re.search(
+        r"\b(?:resuma|resume|recapitule|recapitula|relembre|relembra)\b.*"
+        r"\b(?:noss[oa]s?|conversamos|conversa|combinamos|dissemos|falamos)\b|"
+        r"\bcomo\s+(?:ficou|ficaram|esta|estao)\b.*\b(?:noss[oa]s?|combinad[oa]s?)\b",
+        base,
+    ))
+
+
+def pedido_repeticao_literal_da_fala(texto: str) -> bool:
+    """Pedido de reproduzir a fala, sem conceder autoridade a seu conteúdo."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    base=normalizar_texto_basico(texto_fora_de_citacoes(texto)).strip(' .!?')
+    return bool(re.fullmatch(
+        r"(?:repete|repita|reproduza|reproduz)\s+(?:literalmente\s+)?"
+        r"(?:(?:a\s+)?(?:mesma|ultima|sua|tua)\s+)?(?:a\s+)?"
+        r"(?:resposta|fala|frase)(?:\s+(?:anterior|literalmente|igual))?", base,
+    ))
+
+
+def pedido_consulta_fala_usuario(texto: str) -> bool:
+    """Lê consulta retrospectiva ao dizer do enunciador, não ao tema citado.
+
+    O pedido pode nomear uma categoria ausente da declaração literal. Isso
+    justifica recuperar dados do diálogo, sem inferir sua categoria, resposta,
+    verdade ou autorização. Declaração, terceiro e citação não são a consulta.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+
+    if texto_e_metalinguistico(texto):
+        return False
+    if pedido_recapitulacao_dialogo(texto):
+        return True
+    base = normalizar_texto_basico(texto_fora_de_citacoes(texto)).strip()
+    modificadores = r"(?:(?:nao|nunca|ja|antes|realmente|mesmo|tambem)\s+)*"
+    preterito = r"(?:disse|falei|contei|comentei|mencionei|afirmei|declarei|expliquei)"
+    composto = (r"(?:tinha|havia)\s+(?:dito|falado|contado|comentado|mencionado|"
+                r"afirmado|declarado|explicado)")
+    relato = (rf"(?:\beu\s+{modificadores}(?:{preterito}|{composto})\b|"
+              r"\b(?:falei|contei|comentei|mencionei|afirmei|declarei|expliquei)\b)")
+    abertura = re.sub(r"^(?:e|entao)\s+", "", base)
+    ato = re.search(relato, abertura)
+    if ato is None:
+        return False
+    prefixo = abertura[:ato.start()].strip()
+    if not prefixo:
+        return base.endswith('?')
+    outro_relato = (rf"{preterito}|{composto}|(?:falou|contou|comentou|mencionou|afirmou|"
+                    r"declarou|explicou|diz|fala|conta|comenta|menciona|afirma|declara|explica)")
+    if re.search(rf"\b(?:{outro_relato})\b", prefixo):
+        # Consultar quem relatou algo sobre o usuário não é consultar o
+        # conteúdo do relato do próprio usuário encaixado nessa oração.
+        return False
+    # A lacuna perguntada deve ligar-se ao próprio verbo de relato. Não basta
+    # encontrar uma interrogativa e um relato em orações independentes.
+    consulta = re.fullmatch(
+        r"(?P<tipo>o que|qual|quais|que|quem|onde|quando|quanto)"
+        r"(?:\s+(?P<objeto>[a-z -]{1,120}))?", prefixo)
+    if consulta:
+        objeto = str(consulta['objeto'] or '')
+        objeto = re.sub(r"^(?:(?:foi|era|e|sao|foram|eram)\s+)?", "", objeto)
+        objeto = re.sub(r"\bque$", "", objeto).strip()
+        if consulta['tipo'] in {'o que','quem','onde','quando'} and objeto:
+            return False
+        if consulta['tipo'] in {'onde','quando'} and not base.endswith('?'):
+            return False
+        # Preposição solta não fecha objeto nominal (ex.: comparação entre
+        # expressões). Outro verbo de relato antes do enunciador é outro ato.
+        return not bool(re.search(
+            r"\b(?:entre|de|do|da|dos|das|sobre|com|por|para|pra)$", objeto))
+    # A oração relativa explicita o objeto retrospectivo do resumo. A moldura
+    # antiga de recapitulação compartilhada já foi tratada acima.
+    return bool(re.fullmatch(
+        r"(?:resuma|resume|recapitule|recapitula|relembre|relembra)\s+"
+        r"[a-z -]{1,120}\s+que", prefixo))
+
+
+@dataclass(frozen=True, slots=True)
+class PerspectivaEnunciador:
+    """Papéis do canal capturados pelo host, não prova do conteúdo relatado."""
+    turno_id: str
+    texto_usuario: str
+    falante_entrada: str = field(default="usuario", init=False)
+    autora_resposta: str = field(default="laylay", init=False)
+    autoriza_execucao: bool = field(default=False, init=False)
+    comprova_fato: bool = field(default=False, init=False)
+
+    def vigente(self, texto_usuario: str, turno_id: object) -> bool:
+        return bool(self.turno_id and self.texto_usuario
+            and str(turno_id) == self.turno_id and texto_usuario == self.texto_usuario)
+
+    def para_prompt(self) -> dict[str, object]:
+        return {"falante_entrada": self.falante_entrada, "autora_resposta": self.autora_resposta,
+                "origem": "papeis_do_canal", "autoriza_execucao": False, "comprova_fato": False}
+
+
+def predicado_consulta_modo_pessoal(texto: str) -> str:
+    """Lê modo de atividade do enunciador; não prova a atividade ou seus detalhes.
+
+    O consumidor ainda precisa vincular um relato íntegro. Orientação modal,
+    citação, metalinguagem e outros atos/agentes não fornecem esse vínculo.
+    Não depende do verbo de uma habilidade ou do nome de um objeto.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+    if intervalos_citados(texto) or texto_e_metalinguistico(texto):
+        return ""
+    base = normalizar_texto_basico(texto).strip(" .!?")
+    m = re.fullmatch(r"(?:como|de que modo|de que maneira)\s+eu\s+(?P<predicado>[^.!?;]+)", base)
+    if m is None or re.match(
+        r"(?:posso|poderia|devo|deveria|consigo|conseguiria|vou|iria|faria|"
+        r"faco|quero|gostaria)\b", m["predicado"],
+    ):
+        return ""
+    return "eu " + m["predicado"]
+
+
+def divergencias_perspectiva_enunciador(texto_usuario: str, fala: str) -> tuple[str, ...]:
+    """Recorte lexical de posse, futuro com objeto e relato explicitamente 'eu'.
+
+    Compara o mesmo núcleo nominal/predicado, sem reescrever texto. Aspas são
+    conteúdo; metalinguagem e sujeitos concorrentes não autorizam atribuir uma
+    pessoa única. Não resolve paráfrase, objeto implícito ou verdade factual.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+
+    if texto_e_metalinguistico(texto_usuario):
+        return ()
+    entrada = normalizar_texto_basico(texto_fora_de_citacoes(texto_usuario))
+    resposta = normalizar_texto_basico(texto_fora_de_citacoes(fala))
+    if re.search(r"\b(?:eu\s+ou\s+(?:voce|tu)|(?:voce|tu)\s+ou\s+eu)\b", entrada):
+        return ()
+    divergencias = []
+
+    def adocao_positiva(inicio: int, base: str = resposta) -> bool:
+        prefixo = re.split(r"[.!?;,]", base[:inicio])[-1]
+        return not re.search(
+            r"\b(?:nao|nunca|jamais|nem)\s+(?:(?:e|era|sou|seria|sera)\s+)?(?:eu\s+que\s+)?$",
+            prefixo,
+        )
+
+    # O mesmo nome com possuidores concorrentes não escolhe uma identidade.
+    posses: dict[str, set[str]] = {}
+    for m in re.finditer(r"\b(?P<pessoa>meu|minha|meus|minhas|seu|sua|seus|suas)\s+(?P<nucleo>[a-z]+)\b", entrada):
+        posses.setdefault(m["nucleo"], set()).add("usuario" if m["pessoa"].startswith("m") else "outro")
+    for m in re.finditer(r"\b(?:meu|minha|meus|minhas)\s+(?P<nucleo>[a-z]+)\b", resposta):
+        if posses.get(m["nucleo"]) == {"usuario"} and adocao_positiva(m.start()):
+            divergencias.append("posse:" + m["nucleo"])
+    pergunta_futuro = re.compile(
+        r"\b(?:qual|quais|que)\s+(?:(?:e|sao)\s+)?(?:(?:o|a|os|as)\s+)?"
+        r"(?P<nucleo>[a-z]+)\s+(?:que\s+)?eu\s+vou\s+(?P<verbo>[a-z]+r)\b")
+    for m in pergunta_futuro.finditer(entrada):
+        # Não confundir 'vou usar seu exemplo' com assumir o caderno perguntado.
+        predicado = (rf"\b(?:eu\s+)?vou\s+{re.escape(m['verbo'])}\s+"
+                     rf"(?:(?:o|a|os|as|um|uma|uns|umas)\s+)?{re.escape(m['nucleo'])}\b")
+        if any(adocao_positiva(a.start()) for a in re.finditer(predicado, resposta)):
+            divergencias.append("plano:" + m["verbo"] + ":" + m["nucleo"])
+    futuro_relato = (r"\b(?:eu\s+)?vou\s+(?P<verbo>[a-z]+r)\s+"
+                     r"(?:(?:o|a|os|as|um|uma|uns|umas)\s+)?(?P<nucleo>[a-z]+)\b")
+    for m in re.finditer(futuro_relato, entrada):
+        # Determinante/preposição não é núcleo nominal. Sem objeto explícito
+        # neste recorte, não presumir identidade entre os dois predicados.
+        if (m['nucleo'] in {'meu','minha','meus','minhas','seu','sua','seus','suas',
+                           'para','pra','de','do','da','em','com','por','ao'}
+            or not adocao_positiva(m.start(), entrada)):
+            continue
+        predicado = (rf"\b(?:eu\s+)?vou\s+{re.escape(m['verbo'])}\s+"
+                     rf"(?:(?:o|a|os|as|um|uma|uns|umas)\s+)?{re.escape(m['nucleo'])}\b")
+        if any(adocao_positiva(a.start()) for a in re.finditer(predicado, resposta)):
+            divergencias.append("plano:" + m["verbo"] + ":" + m["nucleo"])
+    # Relato de fala: sujeito explícito evita decidir 'disse' elíptico (eu/ele).
+    relato = (r"\beu\s+(?P<verbo>disse|falei|contei|comentei|mencionei|afirmei|declarei|expliquei)"
+              r"\s+que\s+(?:(?:o|a|os|as|meu|minha|meus|minhas)\s+)?(?P<nucleo>[a-z]+)\b")
+    for m in re.finditer(relato, entrada):
+        predicado = (rf"\beu\s+{re.escape(m['verbo'])}\s+que\s+"
+                     rf"(?:(?:o|a|os|as|meu|minha|meus|minhas|seu|sua)\s+)?{re.escape(m['nucleo'])}\b")
+        if re.search(predicado, resposta):
+            divergencias.append("relato:" + m["verbo"] + ":" + m["nucleo"])
+    # Grupo coordenado explícito: preserva o mesmo parceiro e predicado,
+    # sem decidir a referência de 'nós' isolado nem substituir pronomes.
+    grupo = (r"\beu\s+e\s+(?:(?:o|a)\s+)?(?P<parceiro>[a-z]+(?:\s+[a-z]+){0,2}?)"
+             r"\s+(?P<auxiliar>[a-z]+mos)\s+(?P<verbo>[a-z]+(?:ando|endo|indo))\b")
+    for m in re.finditer(grupo, entrada):
+        predicado = (rf"\beu\s+e\s+(?:(?:o|a)\s+)?{re.escape(m['parceiro'])}\s+"
+                     rf"{re.escape(m['auxiliar'])}\s+{re.escape(m['verbo'])}\b")
+        if any(adocao_positiva(a.start()) for a in re.finditer(predicado, resposta)):
+            divergencias.append("grupo:" + m["parceiro"] + ":" + m["verbo"])
+    return tuple(dict.fromkeys(divergencias))
 
 
 def agente_explicacao_causal(texto: str) -> tuple[str, bool]:

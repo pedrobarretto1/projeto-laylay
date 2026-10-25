@@ -73,7 +73,7 @@ def test_busca_lite_revela_link_original_e_dominio_real() -> None:
     assert _dominio(hits[0]["url"]) == "todamateria.com.br"
 
 
-def test_fonte_seleciona_definicao_completa_em_vez_de_cortar_paragrafo() -> None:
+def test_fonte_preserva_bloco_da_definicao_em_vez_de_cortar_contexto() -> None:
     url = "https://escola.example/plantas"
     introducao = "Plantas são observadas em jardins e espaços educativos. " * 8
     definicao = "Plantas perenes podem viver por muitos anos e voltar a florescer."
@@ -83,9 +83,10 @@ def test_fonte_seleciona_definicao_completa_em_vez_de_cortar_paragrafo() -> None
 
     fonte = _ler_fonte({"url": url, "titulo": "Plantas perenes", "alvo": "perenes"}, "plantas perenes", get)
     assert fonte is not None
+    assert fonte["trecho"] == " ".join((introducao + " " + definicao).split())
     assert definicao in fonte["trecho"]
     assert fonte["trecho"].endswith(".")
-    assert len(fonte["trecho"]) <= 300
+    assert len(fonte["trecho"]) <= 850
 
 
 def test_titulo_de_busca_nao_certifica_corpo_pouco_pertinente() -> None:
