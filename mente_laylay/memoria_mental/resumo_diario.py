@@ -18,6 +18,7 @@ class MemoriaLaylay:
         enviar_mensagem: Callable[[list[dict]], str],
         agora: Callable[[], datetime] = datetime.now,
         log: Callable[[str], Any] = print,
+        pode_consolidar: Callable[[], bool] | None = None,
     ) -> None:
         self.contador = 0
         self.historico_recente: list[str] = []
@@ -25,6 +26,7 @@ class MemoriaLaylay:
         self._enviar_mensagem = enviar_mensagem
         self._agora = agora
         self._log = log
+        self._pode_consolidar = pode_consolidar or (lambda: True)
         self._pasta_memoria = os.path.abspath(pasta_memoria)
         self._lock = threading.RLock()
         self._ultima_tentativa_resumo_em: datetime | None = None
@@ -68,7 +70,7 @@ class MemoriaLaylay:
                     linha.strip()
                     for linha in pendentes.splitlines()
                     if linha.strip()
-                ][-50:]
+                ]
                 self.contador = len(self.historico_recente)
             self._log(f"📂 [MEMÓRIA] Resumo do dia {self.data_atual} carregado")
         except Exception as erro:
@@ -85,7 +87,7 @@ class MemoriaLaylay:
             if self.historico_recente:
                 conteudo += (
                     "\n\nINTERAÇÕES PENDENTES DE CONSOLIDAÇÃO:\n"
-                    + "\n".join(self.historico_recente[-50:])
+                    + "\n".join(self.historico_recente)
                 )
             temporario = self.arquivo_diario + ".tmp"
             with open(temporario, "w", encoding="utf-8") as arquivo:
@@ -109,7 +111,6 @@ class MemoriaLaylay:
             self.historico_recente.append(
                 f"[{horario}] Usuário: {usuario[:2000]} | Laylay: {resposta_ia[:2000]}"
             )
-            self.historico_recente = self.historico_recente[-50:]
             # Materializa o turno antes de chamar a LLM. Assim, encerramento,
             # timeout ou queda de energia não apagam o lote ainda não resumido.
             self.salvar_resumo_diario()
@@ -150,6 +151,10 @@ class MemoriaLaylay:
         with self._lock:
             if not self.historico_recente:
                 return
+            # Persistir o diálogo não concede à manutenção o orçamento da
+            # resposta. Admissão negada não é tentativa nem falha do modelo.
+            if not self._pode_consolidar():
+                return
             agora = self._agora()
             if self._ultima_tentativa_resumo_em is not None:
                 try:
@@ -160,7 +165,8 @@ class MemoriaLaylay:
                     return
             self._ultima_tentativa_resumo_em = agora
             self._log(f"🚀 [MEMÓRIA] Gerando resumo das últimas {len(self.historico_recente)} interações...")
-            texto_para_resumir = "\n".join(self.historico_recente)
+            lote = self.historico_recente[:50]
+            texto_para_resumir = "\n".join(lote)
             prompt = (
                 f"Resumo atual do dia:\n{self.resumo_do_dia}\n\n"
                 f"Novas interações:\n{texto_para_resumir}\n\n"
@@ -183,6 +189,6 @@ class MemoriaLaylay:
                 self._log("⚠️ [MEMÓRIA] resumo diário adiado; geração não concluída e lote preservado")
                 return
             self.resumo_do_dia = novo_resumo
-            self.historico_recente = []
-            self.contador = 0
+            self.historico_recente = self.historico_recente[len(lote):]
+            self.contador = len(self.historico_recente)
             self.salvar_resumo_diario()

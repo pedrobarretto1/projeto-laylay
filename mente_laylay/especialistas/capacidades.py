@@ -385,14 +385,16 @@ _PREDICADOS_CAPACIDADE = {
     ),
     "MEDIA_CONTROL": (
         {"acao": "controlar", "presente": ("controlo", "controla"),
+         "nominal": ("controle",),
          "objetos": ("musica", "audio", "midia")},
     ),
     "APP_OPEN": (
         {"acao": "abrir", "presente": ("abro", "abre"),
-         "objetos": ("programa", "aplicativo")},
+         "objetos": ("programa", "aplicativo", "aplicacao")},
     ),
     "IOT_CONTROL": (
         {"acao": "controlar", "presente": ("controlo", "controla"),
+         "nominal": ("controle",),
          "objetos": ("dispositivo inteligente",)},
     ),
     "CLOSE_TAB": (

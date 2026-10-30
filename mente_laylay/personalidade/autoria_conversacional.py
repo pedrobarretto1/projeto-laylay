@@ -17,6 +17,7 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
 )
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
 from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
+from mente_laylay.cognicao.continuidade_resposta import projetar_contrato_reparo_conversacional
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
 from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
@@ -102,7 +103,7 @@ def criar_fala_autoral(
         "mensagem_atual": str(texto_usuario or "").strip()[:1000],
         "sentido_minimo_a_preservar": fallback[:700],
         "foco_confirmado": dict(foco or {}),
-        "contrato_de_reparo": dict(contrato_reparo or {}),
+        "contrato_de_reparo": projetar_contrato_reparo_conversacional(contrato_reparo),
         "falas_recentes_que_nao_devem_ser_repetidas": recentes,
     }
     sistema = (

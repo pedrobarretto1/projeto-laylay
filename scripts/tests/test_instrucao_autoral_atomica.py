@@ -26,7 +26,7 @@ def test_alvos_fontes_e_contrato_atual_sobrevivem_juntos_ao_preparador(rapido, r
         {'role': 'user', 'content': plano['texto_usuario']},
     )
     pacote = negociar_autoria_com_fontes(PacotePrompt(mensagens), plano['fundamentacao_factual'], plano_autoria=plano)
-    assert pacote.contrato_saida.nome == 'autoria_por_ato_v4'
+    assert pacote.contrato_saida.nome == 'autoria_por_ato_v5'
     assert any(fato in m['content'] for m in pacote.mensagens)
     pedido = PedidoModelo.criar(pacote.mensagens, contrato_saida=pacote.contrato_saida,
         tipo_chamada='reparo_factual' if reescrita else 'principal', modo_rapido=rapido, max_tokens=1024)

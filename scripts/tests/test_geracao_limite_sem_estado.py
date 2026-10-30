@@ -66,7 +66,13 @@ def test_pergunta_relato_pedido_e_misto_nao_viram_recusa_curta(texto):
     mensagens = [{"role": "user", "content": texto}]
     pacote = registro.preparar_envio_modelo(mensagens, turno_id=81)
     assert not pacote.contexto_fechado
-    assert list(pacote.mensagens) == mensagens
+    # Autoria obrigatória acrescenta o contrato; o turno continua aberto e a
+    # entrada literal não pode virar uma tarefa fechada de recusa.
+    assert mensagens == [{"role": "user", "content": texto}]
+    assert pacote.mensagens[-1] == mensagens[-1]
+    assert pacote.contrato_saida is not None
+    esquema = pacote.contrato_saida.response_format['json_schema']['schema']
+    assert 'suporte_proposicoes' in esquema['required']
 
 
 def test_envelope_principal_nao_herda_128_tokens_da_fala_curta():
@@ -108,7 +114,9 @@ def test_orquestrador_preserva_utterance_e_envia_apenas_realizacao_do_ato(rapido
             max_tokens=pedido.max_tokens, modo_rapido=pedido.modo_rapido,
             contexto_fechado=pedido.contexto_fechado)
         assert payload["messages"] == list(pedido.mensagens)
-        return ResultadoModelo(json.dumps({"fala": fala, "comandos": []}), True)
+        dados = pedido.contrato_saida.decodificar_json(json.dumps({
+            'suporte_proposicoes':[{'texto':fala,'fontes':[]}], 'comandos':[]}))
+        return ResultadoModelo(json.dumps(dados), True)
     runtime = RespostaIARuntime(contexto_getter=lambda: {
         "marcar_inicio_turno": lambda *a, **k: None,
         "obter_turno_atual": lambda: estado["turno_atual"],
@@ -127,6 +135,7 @@ def test_orquestrador_preserva_utterance_e_envia_apenas_realizacao_do_ato(rapido
     runtime.processar(texto, origem="terminal")
     assert len(pedidos) == 1
     assert pedidos[0].contexto_fechado
-    assert pedidos[0].max_tokens == 256
+    assert pedidos[0].max_tokens >= pedidos[0].reserva_saida_tokens >= 256
+    assert pedidos[0].contrato_saida is not None
     assert {"role": "user", "content": texto} in historico
     assert "reduza o brilho" not in str(historico)  # exemplos não viram memória

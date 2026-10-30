@@ -10,6 +10,7 @@ import sys
 import textwrap
 
 import pytest
+from tests.instalacao_privada import isolar_base_do_codigo
 
 from mente_laylay.autonomia.porteiro_chrome import PorteiroChromeRuntime
 from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
@@ -152,16 +153,33 @@ def test_bool_legado_sem_receipt_nao_conclui_oferta_como_executada():
 def composicao_oferta(tmp_path_factory):
     pasta = tmp_path_factory.mktemp("oferta_abas")
     codigo = textwrap.dedent(r'''
+        import importlib.abc, importlib.machinery, importlib.util
         import json, os, sys, time
         from copy import deepcopy
-        from memoria_sqlite import MemoriaSQLite
-        inicializar = MemoriaSQLite.__init__
-        MemoriaSQLite.__init__ = lambda self, caminho, *a, **k: inicializar(
-            self, os.path.join(os.environ["LAYLAY_SONDA_SQLITE"], os.path.basename(caminho)), *a, **k)
-        from mente_laylay.integracao import instancia_unica
-        adquirir = instancia_unica.adquirir_instancia_unica
-        instancia_unica.adquirir_instancia_unica = lambda nome, **kw: adquirir(nome + ".oferta-abas-" + str(os.getpid()), **kw)
-        import laylay as root
+        from dataclasses import asdict, is_dataclass
+        from pathlib import Path
+        from types import ModuleType
+        perfil = Path(os.environ["LAYLAY_SONDA_SQLITE"])
+        raiz = Path.cwd()
+        apps = ModuleType('AppOpener')
+        apps.open = apps.close = lambda *a, **k: False
+        apps.give_appnames = lambda *a, **k: {}
+        sys.modules['AppOpener'] = apps
+        fonte = (raiz/'laylay.py').read_bytes()
+        bloco = b'PASTA_MEMORIA = os.path.join(_base_dir, "memoria")'
+        assert fonte.count(bloco)==1
+        fonte = fonte.replace(bloco,('PASTA_MEMORIA = '+repr(str(perfil/'raiz'))).encode())
+        class Loader(importlib.machinery.SourceFileLoader):
+            def get_code(self,nome):return compile(fonte,self.path,'exec')
+        class Finder(importlib.abc.MetaPathFinder):
+            def find_spec(self,nome,path=None,target=None):
+                if nome=='laylay':
+                    return importlib.util.spec_from_loader(nome,Loader(nome,str(raiz/'laylay.py')))
+        sys.meta_path.insert(0,Finder())
+        from scripts.analises.sonda_escopo_propostas_mistas import preparar_instalacao_isolada
+        root = preparar_instalacao_isolada(perfil/'simulada')
+        root._voz_runtime.definir_modo_silencioso(True,origem='teste_oferta_abas')
+        root._voz_runtime.falar = lambda *a, **k: False
         root.salvar_memoria = lambda *a, **kw: None
         root._registrar_autocorrecao_virtual = lambda *a, **kw: None
         root._composicao_turno_runtime._servicos["_coleta_entradas_neurais"] = None
@@ -209,9 +227,14 @@ def composicao_oferta(tmp_path_factory):
                 "abas_restantes": list(porteiro.abas_sugeridas),
                 "ultima_pendencia": estado.snapshot()["mental"].get("ultima_pendencia_acao"),
                 "turno": turno}
-        sys.__stdout__.write("OFERTA_ABAS " + json.dumps(saida, ensure_ascii=False) + "\n")
+        def serializar_diagnostico(valor):
+            if is_dataclass(valor):return asdict(valor)
+            raise TypeError('Tipo não previsto no diagnóstico: '+type(valor).__name__)
+        sys.__stdout__.write("OFERTA_ABAS " + json.dumps(saida, ensure_ascii=False,
+            default=serializar_diagnostico) + "\n")
     ''')
-    processo = subprocess.run([sys.executable, "-c", codigo],
+    codigo = isolar_base_do_codigo(codigo,variavel_fonte='fonte')
+    processo = subprocess.run([sys.executable, "-B", "-c", codigo],
         cwd=Path(__file__).resolve().parents[2],
         env=dict(os.environ, PYTHONIOENCODING="utf-8", LAYLAY_MASCOT_ENABLED="0",
             LAYLAY_AVATAR_ATIVO="0", LAYLAY_SONDA_SQLITE=str(pasta)),

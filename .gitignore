@@ -59,7 +59,6 @@ ABRIR_ARENA_NEURAL.bat
 .env
 .env.*
 !.env.example
-/configuracao.env
 
 # Chaves, certificados e credenciais exportadas
 *.pem

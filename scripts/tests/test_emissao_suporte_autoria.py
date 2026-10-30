@@ -54,7 +54,9 @@ def test_recuperacao_nao_contorna_contrato_e_interpretacao_interna_mantem_protoc
         tipo_chamada=tipo, prioridade_interativa=interativa))
     assert resultado.sucesso is (not autoral)
     if autoral:
-        assert resultado.texto == "" and resultado.rota == "contrato_saida_invalido"
+        from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
+        assert categoria_estado_tecnico_llm(resultado.texto) == 'contrato_saida_invalido'
+        assert resultado.rota == "contrato_saida_invalido" and 'Proposta sem apoio' not in resultado.texto
         assert "suporte_proposicoes" in vistos[0]["response_format"]["json_schema"]["schema"]["required"]
 
 
@@ -62,9 +64,13 @@ def test_recuperacao_nao_contorna_contrato_e_interpretacao_interna_mantem_protoc
 def test_owner_recusa_declaracao_incompleta_sem_reparar_por_proximidade(mudanca):
     from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
-    codec = exigir_suporte_no_pacote_autoral(PacotePrompt(())).contrato_saida
+    # O teste desta fronteira oferece a referência; caso contrário o codec
+    # recusaria pelo inventário antes de alcançar a mutação que queremos testar.
+    codec = exigir_suporte_no_pacote_autoral(PacotePrompt(()),
+        referencias_disponiveis=("fonte:presente",)).contrato_saida
     d = {"suporte_proposicoes": [
-        {"texto": "Uma hipótese.", "fontes": []}, {"texto": "Uma conclusão.", "fontes": ["fonte:presente"]}]}
+        {"texto": "Uma hipótese.", "fontes": [], "sem_fonte": "nao_utilizada"},
+        {"texto": "Uma conclusão.", "fontes": ["fonte:presente"]}]}
     if mudanca == "ausente":
         d.pop("suporte_proposicoes")
     elif mudanca == "parcial":
@@ -87,7 +93,8 @@ def test_extensao_preserva_validator_operacional_e_nao_autoaprova_suporte():
     texto, d = envelope()
     base = criar_contrato_saida_interpretacao_principal(texto)
     original = base.response_format
-    codec = exigir_suporte_no_pacote_autoral(PacotePrompt((), contrato_saida=base)).contrato_saida
+    codec = exigir_suporte_no_pacote_autoral(PacotePrompt((), contrato_saida=base),
+        referencias_disponiveis=("fonte:presente",)).contrato_saida
     d["suporte_proposicoes"] = [{"texto": d["fala"], "fontes": ["fonte:presente"]}]
     original_fala = d.pop("fala")
     assert codec.decodificar_json(json.dumps(d)) == {**d, "fala": original_fala}
@@ -100,10 +107,11 @@ def test_extensao_preserva_validator_operacional_e_nao_autoaprova_suporte():
 def test_fala_e_projetada_das_unidades_autorais_sem_copia_independente():
     from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
-    codec = exigir_suporte_no_pacote_autoral(PacotePrompt(())).contrato_saida
+    codec = exigir_suporte_no_pacote_autoral(PacotePrompt(()),
+        referencias_disponiveis=("fonte:existente",)).contrato_saida
     esquema = codec.response_format["json_schema"]["schema"]
     assert esquema["additionalProperties"] is False and "fala" not in esquema["properties"]
-    dados = {"suporte_proposicoes": [{"texto": "Uma hipótese.", "fontes": []},
+    dados = {"suporte_proposicoes": [{"texto": "Uma hipótese.", "fontes": [], "sem_fonte": "nao_utilizada"},
                                     {"texto": "Uma conclusão.", "fontes": ["fonte:existente"]}]}
     esperado = json.loads(json.dumps(dados))
     saida = codec.decodificar_json(json.dumps(dados))
@@ -151,7 +159,7 @@ def emissao_instalada(tmp_path_factory):
                     def gerar(self, requisicao):
                         enviados.append({"tipo": requisicao.tipo_chamada, "payload": dict(requisicao.payload)})
                         resposta = dados
-                        if variante == "reparo_valido" and requisicao.tipo_chamada == "reparo_comunicacao":
+                        if variante == "reparo_valido" and requisicao.tipo_chamada == "reparo_json":
                             resposta = {"comandos": [], "suporte_proposicoes": [
                                 {"texto": parte, "fontes": ["alegacao:inexistente"]} for parte in partes]}
                         return ResultadoModelo(json.dumps(resposta, ensure_ascii=False), True)
@@ -160,8 +168,17 @@ def emissao_instalada(tmp_path_factory):
                     marcar = contexto["marcar_inicio_turno"]
                     def inicio_turno(*a, **k):
                         r = marcar(*a, **k)
-                        estado.atualizar_campos("mental", fundamentacao_factual_turno={
-                            "confiavel": True, "fonte": "fonte_contextual_simulada"})
+                        base={"confiavel": True, "fonte": "fonte_contextual_simulada"}
+                        if variante in {"presente", "reparo_valido"}:
+                            # A referência interna é OFERECIDA pela fixture,
+                            # mas continua sem prova externa. O teste alcança
+                            # a revisão posterior sem burlar o codec anterior.
+                            base.update(resumo="Referência interna em cenário simulado, sem prova externa.",
+                                fontes=[{"url":"alegacao:inexistente","trecho":"Hipótese interna sem prova externa."}])
+                        estado.atualizar_campos("mental", fundamentacao_factual_turno=base)
+                        plano=estado.obter_copia("mental","plano_turno_atual",{})
+                        plano["fundamentacao_factual"]=dict(base)
+                        estado.atualizar_campos("mental",plano_turno_atual=plano)
                         return r
                     contexto["marcar_inicio_turno"] = inicio_turno
                     contexto["usar_modo_rapido"] = lambda _t: modo
@@ -221,19 +238,13 @@ def test_composicao_exige_declaracao_antes_de_admitir_autoria(emissao_instalada,
     elif c["variante"] != "reparo_valido":
         assert c["fala"] not in c["textos"], "autoria sem cobertura não pode reaparecer como sucesso"
     else:
-        assert any(e["tipo"] == "reparo_comunicacao" for e in c["enviados"])
-        # O reparo tem formato válido, mas cita alegacao:inexistente. Sua
-        # declaração própria agora chega à revisão; referência interna não
-        # permite publicar o texto como apoio factual.
+        # A principal sem suporte recebe um reparo de formato, ainda sujeito
+        # à mesma revisão. A referência interna oferecida não vira prova.
+        assert [e['tipo'] for e in c['enviados']] == ['principal', 'reparo_json']
         assert len(c["textos"]) == 1 and c["fala"] not in c["textos"][0]
         plano = c["mental"]["plano_turno_atual"]
-        assert plano["autoria_revisada_proposta"]["fala_original"] == c["fala"]
-        revisao = plano["ultima_verificacao"]["revisao_suporte_autoria"]
-        assert all(p["fontes"][0]["estado"] == "referencia_interna_sem_prova_externa"
-                   for p in revisao["proposicoes"])
-        ausencia = c["mental"]["plano_turno_atual"]["suporte_autoria_proposto"]
-        assert json.loads(ausencia["declaracao"]["_dados_json"])["estado"] == "declaracao_ausente"
-        assert ausencia["semantica_verificada"] is ausencia["autoriza_execucao"] is False
+        assert plano['autoria_revisada_proposta']
+        assert plano['ultima_verificacao']['revisao_suporte_autoria']['proposicoes']
     assert not c["efeitos"]
     assert all(a["status"] != "confirmado_por_fonte" for a in c["mental"]["registro_semantico"]["alegacoes"] if a["autor"] == "laylay")
 

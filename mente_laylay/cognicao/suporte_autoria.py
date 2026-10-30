@@ -57,7 +57,8 @@ class AutoriaRevisadaProposta:
         declaracoes = [p.declaracao.como_dict() for p in self.partes]
         if (any(d.get("estado") != "revisao_semantica_pendente"
                 or d.get("cobertura_textual") is not True for d in declaracoes)
-            or sum(len(d["proposicoes"]) for d in declaracoes) > 8):
+            or sum(len(p.get('partes') or [p['texto']])
+                   for d in declaracoes for p in d['proposicoes']) > 8):
             raise ValueError("montagem_autoral_sem_cobertura")
 
     def suporte_composto(self) -> SuporteAutoriaProposto:
@@ -67,9 +68,17 @@ class AutoriaRevisadaProposta:
                 inicio, fim = proposta["intervalo"]
                 proposicoes.append({**proposta, "intervalo": [cursor + inicio, cursor + fim]})
             cursor += len(parte.fala_original) + 1
-        return SuporteAutoriaProposto(self.turno_id, self.texto_usuario, self.fala_original,
-            SnapshotComandoIA({"estado": "revisao_semantica_pendente", "motivos": [],
-                              "cobertura_textual": True, "proposicoes": proposicoes}))
+        dados = {"estado": "revisao_semantica_pendente", "motivos": [],
+                 "cobertura_textual": True, "proposicoes": proposicoes}
+        # Uma mescla não herda silenciosamente o critério de uma das partes.
+        if len(self.partes) == 1:
+            criterio = self.partes[0].declaracao.como_dict().get('criterio_autoral_proposto')
+            if criterio is not None:
+                dados['criterio_autoral_proposto'] = criterio
+            fundamento = self.partes[0].declaracao.como_dict().get('fundamento_criterio_proposto')
+            if fundamento is not None:
+                dados['fundamento_criterio_proposto'] = fundamento
+        return SuporteAutoriaProposto(self.turno_id, self.texto_usuario, self.fala_original, SnapshotComandoIA(dados))
 
 
 def capturar_autoria_revisada(
@@ -155,21 +164,30 @@ def conferir_suporte_proposicoes(
     itens = dados.get("suporte_proposicoes")
     if not isinstance(itens, list) or not 1 <= len(itens) <= 8:
         raise ValueError("lista_de_proposicoes_invalida")
-    cursor, proposicoes = 0, []
+    cursor, proposicoes, quantidade_partes = 0, [], 0
     disponiveis = {f for f in fontes_no_contexto if type(f) is str}
     for item in itens:
-        if (not isinstance(item, dict) or set(item) - {"ato"} not in ({"texto", "fontes"}, {"texto", "fontes", "sem_fonte"})
-            or not isinstance(item["texto"], str) or not item["texto"].strip()
-            or item["texto"] != item["texto"].strip() or len(item["texto"]) > 500
+        if (not isinstance(item, dict) or set(item) - {"ato"} not in (
+                {"texto", "fontes"}, {"texto", "fontes", "sem_fonte"},
+                {"partes", "fontes"}, {"partes", "fontes", "sem_fonte"})
             or not isinstance(item["fontes"], list) or len(item["fontes"]) > 8
             or any(type(f) is not str or not f.strip() or len(f) > 200 for f in item["fontes"])
             or len(set(item["fontes"])) != len(item["fontes"])):
             raise ValueError("proposicao_malformada")
+        partes = item['partes'] if 'partes' in item else [item['texto']]
+        if (not isinstance(partes, list) or not 1 <= len(partes) <= 8
+            or any(type(p) is not str or not p.strip() or p != p.strip() or len(p) > 500 for p in partes)):
+            raise ValueError('partes_autorais_malformadas')
+        quantidade_partes += len(partes)
+        if quantidade_partes > 8:
+            raise ValueError('limite_de_partes_autorais')
         if "ato" in item and (type(item["ato"]) is not str or re.fullmatch(r"ato:[0-9a-f]{24}", item["ato"]) is None):
             raise ValueError("alvo_discursivo_malformado")
         if "sem_fonte" in item and (item["fontes"] or item["sem_fonte"] not in _MOTIVOS_SEM_FONTE):
             raise ValueError("ausencia_de_fonte_invalida")
-        literal = item["texto"]
+        # Partes são transporte da mesma proposição. Conferir fonte no texto
+        # integral impede dar apoio independente a um fragmento sem ressalva.
+        literal = ' '.join(partes)
         inicio = fala.find(literal, cursor)
         if (inicio < 0 or fala.find(literal) != inicio or fala.find(literal, inicio + 1) >= 0
             or fala[cursor:inicio].strip()):
@@ -178,6 +196,8 @@ def conferir_suporte_proposicoes(
         proposicoes.append({"texto": literal, "intervalo": [inicio, fim], "fontes": list(item["fontes"]),
             "fontes_no_contexto": [f for f in item["fontes"] if f in disponiveis],
             "fontes_ausentes": [f for f in item["fontes"] if f not in disponiveis]})
+        if 'partes' in item:
+            proposicoes[-1]['partes'] = list(partes)
         if "sem_fonte" in item:
             proposicoes[-1]["sem_fonte_declarada"] = item["sem_fonte"]
         if "ato" in item:
@@ -185,8 +205,17 @@ def conferir_suporte_proposicoes(
         cursor = fim
     if fala[cursor:].strip():
         raise ValueError("cobertura_textual_incompleta")
-    return fala, {"estado": "revisao_semantica_pendente", "motivos": [],
+    declaracao = {"estado": "revisao_semantica_pendente", "motivos": [],
                   "proposicoes": proposicoes, "cobertura_textual": True}
+    if 'criterio_autoral' in dados:
+        from mente_laylay.cognicao.criterio_autoral import validar_codigo_criterio
+        declaracao['criterio_autoral_proposto'] = validar_codigo_criterio(dados['criterio_autoral'])
+    if 'fundamento_criterio' in dados:
+        fundamento = dados['fundamento_criterio']
+        if type(fundamento) is not str or (fundamento != 'sem_fundamento' and re.fullmatch('[0-9a-f]{64}', fundamento) is None):
+            raise ValueError('fundamento_criterio_nao_contratado')
+        declaracao['fundamento_criterio_proposto'] = fundamento
+    return fala, declaracao
 
 
 def capturar_suporte_autoria_obrigatoria(
@@ -208,13 +237,8 @@ def capturar_suporte_autoria_obrigatoria(
                           "proposicoes": [], "cobertura_textual": False}))
 
 
-def segmentar_realizacao_autoral(fala: str) -> tuple[str, ...]:
-    """Divide transporte literal; não descobre proposições ou apoio semântico.
-
-    Só usa espaços isolados que podem ser repostos pelo join canônico. A
-    captura existente confere limites, unicidade das âncoras e cobertura; não
-    se corta, normaliza ou reescreve nenhum caractere da realização do owner.
-    """
+def _particionar_transporte_literal(fala: str) -> tuple[str, ...]:
+    """Divide só em espaços reponíveis, sem inferir fronteiras semânticas."""
     if type(fala) is not str or not 0 < len(fala) <= 4000 or fala != fala.strip():
         return ()
     partes: list[str] = []
@@ -227,12 +251,20 @@ def segmentar_realizacao_autoral(fala: str) -> tuple[str, ...]:
         partes.append(restante[:corte])
         restante = restante[corte + 1:]
     partes.append(restante)
+    return tuple(partes) if " ".join(partes) == fala else ()
+
+
+def segmentar_realizacao_autoral(fala: str) -> tuple[str, ...]:
+    """Realizações finitas mantêm âncoras independentes e cobertura integral."""
+    partes = _particionar_transporte_literal(fala)
+    if not partes:
+        return ()
     try:
         conferir_suporte_proposicoes({"fala": fala, "suporte_proposicoes": [
             {"texto": parte, "fontes": []} for parte in partes]})
     except ValueError:
         return ()
-    return tuple(partes) if " ".join(partes) == fala else ()
+    return partes
 
 
 def exigir_suporte_no_pacote_autoral(
@@ -254,7 +286,16 @@ def exigir_suporte_no_pacote_autoral(
                for r in referencias_disponiveis) or len(set(referencias_disponiveis)) != len(referencias_disponiveis)):
         raise ValueError("inventario_de_referencias_invalido")
     base = pacote.contrato_saida
-    if base is not None and base.nome == "autoria_por_ato_v4":
+    if base is not None and base.nome in {'autoria_livre_v5', 'autoria_referenciada_v5'}:
+        if base.nome == 'autoria_referenciada_v5':
+            formas = base.response_format['json_schema']['schema']['properties']['suporte_proposicoes']['items']['anyOf']
+            existentes = tuple(formas[0]['properties']['fontes']['items']['enum'])
+        else:
+            existentes = ()
+        if referencias_disponiveis and existentes != referencias_disponiveis:
+            raise ValueError('inventario_autoral_divergente')
+        return pacote
+    if base is not None and base.nome in {"autoria_por_ato_v4", "autoria_por_ato_v5"}:
         ramos = base.response_format["json_schema"]["schema"]["properties"]["suporte_proposicoes"]["items"]["anyOf"]
         existentes = tuple(next(r["properties"]["fontes"]["items"]["enum"]
                                 for r in ramos if r["properties"]["fontes"].get("minItems") == 1))
@@ -268,11 +309,13 @@ def exigir_suporte_no_pacote_autoral(
             raise ValueError("inventario_autoral_divergente")
         # Uma recuperação que já recebe o codec não pode enfraquecer o catálogo.
         return pacote
+    from mente_laylay.cognicao.contratos_turno import TIPOS_INTERACAO_IA
+
     objeto = {"type": "object", "additionalProperties": True}
     esquema = (base.response_format["json_schema"]["schema"] if base is not None else {
         "type": "object", "properties": {
             "emocao": {"type": "string"}, "nivel_emocao": {"type": "integer"},
-            "tipo_interacao": {"type": "string"},
+            "tipo_interacao": {"type": "string", "enum": sorted(TIPOS_INTERACAO_IA)},
             "leitura_turno": {"anyOf": [objeto, {"type": "array", "items": {
                 "anyOf": [{"type": "string"}, objeto]}}]},
             "leitura_emocional": objeto,
@@ -284,8 +327,8 @@ def exigir_suporte_no_pacote_autoral(
     esquema["properties"]["suporte_proposicoes"] = {
         "type": "array", "minItems": 1, "maxItems": 8, "items": {
             "type": "object", "additionalProperties": False, "required": ["texto", "fontes"],
-            "properties": {"texto": {"type": "string", "minLength": 1, "maxLength": 500},
-                "fontes": {"type": "array", "maxItems": 8, "uniqueItems": True,
+            "properties": {"texto": {"type": "string", "minLength": 1, "maxLength": 4000},
+                "fontes": {"type": "array", "maxItems": 8 if referencias_disponiveis else 0, "uniqueItems": True,
                     "items": {"type": "string", "minLength": 1, "maxLength": 200}}},
         },
     }
@@ -323,6 +366,10 @@ def exigir_suporte_no_pacote_autoral(
     def validar(dados: dict[str, Any]) -> None:
         if len(json.dumps(dados, ensure_ascii=False, allow_nan=False)) > 32000:
             raise ValueError("envelope_excede_limite")
+        if 'tipo_interacao' in dados and (
+            type(dados['tipo_interacao']) is not str or dados['tipo_interacao'] not in TIPOS_INTERACAO_IA
+        ):
+            raise ValueError('tipo_interacao_fora_do_contrato')
         if "fala" in dados:
             raise ValueError("fala_independente_na_autoria")
         if not set(dados).issubset(esquema["properties"]):
@@ -335,7 +382,18 @@ def exigir_suporte_no_pacote_autoral(
         if realizacoes and (tuple(p["texto"] for p in unidades) not in sequencias or fala not in realizacoes
             or (not referencias_disponiveis and any(p.get("fontes") != [] for p in unidades))):
             raise ValueError("realizacao_fora_do_contrato_base")
-        projetados = {**dados, "fala": fala}
+        canonicas = []
+        for unidade in unidades:
+            if 'partes' in unidade:
+                raise ValueError('partes_nao_negociadas_na_emissao')
+            if len(unidade['texto']) > 500 and not realizacoes:
+                partes = _particionar_transporte_literal(unidade['texto'])
+                if not partes:
+                    raise ValueError('proposicao_sem_transporte_integral')
+                canonicas.append({**{k:v for k,v in unidade.items() if k != 'texto'}, 'partes':list(partes)})
+            else:
+                canonicas.append(unidade)
+        projetados = {**dados, 'suporte_proposicoes':canonicas, "fala": fala}
         conferir_suporte_proposicoes(projetados)
         for unidade in unidades:
             if referencias_disponiveis:
@@ -344,21 +402,28 @@ def exigir_suporte_no_pacote_autoral(
                         raise ValueError("referencia_fora_do_inventario")
                 elif "sem_fonte" not in unidade:
                     raise ValueError("ausencia_de_referencia_nao_declarada")
-            elif "sem_fonte" in unidade:
-                raise ValueError("decisao_de_fonte_nao_negociada")
+            else:
+                if unidade["fontes"]:
+                    raise ValueError("referencia_fora_do_inventario")
+                if "sem_fonte" in unidade:
+                    raise ValueError("decisao_de_fonte_nao_negociada")
         if base is not None:
             base.validar({k: v for k, v in projetados.items() if k != "suporte_proposicoes"})
         # A projeção só é publicada depois de ambos os contratos passarem.
+        dados['suporte_proposicoes'] = canonicas
         dados["fala"] = fala
 
-    nome = "autoria_referenciada_v3" if referencias_disponiveis else "autoria_com_suporte_v2"
+    nome = (("autoria_referenciada_v3" if referencias_disponiveis else "autoria_com_suporte_v2")
+            if realizacoes else ('autoria_referenciada_v5' if referencias_disponiveis else 'autoria_livre_v5'))
     codec = ContratoSaidaEstruturada(nome, "[AUTORIA_COM_SUPORTE]", esquema, validar)
     instrucao = (
         "CONTRATO DE AUTORIA COM SUPORTE: nesta emissão não escreva o campo fala. "
         "Escreva sua resposta em suporte_proposicoes, obrigatório, na forma "
         '[{"texto":"primeira proposição da resposta","fontes":[]}]. '
         "O host junta os textos na ordem para formar a fala, sem alterar palavras. "
-        "Uma unidade por proposição, até oito unidades de 500 caracteres, sem repetição ambígua. "
+        "Uma unidade por proposição completa, até oito proposições e 4000 caracteres na resposta inteira, sem repetição ambígua. "
+        "Não corte uma palavra ou ideia para caber em 500 caracteres: o host divide o transporte "
+        "em até oito partes de 500, preservando integralmente cada proposição e suas referências. "
         "Use fontes=[] quando não houver ID disponível; não invente fontes. IDs são referências propostas, "
         "não prova de verdade ou implicação. Não declare verificação nem autorização. "
         "Preserve todas as outras restrições do turno e o schema do transporte. Não emita marcadores ou Markdown."
@@ -397,7 +462,7 @@ def vincular_atos_no_pacote_autoral(pacote: PacotePrompt, *, plano: dict[str, An
     from mente_laylay.cognicao.validacao_contrato_fala import inventariar_atos_autoria
     from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
     base = pacote.contrato_saida
-    if (pacote.contexto_fechado or base is None or base.nome != "autoria_referenciada_v3"
+    if (pacote.contexto_fechado or base is None or base.nome not in {"autoria_referenciada_v3", "autoria_referenciada_v5"}
         or not pacote.mensagens or pacote.mensagens[-1].get("role") != "user"):
         return pacote
     consulta = pacote.mensagens[-1].get("content")
@@ -448,9 +513,12 @@ def vincular_atos_no_pacote_autoral(pacote: PacotePrompt, *, plano: dict[str, An
             raise ValueError("atos_autorais_sem_cobertura_ordenada")
         projetados = {**dados, "suporte_proposicoes": [{k: v for k, v in i.items() if k != "ato"} for i in itens]}
         base.validar(projetados)
+        dados['suporte_proposicoes'] = [
+            {**p, 'ato':original['ato']} for p, original in zip(projetados['suporte_proposicoes'], itens)]
         dados["fala"] = projetados["fala"]
 
-    codec = ContratoSaidaEstruturada("autoria_por_ato_v4", "[AUTORIA_POR_ATO]", esquema, validar)
+    codec = ContratoSaidaEstruturada("autoria_por_ato_v5" if base.nome == 'autoria_referenciada_v5' else 'autoria_por_ato_v4',
+                                    "[AUTORIA_POR_ATO]", esquema, validar)
     mensagens = [dict(m) for m in pacote.mensagens]
     # Âncoras, ocorrência e certificados ficam no host. Para escolher o alvo,
     # a autora só precisa do ID, tipo e conteúdo; opções já estão no schema.

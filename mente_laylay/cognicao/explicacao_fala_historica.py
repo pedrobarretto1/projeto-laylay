@@ -104,9 +104,15 @@ def vincular_explicacoes_por_ato(
         return None
 
 
+def tem_obrigacao_historica_por_ato(fonte: ExplicacoesHistoricasPorAto | None) -> bool:
+    """Contexto do conjunto não cria obrigação histórica em atos sem vínculo."""
+    return type(fonte) is ExplicacoesHistoricasPorAto and any(
+        p.ocorrencia is not None or p.fala is not None or p.falha_fonte for p in fonte.partes)
+
+
 def realizacoes_explicacoes_por_ato(fonte: ExplicacoesHistoricasPorAto, *, agora: float | None = None) -> tuple[str, ...]:
     """Uma resposta conjunta, preservando a cobertura e os limites de cada parte."""
-    if type(fonte) is not ExplicacoesHistoricasPorAto:
+    if not tem_obrigacao_historica_por_ato(fonte):
         return ()
     respostas = []
     for parte in fonte.partes:

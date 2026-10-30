@@ -125,6 +125,19 @@ def resultados_composicao_principal() -> dict:
         estado = root._estado_compartilhado_runtime
         root._composicao_turno_runtime._servicos["_coleta_entradas_neurais"] = None
         callback = root._resposta_ia_runtime._contexto()["validar_comandos_planejados"]
+        def proposta_vigente(intent):
+            # O controle deve chegar ao vínculo de turno com uma operação
+            # viável. Reusar o escopo publicado pelo owner real evita inventar
+            # parâmetros, aliases IoT ou um alvo diferente do retificado.
+            # A resolução é lazy: uma lista vazia termina antes de publicar
+            # escopo. O candidato incompleto apenas consulta esse diagnóstico;
+            # a operação válida é a devolvida pelo owner, não o placeholder.
+            escopo = callback([{"intent":intent,"params":{}}]).get("escopo_operacional_por_ato") or []
+            candidatos = [a["pedido"] for a in escopo if a["pedido"]["intent"] == intent]
+            if escopo:
+                assert len(candidatos) == 1, (intent, escopo)
+                return candidatos[0]
+            return {"intent": intent, "params": {}}
         for texto, intent in [
             ("cria a playlist foco", "PLAYLIST_CREATE"),
             ("liga a lâmpada", "IOT_CONTROL"),
@@ -139,8 +152,9 @@ def resultados_composicao_principal() -> dict:
             estado.mental.update(
                 turno_atual=turno, plano_turno_atual=plano, retrato_turno_atual=retrato,
             )
-            autorizado = {"intent": intent, "params": {}}
+            autorizado = proposta_vigente(intent)
             controle = callback([autorizado])
+            vazio = callback([{"intent":intent, "params":{}}])
             outro_texto = "apaga o arquivo foco"
             outro_turno = classificar_modalidade_turno(outro_texto)
             outro_turno["id"] = int(turno["id"]) + 1
@@ -151,6 +165,7 @@ def resultados_composicao_principal() -> dict:
             proposta = {"intent": "DELETE_ITEM", "params": {}}
             resultados["trocas"][texto] = {
                 "controle": controle,
+                "proposta": autorizado, "parametros_vazios": vazio,
                 "ids": [retrato["id"], outro_retrato["id"]],
                 "permitidos_estrangeiros": outro_retrato["intents_permitidos"],
                 "resultado": callback([proposta]),
@@ -166,8 +181,9 @@ def resultados_composicao_principal() -> dict:
             turno = root._iniciar_planejamento_turno(texto, origem="teste_composicao")
             plano = estado.mental["plano_turno_atual"]
             retrato = estado.mental["retrato_turno_atual"]
-            comando = {"intent": intent, "params": {}}
+            comando = proposta_vigente(intent)
             resultados["inicio"][texto] = {
+                "proposta": comando,
                 "ids": [turno["id"], plano["id"], retrato["id"]],
                 "autoriza_turno": turno["autoriza_execucao"],
                 "resultado": callback([comando]),
@@ -239,7 +255,7 @@ def resultados_composicao_principal() -> dict:
             ("abre a Calculadora", "APP_OPEN"),
         ]:
             turno = root._iniciar_planejamento_turno(texto, origem="teste_vinculo")
-            comando = {"intent": intent, "params": {}}
+            comando = proposta_vigente(intent)
             principal = ContratoPropostaPrincipal(
                 turno_id=turno["id"], texto_usuario=texto,
                 resposta_bruta=json.dumps({"fala":"Vou verificar.", "comandos":[comando]}),
@@ -348,7 +364,9 @@ def resultados_composicao_principal() -> dict:
                 "normalizacao_completa": contrato.extracao_original.normalizacao_completa,
                 "decisao": estado.mental["plano_turno_atual"]["decisao_turno"],
             }
-        sys.__stdout__.write("COMPOSICAO_CONTRATOS " + json.dumps(resultados, ensure_ascii=False) + "\\n")
+        # Só a projeção de diagnóstico vira JSON; o runtime mantém os tipos
+        # nativos. Recusar objetos desconhecidos, em vez de ocultá-los com str.
+        sys.__stdout__.write("COMPOSICAO_CONTRATOS " + json.dumps(resultados, ensure_ascii=False, default=asdict) + "\\n")
     ''')
     ambiente = dict(os.environ, PYTHONIOENCODING="utf-8")
     processo = subprocess.run(
@@ -421,10 +439,14 @@ def test_callback_da_composicao_recusa_retrato_de_outro_turno(
 ) -> None:
     dados = resultados_composicao_principal["trocas"][texto]
     # A composição real aceita o pedido atual antes da troca controlada.
-    autorizado = {"intent": intent, "params": {}}
+    autorizado = dados['proposta']
+    assert autorizado['intent'] == intent
     controle = dados["controle"]
     assert controle["autoriza_execucao"] is True
     assert controle["comandos"] == [autorizado]
+    if autorizado['params']:
+        assert dados['parametros_vazios']['comandos'] == []
+        assert dados['parametros_vazios']['rejeitados']
     assert dados["ids"][0] != dados["ids"][1]
     assert "DELETE_ITEM" in dados["permitidos_estrangeiros"]
     resultado = dados["resultado"]
@@ -449,7 +471,8 @@ def test_filtro_da_composicao_aceita_snapshot_publicado_pelo_inicio_real(
     assert dados["autoriza_turno"] is True
     resultado = dados["resultado"]
     assert resultado["autoriza_execucao"] is True, resultado["rejeitados"]
-    assert resultado["comandos"] == [{"intent": intent, "params": {}}]
+    assert dados['proposta']['intent'] == intent
+    assert resultado["comandos"] == [dados['proposta']]
 
 
 @pytest.mark.parametrize(("texto", "alegacao"), [

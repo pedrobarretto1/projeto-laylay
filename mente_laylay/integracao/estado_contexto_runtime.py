@@ -118,18 +118,21 @@ class EstadoContextoRuntime:
 
     def renovar_sessao_conversa(self, motivo: str = "nova_sessao", ativa: bool = True) -> None:
         estado = self._estado()
-        mental, conversa, mensagens = renovar_contexto_sessao(
-            estado.mental,
-            estado.conversacional,
-            list(estado.memoria_conversa.get("messages", []) or []),
-            motivo=motivo,
-            ativa=ativa,
-        )
-        estado.substituir("mental", mental)
-        estado.substituir("conversacional", conversa)
-        memoria = dict(estado.memoria_conversa)
-        memoria["messages"] = mensagens
-        estado.substituir("memoria_conversa", memoria)
+        def renovar(retratos: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+            atual = retratos['mental']
+            turno = atual.get('turno_atual') or {}
+            ocorrencia = (ContratoOcorrenciaTurno(turno.get('id'), atual.get('ultima_entrada', ''))
+                if motivo == 'despedida_usuario' and ativa is False and isinstance(turno, dict) else None)
+            mental, conversa, mensagens = renovar_contexto_sessao(
+                atual, retratos['conversacional'],
+                list(retratos['memoria_conversa'].get('messages', []) or []),
+                motivo=motivo, ativa=ativa, ocorrencia_em_conclusao=ocorrencia)
+            memoria = dict(retratos['memoria_conversa'])
+            memoria['messages'] = mensagens
+            return {'mental': mental, 'conversacional': conversa, 'memoria_conversa': memoria}
+        # A limpeza e a preservação da ocorrência são uma publicação única.
+        # Nenhum leitor vê o frame apagado entre dois setters de sessão.
+        estado.atualizar_dominios(('mental', 'conversacional', 'memoria_conversa'), renovar)
         print(f"🧹 [SESSÃO] contexto transitório renovado | motivo={motivo} | ativa={ativa}")
 
     def contexto_conversa_natural(self) -> Dict[str, Any]:

@@ -9,6 +9,9 @@ import time
 import unicodedata
 import urllib.parse
 import html as html_lib
+import hashlib
+import json
+from dataclasses import dataclass, asdict
 from collections.abc import Callable
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -21,6 +24,27 @@ def _normalizar_texto_curto_basico(texto: str) -> str:
     sem_acento = unicodedata.normalize("NFKD", bruto)
     sem_acento = "".join(ch for ch in sem_acento if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", sem_acento).strip()
+
+
+@dataclass(frozen=True)
+class CategoriaEntidadeLida:
+    nome: str
+    categoria: str
+    entidade_id: str
+    classe_id: str
+    claim_id: str
+    url: str
+    documento_sha256: str
+    obtida_em: float
+    expira_em: float
+
+    def vigente(self, nome: str, categoria: str, agora: float) -> bool:
+        normalizar = lambda t: re.sub(r'\s+', ' ', unicodedata.normalize('NFC', t).casefold()).strip()
+        return bool(normalizar(nome) == normalizar(self.nome) and categoria == self.categoria
+                    and self.obtida_em <= agora < self.expira_em)
+
+    def como_dict(self) -> dict:
+        return asdict(self)
 
 
 def normalizar_tema_pesquisa(tema: str) -> str:
@@ -80,6 +104,25 @@ def pontuar_hit_tema(
     if "(" in titulo or ")" in titulo:
         score -= 4
     return score
+
+
+def _fontes_pagina_wikipedia(pagina: dict, idioma: str) -> list[dict]:
+    """Preserva um parágrafo inteiro da página efetivamente lida pela API.
+
+    Resumos de apresentação podem ser cortados; fontes para conferência não.
+    Resultado de busca e Abstract/RelatedTopics nunca passam por este produtor.
+    """
+    titulo = str(pagina.get('title') or '').strip()
+    paragrafos = [p.strip() for p in str(pagina.get('extract') or '').splitlines() if p.strip()]
+    if not titulo or not paragrafos or idioma not in {'pt', 'en'}:
+        return []
+    trecho = re.sub(r'\s+', ' ', paragrafos[0]).strip()
+    if not 0 < len(trecho) <= 850 or not trecho.endswith(('.', '!', '?')):
+        return []
+    return [{'titulo': titulo,
+        'url': f'https://{idioma}.wikipedia.org/wiki/' + urllib.parse.quote(titulo.replace(' ', '_')),
+        'dominio': f'{idioma}.wikipedia.org', 'trecho': trecho,
+        'origem_leitura': 'api_extrato_pagina'}]
 
 
 def pesquisar_contexto_tema(
@@ -163,7 +206,7 @@ def pesquisar_contexto_tema(
                     params={
                         "action": "query",
                         "format": "json",
-                        "prop": "extracts",
+                        "prop": "extracts|pageprops",
                         "exintro": 1,
                         "explaintext": 1,
                         "redirects": 1,
@@ -188,6 +231,8 @@ def pesquisar_contexto_tema(
                             "titulo": titulo_direto,
                             "resumo": resumo_direto[:700],
                             "fonte": f"wikipedia_{lang}",
+                            "fontes": _fontes_pagina_wikipedia(pagina, lang),
+                            "entidade_wikidata": str((pagina.get('pageprops') or {}).get('wikibase_item') or ''),
                             "confianca": 0.95,
                         })
                 r = http_get(
@@ -232,7 +277,7 @@ def pesquisar_contexto_tema(
                     params={
                         "action": "query",
                         "format": "json",
-                        "prop": "extracts",
+                        "prop": "extracts|pageprops",
                         "exintro": 1,
                         "explaintext": 1,
                         "redirects": 1,
@@ -256,6 +301,8 @@ def pesquisar_contexto_tema(
                             "titulo": titulo,
                             "resumo": resumo[:420],
                             "fonte": f"wikipedia_{lang}",
+                            "fontes": _fontes_pagina_wikipedia(page, lang),
+                            "entidade_wikidata": str((page.get('pageprops') or {}).get('wikibase_item') or ''),
                             "confianca": min(0.98, 0.45 + (score_hit / 140.0)),
                         })
             except Exception as erro_wiki:
@@ -563,6 +610,66 @@ class PesquisaContextualRuntime:
     def normalizar_tema_pesquisa(self, tema: str) -> str:
         return normalizar_tema_pesquisa(tema)
 
+    def pesquisar_categoria_entidade(self, nome: str, categoria: str, *, somente_cache: bool = False) -> CategoriaEntidadeLida | None:
+        """Leitura P31 exata, no mesmo cache/worker e orçamento interativo."""
+        if categoria not in {'app', 'genero_musical'} or not 0 < len(nome) <= 100:
+            return None
+        chave = 'categoria:' + unicodedata.normalize('NFC', nome).casefold() + '|' + categoria
+        with self._prefetch_lock:
+            existente = self.cache_tema.get(chave, {}).get('data')
+        if type(existente) is CategoriaEntidadeLida and existente.vigente(nome, categoria, self.clock()):
+            return existente
+        if somente_cache:
+            return None
+        evento, recipiente, _ = self._iniciar_pesquisa(nome, 1800.0, categoria_entidade=categoria)
+        if evento is not None and evento.wait(timeout=self.orcamento_interativo_s):
+            resultado = recipiente.get('resultado')
+            if type(resultado) is CategoriaEntidadeLida and resultado.vigente(nome, categoria, self.clock()):
+                return resultado
+        return None
+
+    def _pesquisar_categoria_entidade_direto(self, nome: str, categoria: str, ttl_s: float) -> CategoriaEntidadeLida | None:
+        consulta = nome + (' app' if categoria == 'app' else ' gênero musical')
+        pagina = self._pesquisar_contexto_tema_direto(consulta, ttl_s)
+        qid = str(pagina.get('entidade_wikidata') or '')
+        if not pagina.get('ok') or not re.fullmatch(r'Q[1-9]\d*', qid):
+            return None
+        url = 'https://www.wikidata.org/wiki/Special:EntityData/' + qid + '.json'
+        get = self.requests_get or requests.get
+        resposta = get(url, headers={'User-Agent': 'LaylayAssistant/2.5 (pesquisa contextual pessoal; contato local)',
+            'Accept': 'application/json'}, timeout=4)
+        resposta.raise_for_status()
+        entidade = resposta.json().get('entities', {}).get(qid, {})
+        if entidade.get('id') != qid:
+            return None
+        normalizar = lambda t: re.sub(r'\s+', ' ', unicodedata.normalize('NFC', str(t)).casefold()).strip()
+        nomes = [v.get('value') for k, v in entidade.get('labels', {}).items() if k in {'pt', 'en', 'mul'}]
+        nomes += [v.get('value') for k, vs in entidade.get('aliases', {}).items() if k in {'pt', 'en', 'mul'} for v in vs]
+        if normalizar(nome) not in {normalizar(n) for n in nomes if isinstance(n, str)}:
+            return None
+        # Classes documentadas do vocabulário, não nomes de produtos: software,
+        # programa de computador e gênero musical. Sem inferência de subclasses.
+        classes = {'Q40056', 'Q7397'} if categoria == 'app' else {'Q188451'}
+        for claim in entidade.get('claims', {}).get('P31', []):
+            snak = claim.get('mainsnak') or {}
+            valor = snak.get('datavalue') or {}
+            classe = valor.get('value') or {}
+            if (claim.get('rank') not in {'normal', 'preferred'} or claim.get('qualifiers')
+                or snak.get('snaktype') != 'value' or snak.get('property') != 'P31'
+                or snak.get('datatype') != 'wikibase-item' or valor.get('type') != 'wikibase-entityid'
+                or classe.get('entity-type') != 'item' or classe.get('id') not in classes
+                or not str(claim.get('id') or '').startswith(qid + '$')):
+                continue
+            agora = float(self.clock())
+            prova = CategoriaEntidadeLida(nome, categoria, qid, classe['id'], claim['id'], url,
+                hashlib.sha256(json.dumps(entidade, ensure_ascii=False, sort_keys=True).encode('utf8')).hexdigest(),
+                agora, agora + min(max(0.0, ttl_s), 1800.0))
+            chave = 'categoria:' + unicodedata.normalize('NFC', nome).casefold() + '|' + categoria
+            with self._prefetch_lock:
+                self.cache_tema[chave] = {'ts': agora, 'ttl_s': ttl_s, 'data': prova}
+            return prova
+        return None
+
     def tema_pesquisa_baguncado(self, tema: str) -> bool:
         return tema_pesquisa_baguncado(tema)
 
@@ -669,12 +776,15 @@ class PesquisaContextualRuntime:
         ttl_s: float,
         *,
         foco_explicacao: str | None = None,
+        categoria_entidade: str | None = None,
     ) -> tuple[threading.Event | None, dict, bool]:
         consulta = normalizar_tema_pesquisa(tema)
         normalizar = self.normalizar_texto_curto or _normalizar_texto_curto_basico
         chave = normalizar(consulta)
         if foco_explicacao is not None:
             chave = "apoio_explicacao:" + normalizar(consulta + "|" + foco_explicacao)
+        if categoria_entidade is not None:
+            chave = 'categoria:' + unicodedata.normalize('NFC', tema).casefold() + '|' + categoria_entidade
         if not chave:
             return None, {}, False
 
@@ -688,7 +798,7 @@ class PesquisaContextualRuntime:
 
         def executar() -> None:
             try:
-                recipiente["resultado"] = (
+                recipiente["resultado"] = self._pesquisar_categoria_entidade_direto(tema, categoria_entidade, ttl_s) if categoria_entidade is not None else (
                     self.pesquisar_evidencias_multifonte(tema, ttl_s, foco=foco_explicacao)
                     if foco_explicacao is not None else self._pesquisar_contexto_tema_direto(tema, ttl_s)
                 )

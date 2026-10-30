@@ -108,9 +108,23 @@ def test_indisponibilidade_e_parcial_nao_herdam_exemplos_executaveis():
 def test_projecao_falha_aberta_para_fluxo_completo_quando_contrato_nao_e_do_turno(alvo, campo, valor):
     estado, runtime, mensagens = preparar("como eu poderia pausar a música?")
     estado[alvo][campo] = valor
+    antes = deepcopy(mensagens)
     pacote = runtime.preparar_envio_modelo(mensagens, turno_id=81)
     assert not pacote.contexto_fechado
-    assert list(pacote.mensagens) == mensagens
+    assert mensagens == antes
+    assert pacote.mensagens[0] == mensagens[0] and pacote.mensagens[-1] == mensagens[-1]
+    assert [m for m in pacote.mensagens if m['role'] != 'system'] == [
+        m for m in mensagens if m['role'] != 'system']
+    assert "Documentação da habilidade" not in str(pacote.mensagens)
+    # A guarda da projeção didática e o vínculo da autoria são independentes.
+    # Só o ID do próprio turno obsoleto impede a negociação de autoria atual;
+    # contrato didático inadequado não dispensa a declaração de suporte.
+    if alvo == 'turno_atual' and campo == 'id':
+        assert list(pacote.mensagens) == mensagens and pacote.contrato_saida is None
+    else:
+        assert pacote.contrato_saida is not None
+        schema = pacote.contrato_saida.response_format['json_schema']['schema']
+        assert 'suporte_proposicoes' in schema['required']
 
 
 def test_fonte_nao_canonica_nao_produz_documentacao():

@@ -742,6 +742,29 @@ class MapaHabilidadesRuntime:
             for nome in self.dominios_relevantes(texto, turno=turno)
             if nome in disponiveis
         )
+        documentacao = self._documentacao_explicativa(mapa, self.dominios_relevantes(texto, turno=turno))
+        predicados = [
+            {"capacidade": intent, "dominio": capacidade["dominio"], **dict(predicado)}
+            for intent, capacidade in mapa["capacidades"].items()
+            if capacidade.get("estado") == "disponivel" and capacidade["dominio"] in relevantes
+            for predicado in capacidade.get("predicados_capacidade", ())]
+        from mente_laylay.cognicao.fonte_capacidades_turno import FonteCapacidadesTurno
+        from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+        # O catálogo usa tuplas; a projeção privada declara sua conversão
+        # para árvore JSON antes do snapshot, sem relaxar a guarda deste.
+        predicados_json = [{k:list(v) if isinstance(v,tuple) else v for k,v in p.items()} for p in predicados]
+        # A documentação de ensino pode faltar por ter muitos domínios ou
+        # disponibilidade parcial. O fato conversacional vem diretamente do
+        # mesmo snapshot vivo, sem atribuir ao domínio parcial capacidade plena.
+        dominios_plenos = [nome for nome in relevantes if dominios[nome].get('estado') == 'disponivel']
+        # Léxico nominal do mesmo catálogo, não prova de disponibilidade.
+        # Permite conferir a coordenação inteira sem descartar uma restrição
+        # após o último objeto. Só predicados disponíveis dão a contradição.
+        objetos_genericos = sorted({objeto for c in mapa['capacidades'].values()
+            for p in c.get('predicados_capacidade',()) for objeto in p.get('objetos',())})
+        fonte = (FonteCapacidadesTurno(str(turno['id']), str(texto), SnapshotComandoIA({
+            'dominios_disponiveis':dominios_plenos,'predicados':predicados_json,
+            'objetos_genericos':objetos_genericos})) if turno and turno.get('id') and predicados else None)
         return {
             "fonte": "catalogo_vivo",
             "dominios_confirmados": list(disponiveis),
@@ -751,20 +774,13 @@ class MapaHabilidadesRuntime:
                 if dict(dominios.get(nome) or {}).get("estado") == "indisponivel"
             ],
             "possui_capacidades_locais": bool(disponiveis),
-            "documentacao_capacidades": self._documentacao_explicativa(
-                mapa, self.dominios_relevantes(texto, turno=turno),
-            ),
+            "documentacao_capacidades": documentacao,
             "documentacao_texto": str(texto),
             "documentacao_turno_id": dict(turno or {}).get("id"),
             # Evidência tipada privada do verificador, do MESMO snapshot.
             # Não amplia o prompt nem relê disponibilidade durante o reparo.
-            "predicados_capacidade": [
-                {"capacidade": intent, "dominio": capacidade["dominio"], **dict(predicado)}
-                for intent, capacidade in mapa["capacidades"].items()
-                if capacidade.get("estado") == "disponivel"
-                and capacidade["dominio"] in relevantes
-                for predicado in capacidade.get("predicados_capacidade", ())
-            ],
+            "predicados_capacidade": predicados,
+            "fonte_capacidades_turno": fonte,
             "autoriza_execucao": False,
         }
 

@@ -488,7 +488,9 @@ def corrigir_saida_malformada_da_ia(
     enviar_mensagem_cb: Optional[Callable[..., Any]] = None,
 ) -> Optional[Any]:
     bruto = str(resposta_bruta or "").strip()
-    if not bruto or not _saida_ia_parece_malformada(bruto):
+    from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
+    recusa_contrato = categoria_estado_tecnico_llm(bruto) == 'contrato_saida_invalido'
+    if not bruto or not (_saida_ia_parece_malformada(bruto) or recusa_contrato):
         return None
     if not callable(enviar_mensagem_cb):
         return None
@@ -508,6 +510,16 @@ def corrigir_saida_malformada_da_ia(
         "texto_usuario": str(texto_usuario or "")[:1200],
         "resposta_bruta": bruto[:1800],
     }
+    if recusa_contrato:
+        # O corpo recusado não atravessou o codec. Pedir nova autoria sobre
+        # a tarefa e as fontes do host, sem fingir que o vazio era uma resposta.
+        prompt = ('Você é Laylay. A emissão principal não obedeceu ao formato negociado. '
+            'Responda novamente à pergunta atual usando somente o contexto e as fontes '
+            'fornecidos pelo host. Preserve negações e limites; não invente apoio. '
+            'Não reproduza o estado técnico e não gere comandos. Retorne apenas o JSON '
+            'negociado, com comandos vazios. A nova resposta ainda será revisada.')
+        payload.pop('resposta_bruta')
+        payload['motivo_reparo']='contrato_saida_invalido'
     try:
         corrigida = enviar_mensagem_cb(
             [
@@ -519,6 +531,7 @@ def corrigir_saida_malformada_da_ia(
             modo_rapido=True,
             _tipo_chamada="reparo_json",
             _classe_timeout="rapida",
+            _prioridade_interativa=True,
         )
         if corrigida and str(corrigida).strip():
             candidata = re.sub(r"^```(?:json)?\s*", "", str(corrigida).strip(), flags=re.IGNORECASE)

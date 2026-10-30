@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 import json
 
-from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA, TIPOS_INTERACAO_IA
 from mente_laylay.cognicao.leitura_semantica_turno import (
     TIPOS_ATO, ESTADOS_EMOCIONAIS_USUARIO, NATUREZAS_LEITURA_EMOCIONAL,
     normalizar_leitura_semantica,
@@ -57,7 +57,7 @@ def criar_contrato_saida_interpretacao_principal(
     esquema = _objeto({
         "fala": string, "emocao": string,
         "nivel_emocao": {"type": "integer", "minimum": 1, "maximum": 3},
-        "tipo_interacao": string,
+        "tipo_interacao": {"type": "string", "enum": sorted(TIPOS_INTERACAO_IA)},
         "leitura_turno": {"type": "array", "minItems": 1, "maxItems": 8, "items": _objeto({
             "tipo": {"type": "string", "enum": sorted(TIPOS_ATO)},
             "conteudo": string, "interpretacao": interpretacao,
@@ -86,6 +86,8 @@ def criar_contrato_saida_interpretacao_principal(
     def validar(dados: dict[str, Any]) -> None:
         # Snapshot valida a árvore JSON; codec também recusa duplicatas e NaN.
         SnapshotComandoIA(dados)
+        if type(dados.get('tipo_interacao')) is not str or dados['tipo_interacao'] not in TIPOS_INTERACAO_IA:
+            raise ValueError('tipo_interacao_fora_do_contrato')
         if set(dados) != set(esquema["properties"]) or any(
             not isinstance(dados[k], str) for k in ("fala", "emocao", "tipo_interacao")
         ) or type(dados["nivel_emocao"]) is not int or not 1 <= dados["nivel_emocao"] <= 3:

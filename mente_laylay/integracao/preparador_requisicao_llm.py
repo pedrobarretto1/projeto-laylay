@@ -117,6 +117,22 @@ class PreparadorRequisicaoLLMRuntime:
         if pedido.tipo_chamada == "presenca_evento":
             # Contrato tipado do host, nunca inferido de conteúdo user/página.
             payload["_laylay_preservar_evento_sistema"] = True
+        if pedido.contexto_canal is not None:
+            # A seleção histórica pode descartar sistemas auxiliares. O
+            # enquadramento nativo do canal não é histórico, página ou fala.
+            # Aplicá-lo depois da seleção; o prefixo acompanha também o
+            # contrato principal nas compactações posteriores do transporte.
+            contexto = pedido.contexto_canal
+            instrucao = (
+                f'CONTEXTO DO CANAL {contexto.canal}: interlocutor={contexto.interlocutor}. '
+                'Este enquadramento não comprova fatos nem autoriza efeitos. '
+                + contexto.instrucao + '\n\n')
+            mensagens = [dict(m) for m in payload.get('messages',())]
+            if mensagens and mensagens[0].get('role')=='system':
+                mensagens[0]['content']=instrucao+str(mensagens[0].get('content') or '')
+            else:
+                mensagens.insert(0,{'role':'system','content':instrucao})
+            payload['messages']=mensagens
         if pedido.contrato_saida is not None:
             # Negociação explícita do host. Texto/user não pode escolher schema.
             payload["response_format"] = pedido.contrato_saida.response_format

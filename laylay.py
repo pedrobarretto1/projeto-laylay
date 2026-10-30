@@ -1434,6 +1434,7 @@ _chrome_estado = _ChromeEstadoRuntime(
 # ====================== MEMÓRIA INTELIGENTE (Curto → Longo Prazo) ======================
 memoria_inteligente = _MemoriaLaylayRuntime(
     pasta_memoria=PASTA_MEMORIA,
+    pode_consolidar=lambda: not _orcamento_llm_turno_runtime.ha_turno_ativo(),
     enviar_mensagem=lambda mensagens: _registro_modelo_llm_runtime.enviar(
         mensagens,
         _com_tools=False,

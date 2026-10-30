@@ -119,6 +119,9 @@ class VozRuntime:
         self._pedido_turno_pendente: dict | None = None
         self._ultima_fala_normal_ts = 0.0
         self._turno_lock = threading.Lock()
+        # Identidade da ocorrência, sem TTL textual nem dependência da chave
+        # ambiente. Só a admissão pelo worker congela a candidata definitiva.
+        self._mensagens_admitidas: set[str] = set()
         self._turno_resposta_ativo = False
         self._chave_turno_ativo = 0.0
         self.interrupt_event = interrupt_event
@@ -975,6 +978,34 @@ class VozRuntime:
                 item["done_event"].set()
                 continue
             if isinstance(item, dict):
+                with self._turno_lock:
+                    retrato = item.get("retrato_entrega")
+                    mensagem_id = (
+                        retrato.mensagem_id
+                        if isinstance(retrato, RetratoEntregaFala) else ""
+                    )
+                    duplicata = bool(
+                        mensagem_id and mensagem_id in self._mensagens_admitidas
+                    )
+                    if duplicata:
+                        item["entregue"] = False
+                        if item is self._pedido_turno_pendente:
+                            self._pedido_turno_pendente = None
+                    else:
+                        item["em_reproducao"] = True
+                        if mensagem_id:
+                            self._mensagens_admitidas.add(mensagem_id)
+                if duplicata:
+                    # Duas publicações concorrentes podem ter alcançado a
+                    # fila antes da primeira admissão. Não repetir o player
+                    # nem o callback da mesma ocorrência, mas liberar wait.
+                    if isinstance(progresso, ProgressoFala):
+                        progresso.concluir()
+                    ev = item.get("done_event")
+                    if ev is not None:
+                        ev.set()
+                    continue
+            if isinstance(item, dict):
                 enfileirado = float(item.get("enfileirado_monotonic") or 0.0)
                 if enfileirado > 0.0:
                     self._registrar_metrica_voz(
@@ -993,8 +1024,6 @@ class VozRuntime:
             for pedido in lote:
                 if not isinstance(pedido, dict) or not pedido.get("dinamizar", True):
                     continue
-                with self._turno_lock:
-                    pedido["em_reproducao"] = True
                 pedido["texto"] = ajustar_abertura_repetida(
                     pedido.get("texto", ""),
                     self.aberturas_fala_recentes,
@@ -1782,6 +1811,13 @@ class VozRuntime:
             # para o terminal e para o roteiro.
             self._exibir_fala_sem_audio(texto, emocao, nivel)
             return not _proativa
+        mensagem_id = (
+            _retrato_entrega.mensagem_id
+            if isinstance(_retrato_entrega, RetratoEntregaFala) else ""
+        )
+        with self._turno_lock:
+            if mensagem_id and mensagem_id in self._mensagens_admitidas:
+                return False
         # Algumas rotas convergem na mesma confirmação operacional. Se ambas
         # chegarem quase juntas, a fila não deve reproduzir a frase duas vezes.
         # A janela curta não interfere num pedido posterior de "repete".
@@ -1813,6 +1849,8 @@ class VozRuntime:
                 chave = 0.0
             if chave > 0:
                 with self._turno_lock:
+                    if mensagem_id and mensagem_id in self._mensagens_admitidas:
+                        return False
                     if chave == self._ultima_chave_turno_emitida and (
                         not isinstance(self._pedido_turno_pendente, dict)
                         or self._pedido_turno_pendente.get("em_reproducao")
@@ -1892,10 +1930,14 @@ class VozRuntime:
             "trace_context": self._obter_trace_contexto(),
             "progresso": _progresso,
         }
-        if not _proativa and _progresso is None and callable(self.chave_turno_cb):
-            with self._turno_lock:
+        with self._turno_lock:
+            # O worker pode ter admitido outra publicação enquanto este
+            # pedido era preparado fora do lock.
+            if mensagem_id and mensagem_id in self._mensagens_admitidas:
+                return False
+            if not _proativa and _progresso is None and callable(self.chave_turno_cb):
                 self._pedido_turno_pendente = pedido
-        self.fila.put(pedido)
+            self.fila.put(pedido)
         if wait:
             done_event.wait()
             return pedido.get("entregue") is True

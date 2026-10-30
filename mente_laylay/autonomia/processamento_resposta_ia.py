@@ -155,6 +155,8 @@ def resposta_precisa_continuacao_autonoma(
     texto_usuario: str,
     fala: str,
     comandos: Optional[List[Dict[str, Any]]] = None,
+    *,
+    plano: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Detecta tarefa prometida, mas ainda não entregue no turno atual.
 
@@ -170,6 +172,12 @@ def resposta_precisa_continuacao_autonoma(
         return False
     if fala_adia_resposta_sem_continuacao(resposta):
         return True
+    from mente_laylay.cognicao.redacao_discursiva import redacao_discursiva_vigente
+    if (plano and plano.get('texto_usuario') == pedido
+        and redacao_discursiva_vigente(plano) is not None):
+        # A conclusão exigida é a formulação pedida, não resolver uma equação
+        # citada no cenário. A revisão seguinte ainda confere suas afirmações.
+        return bool(_PROMESSA_ENTREGA_NO_PROXIMO_PASSO.search(resposta))
     if parece_problema_matematico(pedido):
         return not bool(_CONCLUSAO_MATEMATICA.search(resposta))
     pedido_explicito = bool(re.search(
@@ -280,6 +288,8 @@ def salvar_aprendizados_da_ia(
 
 
 def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
+    from mente_laylay.cognicao.contratos_turno import TIPOS_INTERACAO_IA
+
     original = str(resposta_bruta or "").strip()
     if not original:
         return ""
@@ -289,7 +299,7 @@ def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
         dados = json.loads(texto_pre)
         if isinstance(dados, dict):
             tipo = str(dados.get("tipo_interacao") or dados.get("tipo") or "").strip().lower()
-            if tipo in {"acao", "conversa", "aprendizado", "confirmacao"}:
+            if tipo in TIPOS_INTERACAO_IA:
                 return tipo
     except Exception:
         pass
@@ -297,7 +307,7 @@ def extrair_tipo_interacao_da_ia(resposta_bruta: Any) -> str:
         match = re.search(r'["\']?tipo_interacao["\']?\s*:\s*["\']([^"\']+)["\']', texto_pre, re.IGNORECASE)
         if match:
             tipo = match.group(1).strip().lower()
-            if tipo in {"acao", "conversa", "aprendizado", "confirmacao"}:
+            if tipo in TIPOS_INTERACAO_IA:
                 return tipo
     except Exception:
         pass
@@ -519,7 +529,8 @@ def preparar_resposta_para_execucao(
                 contexto_fechado=bool(kwargs.get("_contexto_fechado")),
                 contrato_saida=kwargs.get("_contrato_saida")),
                 dict(plano_autoria["fundamentacao_factual"]), incluir_evidencia=True, plano_autoria=plano_autoria)
-            if pacote.contrato_saida.nome not in {"autoria_referenciada_v3", "autoria_por_ato_v4"}:
+            if pacote.contrato_saida.nome not in {"autoria_referenciada_v3", "autoria_por_ato_v4",
+                                                 "autoria_referenciada_v5", "autoria_por_ato_v5"}:
                 return enviar_autoria_original(mensagens, **kwargs)
             kwargs["_contrato_saida"] = pacote.contrato_saida
             kwargs["_reserva_saida_tokens"] = pacote.reserva_saida_tokens
@@ -653,9 +664,16 @@ def preparar_resposta_para_execucao(
             # Telemetria nunca substitui a contingência que está protegendo.
             return
 
-    recuperavel_localmente = _saida_conversacional_recuperavel_localmente(bot_raw)
+    recuperavel_localmente = (
+        categoria_falha != "contrato_saida_invalido"
+        and _saida_conversacional_recuperavel_localmente(bot_raw)
+    )
     corrigida = None
-    if not recuperavel_localmente and not falha_tecnica_llm:
+    # Só a emissão principal entra nesta recuperação de formato. Uma recusa
+    # do reparo mantém sua fonte negativa; não inicia reparo sobre reparo.
+    if not recuperavel_localmente and (
+        not falha_tecnica_llm or categoria_falha == "contrato_saida_invalido"
+    ):
         corrigida = corrigir_saida_malformada_da_ia(
             texto,
             bot_raw,
@@ -677,6 +695,8 @@ def preparar_resposta_para_execucao(
                 f"⚠️ [AUTOCORREÇÃO] falha ao registrar correção da saída: {erro_registro}"
             )
         bot_raw = corrigida
+        falha_tecnica_llm = False
+        categoria_falha = ""
         registrar_log("🍪 [AUTOCORREÇÃO] Saída da IA refeita em JSON válido antes de executar.")
 
     if corrigida:
@@ -803,10 +823,13 @@ def preparar_resposta_para_execucao(
         texto,
         fala_limpa,
         comandos,
+        plano=plano_comunicacao,
     )
     if precisa_continuar and callable(enviar_mensagem_cb):
         try:
-            tarefa_matematica = parece_problema_matematico(texto)
+            from mente_laylay.cognicao.redacao_discursiva import redacao_discursiva_vigente
+            tarefa_matematica = (parece_problema_matematico(texto)
+                and redacao_discursiva_vigente(plano_comunicacao) is None)
             resposta_imediata = enviar_mensagem_cb(
                 [
                     {
@@ -849,6 +872,7 @@ def preparar_resposta_para_execucao(
                 texto,
                 fala_corrigida,
                 comandos_corrigidos,
+                plano=plano_comunicacao,
             )
             if fala_corrigida and not ainda_incompleta:
                 bot_raw = resposta_imediata

@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+FALHA_CONTRATO_SAIDA_LLM = '__LAYLAY_LLM_CONTRATO_SAIDA_INVALIDO__'
+
 
 @dataclass(frozen=True, slots=True)
 class FalhaRespostaObservada:
@@ -97,6 +99,7 @@ def categoria_estado_tecnico_llm(valor: Any) -> str:
         "laylayllmindisponivel": "indisponivel",
         "laylayllmlimitecontexto": "limite_contexto",
         "laylayllmrequisicaorecusada": "requisicao_recusada",
+        "laylayllmcontratosaidainvalido": "contrato_saida_invalido",
         # Também usado pelo orçamento/obsolescência: não comprova carga alta.
         "laylayllmocupada": "chamada_nao_disponivel",
     }.get(compacto, "")

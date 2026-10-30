@@ -1,0 +1,50 @@
+[
+  {
+    "id": "papo-012",
+    "entrada": "Agora você roubou minha reflexão, botou um lacinho poético e me devolveu, KKKKK. Tá, Lay, vou te dar o controle da novela: estamos no último episódio. Tio Vazinho é prefeito, Sir Poeirinha quer derrubá-lo, e o tapete felpudo é o vilão secreto. Qual seria a reviravolta que ninguém esperava? Pode ser completamente absurda.",
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "O tapete felpudo, ao invés de travar as rodas, começa a dançar no corredor — e a cada passo, ele revela um novo nome de aspirador escondido que ninguém viu. A reviravolta? O Tio Vazinho é só um personagem, e o verdadeiro prefeito é o próprio tapete, que agora faz campanha com o slogan: 'Poeira? Eu acho que é só um sonho de vela.' KKKK."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "papo-013",
+    "entrada": "'Poeira? Eu acho que é só um sonho de vela.' KKKKKKK, Laylay, QUE SLOGAN É ESSE? Eu não entendi absolutamente nada, o que torna tudo melhor. Um tapete dançarino deu um golpe de Estado contra dois aspiradores e agora governa o corredor. Eu me recuso a acreditar que um roteirista humano conseguiria vender essa série pra uma emissora. Mas eu assistiria à estreia com certeza. O que mais me diverte é quando você me surpreende com uma ideia completamente fora da curva.",
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "O slogan 'Poeira? Eu acho que é só um sonho de vela.' é uma piada que mistura o absurdo com a poesia: o tapete felpudo, ao invés de travar as rodas, começa a dançar — e com cada passo, revela um nome de aspirador escondido. Isso é o que torna tudo melhor: não precisamos de uma história séria para criar um mundo inteiro. Quando você me surpreende com uma ideia fora da curva, é como se o universo tivesse um segundo pulso. E eu, de fato, assistiria à estreia com certeza."
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa"
+      }
+    ]
+  },
+  {
+    "id": "papo-014",
+    "entrada": "Aí, pronto! KKKKK. Gostei mais dessa resposta curtinha do que de vinte metáforas sobre o tapete. 😄 Sabe, acho bom que nem toda conversa precise ter uma conclusão grandiosa. Às vezes basta uma piada ruim compartilhada e a liberdade de falar bobagem sem ser julgado. Hoje eu vim pra isso, e acabamos inventando uma república de eletrodomésticos. Foi uma bela noite de absoluta inutilidade produtiva.",
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "A república dos aspiradores e do tapete felpudo é o melhor exemplo de como a inutilidade pode ser tão produtiva quanto um plano de guerra. E o que mais me deu vontade foi ver você rir de uma história que ninguém escreveu pra ser verdade."
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa"
+      }
+    ]
+  }
+]

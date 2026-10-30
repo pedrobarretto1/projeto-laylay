@@ -41,6 +41,14 @@ def plano_com_fonte(fonte, pedido, fala):
     assert set(plano['contrato_fala']['atos']) == {'pergunta'}
     plano['relatos_usuario'] = [{'id': 'dialogo:usuario:1:' + hashlib.sha256(fonte.encode('utf8')).hexdigest(),
         'autor': 'usuario', 'origem': 'historico_conversa', 'status': 'relatado_pelo_usuario', 'texto': fonte}]
+    # Estes controles de autoria pressupõem que o nome é de um app. Agora
+    # explicitam essa fonte de tipo, separada da preferência do usuário.
+    from mente_laylay.cognicao.categoria_preferencia import montar_apoios_categoria_preferencia
+    from mente_laylay.integracao.catalogo_aplicativos import CatalogoAplicativosRuntime
+    apoio = montar_apoios_categoria_preferencia(plano,
+        catalogo_aplicativos=CatalogoAplicativosRuntime(apps_map={'obsidian': 'obsidian'}))
+    if apoio is not None:
+        plano['apoios_categoria_preferencia'] = apoio
     return plano
 
 
@@ -138,11 +146,14 @@ def coletar_factory(perfil: Path, *, reparo_corrigido: bool = False) -> dict:
     from scripts.tests.test_modo_pessoal_apoio_relato import CODIGO_FACTORY
     casos = [(fonte, pedido, fala) for fonte, pedido, ruim, boa in CASOS for fala in [ruim, boa]]
     codigo = CODIGO_FACTORY
+    descoberta = 'apps.give_appnames=lambda *a,**k:{}'
+    assert codigo.count(descoberta) == 1
+    codigo = codigo.replace(descoberta, "apps.give_appnames=lambda *a,**k:['obsidian']")
     if reparo_corrigido:
         bloco = "proposta={'suporte_proposicoes':[{'texto':rascunho,'fontes':[]}],'comandos':[]}"
         assert codigo.count(bloco) == 1
         # Varia somente a folha de geração no reparo; o revisor permanece real.
-        boas = {pedido: boa for _, pedido, _, boa in CASOS}
+        boas = {pedido: f'Você contou: «{fonte}».' for fonte, pedido, _, _ in CASOS}
         novo = ("fala_proposta=rascunho\n"
             "    try:tarefa=json.loads(kwargs['json']['messages'][-1]['content'])\n"
             "    except (ValueError,TypeError):tarefa={}\n"
@@ -173,6 +184,14 @@ def test_factory_entrega_reparo_apoiado_apos_rascunho_em_primeira_pessoa(tmp_pat
     prova = coletar_factory(tmp_path, reparo_corrigido=True)
     assert not prova['efeitos'] and not prova['audio_gerado']
     for i, c in enumerate(prova['casos']):
-        assert c['respostas'] == [CASOS[i // 2][3]]
+        fonte, _, _, boa = CASOS[i // 2]
+        assert c['respostas'] == [f'Você contou: «{fonte}».' if i % 2 == 0 else boa]
         assert not c['plano']['autoriza_execucao'] and not c['plano']['comandos']
-        if i % 2 == 0: assert len(c['envios']) == 2
+        if i % 2 == 0:
+            assert len(c['envios']) == 2
+            negociado = c['envios'][-1]['response_format']['json_schema']
+            assert negociado['name'] == 'autoria_com_suporte_v2'
+            unidades = negociado['schema']['properties']['suporte_proposicoes']
+            assert unidades['minItems'] == unidades['maxItems'] == 1
+            assert f'Você contou: «{fonte}».' in unidades['items']['properties']['texto']['enum']
+            assert c['rascunho'] not in unidades['items']['properties']['texto']['enum']

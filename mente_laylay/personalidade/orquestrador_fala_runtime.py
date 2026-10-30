@@ -686,6 +686,8 @@ class OrquestradorFalaRuntime:
         direcao["nivel"] = nivel
         mensagem_id = retrato_entrega.mensagem_id
         resultados_entrega = deepcopy(tuple(_resultados_entrega))
+        from mente_laylay.cognicao.opiniao_autoral import criterio_para_publicacao
+        criterio_entrega = criterio_para_publicacao(plano_antes, fala)
         contexto_humor = contexto_humor_turno(
             operacional=bool(plano_antes.get("requer_execucao")),
             modo_jogo_ativo=bool(mental_antes.get("modo_jogo_ativo")),
@@ -743,6 +745,7 @@ class OrquestradorFalaRuntime:
                             ocorrencia_id=ocorrencia_fala_id, turno_id=turno_id,
                             fala=texto_entregue, resultados=resultados_entrega,
                             canal=canal, ordem_emissao=ordem_emissao_fala,
+                            criterio_autoral=criterio_entrega,
                         )
                         return registrar_esclarecimento_proposicao_entregue(
                             {**mental, "registro_semantico": registro},

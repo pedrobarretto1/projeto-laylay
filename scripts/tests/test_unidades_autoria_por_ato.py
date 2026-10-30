@@ -108,7 +108,7 @@ def test_reescrita_total_negocia_os_mesmos_alvos_sem_usar_a_principal_como_prova
     def modelo(mensagens, **kwargs):
         vistos.append(kwargs)
         codec = kwargs.get('_contrato_saida')
-        if codec.nome != 'autoria_por_ato_v4':
+        if codec.nome != 'autoria_por_ato_v5':
             return json.dumps({'fala': 'Olá! ' + fato, 'comandos': []})
         ramos = codec.response_format['json_schema']['schema']['properties']['suporte_proposicoes']['items']['anyOf']
         social = next(r for r in ramos if r['properties']['texto'].get('enum'))
@@ -124,7 +124,7 @@ def test_reescrita_total_negocia_os_mesmos_alvos_sem_usar_a_principal_como_prova
         enviar_mensagem_cb=modelo, limpar_texto_fala_cb=lambda x: x, fallback_fala='fallback',
         memoria_sqlite=None, contexto_comunicacao={'plano_turno': plano}, log=lambda _x: None)
     assert vistos and vistos[0]['_tipo_chamada'] == 'reparo_factual'
-    assert vistos[0]['_contrato_saida'].nome == 'autoria_por_ato_v4'
+    assert vistos[0]['_contrato_saida'].nome == 'autoria_por_ato_v5'
     assert r['autoria_revisada_proposta'] is not None
     assert fato in r['fala'] and r['comandos'] == []
 

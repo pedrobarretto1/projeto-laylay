@@ -316,7 +316,8 @@ class ServicoModeloLLMRuntime:
         except (TypeError, ValueError, OverflowError, RecursionError):
             # Não recuperar JSON da prosa ou devolver resposta incompatível
             # como sucesso. A conversa conserva seu fechamento técnico.
-            return ResultadoModelo("", False, rota="contrato_saida_invalido")
+            from mente_laylay.cognicao.estado_tecnico_llm import FALHA_CONTRATO_SAIDA_LLM
+            return ResultadoModelo(FALHA_CONTRATO_SAIDA_LLM, False, rota="contrato_saida_invalido")
         return ResultadoModelo(json.dumps(dados, ensure_ascii=False, allow_nan=False),
                                True, rota=resultado.rota)
 

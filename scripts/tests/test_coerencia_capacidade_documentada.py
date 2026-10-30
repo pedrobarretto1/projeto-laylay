@@ -83,7 +83,11 @@ def test_negativa_de_capacidade_disponivel_precisa_ser_rejeitada(texto, dominio,
 
 @pytest.mark.parametrize("texto,dominio,negativa,limite", CASOS)
 def test_indisponibilidade_real_nao_deve_ser_reparada_para_capacidade(texto, dominio, negativa, limite):
-    assert avaliar(texto, dominio, negativa, disponivel=False)["aceita"]
+    resultado = avaliar(texto, dominio, negativa, disponivel=False)
+    # O catálogo indisponível impede a contradição de capacidade. Não aprova
+    # outras afirmações da mesma fala, como o estado de um player sem fonte.
+    assert "capacidade_documentada_negada" not in resultado["problemas"]
+    assert resultado["contrato_reparo"]["autoriza_execucao"] is False
 
 
 @pytest.mark.parametrize("texto,dominio,negativa,limite", CASOS)

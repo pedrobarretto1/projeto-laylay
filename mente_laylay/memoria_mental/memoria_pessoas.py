@@ -133,6 +133,22 @@ def _parece_segredo(texto: str) -> bool:
     )
 
 
+def generos_musicais_conhecidos() -> tuple[str, ...]:
+    """Mesmo vocabulário de tipo usado pela memória; não fornece preferências."""
+    return tuple(sorted(_GENEROS_MUSICAIS))
+
+
+def classificar_gosto_explicito(valor: str) -> tuple[str, str]:
+    """Léxico já usado pela memória; classifica o nome, não uma preferência."""
+    normalizado = _normalizar(valor)
+    genero = normalizado.replace('musica ', '', 1)
+    if genero in _GENEROS_MUSICAIS:
+        return 'genero_musical', genero
+    if normalizado in _ARTISTAS_CANONICOS:
+        return 'artista_musical', _ARTISTAS_CANONICOS[normalizado]
+    return 'preferencia_geral', normalizado
+
+
 class MemoriaPessoasRuntime:
     VERSAO = 1
 
@@ -392,16 +408,10 @@ class MemoriaPessoasRuntime:
     @staticmethod
     def _classificar_gosto(valor: str, preposicao: str) -> tuple[str, str]:
         """Separa preferências musicais sem depender da LLM ou perder o valor."""
-        normalizado = _normalizar(valor)
-        genero = normalizado.replace("musica ", "", 1)
-        if genero in _GENEROS_MUSICAIS:
-            return "genero_musical", genero
-        if normalizado in _ARTISTAS_CANONICOS:
-            return "artista_musical", _ARTISTAS_CANONICOS[normalizado]
         # A contração isolada não prova que algo é artista: "gosta da praia" e
         # "gosta dos gatos" também são frases válidas. Sem evidência suficiente,
         # preservamos o fato como preferência geral em vez de fabricar semântica.
-        return "preferencia_geral", normalizado
+        return classificar_gosto_explicito(valor)
 
     @staticmethod
     def _marcador_correcao(texto: str) -> bool:

@@ -260,15 +260,22 @@ def test_composicao_instalada_separa_parafrase_com_derivacao_e_conclusao_sem_apo
     plano = c['mental']['plano_turno_atual']
     assert plano['suporte_autoria_proposto']
     assert plano['fundamentacao_factual']['fontes'] == c['fundamento']['fontes']
-    revisao = plano['ultima_verificacao']['revisao_suporte_autoria']
-    unidades = revisao['proposicoes']
     if c['variante'] == 'referencia_ausente':
+        # URL não oferecida é recusada no codec, antes do parecer semântico.
+        verificacao = plano['ultima_verificacao']
+        assert verificacao['conclusao'] == 'falha_resposta_observada_verificada'
+        assert verificacao['autoriza_execucao'] is False
+        assert 'revisao_suporte_autoria' not in verificacao
+        assert [e['tipo'] for e in c['enviados']] == ['principal', 'reparo_json']
+        assert plano['falha_resposta_observada']['estado_tecnico']=='__LAYLAY_LLM_CONTRATO_SAIDA_INVALIDO__'
         declarada = json.loads(plano['suporte_autoria_proposto']['declaracao']['_dados_json'])
-        assert declarada['estado'] == 'declaracao_ausente' and not unidades
+        assert declarada['estado'] == 'declaracao_ausente'
         assert len(c['textos']) == 1 and c['parafrase'] not in c['textos'][0] and c['pendente'] not in c['textos'][0]
         assert not c['efeitos']
         assert all(a['status'] != 'confirmado_por_fonte' for a in c['mental']['registro_semantico']['alegacoes'] if a['autor'] == 'laylay')
         return
+    revisao = plano['ultima_verificacao']['revisao_suporte_autoria']
+    unidades = revisao['proposicoes']
     assert len(unidades) == 2
     assert (unidades[0]['estado'] == 'parafrase_estrutural_conferida') is (c['variante'] == 'valida'), 'primeira fronteira: falta conferir a derivação integral da paráfrase'
     assert unidades[1]['estado'] == 'apoio_semantico_pendente'
