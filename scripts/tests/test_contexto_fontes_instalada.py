@@ -96,11 +96,20 @@ def test_contexto_da_fonte_chega_inteiro_sem_liberar_fragmento_ou_extrapolacao(c
         assert all(f['trecho']==c['bloco'] for f in fontes), 'primeira fronteira: contexto removido antes da autoria'
         principal=next(e for e in c['enviados'] if e['tipo']=='principal')
         assert c['bloco'] in json.dumps(principal['payload'],ensure_ascii=False)
+    assert len(c['publicadas'])==1 and c['publicadas']==[c['verificacao']['fala']]
+    assert not c['efeitos'] and c['modo_multifonte']=='desativado'
+    if c['variante'] in {'bloco_longo','bloco_aninhado_longo'}:
+        # A fixture insiste em citar uma URL excluída antes da autoria.
+        # A recusa do codec não é um parecer de apoio que nunca foi emitido.
+        assert c['verificacao']['conclusao']=='falha_resposta_observada_verificada'
+        assert c['verificacao']['autoriza_execucao'] is False
+        assert 'revisao_suporte_autoria' not in c['verificacao']
+        assert [e['tipo'] for e in c['enviados']]==['principal','reparo_json']
+        assert c['ancora'] not in c['publicadas'][0]
+        return
     r=c['verificacao']['revisao_suporte_autoria']
     assert r['obrigacao_fonte_individual'] is True
     assert r['semantica_verificada'] is r['prova_implicacao'] is r['autoriza_execucao'] is False
-    assert len(c['publicadas'])==1 and c['publicadas']==[c['verificacao']['fala']]
-    assert not c['efeitos'] and c['modo_multifonte']=='desativado'
     completa=c['variante'] in {'integral','acrescimo','integral_aninhado'}
     assert ('«'+c['bloco']+'»' in c['publicadas'][0]) is completa
     assert 'toda execução real' not in c['publicadas'][0]

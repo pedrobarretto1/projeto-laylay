@@ -111,7 +111,7 @@ def atos_instalados(tmp_path_factory, request):
                             texto_fonte = re.search(r'\(' + re.escape(url) + r'\): ([^\n]+)', expostos[0]['content']).group(1)
                         unidades = [{'texto': social, 'fontes': [], 'sem_fonte': 'nao_utilizada'}]
                         if tipo != 'agradecimento': unidades.append({'texto': texto_fonte, 'fontes': [url]})
-                        if req.payload.get('response_format', {}).get('json_schema', {}).get('name') == 'autoria_por_ato_v4':
+                        if req.payload.get('response_format', {}).get('json_schema', {}).get('name') == 'autoria_por_ato_v5':
                             ramos = req.payload['response_format']['json_schema']['schema']['properties']['suporte_proposicoes']['items']['anyOf']
                             ramo_social = next(r for r in ramos if r['properties']['texto'].get('enum'))
                             ramo_factual = next(r for r in ramos if not r['properties']['texto'].get('enum'))
@@ -222,7 +222,7 @@ def test_reparo_total_instalado_preserva_alvos_e_revisa_suporte_proprio(atos_ins
     caso = atos_instalados[0]
     autorais = [e for e in caso['enviados'] if e['tipo'] in {'principal', 'reparo_factual', 'reparo_comunicacao'}]
     assert [e['tipo'] for e in autorais] == ['principal', 'reparo_factual']
-    assert all(e['payload']['response_format']['json_schema']['name'] == 'autoria_por_ato_v4' for e in autorais)
+    assert all(e['payload']['response_format']['json_schema']['name'] == 'autoria_por_ato_v5' for e in autorais)
     ids = []
     for e in autorais:
         ids.append({r['properties']['ato']['const'] for r in e['payload']['response_format']['json_schema']['schema']['properties']['suporte_proposicoes']['items']['anyOf']})

@@ -653,16 +653,21 @@ def construir_contrato_semantico_fala(
     recuperar_explicacao_ocorrencia: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Consolida contexto, continuidade e pareceres num contrato de fala."""
+    falas_recentes = tuple(falas_recentes)
     leitura = dict(turno or {})
     planejamento = dict(plano or {})
     funcao_dados = dict(funcao_comunicativa or {})
     estado = dict(mente or {})
     bruto = _texto_curto(texto, 500)
     base = _normalizar(bruto)
+    from mente_laylay.cognicao.presenca_conversacional import construir_fonte_presenca
+    fonte_presenca = construir_fonte_presenca(bruto, turno=leitura, plano=planejamento, mente=estado)
+    encerramento_sessao = bool(fonte_presenca and fonte_presenca.get('ato') == 'encerramento')
+    cortesia_temporal = bool(fonte_presenca and fonte_presenca.get('ato') == 'cortesia_temporal')
     anterior = _texto_curto(estado.get("ultima_resposta"), 500)
     from mente_laylay.memoria_mental.registro_semantico import construir_referencia_fala_consulta
     referencia_observada = construir_referencia_fala_consulta(texto,
-        turno_id=planejamento.get('id') or leitura.get('id'), mente=estado)
+        turno_id=planejamento.get('id') or leitura.get('id'), mente=estado, turno=leitura)
     if referencia_observada is not None:
         anterior = _texto_curto(referencia_observada.conteudo, 500)
     funcao = _texto_curto(funcao_dados.get("funcao"), 64) or "informacao"
@@ -688,17 +693,33 @@ def construir_contrato_semantico_fala(
         texto_pede_opiniao(bruto)
         or re.search(r"\b(?:voce|tu|lay|laylay)?\s*prefere\b.+\bou\b", base)
     )
-    esclarecimento = bool(
-        anterior
-        and (
-            parece_pedido_reexplicacao(bruto)
+    def pede_esclarecimento(trecho: str) -> bool:
+        return bool(
+            parece_pedido_reexplicacao(trecho)
             or re.fullmatch(
                 r"(?:como assim|por que|porque|por que mesmo|o que voce quis dizer|"
                 r"o que quis dizer)[?!.]*",
-                base,
+                _normalizar(trecho),
             )
         )
-    )
+
+    trechos_esclarecimento = [bruto]
+    segmentos = leitura.get("segmentos")
+    if (isinstance(segmentos, list) and len(segmentos) > 1
+            and leitura.get("autoriza_execucao") is False
+            and not planejamento.get("requer_execucao")
+            and not planejamento.get("comandos")
+            and all(isinstance(s, dict) and s.get("modalidade") in {"pergunta", "deliberacao"}
+                    for s in segmentos)):
+        from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+        from mente_laylay.cognicao.referencias_linguagem import intervalos_citados
+        fontes = fontes_textuais_dos_segmentos(texto, segmentos)
+        if len(fontes) == len(segmentos) and not intervalos_citados(texto):
+            # A segmentação continua sendo do interpretador. O mesmo critério
+            # atômico vale para cada fonte literal, sem resegmentar a fala ou
+            # transformar um pedido de clareza em autoridade para uma ação.
+            trechos_esclarecimento.extend(f.como_dict()["texto_original"] for f in fontes)
+    esclarecimento = bool(anterior and any(pede_esclarecimento(t) for t in trechos_esclarecimento))
     pedido_ensino_anterior = ""
     if esclarecimento:
         contrato_anterior = dict(estado.get("contrato_fala_atual") or {})
@@ -746,11 +767,12 @@ def construir_contrato_semantico_fala(
         )
         )
     )
+    from mente_laylay.cognicao.referencias_linguagem import declaracao_pessoal_de_estado
     estado_pessoal = bool(
         not metalinguagem
         and (
             tipo_social == "WELLBEING_REPLY"
-        or funcao in {"desabafo", "inseguranca", "decepcao", "frustracao"}
+        or declaracao_pessoal_de_estado(texto)
         or re.search(
             r"^(?:eu\s+)?(?:estou|to|ta|esta)\s+(?:tudo\s+)?(?:bem|mal|cansad[oa]|"
             r"triste|feliz|de boa|tranquil[oa])\b",
@@ -770,6 +792,8 @@ def construir_contrato_semantico_fala(
             base,
         )
     )
+    from mente_laylay.cognicao.referencias_linguagem import agradecimento_sem_outro_conteudo
+    agradecimento_exclusivo = agradecimento and agradecimento_sem_outro_conteudo(texto)
     adiamento = bool(re.fullmatch(
         r"(?:deixa|deixe|vamos deixar|pode deixar) (?:isso )?para depois[!?. ]*",
         base,
@@ -889,7 +913,8 @@ def construir_contrato_semantico_fala(
         else:
             obrigatorios.append("explicar literalmente a fala anterior antes de acrescentar comparação")
     if agradecimento:
-        obrigatorios.append("reconhecer o agradecimento brevemente e encerrar sem recuperar a tarefa anterior")
+        obrigatorios.append("reconhecer o agradecimento brevemente e encerrar sem recuperar a tarefa anterior"
+            if agradecimento_exclusivo else "reconhecer o agradecimento preservando os demais conteúdos atuais")
     if adiamento:
         obrigatorios.append("aceitar o adiamento em uma frase curta e literal")
     if provocacao_curta:
@@ -957,7 +982,7 @@ def construir_contrato_semantico_fala(
         proibidas.append("não explicar uma metáfora com outra metáfora")
         if pedido_ensino_anterior:
             proibidas.append("a fala anterior da assistente não é fonte factual; não repetir uma definição sem reavaliá-la")
-    if agradecimento:
+    if agradecimento_exclusivo:
         proibidas.append("não continuar, recomendar nem reabrir o assunto anterior depois do agradecimento")
     if adiamento:
         proibidas.append("não transformar um adiamento simples em metáfora, promessa ou novo assunto")
@@ -994,7 +1019,7 @@ def construir_contrato_semantico_fala(
         max_frases = 2
     if pergunta_bem_estar and not opiniao:
         max_frases = 2
-    if agradecimento or adiamento:
+    if agradecimento_exclusivo or adiamento:
         max_frases = 1
     if topico_codigo_laylay:
         max_frases = min(max_frases, 2)
@@ -1032,6 +1057,14 @@ def construir_contrato_semantico_fala(
     ):
         documentacao_capacidades = str(evidencia_capacidades.get("documentacao_capacidades") or "")
 
+    if encerramento_sessao:
+        # A decisão integral de encerrar prevalece sobre sinais lexicais de
+        # saudação/agradecimento. Isso não muda a sessão nem executa ações.
+        atos = ['encerramento_sessao']
+        obrigatorios = ['respeitar o encerramento atual e despedir-se brevemente']
+        proibidas.extend(('não reabrir pergunta, convite, oferta ou assunto após a despedida',
+                         'não reinterpretar ou contrariar a intenção de encerrar'))
+        max_frases = 2
     contrato = ContratoSemanticoFala(
         turno_id=planejamento.get("id") or leitura.get("id"),
         funcao=funcao,
@@ -1044,7 +1077,7 @@ def construir_contrato_semantico_fala(
         conteudos_obrigatorios=tuple(obrigatorios),
         inferencias_proibidas=tuple(proibidas),
         max_frases=max_frases,
-        permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not relato_explicito,
+        permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not (relato_explicito or encerramento_sessao or cortesia_temporal),
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
         fala_anterior_relevante=(
@@ -1065,6 +1098,7 @@ def construir_contrato_semantico_fala(
         autoriza_execucao=False,
     )
     contrato_base = contrato.como_dict()
+    contrato_base['agradecimento_exclusivo'] = agradecimento_exclusivo
     roteiro = construir_roteiro_geracao_concreta(
         bruto,
         contrato=contrato_base,
@@ -1072,15 +1106,39 @@ def construir_contrato_semantico_fala(
         fundamentacao_factual=planejamento.get("fundamentacao_factual"),
     )
     resultado = replace(contrato, roteiro_concreto=roteiro).como_dict()
+    resultado['agradecimento_exclusivo'] = agradecimento_exclusivo
+    from mente_laylay.cognicao.continuidade_resposta import RespostasAnterioresTurno
+    if resultado.get('turno_id') and texto and falas_recentes:
+        resultado['respostas_anteriores_turno'] = RespostasAnterioresTurno(
+            str(resultado['turno_id']), str(texto),
+            tuple(fala for fala in falas_recentes[-3:] if isinstance(fala, str) and fala.strip()),
+        )
+    from mente_laylay.cognicao.fonte_capacidades_turno import FonteCapacidadesTurno
+    fonte_capacidades = evidencia_capacidades.get('fonte_capacidades_turno')
+    if type(fonte_capacidades) is FonteCapacidadesTurno and fonte_capacidades.vigente(str(texto),resultado.get('turno_id')):
+        resultado['fonte_capacidades_turno'] = fonte_capacidades
+    if encerramento_sessao:
+        resultado['encerramento_assunto'] = 'sessao'
     from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
     if resultado.get("turno_id") and texto:
         resultado["perspectiva_enunciador"] = PerspectivaEnunciador(
             str(resultado["turno_id"]), str(texto),
         )
+    from mente_laylay.cognicao.adequacao_pessoal import construir_adequacao_pessoal
+    adequacao = construir_adequacao_pessoal(texto, turno=leitura, plano=planejamento, contrato=resultado)
+    if adequacao is not None:
+        resultado['adequacao_pessoal'] = adequacao
+        resultado['atos'] = ['adequacao_pessoal']
+        resultado['conteudos_obrigatorios'] = ['preservar a adequação ao usuário e buscar seu critério de escolha']
+        resultado['inferencias_proibidas'] = [*resultado['inferencias_proibidas'],
+            'não responder com o gosto da assistente nem inventar traços ou adequação ao usuário']
+        resultado['fala_anterior_relevante'] = ''
+        resultado['max_frases'] = 2
+        resultado['roteiro_concreto'] = construir_roteiro_geracao_concreta(bruto,
+            contrato=resultado, plano=planejamento)
+        return resultado
     if esclarecimento and referencia_observada is not None:
         resultado['referencia_fala_observada'] = referencia_observada
-    from mente_laylay.cognicao.presenca_conversacional import construir_fonte_presenca
-    fonte_presenca = construir_fonte_presenca(bruto, turno=leitura, plano=planejamento, mente=estado)
     if fonte_presenca is None and esclarecimento:
         from mente_laylay.cognicao.presenca_conversacional import construir_fonte_sentido_presenca
         from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
@@ -1107,6 +1165,17 @@ def construir_contrato_semantico_fala(
         if revisao is not None:
             resultado["revisao_alegacao"]=revisao
             return resultado
+    # Deliberar o objeto avaliativo antes de usar uma fala observada como
+    # explicação de execução. Exige critério nativo da publicação vigente;
+    # a mera ocorrência de "critério" não escolhe este owner.
+    from mente_laylay.cognicao.referencias_linguagem import consulta_relacao_criterio_autoral
+    from mente_laylay.cognicao.opiniao_autoral import construir_opiniao_autoral
+    if consulta_relacao_criterio_autoral(texto):
+        criterio_observado = construir_opiniao_autoral(texto,turno=leitura,plano=planejamento,
+            contrato=resultado,mente=estado)
+        if criterio_observado is not None and criterio_observado.modo == 'relacao_criterio':
+            resultado['opiniao_autoral'] = criterio_observado
+            return resultado
     if (leitura.get("modalidade") in {"deliberacao", "pergunta"}
         and leitura.get("autoriza_execucao") is False
         and not planejamento.get("requer_execucao") and not planejamento.get("comandos")):
@@ -1129,12 +1198,19 @@ def construir_contrato_semantico_fala(
         if consulta_historica_multipla(leitura,
                 fonte_identificada=explicacao_ocorrencia is not None or bool(evidencia)):
             # A fonte do texto inteiro não prova cobertura de cada ato.
-            from mente_laylay.cognicao.explicacao_fala_historica import vincular_explicacoes_por_ato
-            resultado["explicacoes_historicas_por_ato"] = vincular_explicacoes_por_ato(
+            from mente_laylay.cognicao.explicacao_fala_historica import vincular_explicacoes_por_ato, tem_obrigacao_historica_por_ato
+            fontes_por_ato = vincular_explicacoes_por_ato(
                 texto, turno=leitura, mente=estado, recuperar_ocorrencia=recuperar_explicacao_ocorrencia)
-        elif evidencia and referente_explicativo != "outro_agente" and (
-                citacao_literal or (explicacao_ocorrencia is None and referente_explicativo != "ocorrencia"
-                                    and (not esclarecimento or referente_explicativo == "fala"))):
+            # Disponibilidade de contexto permite tentar um vínculo, mas não
+            # obriga a explicar o passado. Uma falha só mantém esse limite se
+            # a consulta ou uma ocorrência fornecida já exigiam fonte histórica.
+            exige_historico = bool(referente_explicativo or explicacao_ocorrencia is not None
+                or consulta_historica_multipla(leitura))
+            if ((fontes_por_ato is None and exige_historico)
+                    or tem_obrigacao_historica_por_ato(fontes_por_ato)):
+                resultado["explicacoes_historicas_por_ato"] = fontes_por_ato
+        elif evidencia and referente_explicativo not in {"", "outro_agente"} and (
+                citacao_literal or (explicacao_ocorrencia is None and referente_explicativo == "fala")):
             # Recuperar o referente não decide a finalidade da pergunta.
             # Um esclarecimento já reconhecido mantém a tarefa de explicar o
             # sentido da fala. Só uma referência histórica explícita pode
@@ -1158,6 +1234,29 @@ def construir_contrato_semantico_fala(
             # negar uma ação ou reconstruir motivo pelo estado presente.
             resultado["explicacao_ocorrencia"] = ExplicacaoOcorrencia(
                 str(resultado["turno_id"]), str(texto), (), "ausente") if resultado.get("turno_id") else None
+    from mente_laylay.cognicao.opiniao_autoral import construir_opiniao_autoral
+    opiniao_autoral = construir_opiniao_autoral(texto, turno=leitura, plano=planejamento,
+        contrato=resultado, mente=estado)
+    if opiniao_autoral is not None:
+        resultado['opiniao_autoral'] = opiniao_autoral
+    from mente_laylay.cognicao.redacao_discursiva import construir_redacao_discursiva
+    redacao = construir_redacao_discursiva(texto, turno=leitura, plano=planejamento, contrato=resultado)
+    if redacao is not None:
+        resultado['redacao_discursiva'] = redacao
+        resultado['permite_metafora'] = False
+        resultado['roteiro_concreto'] = construir_roteiro_geracao_concreta(texto,
+            contrato=resultado, plano=planejamento)
+    from mente_laylay.cognicao.criacao_ficcional import construir_criacao_ficcional, construir_consulta_realidade_narrativa
+    consulta_realidade = construir_consulta_realidade_narrativa(texto,
+        plano=planejamento, contrato=resultado, mente=estado)
+    if consulta_realidade is not None:
+        resultado['consulta_realidade_narrativa'] = consulta_realidade
+    criacao = construir_criacao_ficcional(texto, plano=planejamento, contrato=resultado, mente=estado)
+    if criacao is not None and redacao is None:
+        resultado['criacao_ficcional'] = criacao
+        resultado['permite_metafora'] = True
+        resultado['roteiro_concreto'] = construir_roteiro_geracao_concreta(texto,
+            contrato=resultado, plano=planejamento)
     return resultado
 
 
@@ -1199,7 +1298,7 @@ def explicacao_exige_apoio_individual(plano: Mapping[str, Any] | None) -> bool:
     """Finalidade deliberada pelo host não depende de encontrar uma fonte.
 
     Não classifica verdade, tema ou confiança do rascunho. O mesmo roteiro
-    semântico que solicita ensino exige apoio para a explicação proposta;
+    semântico que solicita ensino ou redação exige apoio das afirmações;
     resultados operacionais continuam sob o contrato de seus receipts.
     """
     planejamento = dict(plano or {})
@@ -1210,7 +1309,7 @@ def explicacao_exige_apoio_individual(plano: Mapping[str, Any] | None) -> bool:
         and str(contrato.get("turno_id") or "") == str(planejamento["id"])
         and contrato.get("origem") == "mente_unica"
         and contrato.get("autoriza_execucao") is False
-        and roteiro.get("estrategia") in {"explicacao_didatica", "reensino_didatico"}
+        and roteiro.get("estrategia") in {"explicacao_didatica", "reensino_didatico", "redacao_discursiva"}
         and not planejamento.get("requer_execucao")
     )
 
@@ -1224,6 +1323,16 @@ def formatar_contrato_fala_para_prompt(
     dados = dict(contrato or {})
     if not dados:
         return ""
+    from mente_laylay.cognicao.fonte_capacidades_turno import formatar_fonte_capacidades
+    linha_capacidades = formatar_fonte_capacidades(dados)
+    if 'consulta_realidade_narrativa' in dados:
+        from mente_laylay.cognicao.criacao_ficcional import consulta_realidade_vigente
+        fonte = dados['consulta_realidade_narrativa']
+        if consulta_realidade_vigente({'id': dados.get('turno_id'),
+                'texto_usuario': getattr(fonte, 'texto_usuario', None), 'contrato_fala': dados}):
+            return ('Consulta de estatuto narrativo: a cena pertence ao pedido ficcional anterior. '
+                'Isso não comprova ocorrência ou ausência de efeitos no mundo real. '
+                'Responda diretamente, sem metáfora nem continuar a ficção.')
     if "revisao_alegacao" in dados:
         from mente_laylay.cognicao.explicacao_fala_historica import formatar_revisao_alegacao
         return formatar_revisao_alegacao(dados)
@@ -1361,12 +1470,16 @@ def formatar_contrato_fala_para_prompt(
             "Isto orienta só a fala e não autoriza, executa nem confirma ações; "
             "nunca cria, autoriza, executa ou confirma comandos."
         )
+        if linha_capacidades:
+            linhas_compactas.append(linha_capacidades)
         return "\n".join(linhas_compactas)
     linhas = [
         "--- CONTRATO SEMÂNTICO DA FALA DESTE TURNO ---",
         f"Função: {dados.get('funcao') or 'informacao'}.",
         f"Atos: {', '.join(str(item) for item in dados.get('atos') or []) or 'conversa'}.",
     ]
+    if linha_capacidades:
+        linhas.append(linha_capacidades)
     if linha_perspectiva:
         linhas.append(linha_perspectiva)
     if linha_emocional:

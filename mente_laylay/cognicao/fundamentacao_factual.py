@@ -47,6 +47,10 @@ _CONSULTA_MATEMATICA = re.compile(
     r"(?:\bquanto\s+(?:é|e|dá|da)\b.*\d|\d\s*(?:\+|-|x|×|\*|/|÷)\s*\d)",
     re.IGNORECASE,
 )
+_RETOMADA_ENUNCIACAO = re.compile(
+    r"^\W*(?:voc[eê]|tu)\s+(?:disse|falou|perguntou|respondeu|afirmou|explicou)\b",
+    re.IGNORECASE,
+)
 _CONSULTA_ESTADO_OBSERVAVEL = re.compile(
     r"\b(?:(?:ainda\s+)?(?:esta|ta)|continua|segue|permanece)\s+"
     r"(?:abert[oa]s?|fechad[oa]s?|ativ[oa]s?|rodando|em\s+execucao)\b",
@@ -54,8 +58,7 @@ _CONSULTA_ESTADO_OBSERVAVEL = re.compile(
 )
 _AFIRMACAO_ATUAL_MUTAVEL = re.compile(
     r"\b(?:n[aã]o vai ter|vai ter|vai sair|vai lan[cç]ar|nova gera[cç][aã]o|"
-    r"exclusiv[oa]|compat[ií]vel|suporte oficial|ps\s*[3456]|playstation\s*[3456]|"
-    r"xbox|switch|pc)\b",
+    r"exclusiv[oa]|compat[ií]vel|suporte oficial)\b",
     re.IGNORECASE,
 )
 _ANCORA_HISTORICA = re.compile(
@@ -130,10 +133,12 @@ def classificar_atualidade_factual(
     modalidade = str(
         leitura.get("modalidade_geral") or leitura.get("modalidade") or ""
     ).casefold()
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    consulta_externa = texto_fora_de_citacoes(bruto)
     eh_consulta = bool(
-        "?" in bruto
-        or modalidade in {"pergunta", "misto"}
-        or _ABERTURA_CONSULTA.search(bruto)
+        "?" in consulta_externa
+        or (modalidade in {"pergunta", "misto"} and not re.search(r'[.!;]\s*$', consulta_externa))
+        or _ABERTURA_CONSULTA.search(consulta_externa)
         or texto_consulta_estado_recurso(bruto)
     )
     base = {
@@ -145,10 +150,51 @@ def classificar_atualidade_factual(
     }
     if texto_e_metalinguistico(bruto):
         return {**base, "motivos": ["fala_metalinguistica"]}
-    afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto))
+    segmentos = leitura.get("segmentos")
+    fontes_inconsistentes = False
+    if isinstance(segmentos, list) and len(segmentos)>1:
+        from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+        fontes = fontes_textuais_dos_segmentos(bruto, segmentos, limite_segmentos=32, limite_trecho=4000)
+        if len(fontes)==len(segmentos):
+            # Interrogação, tema mutável e tempo pertencem ao mesmo ato.
+            # Não somar o presidente de uma história à pergunta de cortesia
+            # de outro trecho. Fontes incoerentes mantêm a leitura conservadora.
+            avaliacoes = []
+            for indice, (fonte, segmento) in enumerate(zip(fontes, segmentos)):
+                literal = fonte.como_dict()["texto_original"]
+                # Uma confirmação elíptica consulta a proposição imediatamente
+                # anterior. Não tratá-las como tema e pergunta independentes.
+                from mente_laylay.cognicao.referencias_linguagem import pergunta_confirmatoria_eliptica
+                if indice and pergunta_confirmatoria_eliptica(literal):
+                    literal = fontes[indice-1].como_dict()["texto_original"] + ', ' + literal
+                avaliacoes.append(classificar_atualidade_factual(
+                    literal, turno={"modalidade": segmento.get("modalidade")}))
+            atuais = [a for a in avaliacoes if a["depende_atualidade"]]
+            if atuais:
+                return min(atuais, key=lambda a: a["validade_sugerida_s"])
+            return {**base, "confianca": 0.85, "motivos": ["atos_sem_consulta_mutavel"]}
+        fontes_inconsistentes = True
+    if not fontes_inconsistentes:
+        from mente_laylay.cognicao.referencias_linguagem import (
+            enunciados_discursivos, pergunta_confirmatoria_eliptica,
+        )
+        enunciados = enunciados_discursivos(bruto)
+        if len(enunciados)>1:
+            avaliacoes = []
+            for indice, enunciado in enumerate(enunciados):
+                if indice and pergunta_confirmatoria_eliptica(enunciado):
+                    enunciado = enunciados[indice-1] + ', ' + enunciado
+                # A modalidade pertence ao segmento composto, não a cada
+                # enunciado. A consulta concreta conserva sua própria forma.
+                avaliacoes.append(classificar_atualidade_factual(enunciado))
+            atuais = [a for a in avaliacoes if a['depende_atualidade']]
+            return min(atuais,key=lambda a:a['validade_sugerida_s']) if atuais else {
+                **base,'confianca':0.85,'motivos':['enunciados_sem_consulta_mutavel']}
+    afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto) or (
+        eh_consulta and re.search(r"\b(?:ps\s*[3456]|playstation\s*[3456]|xbox|switch|pc)\b", bruto, re.I)))
     if not normalizado or (not eh_consulta and not afirmacao_mutavel):
         return {**base, "classe": "nao_consulta", "motivos": ["fala_nao_consultiva"]}
-    if _CONSULTA_PESSOAL_OU_INTERNA.search(bruto):
+    if _CONSULTA_PESSOAL_OU_INTERNA.search(bruto) or _RETOMADA_ENUNCIACAO.search(bruto):
         return {**base, "classe": "contexto_pessoal", "motivos": ["resposta_vem_da_mente_local"]}
     if _CONSULTA_MATEMATICA.search(bruto):
         return {**base, "motivos": ["resultado_deterministico"]}
@@ -188,6 +234,27 @@ def classificar_atualidade_factual(
         }
 
     if sinal_temporal:
+        from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+        if re.fullmatch(r'(?:se\s+[^,;.!?]+,\s*)?o que\s+(?:viria|vem|passa)\s+(?:(?:a|na|pela)\s+)?'
+            r'(?:sua|tua)\s+(?:cabeca|mente)(?:\s+agora)?[?!.]*', normalizar_texto_basico(bruto)):
+            return {**base,'classe':'contexto_pessoal','motivos':['elaboracao_da_interlocutora']}
+        # Nomear um artefato do próprio diálogo é uma proposta local. O tempo
+        # qualifica esse artefato, não uma fonte externa recente. Domínios e
+        # afirmações mutáveis acima conservam sua obrigação de evidência.
+        artefato = (r'(?:a\s+)?(?:nossa|esta|essa)\s+'
+                    r'(?:conversa|historia|resposta|mensagem|frase)'
+                    r'(?:\s+de\s+(?:hoje|ontem|agora))?')
+        nomeacao = (
+            r'(?:(?:qual|que)\s+(?:(?:seria|e)\s+)?(?:um\s+|o\s+)?'
+            r'(?:nome|titulo)(?:\s+\w+){0,2}\s+'
+            r'(?:(?:voce|tu)\s+(?:daria|escolheria)\s+)?(?:para\s+|a\s+)'
+            r'|como\s+(?:voce|tu)\s+chamaria\s+)'
+        )
+        convite = re.fullmatch(r'vamos\s+[^:;.!?]+:\s*(?P<consulta>[^:;.!?]+)[?!.]*', bruto, re.I)
+        alvo_nomeacao = _normalizar(convite['consulta']) if convite else normalizado
+        if re.fullmatch(nomeacao + artefato + r'[?!.]*', alvo_nomeacao):
+            return {**base, 'classe': 'contexto_pessoal',
+                    'motivos': ['nomeacao_de_artefato_do_dialogo']}
         return {
             "depende_atualidade": True,
             "classe": "recente_generica",
@@ -271,6 +338,9 @@ def extrair_tema_fundamentacao(
     registro_semantico: Dict[str, Any] | None = None,
 ) -> str:
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    from mente_laylay.cognicao.referencias_linguagem import consulta_opiniao_propria
+    if consulta_opiniao_propria(bruto) is not None:
+        return ""
     # Perguntas sobre a preferência da própria Laylay e instruções de estilo
     # continuam conversacionais. Já uma preferência declarada pelo usuário
     # pode cooperar com memória e pesquisa: a declaração é a evidência pessoal
@@ -810,10 +880,11 @@ def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
     if any(_grupo_presente(set(t.split()), grupo) for grupo in _GRUPOS_ESPECIFICOS):
         return True
     tema_norm = _normalizar(tema)
+    from mente_laylay.cognicao.normalizacao_linguagem import enunciacao_avaliativa_de_atividade
     subjetiva = bool(re.search(
         r"\b(?:acho|parece|soa|interessante|legal|curioso|curiosa|gosto|na minha opiniao)\b",
         t,
-    ))
+    ) or enunciacao_avaliativa_de_atividade(frase))
     if tema_norm and tema_norm in t and not subjetiva and re.search(
         r"\b(?:e|foi|era|tem|teve|possui|produz|fabrica|criou|fundou|desenvolveu|"
         r"publicou|lancou|participou|trabalhou|pertence|fica|funciona)\b",
@@ -1028,11 +1099,7 @@ _EXPLICACAO_METALINGUISTICA = re.compile(
 )
 
 
-_PREDICADOS_PREFERENCIA = {'gosto': 'gostar', 'gosta': 'gostar', 'gostava': 'gostar',
-        'prefiro': 'preferir', 'prefere': 'preferir', 'preferia': 'preferir',
-        'curto': 'curtir', 'curte': 'curtir', 'curtia': 'curtir',
-        'adoro': 'adorar', 'adora': 'adorar', 'adorava': 'adorar',
-        'gostar':'gostar', 'preferir':'preferir', 'curtir':'curtir', 'adorar':'adorar'}
+from mente_laylay.cognicao.referencias_linguagem import PREDICADOS_PREFERENCIA as _PREDICADOS_PREFERENCIA
 _INICIO_RELATO_PREFERENCIA = (
     r"(?:(?:l[aá]\s+)?no\s+(?:come[cç]o|in[ií]cio),?\s+)?"
     r"voc[eê]\s+"
@@ -1157,22 +1224,47 @@ def avaliar_nucleo_retomada_usuario(fala: str, *, plano: Dict[str, Any]) -> Dict
     revisores. A gramática existente sustenta paráfrases; citação integral
     preserva apenas o dizer. Nenhum desses passos certifica verdade externa.
     """
-    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador, pedido_consulta_fala_usuario
+    from mente_laylay.cognicao.referencias_linguagem import (
+        PerspectivaEnunciador, pedido_consulta_fala_usuario, recorte_consulta_fala_usuario,
+    )
+    from mente_laylay.cognicao.categoria_preferencia import categoria_consulta_preferencia, conferir_categoria_da_fonte
     contrato = dict(plano.get('contrato_fala') or {})
     fonte = contrato.get('perspectiva_enunciador')
     pedido = str(plano.get('texto_usuario') or '')
+    consulta_categoria = categoria_consulta_preferencia(pedido)
     if (type(fonte) is not PerspectivaEnunciador or not fonte.vigente(pedido, plano.get('id'))
         or str(contrato.get('turno_id')) != fonte.turno_id or contrato.get('origem') != 'mente_unica'
         or set(contrato.get('atos') or ()) != {'pergunta'}
         or plano.get('requer_execucao') or plano.get('comandos')
         or {'evidencia_fala_historica', 'explicacao_ocorrencia', 'revisao_alegacao',
             'explicacoes_historicas_por_ato'}.intersection(contrato)
-        or not pedido_consulta_fala_usuario(pedido)):
+        or not (pedido_consulta_fala_usuario(pedido) or consulta_categoria)):
         return None
     original = str(fala or '').strip()
     resultado = {'admissivel': False, 'estado': 'nucleo_nao_conferido',
         'semantica_verificada': False, 'prova_implicacao': False,
         'pode_confirmar_fato_externo': False, 'autoriza_execucao': False}
+    recorte = recorte_consulta_fala_usuario(pedido)
+
+    def vinculo_consulta(texto_fonte: str, fonte_pessoal: Dict[str, Any]) -> Dict[str, Any]:
+        if consulta_categoria:
+            return conferir_categoria_da_fonte(plano, fonte_pessoal)
+        if recorte is None:
+            return {'estado': 'fora_do_recorte_literal', 'conferido': None}
+        # Preservar acentos dos nomes: normalização de busca não prova identidade.
+        def literal(texto: str) -> str:
+            return re.sub(r'\s+', ' ', unicodedata.normalize('NFC', texto).casefold()).strip(' .!?')
+        consulta, texto = literal(recorte['conteudo']), literal(texto_fonte)
+        if recorte['tipo'] == 'proposicao_literal':
+            # A polaridade da pergunta não é uma declaração. A citação pode
+            # refutar sua premissa, mas deve conservar o mesmo núcleo literal.
+            nucleo = lambda t: re.sub(r'^(?:eu\s+)?(?:n[aã]o\s+)?', '', t)
+            conferido = bool(consulta and nucleo(consulta) == nucleo(texto))
+        else:
+            conferido = bool(consulta and re.search(r'(?<!\w)' + re.escape(consulta) + r'(?!\w)', texto))
+        return {'estado': 'vinculo_literal_conferido' if conferido else 'fonte_fora_da_consulta',
+                'conferido': conferido, 'recorte': dict(recorte)}
+
     if original == LIMITE_CONFERENCIA_RELATO_USUARIO:
         return {**resultado, 'admissivel': True, 'estado': 'limite_de_conferencia'}
     relatos = tuple(r for r in plano.get('relatos_usuario') or ()
@@ -1182,15 +1274,48 @@ def avaliar_nucleo_retomada_usuario(fala: str, *, plano: Dict[str, Any]) -> Dict
         for item in relatos:
             texto = _texto_relato_usuario_qualificado(item)
             if texto is not None and texto == citacao[1]:
+                vinculo = vinculo_consulta(texto, item)
+                if vinculo['conferido'] is False:
+                    return {**resultado, 'vinculo_consulta': vinculo}
                 return {**resultado, 'admissivel': True, 'estado': 'citacao_integral_atribuida',
                     'fonte_id': item['id'], 'texto_fonte': texto,
-                    'fonte_sha256': hashlib.sha256(texto.encode('utf8')).hexdigest()}
+                    'fonte_sha256': hashlib.sha256(texto.encode('utf8')).hexdigest(),
+                    'vinculo_consulta': vinculo}
     primeira = re.split(r'(?<=[.!?])\s+', original, maxsplit=1)[0]
     conferencia = avaliar_relato_preferencia_usuario(primeira, relatos)
     if conferencia['estado'] == 'conferido':
+        fonte_pessoal = next((f for f in relatos if f.get('id') == conferencia['conferencia']['fonte_id']), {})
+        vinculo = vinculo_consulta(conferencia['conferencia']['texto_fonte'], fonte_pessoal)
+        if vinculo['conferido'] is False:
+            return {**resultado, 'vinculo_consulta': vinculo}
         return {**resultado, 'admissivel': True, 'estado': 'parafrase_atribuida_conferida',
-                'conferencia': conferencia['conferencia']}
+                'conferencia': conferencia['conferencia'], 'vinculo_consulta': vinculo}
     return {**resultado, 'revisao_nucleo': conferencia}
+
+
+def realizacoes_retomada_usuario(*, plano: Dict[str, Any]) -> tuple[str, ...]:
+    """Oferece dizeres literais conferíveis, sem decidir sua pertinência.
+
+    A fonte histórica deve preservar a identidade integral do diálogo. Uma
+    alegação normalizada não fornece essa identidade para uma citação literal.
+    Não recorta, ranqueia nem transforma fontes; a revisão final permanece dona
+    da conferência. A escolha do modelo não prova implicação ou verdade atual.
+    """
+    if avaliar_nucleo_retomada_usuario('', plano=plano) is None:
+        return ()
+    opcoes: list[str] = []
+    for item in plano.get('relatos_usuario') or ():
+        if (not isinstance(item, dict) or item.get('origem') != 'historico_conversa'
+            or not str(item.get('id') or '').startswith('dialogo:usuario:')):
+            continue
+        texto = _texto_relato_usuario_qualificado(item)
+        if texto is None or any(c in texto for c in '«»\r\n'):
+            continue
+        fala = f'Você contou: «{texto}».'
+        revisao = avaliar_nucleo_retomada_usuario(fala, plano=plano)
+        if revisao and revisao['estado'] == 'citacao_integral_atribuida' and fala not in opcoes:
+            opcoes.append(fala)
+    return (*opcoes, LIMITE_CONFERENCIA_RELATO_USUARIO)
 
 
 def conferir_relato_preferencia_usuario(
@@ -1211,8 +1336,18 @@ def validar_fala_com_fundamentacao(
     contexto_obra: bool = False,
     relatos_usuario: Iterable[Dict[str, Any]] = (),
     apenas_relatos_usuario: bool = False,
+    plano: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
+    from mente_laylay.cognicao.opiniao_autoral import avaliar_opiniao_autoral
+    opiniao = avaliar_opiniao_autoral(texto_usuario, original, plano=plano or {})
+    if opiniao is not None and opiniao['aceita']:
+        # Só a realização integral do ato autoral já conferido. Não isentar
+        # primeira pessoa, nomes de gêneros, causas ou características livres.
+        return {'fala': original, 'problemas': [], 'acao': 'aceita',
+            'opiniao_autoral_conferida': True, 'prova_factual': False,
+            'prova_semantica_livre': False, 'autoriza_execucao': False,
+            'relatos_usuario_conferidos': [], 'revisao_relatos_usuario': []}
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
     reparo_recomendacao = reparar_recomendacao_com_evidencia(base, original)
     if (

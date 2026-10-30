@@ -15,6 +15,11 @@ from typing import Any, Dict, Literal, Mapping, TypedDict
 from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
 
 
+# Categoria proposta pela IA, nunca autorização ou confirmação de efeito.
+# O schema de geração e seus leitores devem admitir o mesmo domínio finito.
+TIPOS_INTERACAO_IA = frozenset({'acao', 'conversa', 'aprendizado', 'confirmacao'})
+
+
 ModalidadeTurno = Literal[
     "comando", "confirmacao", "conversa", "correcao", "deliberacao",
     "misto", "pergunta", "reacao", "recusa", "vazio",

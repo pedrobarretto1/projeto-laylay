@@ -165,6 +165,8 @@ CODIGO_FACTORY = textwrap.dedent(r'''
             raise PermissionError('rede externa bloqueada')
         envios.append(kwargs['json'])
         proposta={'suporte_proposicoes':[{'texto':rascunho,'fontes':[]}],'comandos':[]}
+        schema=kwargs['json'].get('response_format',{}).get('json_schema',{}).get('schema',{})
+        if 'criterio_autoral' in schema.get('properties',{}):proposta['criterio_autoral']='nao_declarado'
         r=requests.Response();r.status_code=200
         r._content=json.dumps({'choices':[{'message':{'content':json.dumps(proposta)}}]}).encode()
         return r

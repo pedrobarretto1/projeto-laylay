@@ -162,6 +162,8 @@ def negociar_autoria_com_fontes(
     if plano_autoria:
         from mente_laylay.cognicao.suporte_autoria import vincular_atos_no_pacote_autoral
         pacote = vincular_atos_no_pacote_autoral(pacote, plano=plano_autoria)
+        from mente_laylay.cognicao.criacao_ficcional import vincular_moldura_ficcional
+        pacote = vincular_moldura_ficcional(pacote, plano=plano_autoria)
     return pacote
 
 
@@ -604,6 +606,21 @@ class ContextoPromptRuntime:
             str(turno_id) == str(contrato["turno_id"]) == str(turno["id"])
         )
         if identidade_atual and autoria_atual and turno.get("autoriza_execucao") is False:
+            from mente_laylay.cognicao.criacao_ficcional import montar_pacote_realidade_narrativa
+            pacote_realidade = montar_pacote_realidade_narrativa(str(mensagens[-1]['content']),
+                contrato=contrato, turno_id=turno_id)
+            if pacote_realidade is not None:
+                return concluir(pacote_realidade)
+            from mente_laylay.cognicao.adequacao_pessoal import montar_pacote_adequacao
+            pacote_adequacao = montar_pacote_adequacao(str(mensagens[-1]['content']),
+                contrato=contrato, turno_id=turno_id)
+            if pacote_adequacao is not None:
+                return concluir(pacote_adequacao)
+            from mente_laylay.cognicao.opiniao_autoral import montar_pacote_opiniao
+            pacote_opiniao = montar_pacote_opiniao(str(mensagens[-1]['content']),
+                contrato=contrato, turno_id=turno_id)
+            if pacote_opiniao is not None:
+                return concluir(pacote_opiniao)
             from mente_laylay.cognicao.presenca_conversacional import montar_pacote_presenca
             pacote_presenca = montar_pacote_presenca(str(mensagens[-1]["content"]),
                 contrato=contrato, turno_id=turno_id, modelo_corporal=estado.get("modelo_corporal"))

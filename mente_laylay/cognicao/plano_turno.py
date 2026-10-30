@@ -273,7 +273,9 @@ def planejar_turno(
         "relatos_usuario": relatos_usuario,
         "id": int(leitura.get("id") or time.time_ns()),
         "origem_entrada": str(leitura.get("origem_entrada") or "desconhecida"),
-        "texto_usuario": str(texto or "").strip()[:500],
+        # Identidade do pedido não é uma projeção de prompt/telemetria. O
+        # suporte da autoria é vinculado ao texto inteiro, inclusive sua cauda.
+        "texto_usuario": str(texto or "").strip(),
         "modalidade": str(leitura.get("modalidade_geral") or leitura.get("modalidade") or "conversa"),
         "ato_principal": str(leitura.get("ato_principal") or leitura.get("modalidade") or atos[0]["tipo"]),
         "atos": atos,
@@ -584,6 +586,7 @@ def _verificar_fala_turno_base(
                 'texto':texto_usuario})
         validacao_factual = validar_fala_com_fundamentacao(
             ajustada,
+            plano=contrato,
             fundamentacao=fundamentacao if possui_base_factual else None,
             texto_usuario=texto_usuario,
             documentacao_capacidades=documentacao_capacidades,
@@ -648,7 +651,8 @@ def _verificar_fala_turno_base(
 
     qualidade = avaliar_qualidade_comunicacao(
         texto_usuario,
-        fala_antes_alegacoes if "capacidade_emocional_negada" in problemas_alegacoes else ajustada,
+        fala_antes_alegacoes if (validacao_alegacoes.get('requer_reparo')
+            or "capacidade_emocional_negada" in problemas_alegacoes) else ajustada,
         plano=contrato,
         ultima_resposta=ultima_resposta,
     )

@@ -66,7 +66,8 @@ def test_resposta_que_ignora_schema_nao_chega_ao_decoder_como_sucesso(bruto):
         cliente=SimpleNamespace(executar=lambda _: ResultadoModelo(bruto, True)))
     resultado = runtime.executar(pedido_tipado())
     assert resultado.sucesso is False
-    assert resultado.texto == ""
+    from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_llm
+    assert categoria_estado_tecnico_llm(resultado.texto) == 'contrato_saida_invalido'
     assert resultado.rota == "contrato_saida_invalido"
 
 

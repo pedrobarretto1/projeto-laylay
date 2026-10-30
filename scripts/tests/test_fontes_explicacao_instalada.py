@@ -113,6 +113,17 @@ def test_pedido_didatico_recupera_fontes_sem_liberar_influencia_irrestrita(fonte
 def test_busca_nao_converte_pagina_ou_referencia_contextual_em_prova(fontes_instaladas,indice):
     c=fontes_instaladas[indice]
     assert len(c['publicadas'])==1 and not c['efeitos']
+    if c['variante'] in {'sem_paginas','contextual'}:
+        # A proposta insiste numa referência ausente do inventário negociado.
+        # Conferir a recusa nativa, sem fabricar uma revisão posterior.
+        assert c['verificacao']['conclusao']=='falha_resposta_observada_verificada'
+        assert c['verificacao']['autoriza_execucao'] is False
+        assert 'revisao_suporte_autoria' not in c['verificacao']
+        assert c['enviados']==['principal','reparo_json']
+        assert not c['fontes'].get('fontes') and c['trecho'] not in c['publicadas'][0]
+        if c['variante']=='contextual':
+            assert c['chamadas']==[], 'consulta pessoal não é um assunto público resolvido'
+        return
     r=c['verificacao']['revisao_suporte_autoria']
     assert r['obrigacao_fonte_individual'] is True
     assert r['semantica_verificada'] is r['prova_implicacao'] is r['autoriza_execucao'] is False

@@ -69,17 +69,20 @@ def test_fonte_fora_do_limite_canonico_nao_vira_snapshot_recortado(trecho):
     fundamento['fontes'][0]['trecho'] = trecho
     pacote = negociar_autoria_com_fontes(PacotePrompt(({'role': 'user', 'content': 'Qual é o conteúdo?'},)),
         fundamento, incluir_evidencia=True)
-    assert pacote.contrato_saida.nome == 'autoria_com_suporte_v2'
+    assert pacote.contrato_saida.nome == 'autoria_livre_v5'
     assert not any(URL in m['content'] for m in pacote.mensagens)
 
 
-def test_expor_snapshot_de_850_nao_remove_limite_de_500_da_unidade_autoral():
+def test_snapshot_de_850_conserva_ressalva_em_partes_de_ate_500():
     fonte = trecho_com_ressalva(850)
     pacote = negociar_autoria_com_fontes(PacotePrompt(({'role': 'user', 'content': 'Qual é o conteúdo?'},)),
         fundamento_para(fonte), incluir_evidencia=True)
     assert any(fonte in m['content'] for m in pacote.mensagens)
-    with pytest.raises(ValueError, match='proposicao_malformada'):
-        pacote.contrato_saida.decodificar_json(json.dumps({'suporte_proposicoes': [{'texto': fonte, 'fontes': [URL]}]}))
+    dados = pacote.contrato_saida.decodificar_json(json.dumps({'suporte_proposicoes': [{'texto': fonte, 'fontes': [URL]}]}))
+    assert dados['fala'] == fonte
+    unidade = dados['suporte_proposicoes'][0]
+    assert len(unidade['partes']) == 2 and all(len(p) <= 500 for p in unidade['partes'])
+    assert ' '.join(unidade['partes']) == fonte and unidade['fontes'] == [URL]
 
 
 @pytest.mark.parametrize('mutacao', ['vencida', 'nao_confiavel', 'fechado', 'nao_exposta'])

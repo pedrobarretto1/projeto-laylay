@@ -62,7 +62,7 @@ def analisar_ato_social(
     # perguntaria se o Opera está aberto?" virarem WELLBEING apenas porque
     # continham ``como`` e ``está`` em pontos diferentes da frase.
     pergunta_estado_como = bool(re.search(
-        r"^como\b.*\b(?:voce|tu|lay|laylay)\b.*\b(?:esta|ta)\b",
+        r"^como\s+(?:(?:e\s+)?que\s+)?(?:voce|tu|a laylay|lay|laylay)\s+(?:esta|ta)\b",
         base,
     ))
     vocabulario_estado = bool(re.search(
@@ -70,11 +70,16 @@ def analisar_ato_social(
         r"tudo certo|na paz|mais ou menos)\b",
         base,
     ))
-    estrutura_estado = bool(re.search(
-        r"\b(?:como\b.*\b(?:esta|ta)|tudo\b.*\bbem|(?:estou|esta|to|ta)\b.*\b(?:bem|mal|"
-        r"tranquil[oa]|feliz|triste|cansad[oa]))\b",
-        base,
-    ))
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    predicados = re.finditer(
+        r"\b(?:(?:estou|to)\s+(?:me\s+sentindo\s+)?|(?:esta|ta)\s+(?:se\s+sentindo\s+)?)"
+        r"(?P<modificadores>(?:[a-z]+\s+){0,2})"
+        r"(?:bem|mal|tranquil[oa]|feliz|triste|cansad[oa])\b", base)
+    # Estar + gerúndio/objeto não recebe o adjetivo de outro predicado.
+    # Somente modificadores lexicais pertencem ao intervalo do estado.
+    estado_vinculado = any(all((consultar_morfologia(p) or 0)&64
+        for p in m['modificadores'].split()) for m in predicados)
+    estrutura_estado = bool(estado_vinculado or re.search(r"\btudo\s+bem\b", base))
     if not ((vocabulario_estado and estrutura_estado) or pergunta_estado_como):
         return {}
 
@@ -84,14 +89,16 @@ def analisar_ato_social(
         r"\b(?:voce|tu|lay|laylay|a laylay|com voce|do seu lado)\b",
         base,
     ))
-    primeira_pessoa = bool(re.search(
+    recortes_estado = [r for r in re.split(r'[.!?;]+', base)
+        if re.search(r'\b(?:bem|mal|tranquil[oa]|feliz|triste|cansad[oa])\b', r)]
+    primeira_pessoa = any(re.search(
         r"\b(?:eu|comigo|meu lado|por aqui|aqui comigo)\b|^(?:estou|to)\b",
-        base,
-    ))
-    afirmacao_explicita = bool(re.search(
+        r.strip(),
+    ) for r in recortes_estado)
+    afirmacao_explicita = any(re.search(
         r"\b(?:sim|por aqui|do meu lado|comigo|estou|eu to|eu estou)\b",
-        base,
-    ))
+        r,
+    ) for r in recortes_estado)
     contexto_resposta = _pergunta_anterior_sobre_pedro(estado)
 
     pontos_pergunta = 0.0

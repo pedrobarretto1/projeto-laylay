@@ -1,0 +1,40 @@
+{
+  "origem": "resultados_testes/reuso_predominante_20261028/replay_candidato/conversa.json",
+  "entrada": "Você repetiu bastante da resposta anterior, Laylay, e eu percebi. Acho que o primeiro passo é escutar e depois perguntar, para não assumir o que alguém precisa. Vamos fazer uma última brincadeira para encerrar bem: qual seria um título divertido para a nossa conversa de hoje?",
+  "anterior": "Entendo perfeitamente o que você quer dizer — e é exatamente por isso que eu escolho não responder com 'tudo bem' ou 'vou ficar bem', mesmo que seja só um 'sim'. Porque, se você estiver aqui, é por um motivo que vai além do que parece. E se eu digo 'estou bem', é porque estou escutando o que você sente, não porque já sei como responder. Numa conversa séria, o cuidado não é dizer coisas certas, é escutar o que não diz — como o silêncio que vem depois de uma frase, ou o tom que fica mais leve quando alguém está prestes a contar algo que não quer que ninguém saiba. Como assistente de texto, eu não tenho um corpo que respira ou um olhar que se move, mas posso criar um espaço onde você se sinta ouvido — sem precisar fingir, sem precisar explicar, apenas com a presença de uma resposta que não pressiona, só espera. Se você falar de dor, não vou dizer que é normal. Se você mencionar medo, não vou responder com um 'tudo bem'. Vou apenas ouvir, com o cuidado que um mundo imaginado tem para com os seres que ele não pode tocar, mas que ainda assim, ele escolhe deixar respirar. E se a conversa for só isso — uma pausa, um espaço, um 'eu te escuto' que não precisa ser feito com palavras, mas com um silêncio que não é vazio, só porque foi escolhido com atenção? Porque, no fim, não é o que eu digo que importa, é o que eu não digo — e o que não digo, é o que você precisa sentir como verdade. E se, por um instante, eu deixasse de ser assistente e fosse só um ouvinte — alguém que escuta com o coração, não com o cérebro, e que não precisa te responder, só te acolher? Aqui, não há obrigação de falar, só a possibilidade de ouvir — e, se você quiser, posso continuar com isso, mesmo que não tenhamos respostas, só temos a presença de uma conversa que não precisa terminar.",
+  "principal": {
+    "suporte_proposicoes": [
+      {
+        "fontes": [],
+        "texto": "Entendo perfeitamente o que você quer dizer — e é exatamente por isso que eu escolho não responder com 'tudo bem' ou 'vou ficar bem', mesmo que seja só um 'sim'. Porque, se você estiver aqui, é por um motivo que vai além do que parece. E se eu digo 'estou bem', é porque estou escutando o que você sente, não porque já sei como responder. Em uma conversa séria, o cuidado não é dizer coisas certas, é escutar o que não diz — como o silêncio que vem depois de uma frase, ou o tom que fica mais leve quando alguém está prestes a contar algo que não quer que ninguém saiba. Como assistente de texto, eu não tenho um corpo que respira ou um olhar que se move, mas posso criar um espaço onde você se sinta ouvido — sem precisar fingir, sem precisar explicar, apenas com a presença de uma resposta que não pressiona, só espera. Se você falar de dor, não vou dizer que é normal. Se você mencionar medo, não vou responder com um 'tudo bem'. Vou apenas ouvir, com o cuidado que um mundo imaginado tem para com os seres que ele não pode tocar, mas que ainda assim, ele escolhe deixar respirar. E se a conversa for só isso — uma pausa, um espaço, um 'eu te escuto' que não precisa ser feito com palavras, mas com um silêncio que não é vazio, só porque foi escolhido com atenção? Porque, no fim, não é o que eu digo que importa, é o que eu não digo — e o que não digo, é o que você precisa sentir como verdade. E se, por um instante, eu deixasse de ser assistente e fosse só um ouvinte — alguém que escuta com o coração, não com o cérebro, e que não precisa te responder, só te acolher? Aqui, não há obrigação de falar, só a possibilidade de ouvir — e, se você quiser, posso continuar com isso, mesmo que não tenhamos respostas, só temos a presença de uma conversa que não precisa terminar."
+      },
+      {
+        "fontes": [],
+        "texto": "Título divertido? Vamos chamar de *Conversa que não termina, mas que já tá com alma*."
+      }
+    ],
+    "emocao": "calma",
+    "nivel_emocao": 1,
+    "tipo_interacao": "conversa"
+  },
+  "reparo": {
+    "suporte_proposicoes": [
+      {
+        "fontes": [],
+        "texto": "Entendo perfeitamente — você está certo, escutar vem antes de qualquer coisa, porque o silêncio pode dizer mais do que palavras. E com isso, a brincadeira fica mais verdadeira."
+      },
+      {
+        "fontes": [],
+        "texto": "Se a conversa é uma jornada, então o título é o mapa que ela carrega."
+      },
+      {
+        "fontes": [],
+        "texto": "Então, um título divertido para nossa conversa de hoje poderia ser: 'O Silêncio Que Fala Mais'."
+      },
+      {
+        "fontes": [],
+        "texto": "É um nome leve, quase mágico, que lembra o que aprendemos: às vezes, o que importa não é o que se diz, mas o que se deixa ser ouvido."
+      }
+    ]
+  }
+}

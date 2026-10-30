@@ -68,6 +68,16 @@ def classificar_proveniencia_informacao(
         )
     )
 
+    if origem_norm in {'llm', 'llm_principal'}:
+        # Origem explícita da emissão precede confiança, URL e contexto de
+        # uso. Referenciar uma página não transforma proposta em leitura.
+        return {
+            'tipo': 'proposta_modelo', 'subtipo': 'emissao_nao_verificada',
+            'origem': origem_declarada, 'autor': autor or 'laylay',
+            'subjetiva': eh_opiniao, 'bloqueada': bloqueada,
+            'pode_sustentar_fato_externo': False, 'pode_sustentar_contexto_pessoal': False,
+        }
+
     if eh_opiniao:
         subtipo = "opiniao_usuario" if eh_usuario else "opiniao_laylay"
         return {

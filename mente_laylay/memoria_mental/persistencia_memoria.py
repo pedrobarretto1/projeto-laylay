@@ -15,6 +15,7 @@ from mente_laylay.memoria_mental.identidade_usuario import (
     normalizar_nome_usuario,
     reconciliar_nome_usuario_confirmado,
 )
+from mente_laylay.memoria_mental.registro_semantico import projetar_registro_semantico_persistivel
 
 
 POLITICA_PERSISTENCIA_MENTE = {
@@ -467,7 +468,8 @@ class PersistenciaMemoriaRuntime:
                 "mental", "aprendizado_continuidade", {}
             ),
             "preferencias_musicais": self._obter("mental", "preferencias_musicais", {}),
-            "registro_semantico": self._obter("mental", "registro_semantico", {}),
+            "registro_semantico": projetar_registro_semantico_persistivel(
+                self._obter("mental", "registro_semantico", {})),
             "perfil_proatividade": self._obter("mental", "perfil_proatividade", {}),
             "iniciativa_autonoma": self._obter("mental", "iniciativa_autonoma", {}),
             "coordenador_oportunidades": sanitizar_aprendizado_oportunidades(

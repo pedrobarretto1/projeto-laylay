@@ -15,6 +15,7 @@ from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
 )
 from mente_laylay.cognicao.referencias_linguagem import (
     texto_pede_aba_anterior,
+    moldura_narrativa_inicial,
 )
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
@@ -31,8 +32,11 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     PADRAO_COORDENACAO_OPERACIONAL,
     corrigir_erros_portugues_operacionais,
     remover_conector_discursivo_inicial,
+    separar_adjunto_pessoal_inicial,
+    separar_saudacao_inicial,
     texto_discute_evidencia_textual,
     texto_e_citacao_integral,
+    texto_pede_opiniao,
     tipo_transformacao_conversacional,
 )
 from mente_laylay.cognicao.gramatica_musical import (
@@ -194,6 +198,34 @@ def analisar_protecao_operacional(
             "modalidade": "conversa",
             "natureza_acao": "transformacao_conversacional",
             "motivo": "pedido de transformação da conversa, não de efeito externo",
+        }
+    permissiva = re.match(
+        r"^(?:(?:deixa|deixe)(?:\s+(?P<agente>eu)\b|[-\s]+me\b)|me\s+(?:deixa|deixe)\b)\s*(?P<complemento>.*)",
+        re.sub(r"\s+", " ", unicodedata.normalize('NFC', texto).casefold()).strip())
+    infinitivo = False
+    if permissiva and not permissiva['agente']:
+        from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+        for palavra in re.findall(r'[^\W\d_]+', permissiva['complemento'])[:3]:
+            if palavra in {'me', 'te', 'se', 'nos', 'vos'}:
+                # Clítico do infinitivo não troca seu agente pelo destinatário.
+                continue
+            tipo = consultar_morfologia(palavra)
+            if tipo is None:
+                infinitivo = True  # indisponibilidade não comprova delegação
+                break
+            if tipo&32 and re.fullmatch(r'[^\W\d_]*(?:ar|er|ir|or|ôr)', palavra):
+                infinitivo = True
+                break
+            if not tipo&64:
+                break
+    if permissiva and (permissiva['agente'] or infinitivo):
+        # A permissiva conserva o agente do complemento. Permitir que o
+        # enunciador faça algo não delega essa ação ao executor da assistente.
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "conversa",
+            "natureza_acao": "permissiva_enunciador",
+            "motivo": "ação do enunciador sob permissiva; não é delegação à assistente",
         }
     if _consulta_significado_do_ato(texto):
         return {
@@ -448,7 +480,8 @@ def _classificar_modalidade_base(
             motivo=protecao["motivo"], natureza_acao=protecao["natureza_acao"],
         )
         return resultado
-    if re.search(
+    from mente_laylay.cognicao.referencias_linguagem import objeto_retificacao_assunto
+    if objeto_retificacao_assunto(bruto) is not None or re.search(
         r"^(?:na verdade|eu quis dizer|quis dizer|nao lay|não lay|to falando de|estou falando de|"
         r"eu (?:nao|não) (?:pedi|perguntei|solicitei)|(?:nao|não) te pedi|"
         r"eu te perguntei|eu perguntei|como assim.+eu .*perguntei)\b",
@@ -1264,11 +1297,24 @@ def _classificar_ato_estrutural(
     # O conector liga este ato ao discurso, não muda sua modalidade. O caller
     # conserva o trecho completo no segmento e no mapa de fontes originais.
     texto_estrutural = remover_conector_discursivo_inicial(texto_estrutural)
+    _, texto_estrutural = separar_adjunto_pessoal_inicial(texto_estrutural)
+    if moldura_narrativa_inicial(texto_estrutural):
+        return aplicar_veto_canonico({}, texto=texto_estrutural,
+            modalidade='conversa', natureza='mencao_ficcional',
+            motivo='oração sob moldura narrativa explícita; não autoriza efeito externo',
+            requer_esclarecimento=False, origem_veto='escopo_narrativo')
     if texto_e_citacao_integral(texto_estrutural):
         protecao=analisar_protecao_operacional(texto_estrutural)
         return aplicar_veto_canonico({},texto=texto_estrutural,
             modalidade=protecao['modalidade'],natureza=protecao['natureza_acao'],
             motivo=protecao['motivo'],requer_esclarecimento=False,origem_veto='citacao_integral')
+    # O mesmo leitor de opinião já distingue "acha que/sobre" de "acha o
+    # arquivo". Sua moldura governa este ato antes dos verbos operacionais;
+    # atos independentes continuam sendo classificados separadamente.
+    if texto_pede_opiniao(texto_estrutural):
+        return aplicar_veto_canonico({}, texto=texto_estrutural, modalidade='pergunta',
+            natureza='opiniao', motivo='consulta de opinião não autoriza busca ou efeito',
+            origem_veto='ato_opiniao', requer_esclarecimento=False)
     # Nenhum owner de domínio pode converter a consequência em pedido direto
     # ignorando a condição que o owner geral preservou no mesmo átomo.
     if (
@@ -1505,6 +1551,28 @@ def _separar_matriz_apos_adjunto(
     Reusa a evidência do ato inteiro. Sujeito, futuro, pergunta, condição ou
     negação no prefixo impedem extrair como ordem um verbo subordinado.
     """
+    nucleo = remover_conector_discursivo_inicial(bloco)
+    if not re.match(r"^(?:para|pra)\s+", nucleo, flags=re.IGNORECASE):
+        return None
+    # Com pausa explícita, o infinitivo (inclusive pessoal) demonstra a
+    # finalidade antes de classificar a matriz. O papel acompanha o segmento:
+    # nem o 'para' nem o verbo subordinado adquirem autoridade operacional.
+    projecao = list(nucleo)
+    for inicio, fim in (mapear_pares_aspas_globais(nucleo) or {}).items():
+        projecao[inicio + 1:fim] = ' ' * (fim - inicio - 1)
+    finalidade = re.match(
+        r"^(?:para|pra)\s+"
+        r"(?:(?:eu|tu|voc[eê]s?|ele|ela|n[oó]s|eles|elas)\s+)?"
+        r"(?:n[aã]o\s+)?(?:(?:me|te|se|nos|vos)\s+)?"
+        r"(?:[a-zà-öø-ÿ]+(?:ar|er|ir)(?:mos|des|em)?|p[oô]r(?:mos|des|em)?)\b"
+        r"[^,;.!?]*,\s*(?=\S)",
+        ''.join(projecao), flags=re.IGNORECASE,
+    )
+    if finalidade:
+        fim = bloco.index(nucleo) + finalidade.end()
+        virgula = bloco.rfind(',', 0, fim)
+        m = re.match(r",\s*", bloco[virgula:])
+        return m, bloco[:virgula].strip(), bloco[fim:].strip(), "MATRIZ_APOS_ADJUNTO"
     if not re.match(r"^para\s+", bloco, flags=re.IGNORECASE):
         return None
     from mente_laylay.cognicao.gramatica_corpo import analisar_pedido_corporal
@@ -1550,6 +1618,32 @@ def _separar_matriz_apos_adjunto(
     return None
 
 
+def _coordenacao_preserva_sujeito(
+    esquerda: str, direita: str, *, normalizar_texto: Callable[[str], str] | None,
+) -> bool:
+    """Um predicado homógrafo não demonstra troca de interlocutor.
+
+    Na coordenação de um relato com sujeito de terceira pessoa, a forma
+    indicativa pode coincidir com o imperativo informal. Conservar a oração
+    inteira evita criar permissão ao remover seu sujeito. Cortesia, sujeito
+    novo e imperativo formal continuam sendo evidências independentes;
+    pontuação forte é examinada pelo chamador, não por este leitor.
+    """
+    if _evidencia_ato_operacional(esquerda, normalizar_texto=normalizar_texto)[0]:
+        return False
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    clausula = re.split(r"[.!?;:]", texto_fora_de_citacoes(esquerda))[-1].strip()
+    saudacao, corpo = separar_saudacao_inicial(clausula)
+    if saudacao and not corpo:
+        return False
+    inicio = re.match(r"^(\w+)\b", _normalizar_p0_ato_fala(direita))
+    if not inicio or not re.fullmatch(_P0_VERBOS_PEDIDO_DIRETO, inicio[1]):
+        return False
+    from mente_laylay.cognicao.morfologia_oracao import continuacao_predicativa_possivel
+    leitura = continuacao_predicativa_possivel(clausula,direita)
+    return leitura is not False  # indisponibilidade não comprova independência
+
+
 def _separar_primeira_fronteira_forte(
     bloco: str,
     *,
@@ -1559,12 +1653,20 @@ def _separar_primeira_fronteira_forte(
     if matriz is not None:
         return matriz
     pares_aspas = mapear_pares_aspas_globais(bloco) or {}
+    adjunto_pessoal, _ = separar_adjunto_pessoal_inicial(bloco)
+    virgula_adjunto = len(adjunto_pessoal.rstrip()) - 1 if adjunto_pessoal else -1
     for m in re.finditer(
         r"(?P<sep>[,;!?]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
         bloco,
         flags=re.IGNORECASE,
     ):
         if any(inicio < m.start() < fim for inicio, fim in pares_aspas.items()):
+            continue
+        if m.group('sep') == ',' and m.start() == virgula_adjunto:
+            continue  # O adjunto pertence à matriz; não é um ato de parada.
+        if m.group('sep') == ',' and moldura_narrativa_inicial(bloco):
+            # Vírgula e coordenação internas não retiram o adjunto da oração.
+            # Pontuação forte continua podendo abrir uma ordem independente.
             continue
         if (m.group("sep") == ","
                 and not remover_conector_discursivo_inicial(bloco[:m.end()])):
@@ -1585,6 +1687,10 @@ def _separar_primeira_fronteira_forte(
         esquerda = _limpar_ato_semantico(
             bloco[:m.end("sep") if m.group("sep") == "?" else m.start()]
         )
+        if m.group('sep') == ',' and _coordenacao_preserva_sujeito(
+            esquerda, direita, normalizar_texto=normalizar_texto,
+        ):
+            continue
         condicao_esquerda = _inicio_condicao_nao_verificada(esquerda)
         if condicao_esquerda is not None:
             # Vírgula não libera a consequência. Uma fronteira forte só
@@ -1624,6 +1730,11 @@ def _separar_primeira_fronteira_forte(
             )[0]:
                 return m, esquerda, direita, "ATO_CONDICIONADO"
 
+        # Uma transformação textual completa também é um ato independente.
+        # Não a fundir à pergunta anterior só porque ela dispensa executor;
+        # autoria e revisão precisam conservar o alvo discursivo explícito.
+        if m.group('sep') != ',' and tipo_transformacao_conversacional(direita) and esquerda:
+            return m, esquerda, direita, 'TRANSFORMACAO_CONVERSACIONAL'
         inicia, origem = _evidencia_ato_operacional(
             direita,
             normalizar_texto=normalizar_texto,
@@ -1645,7 +1756,9 @@ def _separar_primeira_fronteira_forte(
 
     return None
 
-def fontes_textuais_dos_segmentos(texto: str, segmentos: list[dict]) -> tuple[SnapshotComandoIA, ...]:
+def fontes_textuais_dos_segmentos(
+    texto: str, segmentos: list[dict], *, limite_segmentos: int = 8, limite_trecho: int = 300,
+) -> tuple[SnapshotComandoIA, ...]:
     """Vincula segmentos já decididos à fonte; não segmenta nem autoriza.
 
     Só desfaz normalização de caixa/espaços com coordenadas demonstráveis.
@@ -1653,7 +1766,13 @@ def fontes_textuais_dos_segmentos(texto: str, segmentos: list[dict]) -> tuple[Sn
     O índice é textual, nunca identidade de autorização ou de execução.
     """
     from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
-    if not isinstance(texto, str) or not isinstance(segmentos, (list, tuple)) or not 1 <= len(segmentos) <= 8:
+    # O limite padrão pertence aos contratos autorais de até oito atos.
+    # Leitores de contexto podem conferir mais fontes sem ampliar autoria,
+    # capacidade de execução ou o limite dos consumidores anteriores.
+    if (type(limite_segmentos) is not int or not 1 <= limite_segmentos <= 32
+        or type(limite_trecho) is not int or not 1 <= limite_trecho <= 4000
+        or not isinstance(texto, str) or not isinstance(segmentos, (list, tuple))
+        or not 1 <= len(segmentos) <= limite_segmentos):
         return ()
     caracteres, coordenadas = [], []
     anterior = 0
@@ -1672,7 +1791,13 @@ def fontes_textuais_dos_segmentos(texto: str, segmentos: list[dict]) -> tuple[Sn
         if not isinstance(segmento, dict):
             return ()
         trecho = segmento.get("texto_estrutural") or segmento.get("texto")
-        if not isinstance(trecho, str) or not trecho.strip() or len(trecho) >= 300:
+        if isinstance(trecho, str) and len(trecho)>=300 and limite_trecho>300:
+            from mente_laylay.cognicao.contratos_turno import ContratoExplicativoAto
+            ato = ContratoExplicativoAto.do_segmento(segmento)
+            if ato is None:
+                return ()
+            trecho = ato.texto
+        if not isinstance(trecho, str) or not trecho.strip() or len(trecho) >= limite_trecho:
             return ()
         trecho_normalizado = re.sub(r"\s+", " ", trecho.casefold()).strip()
         inicio = normalizado.find(trecho_normalizado, cursor)
@@ -1859,6 +1984,9 @@ def _segmentar_turno_misto(
             # concederia autoridade a uma operação apenas mencionada.
             finais.append(bloco)
             continue
+        if moldura_narrativa_inicial(bloco):
+            finais.append(bloco)
+            continue
         atual = bloco
 
         while True:
@@ -1907,6 +2035,10 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
+                if (dir_ok and analisar_protecao_operacional(esquerda,
+                    normalizar_texto=normalizar_texto).get('natureza_acao') == 'permissiva_enunciador'):
+                    corte = (esquerda, direita)
+                    break
                 direita_proibicao = proibicao_operacional_independente(
                     esquerda, direita, normalizar_texto=normalizar_texto,
                 )
@@ -1917,6 +2049,8 @@ def _segmentar_turno_misto(
                 if (
                     (esq_ok or tipo_transformacao_conversacional(esquerda)
                      or _consulta_significado_do_ato(esquerda)) and dir_ok
+                ) or (
+                    esq_ok and tipo_transformacao_conversacional(direita)
                 ) or direita_pergunta or direita_proibicao:
                     corte = (esquerda, direita)
                     break

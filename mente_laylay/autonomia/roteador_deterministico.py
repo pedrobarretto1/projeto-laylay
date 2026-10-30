@@ -158,6 +158,11 @@ def extrair_intencao_abrir_app(
     if not bruto:
         return None
     t = normalizar_texto(bruto) if callable(normalizar_texto) else bruto.lower()
+    # O extrator também recebe a fala original na composição. Reusar o núcleo
+    # modal canônico evita que só outros domínios vejam o verbo recuperado.
+    nucleo = extrair_nucleo_pedido_operacional(t)
+    if nucleo is not None:
+        t = nucleo
     t = re.sub(r"\b(laylay|lay|por favor|pfv|pra mim|para mim)\b", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     if not t or "playlist" in t:

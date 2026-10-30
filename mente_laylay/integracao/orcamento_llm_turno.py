@@ -409,6 +409,11 @@ class OrcamentoLLMTurnoRuntime:
         self._publicar()
         return True
 
+    def ha_turno_ativo(self) -> bool:
+        """Admissão consultiva global, também visível fora do ContextVar do turno."""
+        with self._lock:
+            return any(e.get('ativo') and not e.get('finalizado') for e in self._turnos.values())
+
     def diagnostico(self) -> dict[str, Any]:
         agora = float(self.monotonic())
         with self._lock:

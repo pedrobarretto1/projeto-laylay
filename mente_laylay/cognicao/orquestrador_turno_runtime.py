@@ -646,7 +646,7 @@ def alinhar_identidade_plano_revisao(
     turno. A visão operacional fica em um campo próprio e auditável.
     """
     resultado = dict(plano or {})
-    resultado['texto_usuario'] = str(texto_original or '').strip()[:500]
+    resultado['texto_usuario'] = str(texto_original or '').strip()
 
     revisao = dict(revisao_intra_turno or {})
     if bool(revisao.get('detectada')):
@@ -1294,6 +1294,18 @@ def _iniciar_planejamento_turno(
             'foco_didatico': foco_didatico if consulta_didatica else '',
         })
         ns['print'](f"🔎 [FUNDAMENTAÇÃO] tema={tema_factual!r} | confiavel={fundamentacao_factual.get('confiavel')} | fonte={fundamentacao_factual.get('fonte') or '-'} | confianca={float(fundamentacao_factual.get('confianca') or 0.0):.2f}")
+    if (not fundamentacao_factual and not turno_operacional
+        and atualidade_factual.get('depende_atualidade')):
+        # Falhar em resolver o tema não dispensa a necessidade já decidida
+        # de evidência atual. Transportar a ausência pela mesma fronteira,
+        # sem usar o assunto anterior nem propor uma pesquisa como prova.
+        fundamentacao_factual = ns['_montar_fundamentacao_mente'](
+            '', {'ok': False, 'motivo': 'consulta_atual_sem_tema_resolvido'},
+            atualidade=atualidade_factual)
+    # Preserva a origem e a validade da leitura anterior para uma avaliação
+    # contextual. O contrato consumidor confere alvo e apoio; não há pesquisa
+    # automática nem promoção de histórico da assistente a evidência.
+    mente_antes_turno['fundamentacao_factual_anterior'] = fundamento_anterior
     mente_antes_turno['fundamentacao_factual_turno'] = fundamentacao_factual
     turno['retrato_id'] = retrato_turno.get('id')
     turno['entidades'] = dict(retrato_turno.get('entidades') or {})
@@ -1403,6 +1415,23 @@ def _iniciar_planejamento_turno(
         if isinstance(evidencia_habilidades, dict):
             plano['evidencia_capacidades'] = dict(evidencia_habilidades)
     plano['fundamentacao_factual'] = fundamentacao_factual
+    from mente_laylay.cognicao.categoria_preferencia import montar_apoios_categoria_preferencia
+    apoios_categoria = montar_apoios_categoria_preferencia(
+        plano, catalogo_aplicativos=ns.get('_catalogo_aplicativos_runtime'),
+        pesquisa=ns.get('_pesquisa_contextual_runtime'))
+    if apoios_categoria is not None:
+        plano['apoios_categoria_preferencia'] = apoios_categoria
+        itens_categoria = apoios_categoria.dados.como_dict()['itens']
+        if itens_categoria and callable(registrar_consenso):
+            origens_categoria = {i['apoio_categoria']['origem'] for i in itens_categoria}
+            participantes_categoria = ['memoria'] + sorted(origens_categoria)
+            try:
+                plano['cooperacao_categoria_preferencia'] = dict(registrar_consenso({
+                    'participantes': participantes_categoria,
+                    'evidencias_compartilhadas': sorted({i['fonte_sha256'] for i in itens_categoria}),
+                }) or {})
+            except Exception as erro:
+                registrar_falha_opcional(ns, 'cooperacao', 'falha_publicacao_categoria', erro=erro)
     plano['atualidade_factual'] = atualidade_factual
     plano['deliberacao_habilidades'] = dict(especialistas.get('deliberacao') or {})
     mensagens_recentes = list(

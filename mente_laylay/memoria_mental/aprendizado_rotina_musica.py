@@ -306,27 +306,39 @@ def classificar_confirmacao_local(
         return True
     if t in nao_frases:
         return False
-    if re.search(
-        r"\b(?:nao|não)\b.*\b(?:deixa|mantenha|mantem|mantém|preserva|preserve)\b",
+    if re.match(
+        r"^(?:nao|não)\s+(?:deixa|deixe|mantenha|mantem|mantém|preserva|preserve)\b",
         t,
     ):
         return False
     if re.search(
-        r"^(?:nao\b.*\b(?:apaga|apagar|exclui|excluir|remove|remover|"
-        r"substitui|substituir|sobrescreve|sobrescrever|faz|fazer|executa|executar)\b.*|"
+        r"^(?:nao\s+(?:(?:pode|deve|vai)\s+)?(?:me\s+)?"
+        r"(?:apaga|apague|apagar|exclui|exclua|excluir|remove|remova|remover|"
+        r"substitui|substitua|substituir|sobrescreve|sobrescreva|sobrescrever|"
+        r"faz|faca|fazer|executa|execute|executar)\b.*|"
         r"melhor\s+(?:nao\s+)?(?:deixar|manter)\b.*|"
         r"(?:deixa|mantenha|mantem|preserva)\b.*\b(?:como\s+esta|assim|desse\s+jeito)|"
         r"cancela\b.*)$",
         t,
     ):
         return False
-    tokens = set(t.split())
-    if not somente_aceite_generico and (
-        {"quero", "sim"} <= tokens or {"pode", "sim"} <= tokens
+    # A polaridade precisa pertencer ao ato matriz. Um saco de palavras
+    # mistura "quero conversar" com "alguém que não...", ou "pode dizer"
+    # com uma menção a "sim", consumindo pendências sem resposta do usuário.
+    # Formas não demonstradas ficam para o intérprete contextual do owner.
+    if re.match(
+        r"^(?:(?:agora|por enquanto|por favor)\s+)?(?:eu\s+)?nao\s+"
+        r"(?:eu\s+)?(?:quero|precisa)\b", t,
     ):
-        return True
-    if "nao" in tokens and ("agora" in tokens or "precisa" in tokens or "quero" in tokens):
         return False
+    if re.fullmatch(
+        r"(?:eu\s+)?nao\s+(?:posso|consigo)\s+\w+(?:ar|er|ir)\b.*\bagora", t,
+    ):
+        return False
+    if (not somente_aceite_generico
+        and re.match(r"^(?:(?:eu\s+)?(?:quero|pode)\s+sim\b|sim\s+(?:pode|quero)\b)", t)
+        and not re.search(r"\b(?:nao|nunca|jamais|mas|se|quando|depois)\b", t)):
+        return True
     return None
 
 

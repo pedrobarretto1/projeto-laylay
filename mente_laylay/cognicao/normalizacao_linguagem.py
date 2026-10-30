@@ -16,6 +16,47 @@ PADRAO_COORDENACAO_OPERACIONAL = (
 )
 
 
+SAUDACOES_CONVERSACIONAIS = {
+    "oi": "Oi! ", "ola": "Olá! ", "bom dia": "Bom dia! ",
+    "boa tarde": "Boa tarde! ", "boa noite": "Boa noite! ", "e ai": "E aí! ",
+}
+SAUDACOES_TEMPORAIS = frozenset({"bom dia", "boa tarde", "boa noite"})
+
+
+def separar_saudacao_inicial(texto: str) -> tuple[str, str]:
+    """Separa a moldura lexical; não decide intenção, sessão ou autoridade.
+
+    Preserva todo o restante, inclusive aspas, negação e interrogação, para
+    que o owner confira o ato inteiro. A normalização não apaga pontuação.
+    """
+    normal = normalizar_texto_curto(texto)
+    nucleos = '|'.join(re.escape(s) for s in SAUDACOES_CONVERSACIONAIS)
+    abertura = re.match(rf"^(?P<saudacao>{nucleos})"
+        r"(?:[ ,]+(?:laylay|lay))?(?:[,!. ]+|$)", normal)
+    return ((abertura['saudacao'], normal[abertura.end():]) if abertura else ('', normal))
+
+
+def separar_adjunto_pessoal_inicial(texto: str) -> tuple[str, str]:
+    """Separa preposição e pronome da matriz, sem decidir sua modalidade.
+
+    A vírgula liga o ponto de vista ou beneficiário à oração seguinte. O
+    original permanece intacto no segmento; a matriz ainda pode ser ordem.
+    Sem vírgula não há esta moldura, inclusive em pedidos de parada.
+    """
+    bruto = str(texto or "")
+    nucleo = remover_conector_discursivo_inicial(bruto)
+    adjunto = re.match(
+        r"^\s*(?:para|pra)\s+(?:mim|ti|si|voc[eê]s?|n[oó]s|v[oó]s|eles?|elas?)\s*,\s*(?=\S)",
+        nucleo, flags=re.IGNORECASE,
+    )
+    if not adjunto:
+        return "", bruto
+    # A fonte conserva também o conector e seus offsets. Segmentar e
+    # classificar devem enxergar a mesma matriz em "e, para você, ...".
+    fim = bruto.index(nucleo) + adjunto.end()
+    return bruto[:fim], bruto[fim:]
+
+
 def remover_conector_discursivo_inicial(texto: str) -> str:
     """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
 
@@ -107,6 +148,36 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         return "resumo"
     if re.fullmatch(prefixo + comparacao, t):
         return "comparacao"
+    redacao = (
+        r"(?:escreva|escreve|escrever|redija|redige|redigir|"
+        r"formule|formula|formular|reescreva|reescreve|reescrever) "
+        r"(?:a|o|uma|um|essa|esse|esta|este|sua|seu) "
+        r"(?:frase|resposta|texto|exemplo|pergunta|explicacao)"
+        r"(?: (?:breve|curta|curto|exata|exato))?"
+        r"(?: em (?:uma|duas|tres|poucas|\d+) (?:frases?|palavras?))?"
+        r"(?: (?:aqui|no chat|nesta conversa))?"
+        r"(?:[, ]+sem (?:metafora|metaforas|rodeios))?[.!?]*"
+    )
+    if re.fullmatch(prefixo + redacao, t):
+        return "redacao"
+    adjetivo_forma = r"(?:breve|curta|objetiva|direta)"
+    modificador_forma = (
+        r"(?:em (?:uma?|duas?|tres|quatro|cinco|poucas?|\d+) "
+        r"(?:frases?|palavras?|paragrafos?)|"
+        rf"de (?:forma|maneira) {adjetivo_forma}(?: e {adjetivo_forma})*|"
+        r"brevemente|objetivamente|diretamente|sem (?:metaforas?|rodeios))"
+    )
+    canal_atual = r"(?:aqui|no chat|nesta conversa)"
+    ligacao_forma = r"(?:,\s*(?:e )?| e | )"
+    formato = (
+        r"(?:responda|responde|responder) "
+        + rf"(?:{canal_atual}{ligacao_forma})*{modificador_forma}"
+        + rf"(?:{ligacao_forma}(?:{modificador_forma}|{canal_atual}))*[.!?]*"
+    )
+    # Forma da resposta no canal atual, sem alvo externo. A correspondência
+    # integral conserva a autoridade de destinos e de ordens independentes.
+    if re.fullmatch(prefixo + formato, t):
+        return "formato_resposta"
     return ""
 
 
@@ -584,6 +655,108 @@ def normalizar_texto_basico(texto: str) -> str:
     return re.sub(r"\s+", " ", sem_acento).strip()
 
 
+def localizar_enunciacao_avaliativa(texto: str) -> re.Match[str] | None:
+    """Confere perspectiva/juízo declarados, não conteúdo ou pertinência.
+
+    Sujeito, matriz e complemento pertencem à mesma oração declarativa.
+    Percepção sem qualificação, pergunta, relato e citação não bastam.
+    Fatos, capacidades, efeitos e atendimento ao pedido continuam sob revisão.
+    """
+    from mente_laylay.arquivos.nome_natural import mapear_pares_aspas_globais
+    bruto = str(texto or '')
+    pares = mapear_pares_aspas_globais(bruto)
+    if pares is None:return None
+    projecao = list(bruto)
+    for inicio,fim in pares.items():
+        # Uma citação pode ocupar o complemento, mas nunca fornecer a matriz
+        # ou o operador avaliativo da fala externa. Preservar os offsets.
+        projecao[inicio:fim+1] = '\ufffc'*(fim+1-inicio)
+    externo = ''.join(projecao)
+    autora = r'(?:eu\s+)?(?:n[aã]o\s+)?'
+    conteudo = r'[\w\ufffc][^.!?;\n]*'
+    padroes = (
+        autora+r'(?:vejo|veria|encaro|encararia|interpreto|interpretaria)\s+'
+        +conteudo+r'\s+como\s+'+conteudo,
+        autora+r'(?:considero|consideraria|julgo|julgaria|avalio|avaliaria|'
+        r'entendo|entenderia|defendo|defenderia|sustento|sustentaria|penso|pensaria)\s+que\s+'+conteudo,
+        autora+r'(?:considero|consideraria|julgo|julgaria|avalio|avaliaria)\s+'
+        +conteudo+r'\s+(?:um|uma|uns|umas)\s+'+conteudo,
+        r'(?:na\s+minha\s+(?:opini[aã]o|avalia[cç][aã]o|leitura|vis[aã]o)|'
+        r'do\s+meu\s+ponto\s+de\s+vista|a\s+meu\s+ver|para\s+mim)\s*,?\s+'
+        r'\S+(?:\s+\S+)+',
+        autora+r'sou\s+(?:favor[aá]vel|contr[aá]ri[ao]|contra)\s+'+conteudo,
+        autora+r'(?:concordo|discordo)\s+(?:com|de|que)\s+'+conteudo,
+    )
+    for clausula in re.finditer(r'[^.!?;\n]+(?:[.!?;]|$)',externo):
+        inicio,fim = clausula.span()
+        if clausula.group().endswith('?'):
+            # Uma pergunta ao interlocutor pode suceder uma declaração na
+            # mesma frase. A interrogação não transforma a matriz anterior
+            # em pergunta; só aceitar uma nova oração explicitamente aberta.
+            pausa = re.search(
+                r',\s*(?:e\s+)?(?:voc[eê]|vc|tu|o\s+que|como|por\s+que|qual|quem)\b',
+                externo[inicio:fim],re.I,
+            )
+            if pausa is None:continue
+            fim = inicio+pausa.start()
+        while inicio<fim and externo[inicio].isspace():inicio+=1
+        while fim>inicio and (externo[fim-1].isspace() or externo[fim-1] in '.!;'):fim-=1
+        inicios = [inicio]
+        for pausa in re.finditer(r',\s*',externo[inicio:fim]):
+            saudacao,resto = separar_saudacao_inicial(externo[inicio:inicio+pausa.start()])
+            if saudacao and not resto:inicios.append(inicio+pausa.end())
+        for comeco in inicios:
+            for padrao in padroes:
+                m = re.compile(padrao,re.I).fullmatch(externo,comeco,fim)
+                if m:return m
+    return None
+
+
+def enunciacao_avaliativa_de_atividade(texto: str) -> bool:
+    """Confere só juízo normativo fechado sobre atividade, sem fato externo.
+
+    Um prefixo opinativo não basta. Relato finito/particípio, coordenação,
+    números, causas e características independentes não entram nesta leitura.
+    """
+    m = localizar_enunciacao_avaliativa(texto)
+    if m is None or str(texto or '').strip(' .!;\n') != m.group().strip():return False
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    valor = (r'(?:v[aá]lid[oa]|leg[ií]tim[oa]|aceit[aá]vel|corret[oa]|adequad[oa]|'
+             r'prudente|sensat[oa]|razo[aá]vel|respons[aá]vel|prefer[ií]vel|importante|'
+             r'[uú]til|necess[aá]ri[oa]|arriscad[oa])')
+    r = re.fullmatch(
+        r'(?:eu\s+)?(?:n[aã]o\s+)?(?:considero|julgo|avalio|entendo|defendo|sustento|penso)\s+que\s+'
+        r'(?P<atividade>[^,;.!?\d]+?)\s+(?:[ée]|seria)\s+'
+        r'(?:(?:um|uma)\s+(?:escolha|atitude|postura|decis[aã]o|op[cç][aã]o|possibilidade|passo)\s+)?'
+        +valor,
+        m.group(),re.I,
+    )
+    if r is None:return False
+    palavras = re.findall(r'[^\W\d_]+',r['atividade'].casefold())
+    if not palavras or len(palavras)>16:return False
+    tipo_verbo = consultar_morfologia(palavras[0])
+    if not tipo_verbo or not tipo_verbo&32 or not re.search(r'(?:ar|er|ir|or)$',palavras[0]):return False
+    # A atividade pode ter um único argumento nominal não qualificado.
+    # Não absorver adjetivos, apostos ou relações encaixadas como se fossem
+    # parte comprovada da opinião: "clínica gratuita" exige sua própria base.
+    artigos = {'o','a','os','as','um','uma','uns','umas'}
+    preposicoes = {'ao','aos','à','às','de','do','da','dos','das','em','no','na','nos','nas','com','para','pra'}
+    nucleo = False
+    preposicao = False
+    for palavra in palavras[1:]:
+        if palavra in artigos:
+            if nucleo:return False
+            continue
+        if palavra in preposicoes:
+            if nucleo or preposicao:return False
+            preposicao = True
+            continue
+        tipo = consultar_morfologia(palavra)
+        if tipo is None or nucleo or (tipo!=0 and not tipo&1):return False
+        nucleo = True
+    return True
+
+
 def texto_pede_opiniao(texto: str) -> bool:
     """Reconhece molduras de opinião sem autorizar uma ação operacional.
 
@@ -592,9 +765,21 @@ def texto_pede_opiniao(texto: str) -> bool:
     inequivocamente conversacionais. Pedidos como ``acha o arquivo`` continuam
     disponíveis para o roteador de arquivos.
     """
-    t = normalizar_texto_basico(texto)
+    from mente_laylay.arquivos.nome_natural import mapear_pares_aspas_globais
+    # O ato pertence à moldura externa, não a palavras dentro do nome de um
+    # arquivo/aplicativo ou de uma citação. Reutilizar os pares canônicos;
+    # não remover aspas nem reclassificar o conteúdo delimitado como pedido.
+    bruto = str(texto or '')
+    pares = mapear_pares_aspas_globais(bruto) or {}
+    externo = list(bruto)
+    for inicio, fim in pares.items():
+        externo[inicio:fim + 1] = ' ' * (fim + 1 - inicio)
+    t = normalizar_texto_basico(''.join(externo))
     if not t:
         return False
+    from mente_laylay.cognicao.referencias_linguagem import consulta_opiniao_propria
+    if consulta_opiniao_propria(texto) is not None:
+        return True
     # Predicados de gosto dirigidos ao interlocutor são atos subjetivos,
     # independentemente do domínio do complemento. Não procurar o verbo
     # dentro de nomes, citações de comandos ou relatos de terceiros.

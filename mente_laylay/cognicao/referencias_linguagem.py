@@ -7,6 +7,226 @@ from dataclasses import dataclass, field
 import unicodedata
 
 
+_MOLDURA_NARRATIVA = re.compile(
+    r'\b(?:na|nesta|nessa)\s+(?:(?:minha|nossa)\s+)?(?:hist[oó]ria|fic[cç][aã]o)\s*[:,]\s*(?=\S)', re.I)
+
+
+def moldura_narrativa_inicial(texto: str) -> bool:
+    """Adjunto explícito que governa a oração seguinte, antes de segmentá-la.
+
+    Não reconhece nomes de arquivos ou histórias reais. A fronteira forte de
+    outra oração continua pertencendo ao segmentador; não é veto do turno.
+    """
+    return bool(_MOLDURA_NARRATIVA.match(str(texto or '').lstrip()))
+
+
+def contem_moldura_narrativa(texto: str) -> bool:
+    """Mesma moldura no pedido; não decide o alcance de outro ato independente."""
+    return bool(_MOLDURA_NARRATIVA.search(str(texto or '')))
+
+
+def contem_agradecimento_autoral(texto: str) -> bool:
+    """Gratidão enunciada não é particípio de obrigação nem conteúdo citado.
+
+    A leitura é compartilhada pelos consumidores afetivos e comunicativos;
+    não conclui que houve ajuda, execução ou resultado anterior.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    base = unicodedata.normalize('NFC', texto_fora_de_citacoes(texto)).casefold()
+    for m in re.finditer(r'\b(?:obrigad[oa]?|brigad[oa]?|valeu|valew|vlw)\b', base):
+        if 'brigad' in m[0]:
+            antes = re.split(r'[.!?;,]', base[:m.start()])[-1]
+            if re.search(r'\b(?:sou|somos|fui|foi|era|eram|serei|ser|sendo|estou|estava|sinto(?:-me)?)'
+                         r'\s+(?:(?:muito|mesmo)\s+)?$', antes):
+                continue
+            complemento = re.match(r'\s+a\s+(.+)', base[m.end():])
+            if complemento:
+                dever = False
+                for palavra in re.findall(r'[^\W\d_]+', complemento[1])[:3]:
+                    if palavra in {'me','te','se','nos','vos'}:
+                        continue
+                    tipo = consultar_morfologia(palavra) or 0
+                    if tipo&32 and re.fullmatch(r'[^\W\d_]*(?:ar|er|ir|or|ôr)', palavra):
+                        dever = True
+                        break
+                    if not tipo&64:
+                        break
+                if dever:
+                    continue
+        return True
+    return False
+
+
+def agradecimento_sem_outro_conteudo(texto: str) -> bool:
+    """A gratidão integral permite fechar; a presença do ato não fecha outros."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if not contem_agradecimento_autoral(texto):
+        return False
+    base=normalizar_texto_basico(texto)
+    # Uma coordenação pode introduzir outro predicado. Sem prova de escopo
+    # nominal integral, não impor encerramento; a gratidão continua reconhecida.
+    if re.search(r'\b(?:e|mas|porem|ou)\b',normalizar_texto_basico(texto_fora_de_citacoes(texto))):
+        return False
+    return bool(re.fullmatch(r'(?:muito\s+)?(?:obrigad[oa]?|brigad[oa]?|valeu|valew|vlw)'
+        r'(?:[, ]+(?:lay|laylay))?(?:\s+(?:por|pel[oa]s?)\s+[^?!;.,]+)?[.! ]*',base))
+
+
+def objeto_retificacao_assunto(texto: str) -> str | None:
+    """Retificação nominal do próprio falante, sem reinterpretar o alvo como ação."""
+    bruto = str(texto or '').strip()
+    if intervalos_citados(bruto):
+        return None
+    m = re.fullmatch(r'(?:eu\s+)?(?:estou|t[oô])\s+falando\s+'
+        r'(?:de|do|da|dos|das)\s+(?P<objeto>[\w]+(?:[ -][\w]+){0,5})[.!]*', bruto, re.I)
+    return m['objeto'].strip() if m else None
+
+
+def operando_opiniao_literal(valor: str) -> bool:
+    """Recorte nominal compartilhado; não confunde uma oração com um nome.
+
+    Referências de pessoa/posse e conectores de oração exigem outra resolução.
+    Recusar esse recorte não decide a verdade da opinião ou da possível causa.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    return bool(re.fullmatch(r'[\w]+(?:[ -][\w]+){0,3}', valor)
+        and not operando_inicia_com_referencia_contextual(valor)
+        and not re.search(r'\b(?:eu|mim|me|nos|nosso|nossa|nossos|nossas|voce|vc|tu|ti|te|vos|'
+            r'meu|minha|meus|minhas|seu|sua|seus|suas|teu|tua|teus|tuas|ou|'
+            r'porque|pois|quando|embora|portanto|que|se)\b', normalizar_texto_basico(valor)))
+
+
+# Vocabulário nominal e flexão, compartilhados pela leitura e pela autoria.
+# Não é catálogo de obras, de gostos ou de capacidades disponíveis.
+CATEGORIAS_PREFERENCIA = {
+    'jogo': ('jogo', 'jogos', 'o'), 'filme': ('filme', 'filmes', 'o'),
+    'livro': ('livro', 'livros', 'o'), 'musica': ('música', 'músicas', 'a'),
+    'serie': ('série', 'séries', 'a'), 'cor': ('cor', 'cores', 'a'),
+    'comida': ('comida', 'comidas', 'a'), 'animal': ('animal', 'animais', 'o'),
+}
+
+
+def consulta_adequacao_pessoal(texto: str) -> str | None:
+    """Lê categoria e relação com o enunciador, sem decidir o que lhe convém.
+
+    Recorte integral de pergunta nominal, inclusive com moldura de pedido de
+    fala e vocativo. Outra oração, pessoa, tempo ou conteúdo citado não é
+    absorvido; o nome da assistente não se torna identidade do usuário.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.identidade_conversacional import IDENTIDADE_LAYLAY
+    if intervalos_citados(texto):
+        return None
+    base = normalizar_texto_basico(texto)
+    nomes = '|'.join(re.escape(n) for n in IDENTIDADE_LAYLAY['apelidos'])
+    vocativo = rf'(?:{nomes})\s*[,;:]\s*'
+    m = re.fullmatch(rf'(?:{vocativo})?(?:(?:me\s+)?(?:fala|fale|diz|diga|conta|conte)'
+        rf'(?:\s*[,;:]\s*|\s+)(?:{vocativo})?)?(?:que|qual)\s+(?:[oa]\s+)?'
+        r'(?P<categoria>[\w]+(?:[ -][\w]+){0,3}?)\s+(?:que\s+)?(?:mais\s+)?combina'
+        r'(?:\s+mais)?\s+comigo[?!.]*', base)
+    categoria = m['categoria'] if m else ''
+    return categoria if categoria and operando_opiniao_literal(categoria) else None
+
+
+def consulta_opiniao_propria(texto: str, *, explicativa: bool = False) -> dict[str, object] | None:
+    """Lacuna subjetiva simples; não prova gosto, causa, experiência ou efeito."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if intervalos_citados(texto):
+        return None
+    base = normalizar_texto_basico(texto)
+    literal = re.sub(r'\s+', ' ', unicodedata.normalize('NFC', texto).casefold()).strip()
+    # A moldura de esclarecimento preserva a pergunta subordinada integral;
+    # não aproveita um fragmento de pergunta seguida por outra instrução.
+    literal = re.sub(r'^(?:eu\s+)?(?:estou|t[oô])\s+(?:s[oó]|apenas)\s+perguntando\s+se\s+', '', literal)
+    base = normalizar_texto_basico(literal)
+    sujeito = r'(?:voc[eê]|vc|tu|laylay|lay)'
+    nominal = r'[\w]+(?:[ -][\w]+){0,3}'
+
+    # A moldura interrogativa não decide a categoria: as formas nominal e
+    # existencial consultam o MESMO vocabulário, inclusive nomes compostos.
+    # A leitura continua integral; capturar palavras não qualifica tipo novo.
+    categoria_perguntada = re.fullmatch(
+        rf'(?:e\s+)?(?:(?P<existencial>{sujeito}\s+tem\s+um[a]?)|'
+        r'qual\s+(?:e\s+)?(?:[oa]\s+)?(?:seu|sua|teu|tua))\s+'
+        r'(?P<categoria>[\w]+(?:\s+[\w]+){0,3}?)(?:\s+(?P<qualificador>favorit[oa]|preferid[oa]))?[?!.]*', base)
+    if categoria_perguntada:
+        categoria = categoria_perguntada['categoria']
+        qualificador = categoria_perguntada['qualificador']
+        if categoria in {'estilo musical', 'genero', 'genero musical'}:
+            if qualificador or not categoria_perguntada['existencial']:
+                return {'tipo': 'categoria', 'categoria': 'genero_musical'}
+        elif qualificador and categoria in CATEGORIAS_PREFERENCIA:
+            return {'tipo': 'favorito', 'categoria': categoria}
+    # Espaço deslocado na preposição só é recuperado quando o operando
+    # reconstruído tem tipo nominal conhecido. "d eminem" permanece ambíguo.
+    deslocada = re.fullmatch(rf'(?P<inicio>(?:e\s+)?{sujeito}\s+(?:gosta|curte|aprecia))\s+d\s+e(?P<alvo>{nominal})[?!.]*', literal)
+    if deslocada:
+        from mente_laylay.memoria_mental.memoria_pessoas import classificar_gosto_explicito
+        alvo = normalizar_texto_basico(deslocada['alvo'])
+        if (alvo in CATEGORIAS_PREFERENCIA
+            or classificar_gosto_explicito(alvo)[0] == 'genero_musical'):
+            literal = deslocada['inicio'] + ' de ' + deslocada['alvo']
+    existencial = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+(?:gosta|curte|aprecia)\s+de\s+'
+        r'(?:algu[mn]a?|algum[as]+)\s+(?P<categoria>[\w]+)[?!.]*', literal)
+    if existencial:
+        categoria = normalizar_texto_basico(existencial['categoria'])
+        if categoria in CATEGORIAS_PREFERENCIA:
+            return {'tipo': 'polar', 'alvo': CATEGORIAS_PREFERENCIA[categoria][1],
+                    'predicado': 'gostar', 'negada': False}
+    polar = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+(?P<negacao>n[aã]o\s+)?(?:gosta|curte|aprecia)\s+'
+        rf'(?:de|do|da|dos|das)\s+(?P<alvo>{nominal})[?!.]*', literal)
+    if polar and operando_opiniao_literal(polar['alvo']):
+        return {'tipo': 'polar', 'alvo': polar['alvo'], 'predicado': 'gostar', 'negada': bool(polar['negacao'])}
+    escolha = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+prefere\s+'
+        rf'(?P<a>{nominal})\s+ou\s+(?P<b>{nominal})[?!.]*', literal)
+    if escolha and all(operando_opiniao_literal(escolha[c]) for c in ('a', 'b')):
+        return {'tipo': 'escolha', 'alternativas': (escolha['a'], escolha['b'])}
+    if explicativa:
+        preferencia = re.fullmatch(rf'{sujeito}\s+(?P<negacao>n[aã]o\s+)?prefere\s+(?P<alvo>{nominal})[?!.]*', literal)
+        if preferencia and operando_opiniao_literal(preferencia['alvo']):
+            return {'tipo': 'preferencia_nomeada', 'alvo': preferencia['alvo'],
+                    'predicado': 'preferir', 'negada': bool(preferencia['negacao'])}
+    return None
+
+
+def consulta_explicacao_gosto(texto: str) -> dict[str, object] | None:
+    """Pergunta de motivo de gosto presente; não seleciona fala nem comprova causa."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if intervalos_citados(texto):
+        return None
+    base = re.sub(r'\s+', ' ', unicodedata.normalize('NFC', texto).casefold()).strip()
+    m = re.fullmatch(r'(?:e\s+|mas\s+)?por\s*qu[eê](?:\s+(?P<corpo>[^?!.;]+))?[?!.]*', base)
+    if not m:
+        return None
+    if not m['corpo']:
+        return {'tipo': 'eliptica'}
+    leitura = consulta_opiniao_propria(m['corpo'], explicativa=True)
+    if leitura is None or leitura['tipo'] not in {'polar', 'preferencia_nomeada'}:
+        return None
+    return {'tipo': 'explicita', 'predicado': leitura['predicado'],
+            'alvo': normalizar_texto_basico(str(leitura['alvo'])), 'negada': leitura['negada']}
+
+
+def consulta_relacao_criterio_autoral(texto: str) -> bool:
+    """Consulta atômica sobre critério próprio; não resolve fonte nem adequação.
+
+    Sujeito deítico de informação e objeto avaliativo distinguem esta relação
+    de causa/resultado de execução. Outra pessoa, citação ou complemento de
+    operação exige seu próprio owner.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if intervalos_citados(texto):
+        return False
+    base = normalizar_texto_basico(texto)
+    criterio = r'(?:(?:o\s+)?(?:seu|teu)|esse|este|aquele)\s+criterio'
+    informacao = r'(?:essa|esta|aquela)\s+(?:descricao|fonte|informacao)'
+    return any(re.fullmatch(padrao+r'[?!.]*',base) for padrao in (
+        rf'por\s*que\s+{criterio}',
+        rf'{informacao}\s+(?:justifica|fundamenta|sustenta|comprova)\s+{criterio}',
+        rf'qual\s+(?:e\s+)?a\s+relacao\s+entre\s+{informacao}\s+e\s+{criterio}',
+        rf'como\s+{informacao}\s+se\s+relaciona\s+(?:a|ao|com)\s+{criterio}',
+    ))
+
+
 def pedido_sentido_fala_propria(texto: str) -> bool:
     """Lê sujeito, predicado de significado e objeto deítico de uma pergunta.
 
@@ -52,6 +272,61 @@ def texto_fora_de_citacoes(texto: str) -> str:
     return _PADRAO_TRECHO_CITADO.sub(' [citacao] ', str(texto or ''))
 
 
+def enunciados_discursivos(texto: str) -> tuple[str, ...]:
+    """Fronteiras fortes literais fora de aspas; não interpreta atos/intents.
+
+    Um segmento do turno pode agrupar várias frases. A interrogação de uma
+    delas não muda o valor enunciativo das demais. Preserva o conteúdo citado.
+    """
+    bruto = str(texto or '')
+    citados = intervalos_citados(bruto)
+    inicio = 0
+    trechos = []
+    for m in re.finditer(r'[.!?;]+(?=\s|$)', bruto):
+        if any(a <= m.start() < b for a,b in citados):
+            continue
+        if trecho := bruto[inicio:m.end()].strip():
+            trechos.append(trecho)
+        inicio = m.end()
+    if trecho := bruto[inicio:].strip():
+        trechos.append(trecho)
+    return tuple(trechos)
+
+
+def declaracao_pessoal_de_estado(texto: str) -> str:
+    """Complemento de predicado pessoal explícito, sem inferir um sentimento.
+
+    Complementa estar+adjetivo dos leitores sociais; função afetiva, menção
+    de terceira pessoa, citação e hipótese não fornecem essa declaração.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    for frase in enunciados_discursivos(texto_fora_de_citacoes(texto)):
+        base=normalizar_texto_basico(frase).strip(' .!?;')
+        m=re.match(r'^(?:eu\s+)?(?:me\s+sinto|sinto-me)\s+(?P<estado>[^?!;]+)$',base)
+        if not m:
+            m=re.match(r'^(?:eu\s+)?(?:estou|to)\s+com\s+'
+                r'(?P<estado>medo|raiva|ansiedade|sono|fome)\b[^?!;]*$',base)
+        if m:
+            return m['estado'].strip()
+    return ''
+
+
+def texto_de_reproducao_solicitada(texto: str) -> str:
+    """Objeto literal de reprodução no canal, sem autorizar efeito externo."""
+    m=re.fullmatch(r'(?:(?:voce|voc[eê]|tu)\s+)?'
+        r'(?:repita|repete|copie|copia|reproduza|reproduz)\s+'
+        r'(?:(?:exatamente|literalmente)\s+)?(?:(?:a|o)\s+)?'
+        r'(?:(?:este|esta|esse|essa|minha|meu|seguinte)\s+){0,2}'
+        r'(?:texto|frase|trecho|mensagem)(?:\s+sem\s+alterar\s+(?:nenhuma|qualquer)\s+palavra)?'
+        r'\s*:\s*(?P<objeto>[\s\S]+)',str(texto or '').strip(),re.I)
+    if not m:
+        return ''
+    objeto=m['objeto'].strip()
+    if intervalos_citados(objeto)==((0,len(objeto)),):
+        objeto=objeto[1:-1]
+    return objeto
+
+
 def pedido_recapitulacao_dialogo(texto: str) -> bool:
     """Escopo retrospectivo explícito; não decide fatos, fontes ou ação.
 
@@ -75,10 +350,33 @@ def pedido_repeticao_literal_da_fala(texto: str) -> bool:
     from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
     base=normalizar_texto_basico(texto_fora_de_citacoes(texto)).strip(' .!?')
     return bool(re.fullmatch(
-        r"(?:repete|repita|reproduza|reproduz)\s+(?:literalmente\s+)?"
-        r"(?:(?:a\s+)?(?:mesma|ultima|sua|tua)\s+)?(?:a\s+)?"
+        r"(?:(?:repete|repita|reproduza|reproduz)|"
+        r"(?:(?:voce|tu)\s+)?(?:pode|poderia|consegue|conseguiria)\s+(?:repetir|reproduzir))\s+(?:literalmente\s+)?"
+        r"(?:a\s+)?(?:(?:mesma|ultima|sua|tua)\s+){0,2}(?:a\s+)?"
         r"(?:resposta|fala|frase)(?:\s+(?:anterior|literalmente|igual))?", base,
     ))
+
+
+def pedido_retomada_fala_assistente(texto: str) -> bool:
+    """Reprodução ou consulta retrospectiva à fala da interlocutora.
+
+    Isenta apenas o veto de texto repetido; não resolve qual fala responde à
+    consulta, não certifica conteúdo e não autoriza repetir ações descritas.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if pedido_repeticao_literal_da_fala(texto):
+        return True
+    base = normalizar_texto_basico(texto_fora_de_citacoes(texto)).strip(' .!?')
+    return bool(re.fullmatch(
+        r"(?:qual\s+foi\s+(?:exatamente\s+)?(?:a\s+)?(?:sua\s+)?(?:ultima\s+)?"
+        r"(?:resposta|fala|frase|piada)(?:\s+que\s+(?:voce|tu)\s+acabou\s+de\s+"
+        r"(?:contar|dizer|falar))?|o\s+que\s+(?:voce|tu)\s+acabou\s+de\s+(?:dizer|falar|contar))", base,
+    ))
+
+
+def _abertura_consulta_fala_usuario(texto: str) -> str:
+    """Mesma abertura discursiva no detector e na leitura dos complementos."""
+    return re.sub(r'^(?:e|ent[aã]o)\s+', '', texto, flags=re.I)
 
 
 def pedido_consulta_fala_usuario(texto: str) -> bool:
@@ -101,7 +399,7 @@ def pedido_consulta_fala_usuario(texto: str) -> bool:
                 r"afirmado|declarado|explicado)")
     relato = (rf"(?:\beu\s+{modificadores}(?:{preterito}|{composto})\b|"
               r"\b(?:falei|contei|comentei|mencionei|afirmei|declarei|expliquei)\b)")
-    abertura = re.sub(r"^(?:e|entao)\s+", "", base)
+    abertura = _abertura_consulta_fala_usuario(base)
     ato = re.search(relato, abertura)
     if ato is None:
         return False
@@ -138,6 +436,57 @@ def pedido_consulta_fala_usuario(texto: str) -> bool:
         r"[a-z -]{1,120}\s+que", prefixo))
 
 
+PREDICADOS_PREFERENCIA = {
+    'gosto': 'gostar', 'gosta': 'gostar', 'gostava': 'gostar', 'gostar': 'gostar',
+    'prefiro': 'preferir', 'prefere': 'preferir', 'preferia': 'preferir', 'preferir': 'preferir',
+    'curto': 'curtir', 'curte': 'curtir', 'curtia': 'curtir', 'curtir': 'curtir',
+    'adoro': 'adorar', 'adora': 'adorar', 'adorava': 'adorar', 'adorar': 'adorar',
+}
+
+
+def consulta_categoria_preferencia_usuario(texto: str) -> dict[str, object] | None:
+    """Categoria da lacuna pessoal, sem inferir o tipo de nenhum nome."""
+    from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+    bruto = re.sub(r'\s+', ' ', str(texto or '')).strip()
+    if intervalos_citados(bruto) or texto_e_metalinguistico(bruto):
+        return None
+    base = _abertura_consulta_fala_usuario(bruto)
+    verbos = '|'.join(PREDICADOS_PREFERENCIA)
+    m = re.fullmatch(
+        r'(?:qual|que)\s+(?P<categoria>[\w -]{1,50}?)\s+(?:que\s+)?eu\s+'
+        rf'(?P<relato>.*?)(?P<negacao>n[aã]o\s+)?(?P<predicado>{verbos})[?!.]*', base, re.I)
+    if not m or (m['relato'].strip() and not pedido_consulta_fala_usuario(bruto)):
+        return None
+    return {'categoria': m['categoria'].strip(),
+            'predicado': PREDICADOS_PREFERENCIA[m['predicado'].casefold()],
+            'negada': bool(m['negacao']), 'retrospectiva': bool(m['relato'].strip()),
+            'ato_relato_negado': bool(re.search(r'\b(?:n[aã]o|nunca|jamais)\b', m['relato'], re.I))}
+
+
+def recorte_consulta_fala_usuario(texto: str) -> dict[str, str] | None:
+    """Lê o conteúdo explícito consultado, sem escolher fonte ou validar resposta.
+
+    O detector canônico decide antes se há consulta ao dizer do usuário. Aqui
+    só se expõe o complemento de uma pergunta polar ou o tópico nominal de
+    uma pergunta aberta. Categorias implícitas, elipses e comparação livre não
+    recebem uma resolução inventada. Nenhum dado vem da proposta da LLM.
+    """
+    bruto = re.sub(r'\s+', ' ', str(texto or '')).strip()
+    if not pedido_consulta_fala_usuario(bruto) or intervalos_citados(bruto):
+        return None
+    bruto = _abertura_consulta_fala_usuario(bruto)
+    polar = re.fullmatch(
+        r'eu\s+[^?!.;]+?\s+que\s+(?P<conteudo>[^?!.;]+?)[?!.]*', bruto, re.I)
+    if polar:
+        return {'tipo': 'proposicao_literal', 'conteudo': polar['conteudo'].strip()}
+    aberta = re.fullmatch(
+        r'(?:o que|que)\s+[^?!.;]+?\s+(?:sobre|a respeito de|acerca de)\s+'
+        r'(?P<conteudo>[\w -]{1,120})[?!.]*', bruto, re.I)
+    if aberta:
+        return {'tipo': 'topico_literal', 'conteudo': aberta['conteudo'].strip()}
+    return None
+
+
 @dataclass(frozen=True, slots=True)
 class PerspectivaEnunciador:
     """Papéis do canal capturados pelo host, não prova do conteúdo relatado."""
@@ -155,6 +504,27 @@ class PerspectivaEnunciador:
     def para_prompt(self) -> dict[str, object]:
         return {"falante_entrada": self.falante_entrada, "autora_resposta": self.autora_resposta,
                 "origem": "papeis_do_canal", "autoriza_execucao": False, "comprova_fato": False}
+
+
+def natureza_predicado_pessoal(predicado: str) -> str:
+    """Distingue posição avaliativa simples de atribuição pessoal não conferida.
+
+    Lê o predicado inteiro, não uma frase histórica ou o tema da conversa.
+    Concordância e discordância são posições do emissor no diálogo, não relatos
+    de estado da pessoa. Complementos e circunstâncias saem deste recorte.
+    O resultado classifica linguagem; não prova correção, verdade ou efeito.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    texto = normalizar_texto_basico(predicado).strip(' .!?')
+    avaliativo = r'(?:cert|corret|incorret|errad|equivocad|enganad)[oa]'
+    if re.fullmatch(rf'(?:(?:esta|ta)\s+{avaliativo}|tem\s+razao)', texto):
+        return 'posicionamento_dialogico'
+    modificada = re.fullmatch(rf'(?:esta|ta)\s+(?P<modificadores>(?:[a-z]+\s+){{1,2}}){avaliativo}',texto)
+    if modificada:
+        from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+        if all((consultar_morfologia(p) or 0)&64 for p in modificada['modificadores'].split()):
+            return 'posicionamento_dialogico'
+    return 'atribuicao_pessoal_nao_conferida'
 
 
 def predicado_consulta_modo_pessoal(texto: str) -> str:
@@ -306,24 +676,73 @@ def referencia_explicacao_historica(texto: str) -> str:
     return referencia_explicacao_propria(texto)
 
 
+def pergunta_confirmatoria_eliptica(texto: str) -> bool:
+    """Lê a pergunta dependente de uma proposição, sem dar consentimento.
+
+    A cópula elidida ou com complemento deítico/avaliativo retoma o enunciado
+    anterior. Uma pergunta com objeto próprio não herda aquele enunciado.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if not str(texto or '').rstrip().endswith('?') or intervalos_citados(texto):
+        return False
+    base = normalizar_texto_basico(texto).strip(' ?!.')
+    avaliacao = r'(?:cert[oa]|corret[oa]|verdade)'
+    return bool(re.fullmatch(
+        rf'(?:ne|confere|procede|{avaliacao}|(?:nao\s+)?e'
+        rf'(?:\s+(?:isso(?:\s+mesmo)?|{avaliacao}))?)', base))
+
+
 def referencia_explicacao_propria(texto: str) -> str:
     """Lê a obrigação retrospectiva, sem resolver ocorrência nem escolher owner.
 
-    A construção causal e o interlocutor são necessários. Flexão passada,
+    A consulta retrospectiva e o interlocutor são necessários. Flexão passada,
     causativa passada ou posse da decisão/fala qualificam o pedido; o nome da
     habilidade e a presença de um receipt não participam. Retorna ``fala``,
     ``ocorrencia`` ou vazio; não atribui um ID. É leitura limitada
     de linguagem, não prova semântica universal nem autorização operacional.
     """
-    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico, texto_e_metalinguistico
+    from mente_laylay.cognicao.normalizacao_linguagem import (
+        normalizar_texto_basico, texto_e_metalinguistico, remover_conector_discursivo_inicial,
+    )
 
     if texto_e_metalinguistico(texto):
         return ""
     # Conteúdo citado pode ser alvo da consulta, mas não enuncia a consulta.
     fora_de_aspas = re.sub(r'"[^"\n]*"|“[^”\n]*”|«[^»\n]*»|\'[^\'\n]*\'', " ", str(texto or ""))
+    unidades = [p.strip() for p in re.split(r'[.!?;]+', fora_de_aspas) if p.strip()]
+    if len(unidades)>1:
+        # Pergunta causal e atribuição passada precisam pertencer ao mesmo
+        # recorte. Uma pergunta temática posterior não herda um "você disse"
+        # de outra frase. A elipse causal explícita conserva seu antecedente.
+        for i, unidade in enumerate(unidades):
+            elipse = normalizar_texto_basico(remover_conector_discursivo_inicial(unidade))
+            if i and re.fullmatch(
+                r'(?:(?:(?:me\s+)?(?:explique|explica)\s+)?por\s+que|'
+                r'(?:por\s+)?(?:qual|quais)\s+(?:(?:e|foi|sao|foram)\s+)?(?:(?:o|a|os|as)\s+)?'
+                r'(?:motivos?|razao|razoes|causas?))', elipse):
+                unidade = unidades[i-1] + ', ' + unidade
+            referencia = referencia_explicacao_propria(unidade)
+            if referencia:
+                return referencia
+        return ""
     base = normalizar_texto_basico(fora_de_aspas)
-    if (re.search(r"\b(?:hipoteticamente|(?:se|caso)\s+(?:voce|tu))\b", base)
-            or not re.search(r"\b(?:por\s*que|motivo|motivou|razao|causa|levou|explique|explica)\b", base)):
+    if re.search(r"\b(?:hipoteticamente|(?:se|caso)\s+(?:voce|tu))\b", base):
+        return ""
+    # Uma consulta temporal pode pedir resultados, não só causas. A moldura
+    # exige atribuição passada à própria fala e uma pergunta matriz fora da
+    # citação; o literal sozinho não decide a finalidade nem prova o resultado.
+    temporal = re.match(r'^quando\s+(?:(?:voce|tu)\s+)?(?:disse|falou|respondeu|afirmou|explicou)\b'
+                r'[^,?]*,\s*(?P<matriz>(?:o que|qual|quais|como|quem|onde|quanto)\b.*)', base)
+    # A fala citada é passada, mas a pergunta pode ser futura ou imaginativa.
+    # Só a matriz retrospectiva qualifica esta consulta de resultados.
+    if temporal and re.search(r'\b(?:estava|estavam|ficou|ficaram|foi|foram|houve|havia|haviam|ocorreu|aconteceu)\b', temporal['matriz']):
+        return 'fala'
+    if not re.search(
+        r"\b(?:por\s+que|(?:qual|quais)\s+(?:(?:e|foi|sao|foram)\s+)?(?:(?:o|a|os|as)\s+)?"
+        r"(?:motivos?|razoes|razao|causas?)|"
+        r"o\s+que\s+(?:motivou|causou)|que\s+(?:motivo|razao|causa)\s+levou|"
+        r"o\s+que\s+(?:(?:me|te)\s+levou|levou\s+(?:voce|tu))\s+a|"
+        r"(?:explique|explica))\b", base):
         return ""
     passada = re.search(
         r"\b(?:voce|tu)\s+(?:(?:nao|ja|nunca|ontem)\s+)*"
@@ -332,13 +751,18 @@ def referencia_explicacao_propria(texto: str) -> str:
     propria = re.search(r"\bsua\s+(?:decisao|escolha|acao|reacao|resposta|fala)\b", base)
     nominal = propria and not re.search(
         r"\b(?:futura|futuro|faria|seria|fara|vai|ira|pretende)\b", base)
-    if not (passada or causativa or nominal):
+    # A atribuição passada também pode elidir o interlocutor: "quando disse
+    # ... por quê?". A citação sozinha continua sem finalidade retrospectiva.
+    elipse_fala = re.search(r"\bquando\s+(?:disse|falou|respondeu|afirmou|explicou)\b", base)
+    motivo_fala = re.search(r"\b(?:motivo|razao|causa)\s+(?:de|para)\s+(?:voce|tu)\s+"
+        r"(?:dizer|falar|responder|afirmar|explicar)\b", base)
+    if not (passada or causativa or nominal or elipse_fala or motivo_fala):
         return ""
     fala = re.search(
         r"\b(?:voce|tu)\s+(?:(?:nao|ja|nunca|ontem)\s+)*"
         r"(?:disse|falou|respondeu|afirmou|explicou)\b|"
         r"\bsua\s+(?:resposta|fala)\b|\ba\s+(?:dizer|falar|responder|afirmar|explicar)\b", base)
-    return "fala" if fala else "ocorrencia"
+    return "fala" if fala or elipse_fala or motivo_fala else "ocorrencia"
 
 
 def referencia_explicacao_ocorrencia(texto: str, *, entidades: tuple[str, ...]) -> str:

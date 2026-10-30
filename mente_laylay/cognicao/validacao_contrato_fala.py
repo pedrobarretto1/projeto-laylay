@@ -15,7 +15,7 @@ from mente_laylay.cognicao.incerteza_observacao import (
     expressa_incerteza_observacao,
     estado_sob_pergunta_referida,
 )
-from mente_laylay.cognicao.normalizacao_linguagem import TIPOS_REFERENCIA_TEXTUAL
+from mente_laylay.cognicao.normalizacao_linguagem import TIPOS_REFERENCIA_TEXTUAL, localizar_enunciacao_avaliativa
 
 
 def _contradicoes_capacidade(
@@ -28,41 +28,80 @@ def _contradicoes_capacidade(
     A lista de domínios confirmados não basta para atestar qualquer ação.
     """
     roteiro = dict(contrato.get("roteiro_concreto") or {})
-    if not (
+    explicativa = (
         turno_id and str(contrato.get("turno_id")) == str(turno_id)
         and contrato.get("origem") == "mente_unica"
         and contrato.get("autoriza_execucao") is False
         and roteiro.get("estrategia") == "explicacao_capacidades"
         and roteiro.get("ancora_literal") == texto_usuario
-    ):
+    )
+    from mente_laylay.cognicao.fonte_capacidades_turno import fonte_capacidades_vigente
+    fonte = fonte_capacidades_vigente(contrato,texto_usuario,turno_id)
+    if not explicativa and fonte is None:
         return []
-    try:
-        documentos = json.loads(contrato.get("documentacao_capacidades") or "")
-    except (TypeError, ValueError):
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
+    if (criacao_ficcional_vigente({'id':turno_id,'texto_usuario':texto_usuario,'contrato_fala':contrato})
+            is not None and fala_ficcional_delimitada(fala)):
         return []
-    if not isinstance(documentos, list):
-        return []
-    dominios = {
-        d.get("dominio") for d in documentos if isinstance(d, dict)
-        and isinstance(d.get("dominio"), str) and d.get("estado") == "disponivel"
-    }
+    dados = fonte.dados.como_dict() if fonte is not None and not explicativa else {}
+    predicados = dados.get('predicados',contrato.get('predicados_capacidade') or ())
+    if dados:
+        dominios = set(dados['dominios_disponiveis'])
+    else:
+        try:
+            documentos = json.loads(contrato.get("documentacao_capacidades") or "")
+        except (TypeError, ValueError):
+            return []
+        if not isinstance(documentos, list):
+            return []
+        dominios = {d.get("dominio") for d in documentos if isinstance(d,dict)
+            and isinstance(d.get("dominio"),str) and d.get("estado") == "disponivel"}
     if not dominios:
         return []
     # Não promover fala citada a alegação própria. O marcador mantém a
     # fronteira, impedindo que retirar uma citação junte pedaços de frases.
-    sem_citacoes = re.sub(r'"[^"\n]*"|“[^”\n]*”|\x27[^\x27\n]*\x27|‘[^’\n]*’',
-                          " [citacao] ", fala)
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    sem_citacoes = texto_fora_de_citacoes(fala)
     contradicoes = []
+    def nome_generico(objeto: str) -> str:
+        return ' '.join((re.escape(palavra[:-2]) + '(?:ao|oes)' if palavra.endswith('ao') else
+            re.escape(palavra) + ('s?' if palavra not in {'do','da','de'} else ''))
+            for palavra in objeto.split())
+    lexico = fonte.dados.como_dict() if fonte is not None else {}
+    nomes = lexico.get('objetos_genericos') or [o for p in predicados for o in p.get('objetos',())]
+    objeto_generico = r'(?:(?:o|a|os|as) )?(?:' + '|'.join(nome_generico(o) for o in nomes) + ')'
+    coordenacao_generica = rf'{objeto_generico}(?:(?: (?:e|ou) |, ){objeto_generico})*'
+    frases = []
     for frase in re.split(r"(?<=[.!?;])\s+", sem_citacoes):
         if "?" in frase:
             continue
+        frases.append(frase)
+        base_frase = unicodedata.normalize('NFKD',frase.casefold())
+        base_frase = ''.join(c for c in base_frase if not unicodedata.combining(c))
+        # Não recortar a restrição que torna uma impossibilidade condicional.
+        # A atribuição citada já foi mascarada pelo leitor referencial comum.
+        if re.search(r'\b(?:se|caso|quando|sem|enquanto|desde que|a menos que)\b',base_frase):
+            continue
+        # Discurso indireto mantém seu enunciador em todas as subordinadas.
+        # Recortar uma causa dentro de "X disse que ..." não a transforma
+        # em alegação presente da Laylay. Outra frase é conferida à parte.
+        if re.search(r'\b(?:disse|dizia|falou|afirmou|afirmava|relatou|informou|respondeu|explicou)\s+que\b',base_frase):
+            continue
+        causal_inicial = re.match(r'^como\s+(?=(?:eu\s+)?n[aã]o\b)([^,]+),',frase,re.I)
+        if causal_inicial:
+            frases.append(causal_inicial[1])
+        for m in re.finditer(r'\b(?:porque|pois|j[aá] que|uma vez que|mas|por[eé]m)\b\s*',frase,re.I):
+            frases.append(frase[m.end():])
+            if re.fullmatch(r'(?:mas|por[eé]m)\s*',m.group(),re.I):
+                frases.append(frase[:m.start()].rstrip(' ,'))
+    for frase in frases:
         # A conclusão causal pode seguir uma alegação completa, mas não
         # condicionais como 'sem autorização' ou 'se o serviço cair'.
         trecho = re.split(r",\s*(?:ent[aã]o|por isso)\b", frase, maxsplit=1, flags=re.I)[0]
         normal = unicodedata.normalize("NFKD", trecho.casefold())
         normal = "".join(c for c in normal if not unicodedata.combining(c))
         normal = re.sub(r"\s+", " ", normal).strip().rstrip(".!;")
-        for predicado in contrato.get("predicados_capacidade") or ():
+        for predicado in predicados:
             if not isinstance(predicado, Mapping) or predicado.get("dominio") not in dominios:
                 continue
             if (predicado.get("capacidade") and predicado.get("acao")
@@ -73,16 +112,23 @@ def _contradicoes_capacidade(
                 sujeito = rf"(?:(?:eu )?nao (?:consigo|posso) {acao}|(?:eu |a laylay |laylay )nao (?:{presentes}))"
                 objetos = []
                 for objeto in predicado["objetos"]:
-                    objetos.append(" ".join(
-                        re.escape(palavra) + ("s?" if palavra not in {"do", "da", "de"} else "")
-                        for palavra in objeto.split()
-                    ))
+                    objetos.append(nome_generico(objeto))
                 alvo = "(?:" + "|".join(objetos) + ")"
                 # Só objeto genérico. 'Este programa', alvo nomeado e
                 # outro computador não herdam capacidade geral do catálogo.
                 padrao = (rf"{sujeito} (?:diretamente )?(?:(?:o|a|os|as) )?{alvo}"
                           r"(?: diretamente)?(?: no seu (?:computador|pc))?")
-                if re.fullmatch(padrao, normal):
+                nominal = '|'.join(re.escape(v) for v in predicado.get('nominal') or ())
+                negacao_nominal = (re.fullmatch(rf'(?:(?:eu )?nao (?:tenho|possuo)|'
+                    rf'(?:a laylay|laylay) nao (?:tem|possui)) (?:o )?(?:{nominal})'
+                    r'(?: direto)? (?:de|sobre) (?P<objetos>.+)',normal) if nominal else None)
+                # Só recortar a coordenação DEPOIS de conferir toda a cauda.
+                # Um qualificador compartilhado impede tratar o primeiro nome
+                # como negativa geral independente.
+                objetos_negados = (re.split(r'\s+(?:e|ou)\s+|,\s*',negacao_nominal['objetos'])
+                    if negacao_nominal and re.fullmatch(coordenacao_generica,negacao_nominal['objetos']) else ())
+                nominal_contradiz = any(re.fullmatch(rf'(?:(?:o|a|os|as) )?{alvo}',objeto) for objeto in objetos_negados)
+                if re.fullmatch(padrao, normal) or nominal_contradiz:
                     contradicoes.append({"capacidade": intent, "acao": predicado["acao"],
                                           "trecho": trecho.strip(), "fonte": "catalogo_vivo"})
     return contradicoes
@@ -279,6 +325,19 @@ _RECONHECE_AGRADECIMENTO = re.compile(
     r"disponha|foi um prazer)\b",
     re.IGNORECASE,
 )
+
+
+def reconhece_reciprocidade_agradecimento(texto: str) -> bool:
+    """Reconhece ato autoral de agradecer, sem provar causa ou experiência."""
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    externo = texto_fora_de_citacoes(texto)
+    if _RECONHECE_AGRADECIMENTO.search(externo):
+        return True
+    return bool(re.search(
+        r'(?:^|[,;—–]\s*|\be\s+)(?:eu\s+)?(?:(?:te|lhe)\s+)?'
+        r'(?:agrade[cç]o|obrigad[oa])\b', externo, re.I))
+
+
 _RETOMADA_OPERACIONAL = re.compile(
     r"\b(?:continuar|tocar|m[uú]sica|playlist|arquivo|pasta|app|aplicativo|"
     r"janela|luz|l[aâ]mpada|comando|tarefa|resumo|pesquisa)\b",
@@ -316,7 +375,15 @@ _RELATO_MEXENDO_CODIGO = re.compile(
 _NEGACAO_IDENTIDADE_OPERACIONAL = re.compile(
     r"\b(?:sou|eu\s+sou)\s+(?:s[oó]|apenas)\s+(?:uma?\s+)?(?:chatbot|ia|"
     r"assistente\s+de\s+texto)|"
-    r"\bs[oó]\s+(?:consigo\s+)?(?:conversar|converso|responder|respondo|falar|falo)\b|"
+    # Infinitivo sem atribuição não prova autolimitação. Exigir modal/flexão
+    # de primeira pessoa ou sujeito próprio restritivo preserva a guarda
+    # sem converter convites impessoais em negativas de capacidade.
+    r"\bs[oó]\s+(?:consigo\s+(?:conversar|responder|falar)|converso|respondo|falo)\b|"
+    r"\b(?:minha\s+(?:[uú]nica\s+)?(?:capacidade|habilidade|fun[cç][aã]o)|"
+    r"tudo\s+(?:o\s+)?que\s+(?:eu\s+)?(?:consigo|posso|sei)\s+fazer)"
+    r"\s+[eé]\s+s[oó]\s+(?:conversar|responder|falar)\b|"
+    r"\b(?:eu\s+)?(?:fui|sou)\s+(?:criad[ao]|programad[ao]|feit[ao]|projetad[ao])"
+    r"\s+(?:para|pra)\s+s[oó]\s+(?:conversar|responder|falar)\b|"
     r"\bn[aã]o\s+(?:estou|t[oô]|fico|rodo|funciono)\s+(?:no|dentro\s+do)\s+seu\s+"
     r"(?:pc|computador)|"
     r"\bn[aã]o\s+tenho\s+acesso\s+(?:ao|a)\s+seu\s+(?:pc|computador)\b"
@@ -401,7 +468,7 @@ def _tem_criterio_concreto(resposta: str, *, referente: str = "") -> bool:
 
 def _encontrar_posicao(resposta: str, referente: str) -> re.Match[str] | None:
     """Reconhece preferência explícita sem exigir sempre o verbo 'prefiro'."""
-    posicao = _POSICAO.search(resposta)
+    posicao = _POSICAO.search(resposta) or localizar_enunciacao_avaliativa(resposta)
     if posicao:
         return posicao
     opcoes = [
@@ -478,12 +545,53 @@ def _relato_informativo_sem_ancora(
     return not bool(ancora & (_termos_ancora(resposta) - _MARCADORES_DISCURSIVOS_RELATO))
 
 
+def _contrato_relato_atual(
+    usuario: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any], *, turno_id: Any,
+) -> bool:
+    from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
+    return bool(
+        turno_id and str(contrato.get("turno_id")) == str(turno_id)
+        and contrato.get("origem") == "mente_unica"
+        and contrato.get("autoriza_execucao") is False
+        and contrato.get("funcao") in {"informacao", "conquista"}
+        and set(contrato.get("atos") or ()) == {"conversa"}
+        and roteiro.get("estrategia") == "resposta_direta"
+        and roteiro.get("ancora_literal") == usuario
+        and not pedido_repeticao_literal_da_fala(usuario)
+    )
+
+
+def _reinicio_social_sem_ato_atual(
+    usuario: str, resposta: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any],
+    *, turno_id: Any,
+) -> bool:
+    """Âncora temática posterior não legitima responder a outro ato social."""
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    if not _contrato_relato_atual(usuario, contrato, roteiro, turno_id=turno_id):
+        return False
+    autoral = texto_fora_de_citacoes(resposta).strip()
+    # A gramática de presença (_SAUDACAO) também aceita "fala" e "estou
+    # aqui"; reutilizá-la como veto apagaria conteúdo contextual legítimo.
+    if re.match(r"^(?:oi|ol[aá]|e\s+a[ií]|bom\s+dia|boa\s+tarde|boa\s+noite)"
+                r"\s*(?:[,!.?;]|$)", autoral, re.I):
+        return True
+    primeira_oracao = re.split(r"[,.!?;…—]", autoral, maxsplit=1)[0]
+    return bool(re.fullmatch(
+        r"(?:tudo\s+(?:bem|certo)(?:\s+(?:comigo|por\s+aqui|aqui))?|"
+        r"(?:eu\s+)?(?:estou|to)\s+(?:bem|mal|tranquila|tranquilo)"
+        r"(?:\s+(?:por\s+aqui|aqui|hoje|agora))?)",
+        _normalizar(primeira_oracao),
+    ))
+
+
 def _indice_reconhecimento_estado(texto_usuario: str, resposta: str) -> int:
     estado = _ESTADO_USUARIO.search(texto_usuario)
     resposta_norm = _normalizar(resposta)
-    if not estado:
+    from mente_laylay.cognicao.referencias_linguagem import declaracao_pessoal_de_estado
+    declarado = declaracao_pessoal_de_estado(texto_usuario)
+    if not estado and not declarado:
         return -1
-    valor = _normalizar(estado.group("estado"))
+    valor = _normalizar(estado.group("estado") if estado else declarado)
     raiz = valor[:5] if len(valor) > 5 else valor
     if valor == "bem":
         achado = _ESTADO_POSITIVO.search(resposta)
@@ -738,11 +846,25 @@ def validar_aderencia_contrato_fala(
 ) -> dict[str, Any]:
     """Verifica violações fortes do roteiro sem interpretar comandos."""
     contrato = dict(contrato_fala or {})
+    from mente_laylay.cognicao.adequacao_pessoal import avaliar_adequacao_pessoal
+    adequacao = avaliar_adequacao_pessoal(texto_usuario, fala, plano={'id':turno_id,
+        'texto_usuario':texto_usuario, 'contrato_fala':contrato,
+        'autoriza_execucao':contrato.get('autoriza_execucao')})
+    if adequacao is not None:
+        return {**adequacao, 'avaliado':True, 'prova_semantica_livre':False, 'prova_factual':False}
+    from mente_laylay.cognicao.opiniao_autoral import avaliar_opiniao_autoral
+    opiniao = avaliar_opiniao_autoral(texto_usuario, fala, plano={'id': turno_id,
+        'texto_usuario': texto_usuario, 'contrato_fala': contrato,
+        'autoriza_execucao': contrato.get('autoriza_execucao')})
+    if opiniao is not None:
+        return {**opiniao, 'avaliado': True,
+            'prova_semantica_livre': False, 'prova_factual': False}
     from mente_laylay.cognicao.presenca_conversacional import realizacoes_presenca
     presenca = realizacoes_presenca(str(texto_usuario or ""), contrato=contrato,
                                    turno_id=turno_id, modelo_corporal=modelo_corporal)
-    if presenca:
-        aceita = fala in presenca
+    if (presenca or contrato.get('encerramento_assunto') == 'sessao'
+        or 'encerramento_sessao' in (contrato.get('atos') or ())):
+        aceita = bool(presenca and fala in presenca)
         return {"avaliado": True, "aceita": aceita, "requer_reparo": not aceita,
                 "problemas": [] if aceita else ["presenca_conversacional_sem_suporte"],
                 "estrategia": "presenca_conversacional", "nucleo_atendido": aceita,
@@ -847,6 +969,8 @@ def validar_aderencia_contrato_fala(
         problemas.append("resposta_generica_sem_conteudo")
     if _relato_informativo_sem_ancora(usuario, resposta, contrato, roteiro, turno_id=turno_id):
         problemas.append("relato_atual_sem_ancora")
+    if _reinicio_social_sem_ato_atual(usuario, resposta, contrato, roteiro, turno_id=turno_id):
+        problemas.append("reinicio_social_sem_ato_atual")
     resposta_autoral = _TRECHO_CITADO.sub(" ", resposta)
     if (
         "estado_pessoal" in atos
@@ -967,7 +1091,9 @@ def validar_aderencia_contrato_fala(
         posicao = _encontrar_posicao(resposta, referente)
         if not posicao:
             problemas.append("ato_opiniao_nao_respondido")
-        elif estrategia == "opiniao_com_criterio" and not _POSICAO.search(primeira):
+        elif estrategia == "opiniao_com_criterio" and not (
+            _POSICAO.search(primeira) or localizar_enunciacao_avaliativa(primeira)
+        ):
             problemas.append("opiniao_nao_veio_na_primeira_frase")
         if posicao and not _tem_criterio_concreto(resposta, referente=referente):
             problemas.append("opiniao_sem_criterio_concreto")
@@ -1014,7 +1140,7 @@ def validar_aderencia_contrato_fala(
         elif estrategia == "acolhimento_literal" and indice_estado > len(primeira):
             problemas.append("estado_pessoal_nao_veio_na_primeira_frase")
         if estrategia == "resposta_multiacto" and "opiniao" in atos:
-            posicao = _POSICAO.search(resposta)
+            posicao = _POSICAO.search(resposta) or localizar_enunciacao_avaliativa(resposta)
             if posicao and indice_estado >= 0 and indice_estado > posicao.start():
                 problemas.append("ordem_multiacto_invertida")
         if estrategia == "acolhimento_literal":
@@ -1037,7 +1163,7 @@ def validar_aderencia_contrato_fala(
             problemas.append("bem_estar_com_experiencia_fisica")
 
     if estrategia == "encerramento_social":
-        if not _RECONHECE_AGRADECIMENTO.search(primeira):
+        if not reconhece_reciprocidade_agradecimento(primeira):
             problemas.append("agradecimento_nao_reconhecido")
         usuario_norm = _normalizar(usuario)
         retomada = _RETOMADA_OPERACIONAL.search(resposta)
@@ -1111,6 +1237,7 @@ def validar_aderencia_contrato_fala(
         "bem_estar_nao_respondido_no_inicio",
         "resposta_generica_sem_conteudo",
         "relato_atual_sem_ancora",
+        "reinicio_social_sem_ato_atual",
         "agradecimento_nao_reconhecido",
         "agradecimento_retomou_assunto_antigo",
         "agradecimento_abriu_nova_pergunta",
@@ -1148,6 +1275,9 @@ def validar_aderencia_contrato_fala(
                      r"n[aã]o, eu n[aã]o recebi)\b", fala, re.I):
             problemas.append("expressao_solicitada_virou_recusa")
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if _contrato_relato_atual(usuario, contrato, roteiro, turno_id=turno_id):
+        contrato_reparo['relato_atual'] = {'texto': usuario, 'falante': 'usuario',
+            'reiniciar_ato_social': False, 'comprova_fato': False, 'autoriza_execucao': False}
     if divergencias_pessoa:
         contrato_reparo["perspectiva_enunciador"] = {
             **perspectiva.para_prompt(), "divergencias": list(divergencias_pessoa),
@@ -1166,6 +1296,10 @@ def validar_aderencia_contrato_fala(
         )
     if contradicoes_capacidade:
         contrato_reparo["contradicoes_capacidade"] = contradicoes_capacidade
+        from mente_laylay.cognicao.fonte_capacidades_turno import fonte_capacidades_vigente
+        fonte = fonte_capacidades_vigente(contrato,usuario,turno_id)
+        if fonte is not None and estrategia != 'explicacao_capacidades':
+            contrato_reparo['capacidades_disponiveis_no_turno'] = fonte.para_prompt()
     estado_informado = _ESTADO_USUARIO.search(usuario) if "estado_pessoal" in atos else None
     if estado_informado:
         contrato_reparo["estado_pessoal_informado"] = {

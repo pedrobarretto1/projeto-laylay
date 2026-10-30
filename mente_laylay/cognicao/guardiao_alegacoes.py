@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any, Dict
 
 from mente_laylay.cognicao.contratos_turno import ContratoExplicativoAto
@@ -359,9 +360,14 @@ def fala_adia_resposta_sem_continuacao(fala: str) -> bool:
 
 # Isto detecta alegações na saída, não interpreta comandos nem concede autoridade.
 # Negar execução ("não executei") é diferente de alegar tentativa frustrada.
+_OPERACOES_RESULTADO = (
+    'abrir', 'fechar', 'salvar', 'enviar', 'apagar', 'criar', 'ligar', 'desligar',
+    'executar', 'agendar', 'tocar', 'reproduzir', 'ler', 'baixar', 'pausar',
+    'retomar', 'ajustar', 'mover', 'copiar', 'renomear', 'remover', 'excluir',
+)
+_INFINITIVOS_RESULTADO = '(?:' + '|'.join(_OPERACOES_RESULTADO) + ')'
 _FALHA_OPERACIONAL = re.compile(
-    r"\bn[aã]o\s+consegui\s+(?:abrir|fechar|salvar|enviar|apagar|criar|"
-    r"ligar|desligar|executar|agendar|tocar|reproduzir|ler|baixar)\b|"
+    rf"\bn[aã]o\s+consegui\s+{_INFINITIVOS_RESULTADO}\b|"
     r"\bn[aã]o\s+(?:abriu|fechou|salvou|enviou|apagou|ligou|desligou|"
     r"executou|agendou|tocou|reproduziu|funcionou|"
     r"foi\s+(?:salv[oa]|enviad[oa]|apagad[oa]|criad[oa]|abert[oa]|"
@@ -388,6 +394,76 @@ _ATRIBUICAO_RELATO = re.compile(
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _ResultadoNarrado:
+    inicio: int
+    fim: int
+    tipo: str
+    inicio_escopo: int
+    primeira_pessoa: bool = False
+    externo: bool = True
+
+
+_RESULTADO_PERIFRASTICO = re.compile(
+    rf'\b(?:(?P<negacao>n[aã]o|nunca|jamais)\s+)?'
+    rf'(?:(?:eu|n[oó]s)\s+)?consegui(?:mos)?\s+(?P<operacao>{_INFINITIVOS_RESULTADO})\b', re.I)
+_COORDENACAO_RESULTADO = re.compile(
+    rf'(?:,\s*|\s+e\s+(?:depois\s+)?)(?P<operacao>{_INFINITIVOS_RESULTADO})\b', re.I)
+
+
+def _complemento_discursivo(operacao: str, objeto: str) -> bool:
+    """Recorte de ato mental/textual; nomes literais e qualificações não herdam o papel."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    t = normalizar_texto_basico(objeto).strip(' .!?')
+    determinantes = r'(?:(?:o|a|um|uma|meu|minha|seu|sua|este|esta|esse|essa)\s+){0,2}'
+    if operacao == 'abrir':
+        nucleo = r'mente(?:\s+para\s+(?:(?:essa|esta|uma|a)\s+)?ideia)?'
+    elif operacao == 'criar':
+        nucleo = r'(?:exemplo|historia|conto|piada|poema|frase|resposta|personagem|titulo)(?:\s+(?:didatico|novo|curto|nova|curta))?'
+    elif operacao == 'ler':
+        nucleo = (r'(?:mensagem|pergunta|exemplo|texto|relato|resposta)'
+                  r'(?:\s+que\s+voce\s+(?:me\s+)?(?:colou|escreveu|enviou|disse))?')
+    else:
+        return False
+    return re.fullmatch(determinantes + nucleo, t) is not None
+
+
+def _resultados_perifrasticos(texto: str) -> list[_ResultadoNarrado]:
+    """Aspecto concluído + operação, com polaridade e escopo do auxiliar.
+
+    Ler uma alegação não confirma o efeito. Uma coordenação de infinitivos
+    conserva a ressalva do mesmo auxiliar; outro auxiliar abre outro escopo.
+    """
+    principais = list(_RESULTADO_PERIFRASTICO.finditer(texto))
+    resultados = []
+    for i, m in enumerate(principais):
+        limite = principais[i + 1].start() if i + 1 < len(principais) else len(texto)
+        fronteira = re.search(r'[!?;]|\.(?=\s|$)', texto[m.end():limite])
+        if fronteira:
+            limite = m.end() + fronteira.start()
+        coordenadas = list(_COORDENACAO_RESULTADO.finditer(texto, m.end(), limite))
+        operacoes = [m, *coordenadas]
+        for j, op in enumerate(operacoes):
+            fim_objeto = operacoes[j + 1].start() if j + 1 < len(operacoes) else limite
+            objeto = re.split(r',|\s+(?:e|mas|por[eé]m|contudo|entretanto)\s+',
+                              texto[op.end():fim_objeto], maxsplit=1, flags=re.I)[0]
+            externo = not _complemento_discursivo(op['operacao'].casefold(), objeto)
+            resultados.append(_ResultadoNarrado(op.start(), op.end(),
+                'falha' if m['negacao'] else 'sucesso', m.start(), True, externo))
+    return resultados
+
+
+def _resultados_narrados(texto: str) -> list[_ResultadoNarrado]:
+    """Representação única consumida pela revisão e pela guarda de entrega."""
+    perifrases = _resultados_perifrasticos(texto)
+    resultados = [_ResultadoNarrado(m.start(), m.end(),
+        'falha' if m.group('falha') is not None else 'estado' if m.group('estado') is not None else 'sucesso',
+        m.start()) for m in _RESULTADO_NARRADO.finditer(texto)
+        if not any(p.inicio <= m.start() and m.end() <= p.fim for p in perifrases)]
+    resultados.extend(p for p in perifrases if p.externo)
+    return sorted(resultados, key=lambda p: (p.inicio, p.fim))
+
+
 def _texto_alegacao(texto: str) -> str:
     return re.sub(r"\s+", " ", texto).strip(' .!?;:,"“”«»').casefold()
 
@@ -398,11 +474,8 @@ def _prefixo_pedido_da_alegacao(frase: str, inicio: int) -> str:
     Um estado de janela não pode emprestar escopo ao estado de um dispositivo
     ou a um resultado de arquivo. Reusa os detectores do próprio guardião.
     """
-    fim_anterior = max((
-        ocorrencia.end()
-        for padrao in (_RESULTADO_NARRADO, _ESTADO_REAL_FORTE)
-        for ocorrencia in padrao.finditer(frase, 0, inicio)
-    ), default=0)
+    fim_anterior = max([p.fim for p in _resultados_narrados(frase) if p.fim <= inicio]
+        + [m.end() for m in _ESTADO_REAL_FORTE.finditer(frase, 0, inicio)], default=0)
     return frase[fim_anterior:inicio]
 
 
@@ -416,9 +489,12 @@ def detectar_resultados_operacionais_sem_evidencia(
     não empresta o receipt de uma operação para outra. Paráfrases não cobertas
     seguem para o reparador existente, nunca para um executor.
     """
-    if not _RESULTADO_NARRADO.search(str(fala or "")):
+    if not _resultados_narrados(str(fala or "")):
         return []
     contrato = dict(plano or {})
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
+    if criacao_ficcional_vigente(contrato) is not None and fala_ficcional_delimitada(str(fala)):
+        return []
     usuario = str(contrato.get("texto_usuario") or "")
     fontes = []
     for parte in re.split(r"(?<=[.!?])\s+|;", usuario):
@@ -456,26 +532,30 @@ def detectar_resultados_operacionais_sem_evidencia(
             r"\b(?:por\s+que|porque|qual\s+(?:foi\s+)?(?:a\s+)?causa)\b|"
             r"[,—]\s*(?:n[eé]|certo|correto|n[aã]o\s+[ée]|verdade)\s*\?$", frase, re.I,
         )
-        for ocorrencia in _RESULTADO_NARRADO.finditer(frase):
+        for ocorrencia in _resultados_narrados(frase):
             # O objeto pode coordenar nomes, mas não pode emprestar o pedido
             # anterior a outra alegação de estado/sucesso/falha independente.
-            prefixo_pedido = _prefixo_pedido_da_alegacao(frase, ocorrencia.start())
+            inicio_escopo = ocorrencia.inicio_escopo
+            prefixo_pedido = _prefixo_pedido_da_alegacao(frase, inicio_escopo)
             # Consultas explícitas já têm seu owner de evidência/estado abaixo
             # e o contrato semântico específico. Aqui cobrimos a afirmação
             # que aparece espontaneamente numa conversa/relato.
-            if ocorrencia.group("estado") is not None:
+            if ocorrencia.tipo == 'estado':
                 atualidade = classificar_atualidade_factual(usuario)
                 if atualidade.get("classe") == "estado_observavel" and atualidade.get("depende_atualidade"):
                     continue
-            inicio = list(re.finditer(r"[,;]|\b(?:mas|por[eé]m|contudo|entretanto|e)\b", frase[:ocorrencia.start()], re.I))
-            prefixo = frase[inicio[-1].end() if inicio else 0:ocorrencia.start()]
+            inicio = list(re.finditer(r"[,;]|\b(?:mas|por[eé]m|contudo|entretanto|e)\b", frase[:inicio_escopo], re.I))
+            prefixo = frase[inicio[-1].end() if inicio else 0:inicio_escopo]
             if (pergunta_simples or _HIPOTESE_RESULTADO.search(prefixo)
                     or expressa_incerteza_observacao(prefixo) or estado_sob_pedido_informacao(prefixo_pedido)
-                    or estado_sob_pergunta_referida(frase[:ocorrencia.start()])):
+                    or estado_sob_pergunta_referida(frase[:inicio_escopo])):
                 continue
             alegacao = _texto_alegacao(_ATRIBUICAO_RELATO.sub("", frase))
-            falha = ocorrencia.group("falha") is not None
-            if not any(alegacao == fonte for fonte in fontes + fontes_receipt[falha]):
+            falha = ocorrencia.tipo == 'falha'
+            # Relato do usuário pode provar o que ele relatou, não uma ação
+            # em primeira pessoa da Laylay. Citação literal já foi delimitada.
+            fontes_relato = [] if ocorrencia.primeira_pessoa else fontes
+            if not any(alegacao == fonte for fonte in fontes_relato + fontes_receipt[falha]):
                 return ["falha_operacional_sem_evidencia" if falha else "resultado_operacional_sem_evidencia"]
     return []
 
@@ -561,6 +641,7 @@ def validar_alegacoes_da_fala(
         _HIPOTESE_EMOCIONAL_NEGADA.search(texto_usuario)
     )
     estado_atual_rejeitado = False
+    resultado_narrado_rejeitado = False
     # Cobertura mínima da relação esperada, não prova semântica completa.
     # Uma resposta fora do assunto não vira explicação por evitar promessas.
     if (origem_ia and contrato.get("exigir_explicacao_condicional") is True
@@ -569,6 +650,12 @@ def validar_alegacoes_da_fala(
                 "problemas": ["explicacao_condicional_omitida"], "acao": "ajustada",
                 "trechos_rejeitados": frases}
     for frase in frases:
+        resultado_sem_fonte = detectar_resultados_operacionais_sem_evidencia(frase, plano=contrato) if origem_ia else []
+        if resultado_sem_fonte:
+            problemas.extend(resultado_sem_fonte)
+            removidas.append(frase)
+            resultado_narrado_rejeitado = True
+            continue
         if origem_ia and (problema_pessoa := _problema_pessoa_condicao(frase, contrato.get("atos_explicativos"))):
             problemas.append(problema_pessoa)
             removidas.append(frase)
@@ -664,7 +751,9 @@ def validar_alegacoes_da_fala(
             continue
         mantidas.append(frase)
     ajustada = " ".join(mantidas).strip()
-    if estado_atual_rejeitado:
+    if resultado_narrado_rejeitado:
+        ajustada = 'Ainda não tenho confirmação desse resultado.'
+    elif estado_atual_rejeitado:
         ajustada = (
             "Não tenho uma leitura atual desse estado para te responder com "
             "segurança."
@@ -730,4 +819,5 @@ def validar_alegacoes_da_fala(
         "problemas": list(dict.fromkeys(problemas)),
         "acao": "ajustada" if problemas else "aceita",
         "trechos_rejeitados": removidas,
+        **({'requer_reparo': True} if resultado_narrado_rejeitado else {}),
     }

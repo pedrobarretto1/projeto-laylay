@@ -31,6 +31,21 @@ class PacotePrompt:
 
 
 @dataclass(frozen=True)
+class ContextoCanalConversa:
+    """Enquadramento do canal definido pelo host, separado de dados do diálogo."""
+    canal: str
+    interlocutor: str
+    instrucao: str = field(repr=False)
+    autoriza_execucao: bool = field(default=False,init=False)
+    comprova_fato: bool = field(default=False,init=False)
+
+    def __post_init__(self) -> None:
+        if (not all(type(v) is str and v.strip() for v in (self.canal,self.interlocutor,self.instrucao))
+            or len(self.canal)>80 or len(self.interlocutor)>80 or len(self.instrucao)>2500):
+            raise ValueError('contexto de canal exige identidade e instrução limitadas do host')
+
+
+@dataclass(frozen=True)
 class PedidoModelo:
     """Pedido imutável que a conversa entrega ao serviço de modelo."""
 
@@ -47,8 +62,11 @@ class PedidoModelo:
     contexto_fechado: bool = False
     contrato_saida: ContratoSaidaEstruturada | None = field(default=None, repr=False)
     reserva_saida_tokens: int = 0
+    contexto_canal: ContextoCanalConversa | None = field(default=None,repr=False)
 
     def __post_init__(self) -> None:
+        if self.contexto_canal is not None and type(self.contexto_canal) is not ContextoCanalConversa:
+            raise TypeError('contexto de canal exige contrato nativo do host')
         if type(self.reserva_saida_tokens) is not int or not 0 <= self.reserva_saida_tokens <= 2048:
             raise ValueError("reserva de saída exige inteiro entre 0 e 2048")
         if self.contrato_saida is not None and not isinstance(self.contrato_saida, ContratoSaidaEstruturada):

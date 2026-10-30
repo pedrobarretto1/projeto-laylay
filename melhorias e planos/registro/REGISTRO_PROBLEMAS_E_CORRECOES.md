@@ -1,5 +1,835 @@
 # Laylay — registro de problemas e correções
 
+### Retomada do improviso — escopo social e autoria, 30/10
+
+Oito evidências da sessão20261030T094314Z-5cf00cff, com538 fontes iguais à
+base. IDs mantidos e vinculados aos contratos: gratidão não é particípio de
+obrigação; função emocional não é declaração pessoal; fonte de pessoa e estado
+pertence ao mesmo enunciado; autoria livre não é cópia extensa da fala atual;
+segmento composto não distribui sua interrogação a todas as frases; agradecimento
+composto não fecha os outros conteúdos atuais. Elaboração da interlocutora
+não exige pesquisa recente só por “agora”.
+
+Dez owners compartilhados alterados,528 fontes preservadas. Revisor protege
+reprodução pedida, declarações reais, consultas externas e receipts. Revisão
+independente sem pendência no recorte, REDs e primeira ampla preservados.
+Ampla final195:4.859 aprovados,zero falhas/erros,mesmos filtros e nenhum ID
+anterior ausente. Treze composições instaladas com HTTP fixo; sem
+conversa/Qwen novo/voz/efeitos, modelo/orçamento alterado ou commit no main.
+
+Commit paralelo preservado fora da cadeia de publicação devido a configuração
+privada. Export seguro em branch codex/ a partir do remoto, sem dados pessoais.
+Relatório RELATORIO_RETOMA_IMPROVISO_20261030.md. Espontaneidade, cópia curta,
+factualidade livre e memória futura permanecem limites; F1/C5/C7/AUT preservados.
+
+### Conversa casual — modalidade e escopo das obrigações, 30/10
+
+Sessão 20261030T021917Z-4f76db4d preservada:16 rodadas sem queda, mas comandos
+e obrigações de fonte/histórico indevidos. Evidências papo-004/005/008/009/015
+vinculadas aos contratos existentes, sem renomear IDs ou contar por frase.
+
+Corrigidos nos owners compartilhados: agente da permissiva, dependência do
+contraste, vínculo da pergunta causal, atualidade por ato, predicado social
+local e identidade integral da autoria. Controle factual separado preserva
+obrigação recente quando a busca não resolve tema. Não trocar aviso técnico
+por fala pronta nem usar ficção/contexto/proposta como prova ou autorização.
+
+Revisão independente expôs variantes e confirmou os ajustes finais.132 focados
+aprovados; nove composições instaladas e comparação dos cinco casos com a base,
+inclusive retirando somente em memória o delta concorrente de validação.
+Ampla final191:4.764 aprovados,zero falhas/erros,mesmos filtros e nenhum ID
+anterior ausente; primeira ampla com um RED preservada.
+Sete owners alterados,530 fontes intactas e uma alteração paralela isolada.
+Sem conversa nova/modelo/voz/efeito real/commit ou orçamento ampliado.
+
+Relatório RELATORIO_PAPO_CASUAL_20261030.md. Testes naturais seguem com Pedro;
+retrieval de tema/fonte, alternativa curta, espontaneidade e timing de persona
+não foram encerrados. F1/C5/C7/AUT e demais pendências permanecem preservados.
+
+### Limitações temáticas — recuperação do contrato atual, 29/10
+
+Continuação de identidade3-006 e identidade-retoma-003, sem renomear raízes ou
+contar os turnos como novos mecanismos. Replay V5 corrigido: `partes` eram
+fragmentos produzidos pelo host, não saída HTTP válida. O veto a reuso era
+correto; seu pacote perdia os atos da tarefa atual. Owner de qualidade agora
+reutiliza o contrato de aderência ao encaminhar o reparo.
+
+Separados: juízo dialógico modificado confundido com biografia e perda da causa
+de recusa do codec. Owners de linguagem conservam o escopo limitado; serviço
+preserva categoria negativa. Preparação permite um reparo interativo da principal,
+conservando fontes/revisão; erro no próprio reparo não induz terceira autoria.
+Nenhuma proposta da IA fornece prova, autoridade ou receipt de efeito.
+
+171 focados aprovados, quatro opcionais de modelo pulados, dez composições pelo
+adaptador/root reais com HTTP controlado. Ampla184:4.623 aprovados,zero
+falhas/erros,mesmos filtros; RED anterior preservado, nenhum ID retirado.
+Oito fontes existentes alteradas
+entre538; outras530 preservadas, sem commit/Qwen novo/voz/efeitos reais.
+Corpo HTTP histórico recusado continua ausente: causa interna do Qwen não provada.
+Relatório RELATORIO_LIMITES_TEMATICOS_20261030.md. Conversa continua com Pedro;
+F1 e demais raízes anteriores não foram encerradas.
+
+### Estabilidade de entrega e identidade do canal — 29/10
+
+Mesma raiz de resultado auxiliar confundido com resposta, não novo defeito por
+turno: últimos32 inputs geraram32 publicações, mas cinco viraram falha_modelo
+no protocolo. Adaptador passa a usar receipt de texto/ocorrência do orquestrador;
+falha observada permanece explícita como degradação ou erro recuperável. Proposta
+de modelo não substitui publicação, fonte ou receipt operacional.
+
+Separadas duas recusas de revisão: mudança explícita para primeira pessoa após
+juízo dialógico e agradecimento autoral não reconhecido. Owners locais corrigidos
+com negativos de nova atribuição/efeito. Outra raiz comprovada no composto:
+enquadramento do interlocutor caía na seleção de contexto; contrato nativo de
+canal agora acompanha o pedido e é aplicado após a seleção pelo preparador.
+
+Retomada do ChatGPT usa somente pares entregues no mesmo canal/projeto e estado
+canônico, sem resumo fixo nem memória pessoal. 35 testes da ponte e sete ensaios
+com construtor real passaram. Ampla180:4.588 aprovados,zero falhas/erros,
+mesmos filtros e nenhum ID anterior retirado. Delta de produção limitado
+a quatro fontes existentes; cópias da ponte alinhadas, sem commit/Qwen/voz/efeito
+real. IDs anteriores e duas limitações temáticas do replay continuam preservados.
+Relatório RELATORIO_ESTABILIDADE_ENTREGA_20261030.md, evidências em
+resultados_testes/estabilidade_entrega_20261030. Conversa com Pedro.
+
+### Posicionamento natural — continuação da pendência, 29/10
+
+Leitores privados de qualidade/aderência recusavam Eu vejo/Eu considero e
+aceitavam a mesma ideia com Acho ou não. Novo leitor compartilhado confere
+matriz avaliativa, autoria e complemento; pergunta final não apaga declaração,
+citação não fornece operador externo. Não confere verdade ou receipt.
+
+Bloqueio posterior da fundamentação distinguido por comparação parcial:
+Defendo que discordar com cuidado é válido não é automaticamente detalhe
+externo. Exceção nova limitada a juízo normativo fechado sobre atividade;
+atributos e relações do objeto continuam exigindo fonte. Quatro REDs descobertos
+na revisão restringiram o candidato, sem aceitar proposta da IA como prova.
+
+188 focados e nove comparações instaladas controladas aprovados. Segurança de
+APP_OPEN/MEDIA_CONTROL preservada; nenhum efeito/voz/autorização indevidos.
+Ampla relevante175:4.542 aprovados, zero falhas/erros e nenhum ID anterior removido,
+com os filtros anteriores preservados. Quatro fontes existentes alteradas, outras534
+preservadas, sem commit ou conversa/Qwen. IDs e diagnósticos anteriores mantidos;
+memoria-005 e outras raízes continuam abertas. Relatório
+RELATORIO_POSICIONAMENTO_RESPOSTA_20261029.md e resultados_testes/
+posicionamento_resposta_20261029. Testes naturais continuam com Pedro.
+
+### Perdão/confiança — correções compartilhadas validadas, 29/10
+
+Mesmos IDs perdao-001 e perdao2-003, duas causas: confirmação por palavras
+dispersas versus corte que perde sujeito. Primeiro owner: confirmação local
+compartilhada; segundo: admissão de fronteira na modalidade, apoiada por leitor
+morfológico offline e literalidade canônica. Não alterados modelo, orçamento,
+revisão factual ou executores; proposta da IA não fornece prova/receipt.
+
+Foco216 e nove comparações instaladas com HTTP fixo, sem conversa/Qwen/voz ou
+efeitos externos. Ampla173:4.494 aprovados, zero falhas/erros; nenhum ID retirado,
+inclusive os da rodada RED preservada. Aceites sim+pode foram restaurados após
+dois regressivos reais. Outros15 erros vinham de uma fixture: isolamento de
+base/perfil e serialização diagnóstica corrigidos sem mudar suas17 funções de
+teste/34 casos. Auditoria Python e canário de arquivo confirmam os limites dos
+ensaios; isso não é sandbox geral ou snapshot de dados pessoais históricos.
+
+Produção: duas fontes alteradas, dois módulos adicionados, demais534 anteriores
+intactas; HEAD mantido, sem commit. RELATORIO_ESCOPO_ATOS_PERDAO_20261029.md e
+resultados_testes/escopo_atos_20261029 contêm provas/limites. Os diagnósticos
+anteriores não são apagados. Revisão de algumas formas de opinião, memoria-005
+e outras pendências continuam separadas; conversa real permanece com Pedro.
+
+### Perdão/confiança — diagnóstico, 29/10
+
+Sessão principal160322Z:15 entregas,zero quedas,parada normal; uma contingência
+operacional no lugar da resposta. Tentativa160228Z caiu na abertura. Fontes536
+das duas sessões iguais ao código atual. Nenhuma produção alterada.
+
+perdao2-003: corte de coordenação perde o sujeito elíptico de “continua sofrendo”
+e cria autoridade operacional. Reproduzido com e sem normalizador; já ocorria
+antes da correção de formato. Não confundir com infinitivo/clítico de memoria-005.
+perdao-001: leitor de confirmação combina “não”/“quero” dispersos, cria falsa
+recusa; contrato/reparo abandonam tema antes de orçamento bloquear. Sem falha
+de JSON registrada. Cada fronteira conserva owner/controle próprio.
+
+Continuidades006→007/012→014 e objeção solicitada011 observadas, sem certificação
+lógica ou de crença persistente. Três reapresentações com HTTP fixo, adaptadas
+às portas/identidade da ponte; primeira simulação com atalhos gerais preservada
+como não equivalente. Diagnóstico DIAGNOSTICO_PERDAO_CONFIANCA_20261029.md;
+auditoria/artefatos em rodada_perdao_20261029. Sem nova conversa/Qwen/voz/efeitos
+ou commit; testes de conversa continuam com Pedro. Correções ainda pendentes.
+
+### Diretiva de formato — respeito-003, 29/10
+
+Contrato de ato textual estendido: forma da resposta no canal atual não
+autoriza efeito. Modificadores/canal são combináveis, sem absorver destinos
+externos ou ordens independentes. Coordenação separa transformação antes e
+depois da ordem. Só normalizacao_linguagem/modalidade_turno alterados; não há
+nova revisão, orçamento, modelo ou executor. REDs preservados, foco121 aprovado
+(113 locais/oito compostos). Comparação instalada: base publica aviso de ação
+com autoridade indevida; candidato publica resposta em uma chamada sem autoridade.
+
+Dois pedidos de efeito/receipt propostos pelo modelo permaneceram sem execução
+ou confirmação. Condições, proibições, citações e destinos externos protegidos.
+Ampla revisada165:4.271 aprovados, zero falhas/erros, nenhum ID retirado;
+auditoria536 aprovada em diretiva_formato_20261029; relatório
+RELATORIO_DIRETIVA_FORMATO_20261029.md. Nenhum commit/conversa/Qwen/voz/efeito real.
+Não encerrar memoria-005, histórico, recomendação ou reparo pela aprovação
+dessa raiz. Os testes de conversa continuam com Pedro.
+
+### Dilema da memória — quatro journals diagnosticados, 29/10
+
+18 mensagens,14 entregas,4 encerramentos;536 fontes por sessão iguais à base
+atual. Nenhuma produção modificada. Falsos comandos distintos: diretiva de
+forma (respeito-003) e infinitivo com clítico promovido a imperativo pelo
+normalizador (memoria-005). Consulta histórica indevida reaparece em memoria-002
+e sorte-002; filosofia vira recomendação factual em decisao-001. Complemento de
+concordância em memoria-007 é recusado como atribuição pessoal; família anterior
+de posicionamento, sem aprovação factual do restante da fala.
+
+decisao-004 é cópia normalizada das97 palavras anteriores; a guarda a recusa
+corretamente. Reparos/validações posteriores falham e por último esgotam o
+orçamento; emissão recusada não está no journal, sem raiz de JSON comprovada.
+Não aumentar limite nem liberar a cópia para mascarar a falha. Nove compostos
+com HTTP fixo, sem conversa/Qwen/voz/efeitos; reprodução distingue wire e formato
+pós-codec, sem usar erros artificiais como evidência de produção.
+
+Auditoria de536 fontes e quatro journals originais intactos em
+rodada_memoria_20261029. Relatório DIAGNOSTICO_DILEMA_MEMORIA_20261029.md.
+Correções seguem pendentes por raiz, sem apagar IDs ou contar sintomas como
+bugs novos. Conversa com Pedro; nenhuma mudança de orçamento/modelo ou commit.
+
+### Finalidade da redação composta —003, 29/10
+
+Continuação da fronteira de finalidade, sem criar raiz por fórmula. Segmentação
+conserva o ato de redação; contrato nativo seleciona finalidade no conflito com
+perfil matemático. Roteiro e continuação deixam de cobrar aula/resultado final
+da conta quando a tarefa é formular fala. Revisão mantém apoio de afirmações;
+somente ato não assertivo integralmente conferido passa sem fonte factual.
+
+Cinco fontes existentes e um owner nativo novo. Nenhum modelo, orçamento,
+executor, guardião de efeitos ou persona alterado. RED10/14 controles, RED da
+segmentação e dois REDs adicionais de escopo da revisão. Foco revisado46,
+incluindo dez composições controladas; três publicam em uma chamada. Aniversário,
+luto e instrução independente têm finalidade/autoridade iguais à base congelada.
+O teste diagnóstico anterior conserva ID e agora espera publicação correta.
+
+Relatório RELATORIO_FINALIDADE_REDACAO_COMPOSTA_20261029.md; ampla final163:
+4.150 aprovados, zero falhas/erros e nenhum ID retirado; auditoria535/536 passou.
+Artefatos em redacao_proposta_20261029. Sem conversa/Qwen/voz/efeitos reais ou
+commit. Não fecha semântica livre nem os casos005/011/013. Conversa com Pedro.
+
+### Rodada verdade/autonomia — contratos de modalidade, 29/10
+
+`autonomia-003`: redação discursiva deixa de exigir ação externa; destinos em
+arquivo/e-mail e ordens independentes continuam operacionais. `autonomia-014`:
+finalidade infinitiva deixa de virar parada; somente a matriz pode autorizar
+efeito. Alterados dois owners canônicos, sem alterar review/modelo/orçamento.
+RED14 com 15 controles; foco35 aprovado, quatro compostos instalados controlados.
+
+Despedida validada nessa composição. 003 ainda bloqueia depois por obrigação
+didática; 011 não reproduzido com apenas histórico textual; 013 ainda troca
+pedido por relato; 005 ainda exige conferir pertinência do prefixo anterior.
+Não contar esses casos como resolvidos nem publicar a lembrança inventada pelo
+Qwen como passado demonstrado. Regressores161:4.108 aprovados, zero falhas/erros,
+nenhum ID retirado; auditoria535 aprovada. Evidências nos artefatos
+rodada_verdade_autonomia_20261029; relatório
+RELATORIO_VERDADE_AUTONOMIA_CLASSIFICACAO_20261029.md. Sem conversa nova, voz,
+Qwen real ou efeitos; testes de conversa com Pedro. Nenhum commit.
+
+### Resultado operacional — 34 REDs corrigidos, 29/10
+
+Módulo histórico preservado: 105 aprovados, incluindo os 34 antes vermelhos.
+Cobertura de aspecto/polaridade e guarda final agora compartilham a conferência
+de fonte; plano_turno conserva o pedido de reparo. Só guardiao_alegacoes e
+plano_turno alterados nesta causa. Sem frase histórica no código, modelo ou
+orçamento alterado. Capacidade, ato mental/textual, hipótese, citação e ficção
+não viram efeito; proposta da IA continua sem força de receipt.
+
+26 controles novos, nove casos na composição instalada, sem conversa/Qwen/voz
+ou ação real. Regressores 158 módulos:4.073 aprovados, zero falhas/erros,
+nenhum ID anterior removido. Auditoria535 fontes aprovada. Relatório:
+RELATORIO_EFEITO_PERIFRASTICO_20261029.md. Novo journal 20261029T134901Z-e78610af
+registrado em rodada_verdade_autonomia_20261029 com fronteiras ainda separadas.
+
+### Cinco REDs basais — expectativas alinhadas, 29/10
+
+Diagnóstico: quatro casos confundiam fallback da projeção compacta com dispensa
+de autoria; um confundia negativa compatível com catálogo indisponível e
+aceitação integral de uma afirmação de estado sem fonte. Runtime correto nos
+contratos observados: 25 controles novos aprovados antes da edição dos testes,
+incluindo seis caminhos da composição instalada. Nenhuma edição em produção.
+
+Atualizados somente os corpos de duas funções de teste, mantendo os cinco
+IDs, parâmetros e fixtures. Declaração de suporte continua obrigatória no
+envio atual; indisponibilidade não prova estado/efeito nem autoriza ação.
+Seleção ampliada de 155 módulos: 3.933 aprovados, zero falhas/erros, nenhum
+ID removido e filtro anterior preservado. Auditoria 535 fontes intactas.
+
+Separadamente, o módulo test_falha_operacional_narrada.py revelou 34 falhas
+e 71 controles, fora da seleção anterior; mesmos IDs no foco e isolado.
+Perífrases como “consegui abrir” exigem investigação própria de fonte/escopo.
+Permanecem abertas, sem enfraquecer testes ou contá-las como 34 raízes distintas.
+Relatório: RELATORIO_CINCO_FALHAS_BASAIS_20261029.md; artefatos completos em
+resultados_testes/cinco_falhas_basais_20261029. Sem conversa/Qwen/voz/efeitos
+reais ou commit. Não declarar toda a suíte verde.
+
+### Primeiro reparo — classificação do predicado, 29/10
+
+Validação final: 152 módulos, 3.903 aprovados, cinco falhas anteriores pelos
+mesmos IDs, zero erros e nenhuma nova. Trinta e dois casos novos aprovados;
+auditoria de 535 fontes passou, duas fontes alteradas, nenhum ID removido.
+
+Raiz demonstrada da falsa recusa: posicionamento avaliativo simples era lido
+como relato biográfico que exigia uma declaração equivalente do usuário.
+O orçamento bloqueava a terceira chamada depois dessa recusa, corretamente.
+Não foi aumentado; o caso passou a concluir no primeiro reparo já disponível.
+
+Contrato compartilhado de classe do predicado em referencias_linguagem,
+consumido por afirmacoes_interlocutor. Recorte morfológico conservador, sem
+exceção para frase histórica, geração nova, corte ou reescrita do texto da IA.
+Conteúdo restante continua na revisão factual/operacional; classificação de
+posição não é prova de correção ou efeito. Duas fontes alteradas nesta causa.
+
+Oito REDs/doze controles; foco 114 aprovados e seis compostos aprovados.
+Replay automatizado publica integralmente o reparo histórico em duas chamadas,
+sem bloqueio adicional; a base recusava esse texto e bloqueava a terceira.
+Biografia inventada ainda é recusada, comandos propostos não autorizam ações
+e confirmações sem receipt não são publicadas. Sem conversa nova/Qwen/voz/efeito
+real ou commit. Relatório: RELATORIO_RECUSA_PRIMEIRO_REPARO_20261029.md.
+
+### Journals do reencontro — classificação, reuso e recuperação, 29/10
+
+Fechamento da validação automatizada: 150 módulos, 3.871 aprovados, cinco
+falhas basais pelos mesmos IDs, zero erros e nenhuma nova. Sessenta casos
+novos aprovados; nenhum ID de referência removido. Auditoria 535 fontes
+aprovada, com cinco fontes de produção alteradas. Próximas conversas de teste
+reservadas a Pedro; nenhuma conversa nova iniciada após seu pedido.
+
+Raízes registradas separadamente, sem renumerar ou apagar os casos históricos:
+rodadas 17/18 ampliam o contrato de reuso integral para blocos predominantes;
+rodada 004 comprova o sentido de achar decidido antes da moldura de opinião;
+bonus-009 comprova a vírgula tornando o adjunto “para você” uma ordem falsa;
+recuperação posterior comprova TypeError no transporte de estado nativo.
+
+Owners: continuidade_resposta e qualidade_comunicacao para reuso;
+modalidade_turno e normalizacao_linguagem para os dois mecanismos sintáticos;
+projeção compartilhada com autoria_conversacional para transporte. A revisão
+posterior, o plano original e as fontes nativas conservam suas responsabilidades.
+Nenhuma fala antiga ou proposta de comando da IA passou a valer como prova.
+
+Provas: cópias históricas publicadas com base e recusadas com candidato;
+opinião sem autoridade mesmo com APP_OPEN intruso; reflexão filosófica histórica
+preservada integralmente e publicada uma vez; serialização corrigida chegando
+ao bloqueio real da terceira chamada. A recuperação útil segue RED: timeout,
+recusa do primeiro reparo e esgotamento exigem estudo próprio, sem limite maior.
+
+O candidato de proposta operacional foi rejeitado por controles negativos em
+música/IoT. Seus três arquivos voltaram aos SHA da base, preservando mudanças
+anteriores. Rotas explícitas normais de três domínios chegam aos executores
+simulados; a porta da ponte os desativa. Não declarar proposta livre resolvida.
+
+Relatórios desta atualização: RELATORIO_OPINIAO_AUTORIDADE_20261029,
+RELATORIO_REUSO_PREDOMINANTE_20261028, RELATORIO_PROJECAO_REPARO_NATIVO_20261029
+e DIAGNOSTICO_PROPOSTA_ROTA_INSTALADA_20261028. Auditoria final e diff por base
+em resultados_testes/projecao_reparo_nativo_20261029. Sem voz/efeitos reais/commit.
+
+### Entrega — categoria finita transportada como string livre, 28/10
+
+Continuação dos JSONs inválidos/timeouts conservados na etapa anterior.
+Os três documentos truncavam dentro de tipo_interacao,após proposições já
+escritas. Campo admitia prosa que o leitor não representava;atingia teto de
+tokens e deixava3/7s aos dois reparos expirados. Dominio único de quatro
+categorias agora é compartilhado por schemas,codecs e leitor,sem remover
+leitura,emoção,aprendizado,comando ou revisão. Orçamento/modelo preservados.
+
+16 REDs e sete controles antes do patch;25 novos aprovados,com controles na
+composição para APP_OPEN/MEDIA_CONTROL narrados sem autoridade. Foco182
+aprovados/quatro opcionais ignorados. Composição Qwen com oito respostas e
+nove HTTP200/stop,sem JSON truncado/timeout. Rejeição de repetição preservada
+e reparo real entregue. Replay histórico confirma a recuperação,sem simular
+os24s antigos nem prometer recuperação em qualquer prazo restante.
+
+Controle operacional Qwen em RED separado:pedido de Calculadora não chegou
+ao executor simulado e a resposta posterior inventou atribuição corporal.
+Assert da sonda preservado,não reinterpretado como sucesso de execução.
+Ausência de erro de formato não prova factualidade,autoridade ou efeito.
+Sem voz/efeitos reais/commit. Relatório:
+`RELATORIO_CATEGORIA_INTERACAO_JSON_20261028.md`;
+artefatos:`resultados_testes/json_estruturado_qwen_20261028`.
+
+Ampla final146 módulos:3.809 aprovados,cinco falhas anteriores pelos mesmos
+IDs,zero erros/nenhuma nova. Auditoria535 fontes confirma somente quatro
+fontes existentes alteradas nesta etapa e HEAD preservado.
+
+### Continuação — diário, estatuto narrativo e afirmação pessoal, 28/10
+
+Raízes mantidas separadas. O registro diário adia a síntese antes da geração
+se há turno ativo e preserva o pendente integral, processando lotes de50 só
+quando admitido. Corrige a chamada extra da quinta interação sem novo worker
+ou orçamento maior. Consolidação automática em ócio ainda não implementada.
+
+Contrato ficcional compartilha origem nativa para responder se uma cena é
+real,negociar sua delimitação na autoria e preservar esse escopo na segmentação.
+Comandos narrados não autorizam efeitos;ordens reais separadas mantêm suas
+proteções. Qualidade também recusa atribuições pessoais no recorte lexical
+sem relato integral que as apoie. Não certifica toda proposição livre.
+
+60 testes novos e138 no foco com vizinhos aprovados. Ampla145 módulos:
+3.785 aprovados,as mesmas cinco falhas basais,zero erros/nenhuma falha nova.
+Composição Qwen registra oito turnos,sem geração auxiliar nem orçamento
+bloqueado;replay pessoal não repete a cena sem fonte. Última coleta conserva
+duas saídas JSON inválidas e reparos com timeout:falha de entrega continua
+aberta,sem ser confundida com a raiz do diário. Sem voz e efeitos simulados.
+Auditoria535 fontes,dez arquivos existentes alterados e um novo nesta etapa;
+worktree anterior preservada e nenhum commit criado. Evidências e limites em
+`RELATORIO_FRONTEIRAS_REALIDADE_DIARIO_20261028.md` e
+`resultados_testes/fronteiras_realidade_20261028`.
+
+### Autoria inicial — referências não oferecidas, 28/10
+
+Nas primeiras rodadas, IDs propostos como conversa/pergunta/opinião entravam
+por schema e codec sem inventário. A revisão não achava fonte e substituía a
+resposta. Owner compartilhado suporte_autoria agora exige lista vazia quando
+nenhum ID foi oferecido;enum/ausência explícita e revisão de conteúdo mantidos.
+Sem resposta pronta, redução de inteligência, troca de modelo ou autorização.
+
+Sete REDs/cinco controles;12 testes novos aprovados. Fixture de emissão passou
+a negociar referências para testar revisão posterior,sem apagar16 casos ou
+aceitar referência interna como prova externa. Revisão independente49 casos
+aprovados/dois opcionais ignorados. Três primeiras sessões Qwen sem o aviso;
+criatividade preservada. Ambiente social inventado, pergunta realidade/ficção
+e limites de tentativas continuam abertos,sem compreensão global declarada.
+Ampla140:3.707 aprovados,cinco falhas basais,zero erros;mesmos IDs anteriores,
+sem falha nova. Auditoria534 fontes,apenas suporte_autoria em produção.
+
+Quinta interação: chamada de resumo no orçamento principal comprovada. O
+candidato diferido foi retirado após revisão reproduzir transporte ocupado
+por manutenção e perda de uma interação com lote50. Quatro arquivos voltaram
+à base por SHA;nenhum worker/orçamento novo ficou ativo. Causa não encerrada.
+Detalhes e contratos:`RELATORIO_FONTES_INICIO_SESSAO_20261028.md` e
+`DIAGNOSTICO_ORCAMENTO_CONSOLIDACAO_20261028.md`. Sem voz/efeitos reais/commit.
+
+### Ato atual — repetição integral e reencontro auditado, 28/10
+
+Continuação da aceitação conversacional,sem nova raiz por tema. Propostas
+003/009 já repetiam falas antigas;a revisão não cobria perguntas nem duas
+falas atrás. Contrato compartilha fonte nativa das últimas três falas,sem
+verdade/autoridade;veto lexical de reuso integral com ao menos oito palavras
+passa a cobrir autoria livre. Repetição solicitada e realizações canônicas
+conferidas pelos owners de opinião/histórico preservadas. Reparo mantém cena
+e pergunta,sem recircular texto recusado ou objeto privado como prova.
+
+27 novos testes;foco174 aprovados/dois ignorados. Quatro regressões do primeiro
+candidato corrigidas pela precedência de owners,sem mudar expectativas dos
+testes. Replay intermediário entregou nome novo;final bloqueou a mesma resposta,
+mas reparo estourou doze segundos e não respondeu ao nome. Recuperação útil
+ainda aberta. Sem declarar compreensão global ou fundir F1/C5/C7/F2.
+
+Os dois erros históricos da ponte ocorreram após publicação,por considerar
+falha auxiliar do resumo como falha do turno;ponte permanece sem patch.
+Aviso de fonte na fantasia e captura pelo pré-fluxo continuam separados.
+Ampla final139:3.695 aprovados,cinco falhas anteriores pelos mesmos IDs,zero
+erros;14 ignorados,um desmarcado,um xfail e30 subtestes. Auditoria534 fontes.
+Sem voz/efeito real/commit. Relatório com contratos e evidências:
+`RELATORIO_REENCONTRO_CONTINUIDADE_20261028.md`;artefatos em
+`resultados_testes/reencontro_continuidade_20261028`.
+
+### F2 — negativa de capacidade em conversa com fonte viva — 28/10
+
+Fonte pertinente de disponibilidade, antes descartada fora da explicação,
+agora permanece ligada ao turno em snapshot nativo. Mesmo comparador cobre
+negativas verbais/nominais sem descartar condição, atribuição, ficção ou
+restrição compartilhada de objetos. Não deduz incapacidade de receipt negativo
+nem concede autoridade ou sucesso. Projeção final do reparo não repõe a negativa
+rejeitada quando a tarefa de relato reconstrói o payload.
+
+58 novos casos aprovados; revisão independente; foco184/cinco falhas anteriores.
+Ampla138: 3.668 aprovados, cinco falhas basais dos módulos adicionais e zero
+erros; 14 ignorados, um desmarcado, um xfail, 30 subtestes. Os 74 casos da
+etapa anterior continuam aprovados. Auditoria533 fontes passou, sem commit.
+Composição final nove publicações/sete HTTP200, sem voz, ações simuladas com
+receipts negativos. Relato musical e pergunta sobre app preservam capacidade.
+
+Limites: replay histórico bloqueia negativa, reparo Qwen não a repete mas
+outra guarda esgota tentativas; relato do app ainda recebe pedido de contexto.
+Sem encerramento global da compreensão ou de F2. Cinco falhas adicionais não
+foram ocultadas/ignoradas. Contratos/responsáveis/validação em
+`RELATORIO_CAPACIDADE_CONVERSA_20261028.md`; artefatos em
+`resultados_testes/coerencia_capacidade_conversa_20261028`.
+
+### Quatro causas dos30 failed/44 errors anteriores — 28/10
+
+Reprodução exata dos74 IDs.44 erros eram projeção JSON da fixture de composição;
+oito falhas eram expectativa anterior ao suporte/reserva obrigatórios;
+21 eram finalidade histórica não causal omitida;uma era núcleo modal perdido
+no extrator de app. Corrigidos os dois owners de produção e as duas fixtures,
+sem afrouxar executor,receipt,autoria ou vínculo por ato. Sete controles dos44
+precisaram propostas válidas do escopo real;negativas de identidade mantidas.
+
+Final:231 focados aprovados;134 módulos com3.514 aprovados,zero falhas/erros,
+14 ignorados,um desmarcado,um xfail,30 subtestes. Auditoria74/74 por ID e532
+fontes passou. Sem voz/efeito real/commit. Consulta de resultados e abertura
+modal validadas no Qwen instalado com receipts negativos e fonte ambígua.
+
+Fora dos74:xfail de segmentação mantido. Conversa livre da coleta também
+produziu negação indevida de capacidade e limite de tentativas;observações
+preservadas sem atribuição causal ou fechamento global. Contratos,responsáveis,
+provas e limites:`RELATORIO_REGRESSAO_74_20261028.md`;
+artefatos em`resultados_testes/regressao_74_20261028`.
+
+### C5 — proposição integral distinta das partes de transporte — 28/10
+
+Comprovado corte já no HTTP válido/stop, em500 caracteres e abaixo do teto de
+tokens. Schema de transporte restringia a própria proposição. V5 preserva
+texto/fonte/ressalva em grupo de partes, sem inventar continuação ou novas
+afirmações. Até oito partes de500/fala4000/envelope32000 mantidos. Só suporte
+autoral e admissão V5 no adaptador de reescrita alterados em produção.
+
+Seis REDs/dez controles;18 casos novos aprovados; foco221/oito ignorados.
+Qwen final oito publicações/seis HTTP200:531/561/797 preservados até registro.
+Sem voz/efeitos; fonte factual e receipt negativo protegidos. Ampla132:3.390
+aprovados, mesmas30 falhas/44 erros por ID;14 ignorados/um desmarcado/um xfail/
+30 subtestes. Auditoria532 fontes passou; nenhum commit.
+
+Não fechar incompletude semântica, fim por tokens, repetição ou orçamento.
+IDs históricos mantidos; C5 não encerrado globalmente. Contratos/responsáveis:
+`RELATORIO_INTEGRIDADE_AUTORIA_LIVRE_20261028.md`; artefatos em
+`resultados_testes/integridade_autoria_livre_20261028`.
+
+### Finalidade ficcional separada do tamanho explicativo — 28/10
+
+Comprovado: dimensão explicativa selecionava obrigação factual para cenários
+inventados. Novo snapshot nativo de criação, derivado do pedido e não da fala
+da IA, é compartilhado por contrato/roteiro/revisão. Continuação exige pedido
+anterior e contrato atuais, TTL e referência canônica. Declaração integral,
+moldura ficcional e correlação continuam obrigatórias; fontes declaradas,
+instrução factual independente, ações e histórico conservam suas proteções.
+
+Oito REDs iniciais; um RED de segurança adicional corrigiu abertura no candidato.
+Final30 casos aprovados. Composição final oito publicações/seis HTTP200, três
+criações sem aviso; factual/misto protegidos, receipt negativo sem falsa ação.
+Ampla131: 3.372 aprovados,30 falhas/44 erros anteriores por ID,14 ignorados,
+um desmarcado,um xfail,30 subtestes. Dessas falhas,21 pertencem a um módulo
+adicionado e foram confirmadas sobre os owners congelados, sem restaurar disco.
+Auditoria532 fontes passou. Sem voz/efeitos/commit; IDs históricos preservados.
+
+Permanecem limites de timeout/truncamento, pertinência e contingência factual.
+Detalhes e recorte: `RELATORIO_FINALIDADE_FICCIONAL_20261028.md`;
+artefatos em `resultados_testes/finalidade_ficcional_20261028`.
+
+### Referente não decide finalidade histórica — continuação, 28/10
+
+Raiz reproduzida na composição com Qwen: fonte narrativa disponível tornava
+falha de vínculo por ato uma obrigação histórica. Owner de admissão agora
+distingue contexto de consulta; citação atômica também precisa de finalidade.
+Produção: só contrato de fala e leitor comum. Sem dispensa de receipts, fonte
+por ato, autorização ou verificação histórica; sem voz/efeitos reais.
+
+16 REDs da raiz,34 casos novos aprovados/um xfail anterior separado; foco182
+aprovados. Originais sem captura histórica na composição. Receipt simulado
+negativo sem falsa confirmação; pergunta histórica continua protegida.
+Ampla129: 3.324 aprovados, mesmas nove falhas/44 erros por ID; 14 ignorados,
+um desmarcado, um xfail,30 subtestes. Auditoria531 fontes passou, sem commit.
+
+Qualidade ainda aberta: resumo no lugar de criação, repetição, aviso da revisão
+didática e limite de tentativas na retomada foram preservados, não ocultados.
+RED vizinho de atribuição/pergunta separadas existe antes do candidato; xfail
+estrito documentado. Não declarar conversa/compreensão completa.
+Detalhes: `RELATORIO_FINALIDADE_HISTORICA_20261028.md`; evidências em
+`resultados_testes/ficcao_historico_20261028`. IDs históricos preservados.
+
+### Relação de adequação ao usuário preservada — 28/10
+
+Contrato agora diferencia adequação ao usuário de preferência própria, com
+snapshot atual e owner compartilhado por autoria/reparo/revisão. Sem avaliação
+fundamentada, busca critério de escolha; não recomenda por inferência do gosto
+da Laylay. RED 24/16; variantes da revisão quatro REDs/41 controles; final45
+GREEN, foco369/dois ignorados. Qwen final13 publicações/HTTP200, dez adequações;
+segurança inclui frase original e receipt negativo. Ampla128: 3.290 aprovados,
+mesmas nove falhas/44 erros por ID; 14 ignorados, um desmarcado e 30 subtestes.
+Auditoria passou, sem voz/efeitos, sem alterar executor/verificador histórico.
+
+Nova ponte conferida e triada separadamente: ficção entrou como obrigação
+histórica; três REDs/um controle, sem patch nesta raiz. Orçamento e saída
+inválida permanecem separados. Detalhes e limites nos relatórios
+`RELATORIO_ADEQUACAO_USUARIO_20261028.md` e `DIAGNOSTICO_FICCAO_HISTORICO_20261028.md`.
+Nenhum commit. Não declarar compreensão geral ou recomendação completa.
+
+### Continuação da leitura de gosto — categoria independente da pergunta, 25/10
+
+Comprovada a perda da categoria composta na forma existencial de favorito,
+enquanto a pergunta nominal chegava ao contrato. Candidato mínimo só no leitor
+`referencias_linguagem.py`: ambas usam a mesma resolução da categoria integral.
+Autoria, fontes, reparo, revisão, pesquisa e executores foram preservados.
+
+RED 18 falhas/34 controles; 52 casos novos GREEN; foco 373/dois ignorados.
+Qwen instalado: 12 entradas/respostas/HTTP 200 e posição mantida nas formas
+equivalentes; alvo do roteiro original também corrigido. Sem voz/efeitos;
+receipt simulado negativo. Ampla 127 módulos: 3.245 aprovados, mesmas nove falhas
+e 44 erros anteriores por ID; 14 ignorados, um desmarcado e 30 subtestes.
+Auditoria aprovada; dois REDs de adequação ao usuário continuam registrados
+separadamente, assim como os demais sintomas do log e F1/C5/C7/AUT.
+Relatório: `melhorias e planos/registro/RELATORIO_CATEGORIA_GOSTO_INTEGRAL_20261025.md`;
+evidências: `resultados_testes/categoria_gosto_integral_20261025`.
+
+### Log de gosto e adequação pessoal — diagnóstico sem patch, 25/10
+
+Quatro turnos com Qwen/composição reais: contexto relevante presente no HTTP
+final e nenhum reset; falha de uso/fundamento reproduzida, sem afirmar payload
+histórico idêntico. Forma `tem um estilo musical favorito?` não chega ao contrato
+de opinião; revisão aceita gosto da assistente para pergunta de adequação ao
+usuário, em música e software. Quatro REDs/dois controles aprovados preservados.
+Lacuna de gosto pertence ao mecanismo já documentado; adequação, vocativo e
+atribuição de categoria/características permanecem separados. Sem produção,
+voz ou efeitos alterados; 530 hashes conferidos. Não declarar correção aplicada.
+Detalhes: `melhorias e planos/registro/DIAGNOSTICO_CONTEXTO_RECOMENDACAO_20261025.md`;
+artefatos: `resultados_testes/conversa_recomendacao_20261025`.
+
+### Cortesia temporal versus intenção explícita de encerrar — 25/10
+
+Demonstrado na composição instalada: saudação temporal isolada fechava a sessão,
+enquanto o mesmo cumprimento com declaração explícita de saída perdia o ato de
+encerramento. Raiz no leitor de sessão e separação da moldura, anterior à autoria.
+Contrato: cortesia não concede permissão de descarte; núcleo integral atual
+decide. Separador/vocabulário únicos; resposta neutra curta sem pergunta para
+cortesia isolada; fechamento explícito governa autoria/revisão existentes.
+
+RED 31/16; controles interrogativos adicionais falsificaram candidato permissivo.
+57 casos novos GREEN, foco 422/quatro ignorados. Qwen real: 15 turnos/respostas,
+seis cortesias sem reset e cinco despedidas explícitas atômicas, sem perda da
+ocorrência. Sem voz/efeitos; receipt negativo simulado e falha injetada separados.
+Ampla 126 módulos: 3.193 aprovados, mesmas nove falhas e 44 erros anteriores
+por ID; 14 ignorados, um desmarcado e 30 subtestes. Auditoria aprovada e manifesto
+registrado; não declarar compreensão ou regressão global.
+Premissas antigas de dois testes foram corrigidas com cobertura da redação
+original, preservando testes de limpeza e reabertura. F1/C5/C7/AUT separados.
+Relatório: `melhorias e planos/registro/RELATORIO_DISTINCAO_SAUDACAO_DESPEDIDA_20261025.md`;
+evidências: `resultados_testes/distincao_saudacao_despedida_20261025`.
+
+### Autoria/revisão respeitam encerramento já reconhecido — 25/10
+
+O marcador de encerramento estava no turno, mas não no contrato de fala. A
+autoria oferecia pergunta de saudação ou prosa geral e a revisão publicava
+reabertura/alteração da intenção. Não é retorno da raiz de ocorrência apagada.
+Projeção do ato dominante, fonte e realizações compartilhadas agora governam
+autoria, roteiro, reparo e revisão. Mesmo leitor canônico de sessão; sem lista
+privada de entradas, corte do texto ou mudança de autoridade/execução.
+
+38 casos novos; foco 365 GREEN/quatro ignorados. Qwen na composição: 16 entradas,
+16 respostas/HTTP 200 e nove encerramentos sem pergunta/convite/retomada. Fonte
+de outro turno/alterada é recusada; contexto factual residual não vira citação.
+Frames e renovação atômica preservados. Sem voz/efeitos; controle separado com
+receipt negativo e timeout controlado com conclusão vinculada. Ampla 125 módulos:
+3.136 aprovados, mesmas nove falhas e 44 erros anteriores por ID; 14 ignorados,
+um desmarcado e 30 subtestes. Auditoria final passou; comparação individual no
+manifesto, sem esconder os REDs anteriores. Nenhum commit.
+
+Não redefine o classificador de sessão nem resolve todas as formas livres de
+despedida, ambiguidade de cumprimento ou aquisição de contexto anterior.
+Relatório: `RELATORIO_AUTORIA_DESPEDIDA_20261025.md` nesta pasta; artefatos em
+`resultados_testes/autoria_despedida_20261025`. Preservados F1/C5/C7/AUT.
+
+### Ciclo de sessão e conclusão da despedida — raiz demonstrada, 25/10
+
+Baseline: três despedidas geradas com HTTP 200, zero publicações. Renovação do
+pré-fluxo apagava turno/plano/contrato/retrato e reservava resposta à LLM; o
+guardião recusava corretamente o resultado sem ocorrência. Antes/depois reais
+falsificam falta de planejamento/transporte como causa.
+
+Dois owners alterados: `sessao_conversa.py` e `estado_contexto_runtime.py`.
+Sessão pode ser encerrada mantendo explicitamente o frame original nativo e
+conferido, somente ainda planejado, sem evento ou autoridade operacional.
+Captura e limpeza dos três domínios são atômicas pelo serviço compartilhado.
+Pendências/última ação/contexto antigo são limpos; outros resets e frames
+concluídos/estrangeiros continuam invalidados. Não afrouxar proposta/receipt.
+
+24 casos novos; foco 238 GREEN. Qwen instalado: 13 turnos/13 publicações/13 HTTP
+200; sete encerramentos mantêm frame e sessão inativa. Persistência relida,
+fontes sem drift, sem voz/efeitos. Timeout controlado tem conclusão negativa
+vinculada; três turnos separados de segurança mantêm receipt de ação simulada.
+Ampla 124 módulos: 3.098 aprovados, mesmas nove falhas e 44 erros anteriores por
+identidade; 14 ignorados, um desmarcado e 30 subtestes. Auditoria final passou;
+comparação individual no manifesto. Nenhum commit.
+
+Sem encerrar qualidade livre: algumas despedidas ainda reabrem perguntas ou
+alteram a intenção, e houve proposta de pesquisa sobre tema anterior. São
+fronteiras separadas da identidade de sessão; não fundir F1/C5/C7/AUT.
+Relatório: `RELATORIO_ENCERRAMENTO_SESSAO_OCORRENCIA_20261025.md` nesta pasta;
+artefatos: `resultados_testes/encerramento_sessao_20261025`.
+
+### F1 — cortesia integral preserva o contrato de presença, 25/10
+
+Lacuna demonstrada: formas equivalentes de cortesia ficavam fora do owner de
+presença e recebiam autoria geral; diagnóstico técnico excedente era aceito.
+Reparo da presença também reabria prosa geral. Correção em dois owners:
+`presenca_conversacional.py` e `qualidade_comunicacao.py`, com leitura integral,
+opções curtas/reciprocidade e o mesmo pacote no reparo. Sem truncar respostas,
+remover contexto corporal ou dispensar revisão factual. Continuação da raiz
+existente de presença, não novo ID por saudação.
+
+282 aprovados/dois ignorados no foco. Qwen instalado: 13 entradas/13 HTTP 200,
+12 publicações, nove atos-alvo curtos e conferidos; sem voz/efeitos, persistência
+relida e fontes sem drift. Ampla: 3.013 aprovados e mesmos nove failures/44 errors
+anteriores por identidade, 14 ignorados, um desmarcado e 30 subtestes. Segurança
+em três turnos separados com receipt negativo simulado. Sem commit.
+
+Outra raiz ainda aberta: despedida limpa o turno antes da própria resposta.
+“Boa noite, Laylay” perde ocorrência/plano/contrato no pré-fluxo, Qwen gera texto
+e vínculo o recusa corretamente. Não afrouxar a identidade nem retirar a limpeza
+de sessão; estudar seu ciclo de vida e a conclusão observável do turno atual.
+Caso permanece RED separado no manifesto, sem encerrar conversa geral.
+
+Relatório: `RELATORIO_SAUDACAO_FLUIDA_20261025.md` nesta pasta. Artefatos, hashes,
+coletas intermediárias, REDs e comparação ampla em
+`resultados_testes/saudacao_fluida_20261025`.
+
+### Conversa casual sem auditoria de citações — continuação por raízes, 25/10
+
+Pergunta de favorito saía do leitor subjetivo e pesquisava “Favorito”. Correção
+no leitor compartilhado, autoria e tema factual: gosto simples recebe resposta
+direta. Moldura de esclarecimento e espaço deslocado na preposição só entram
+com pergunta integral/perspectiva correta e operando qualificado. Nenhuma fonte
+inventada ou dispensa global de revisão. Nomeação livre de títulos foi removida:
+proposta publicada não prova identidade/categoria. Sem alvo fundamentado,
+`Ainda não escolhi um jogo favorito.` preserva a conversa. Mesmo registro causal
+de opinião, sem contar outra raiz por domínio/frase.
+
+Separadamente, aceitação/reparo deixavam ato social antigo substituir relato
+atual. Contrato comum preserva o ato no juiz e na autoria do reparo. Voz também
+separada: identidade nativa readmitida após mudança de chave ambiente recebe
+idempotência no worker/fila; controles de substituição e nova identidade para
+repetição preservados. Não atribuir causa ao áudio histórico.
+
+Foco 221 GREEN; voz específica 63 GREEN. Qwen instalado: 18 turnos finais,
+20 HTTP 200, persistência gravada/relida e fontes sem drift, sem voz/efeitos.
+Controle de três turnos mantém recusa simulada e receipt negativo. Ampla:
+2.943 GREEN, mesmas nove falhas e 44 erros anteriores por identidade, 14 ignorados,
+um desmarcado e 30 subtestes. Nenhum commit. Relatórios nesta pasta:
+`RELATORIO_OPINIAO_CONCRETA_20261025.md`,
+`RELATORIO_ATO_ATUAL_CONVERSA_20261025.md` e
+`RELATORIO_IDENTIDADE_ENTREGA_VOZ_20261025.md`; manifesto auditado em
+`resultados_testes/dialogo_jogos_musica_20261025`.
+
+Continuam abertas saudações técnicas/longas e sentido do verbo ambíguo no relato;
+não encerrar conversa/compreensão geral, F1/C5/C7/AUT ou repetição física.
+
+### Continuação — projeção do contexto e pergunta avaliativa, raízes separadas,25/10
+
+A coleta inicial parava após publicar critério: formatter tentava serializar a
+fonte nativa. JSON/modelo/persistência gerais falsificados como causa;projeção
+descritiva existente reutilizada só na fronteira de prompt. Onze regressivos
+protegem tipos,metadados,receipts e envio instalado sem alterar o host nativo.
+
+O candidato só de projeção recuperou as respostas,mas mostrou outra raiz:
+perguntas sobre relação de critério tratadas como resultados operacionais.
+Cinco REDs confirmaram o owner errado. Contrato comum agora exige consulta
+integral e critério nativo vigente;preserva fonte/posição e informa a ausência
+de regra demonstrando adequação. Não inventa regra posterior nem prova de causa.
+Dezessete testes adicionais cobrem fonte/TTL/repetição e composição em três domínios.
+
+Foco265 aprovados/dois ignorados;Qwen em16 turnos finais,16 HTTP200/publicações/
+persistências,nove consultas de critério. Páginas HTTP de pesquisa sintéticas;
+três turnos didáticos limitados e avisos de proporção mantidos como limites.
+Segurança em3 turnos separados com receipt negativo;sem voz/efeito real/commit.
+Ampla113 módulos:2.858 aprovados,mesmos9 failures/44 errors anteriores por ID;
+lista e comparação no manifesto,sem misturar F1/C5/C7/AUT.
+Relatórios separados:
+`melhorias e planos/registro/RELATORIO_PROJECAO_CRITERIO_CONTEXTUAL_20261025.md` e
+`melhorias e planos/registro/RELATORIO_RELACAO_CRITERIO_20261025.md`.
+
+### Continuação da opinião autoral — premissa atribuída e avaliação declarada, 25/10
+
+Raiz demonstrada: inventário e protocolo de opinião preservavam o rótulo do
+critério sem base individual; captura descartava referência adicional. Contrato
+compartilhado agora apresenta descrição já lida com alvo/URL/hash/TTL e conserva
+a indicação da autora como proposta. Só a mesma emissão revisada e publicada
+registra o vínculo. Explicação cita base vigente, sem provar adequação avaliativa
+ou causa psicológica. Sem base, o limite é declarado.
+
+Conferência textual reutiliza o revisor comum; origem explícita do modelo não
+recebe poder factual por ter URL/confiança. Fonte vencida restringe explicação,
+sem impedir registro da entrega observada. Revisão independente reproduziu essa
+borda, depois confirmou a correção com seis controles locais.
+
+23 casos novos;354 aprovados/quatro ignorados no foco. Composição instalada e
+Qwen em18 turnos,18 HTTP200/publicações/persistências;12 com HTTP de pesquisa
+sintético declarado e6 sem base. Duas bases adotadas;uma recusada pelo modelo.
+Três leituras didáticas publicaram limite e seguem fora do encerramento.
+Controle separado de3 turnos e uma ação simulada com receipt negativo. Sem voz,
+efeito real, commit ou mudança de configuração. Ampla111 módulos:2.830 aprovados,
+mesmos9 failures/44 errors anteriores por ID;lista e comparação no manifesto.
+`melhorias e planos/registro/RELATORIO_FUNDAMENTO_CRITERIOS_20261025.md`.
+
+### Continuação da opinião autoral — critério declarado não é causa provada, 25/10
+
+RED no schema e na captura: faltava preservar critério na própria emissão da
+preferência. Contrato compartilhado agora transporta o código como proposta;
+admissão exige emissão, consulta e fala revisada correspondentes. Registro só
+se conclui após publicação. Critério não entra na lista de fontes e mantém
+prova factual/causal e autorização falsas. Explicação posterior descreve o
+critério registrado, sem produzir uma causa psicológica ou atributo do objeto.
+
+Continuidade conserva origem/TTL, sem herança silenciosa em mesclas. Recusa de
+premissa diferente é publicada sem critério alheio. Projeção JSON guarda relato
+da autoria sem restaurar credencial nativa; estado vivo permanece tipado.
+Coletas intermediárias revelaram e reproduziram problemas de timestamp por
+canal, serialização e transporte na recusa; evidências preservadas.
+
+36 casos novos;124 testes focados aprovados;16 turnos Qwen finais,16 HTTP200,
+16 publicações e16 gravações/leituras de memória confirmadas,530 fontes estáveis.
+Controle separado de3 turnos com um receipt negativo simulado. Sem voz/efeito
+externo/commit ou alteração de configuração. Ampla108 módulos:2.701 aprovados,
+mesmos9 failures/44 errors anteriores por ID;comparação no manifesto.
+Não encerra causalidade livre ou preferência durável.
+`melhorias e planos/registro/RELATORIO_CRITERIO_AUTORAL_20261025.md`.
+
+### Continuação da opinião autoral — preferência não é causa de si mesma, 25/10
+
+Baseline instalado reproduziu causas inventadas no porquê de indie e Linux.
+A fala anterior e HTTP200 existiam; faltava o vínculo entre pergunta de motivo
+e apoio próprio. O contrato compartilhado agora preserva declaração, alvo,
+predicado/polaridade e o limite da publicação. Se ela só declara gosto, não é
+usada para provar um motivo. Pesquisa de atributos também não prova a razão
+original da autora. Não adotar gosto pressuposto por uma pergunta divergente.
+
+Dois arquivos de produção; nenhum executor, voz, modelo/configuração ou commit.
+REDs incluem ausência de vínculo, fonte estrangeira, causa antiga, oração curta,
+finalidade e grafias naturais. Primeiro candidato falhou na higiene da própria
+realização; trace preservado e objeto explícito recuperou entrega integral,
+sem relaxar guardas. Foco425 aprovados/um ignorado; ampla102 módulos2.565
+aprovados, mesmos9 failures/44 errors anteriores por ID.
+
+Qwen final16 turnos/publicações com16 HTTP200;controle separado3 turnos com
+ação simulada e receipt negativo. Sem voz/efeito externo;529 fontes estáveis por
+coleta. Explicar o limite de um motivo ausente está comprovado; criar uma razão
+original a posteriori continua proibido. Critérios fundamentados na própria
+autoria permanecem a próxima fronteira, sem encerrar compreensão geral.
+`melhorias e planos/registro/RELATORIO_EXPLICACAO_GOSTOS_20261025.md`.
+
+### Opinião concreta sem causa inventada; correção preserva o assunto — 25/10
+
+Continuação autorizada do novo log de gosto próprio. REDs demonstraram perda
+do ato nominal de opinião, falso critério de apoio pela forma causal e perda
+da retificação pela contração da preposição. O contrato comum de autoria agora
+limita a resposta simples a uma posição concreta, sem causa/experiência/fato
+acrescentados. Opinião escolhida não vira prova. Publicação observada, texto,
+turno, perspectiva e TTL qualificam o esclarecimento e a correção de assunto.
+
+Revisão independente achou quatro bordas, todas reproduzidas/corrigidas:
+perspectiva dêitica, leitura da própria correção em outros assuntos, acentos e
+escolha com terceira alternativa. A composição real achou revisão factual ainda
+recusando a opinião correta sobre jazz: a mesma conferência autoral foi integrada
+nessa fronteira, sem isentar causas, fatos ou primeira pessoa livres.
+
+53 testes novos; seleção final394 aprovados/um ignorado. Ampla101 módulos:
+2.534 aprovados, mesmas nove falhas e 44 erros antigos por ID. Duas coletas
+finais Qwen com 20 turnos/conclusões, uma geração por turno, nenhuma voz/ação,
+529 fontes estáveis. A primeira coleta de15 que falhou está preservada; não
+somar seus turnos ruins ao sucesso final. Sem commit ou mudança de configuração.
+
+Recorte limitado de opinião simples e declaração integral publicada; causas
+livres, categorias sem apoio, referências não resolvidas, gosto durável e
+coerência geral continuam abertos. Clipboard/prazo não misturados. Relatório:
+`melhorias e planos/registro/RELATORIO_OPINIAO_CONCRETA_20261025.md`.
+
 ### 23/10 — finalidade da pergunta antes da consulta ao recurso
 
 Relato novo de gosto por rock respondido com quantidade da playlist reproduzido
@@ -13476,3 +14306,78 @@ recorte real. Fonte presente no reparo, protocolo íntegro. A validação do gua
 não encerra compreensão/conversa. Próxima investigação: autoria de reparo com
 realização apoiada e útil, preservando separação entre proposta e prova.
 `melhorias e planos/registro/RELATORIO_RETOMADA_PESSOA_RELATO_20261024.md`.
+
+### F1/C7 — autoria de reparo em linguagem conferível, 25/10
+
+Corrigida a divergência entre reparo livre e conferência disponível. Alterados
+somente fundamentacao_factual e qualidade_comunicacao: opções de citação
+histórica integral qualificada e limite, com representabilidade conferida no
+segmentador compartilhado. Codec e wrapper existentes preservam o enum e
+comandos vazios. A escolha da IA continua proposta, sem provar pertinência.
+
+40 testes focados GREEN, duas factories, revisão independente, 2.328 GREEN
+na regressão e mesmas nove falhas anteriores; import isolado GREEN. Qwen real:
+30 turnos/conclusões, sem voz/efeitos reais, um receipt negativo simulado.
+Quatro alvos com fonte conferida; três pertinentes. No outro, rock recebeu
+citação sobre chá apesar de fonte de rock disponível. Não declarar conversa
+resolvida. Seleção pertinente é a próxima fronteira demonstrada; os limites
+observados nos turnos 7/29 e outras famílias permanecem separados. Sem commit.
+`melhorias e planos/registro/RELATORIO_REPARO_RETOMADA_CONFERIVEL_20261025.md`.
+
+### F1/C7 — citação de outro assunto não responde à pergunta explícita, 25/10
+
+Corrigida a admissão comum que tomava existência histórica como resposta à
+pergunta. Dois owners alterados nesta etapa: referencias_linguagem lê conteúdo
+explícito após o detector canônico; fundamentacao_factual confere seu vínculo
+literal com a fonte, tanto para citação quanto paráfrase. Qualidade, opções do
+reparo e revisão final reutilizam a decisão. Sem nomes/frases especiais,
+novo orçamento, modelo ou efeito autorizado.
+
+66 testes focados GREEN; factories negativa/positiva e controles. Revisão
+independente achou e verificou resolução da divergência dos conectores e/então.
+Regressão: 2.354 GREEN e mesmas nove falhas anteriores; import isolado GREEN.
+Qwen real em 42 turnos: oito alvos com fonte esperada, incluindo rock, software,
+trabalho e animais com distratores. Sem voz/efeitos reais; um receipt negativo
+simulado. 527 fontes sem drift por coleta, sem commit.
+
+Não encerra perguntas com categorias implícitas, paráfrase livre, recapitulação
+ou coerência geral. Vínculo literal recebe estado próprio, sem transformar
+escolha da IA em prova semântica. Outros limites preservados no relatório.
+`melhorias e planos/registro/RELATORIO_PERTINENCIA_RETOMADA_20261025.md`.
+
+### F1/C7 — apoio separado para a categoria da preferência, 25/10
+
+Categoria implícita não vem da autoria da IA. Relato do usuário continua sendo
+a fonte da preferência; catálogo vivo, léxico existente ou P31 qualificado
+comprovam apenas o tipo da entidade. Sem prosa/snippets como prova; mesma fonte
+na revisão, reparo e composição, com relação publicada no quadro cooperativo.
+93 testes focados GREEN; 42 turnos Qwen, nove vínculos auditados; cinco alvos
+finais corretos com distratores. Sem voz/efeitos reais, sem encerrar coerência
+geral. Regressão possui nove falhas anteriores e 44 erros da mesma fixture
+preexistente de serialização, com contraprova do baseline preservada.
+`melhorias e planos/registro/RELATORIO_CATEGORIA_PREFERENCIA_20261025.md`.
+
+### Diálogo curto de Pedro — duas divergências demonstradas, prosa ainda RED, 25/10
+
+Captura histórica vazia: binder não encontra obrigação por ato, mas o contrato
+instala o pacote e publica pendências internas. Admissão canônica agora exige
+fonte/ocorrência/falha própria, preservando limites históricos reais. Três REDs,
+factory, revisão independente e cinco turnos Qwen confirmam a retirada da captura.
+
+Perda do esclarecimento: após essa correção, o contrato tratava a consulta
+composta como resposta direta e aceitava repetição. Critério atômico agora se
+projeta nas fontes literais já segmentadas; referência observada exige uma
+publicação única e o turno atual. Controles em música, apps e IoT, além de
+citação, terceiro, fonte falsa e ambiguidade; 207 GREEN/um ignorado no foco.
+
+Não misturar essas raízes nem contabilizar as novas falas vagas como sucesso.
+15 turnos em três coletas sem voz/ações mostram o limite: Qwen ainda inventa
+justificativas e negativas de capacidade. Clipboard e prazo continuam separados.
+Owners, cópias, diffs, critérios e transcrições em
+`melhorias e planos/registro/RELATORIO_DIALOGO_GOSTO_ESCLARECIMENTO_20261025.md`.
+
+### F2 — convite impessoal confundido com negativa própria — 30/10/2026
+
+Ocorrência OpenRouter da ponte `or-prova-001`: a expressão impessoal `é só conversar` foi marcada `identidade_negou_capacidades_confirmadas`, repetiu reparo e atingiu `orcamento_bloqueado`. Primeira fronteira RED no predicado de atribuição do validador, não no provedor ou orçamento. Candidato localizado em `validacao_contrato_fala.py` exige modal/flexão pessoal ou sujeito próprio restritivo; preserva autolimitações nominais. Protege os consumidores compartilhados de sistema, música, arquivos e IoT. 305 testes relevantes e 49 da ponte/provedor GREEN. Replay instalado com autoria histórica constante: antes mesma contingência/degradação, depois publicação integral com uma chamada e sem degradação. Prova real OpenRouter também publicou sem degradação, sem voz/efeitos. Nenhum commit/orçamento/modelo/configuração alterado; demais raízes F2 permanecem separadas. Relatório: C:\Users\pbarr\Documents\Codex\2026-10-28\ch\outputs\diagnostico_openrouter\RELATORIO.md.
+
+Validação final F2/convite impessoal: 310 testes GREEN após preservar também autolimitações nominais sem `única` e formas passivas pessoais. Replay final manteve antes degradada=true/reparo bloqueado e candidato sem degradação, uma chamada e publicação literal histórica. Escopo: gramática explícita conferida; não verificador semântico universal.

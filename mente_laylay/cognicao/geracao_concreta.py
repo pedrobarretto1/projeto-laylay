@@ -256,7 +256,7 @@ def _sequencia_multiacto(atos: Iterable[str]) -> tuple[str, ...]:
     if "esclarecimento" in presentes:
         sequencia.append("explicar literalmente a fala anterior")
     if "agradecimento" in presentes:
-        sequencia.append("reconhecer o agradecimento e encerrar sem retomar a tarefa anterior")
+        sequencia.append("reconhecer o agradecimento preservando os outros atos e conteúdos atuais")
     if "adiamento" in presentes:
         sequencia.append("aceitar o adiamento de forma curta e literal")
     if "provocacao_curta" in presentes:
@@ -325,6 +325,10 @@ def construir_roteiro_geracao_concreta(
     """Escolhe uma estratégia concreta a partir do contrato já deliberado."""
     dados_contrato = dict(contrato or {})
     planejamento = dict(plano or {})
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente
+    criacao = criacao_ficcional_vigente({**planejamento, 'contrato_fala':dados_contrato})
+    from mente_laylay.cognicao.redacao_discursiva import redacao_discursiva_vigente
+    redacao = redacao_discursiva_vigente({**planejamento, 'contrato_fala':dados_contrato})
     bruto = _texto_curto(texto, 500)
     atos = [str(item or "").casefold() for item in dados_contrato.get("atos") or []]
     especiais = _atos_relevantes(atos)
@@ -388,7 +392,20 @@ def construir_roteiro_geracao_concreta(
         "marcar como opinião ou incerteza o que não estiver sustentado por uma fonte permitida",
     ]
 
-    if requer_execucao or resultado_confirmado:
+    if 'encerramento_sessao' in atos and not requer_execucao:
+        estrategia = 'encerramento_sessao'
+        ancora = bruto
+        nucleo = 'respeitar a decisão de encerrar e despedir-se brevemente'
+        sequencia = ('acolher o encerramento atual',
+                     'despedir-se sem pergunta, oferta, convite ou retomada de assunto')
+        base_permitida = ['decisão canônica de encerramento da utterance atual']
+    elif 'adequacao_pessoal' in atos and not requer_execucao:
+        estrategia = 'adequacao_ao_usuario'
+        ancora = bruto
+        nucleo = 'preservar a relação de adequação ao usuário, sem substituí-la pelo gosto da assistente'
+        sequencia = ('manter a categoria e o alvo usuário', 'buscar o critério da escolha sem inventar adequação')
+        base_permitida = ['relação e categoria conferidas na pergunta atual, sem avaliação de adequação comprovada']
+    elif requer_execucao or resultado_confirmado:
         estrategia = "resultado_observado"
         ancora = referente or bruto
         nucleo = (
@@ -400,6 +417,26 @@ def construir_roteiro_geracao_concreta(
             "informar a consequência prática ou a incerteza essencial",
             "adicionar personalidade apenas sem alterar o resultado",
         )
+    elif redacao is not None:
+        estrategia = 'redacao_discursiva'
+        ancora = redacao.texto_usuario
+        nucleo = 'formular a fala pedida; uma equação no contexto não transforma esse pedido em aula'
+        sequencia = (
+            'começar com Eu diria: e formular a fala solicitada, sem metáfora; não resolver a equação do cenário',
+            'a revisão confere apenas a proposta de verificação; não certifica a premissa nem a conclusão',
+            'afirmações, causas e efeitos continuam exigindo fontes individuais; não inventar referências',
+        )
+        base_permitida = ['pedido atual de formulação, sem certificação dos fatos citados no cenário']
+    elif criacao is not None:
+        estrategia = 'criacao_ficcional'
+        ancora = criacao.pedido_origem
+        nucleo = 'responder ao pedido atual dentro do escopo ficcional, começando com Na história,'
+        sequencia = (
+            'começar com Na história, e criar ou explicar o cenário em até duas frases e 60 palavras',
+            'toda a resposta permanece ficcional: não afirmar fatos, experiências ou efeitos reais',
+            'declarar o texto integral em suporte_proposicoes, sem referências factuais inventadas',
+        )
+        base_permitida = ['pedido de criação do usuário, como tema ficcional e nunca como prova']
     elif negacao_operacional_sem_efeito:
         estrategia = "negacao_operacional_sem_efeito"
         ancora = bruto
@@ -615,7 +652,7 @@ def construir_roteiro_geracao_concreta(
             "cumprimentar de volta",
             "fazer no máximo uma pergunta simples, se couber",
         )
-    elif "agradecimento" in especiais:
+    elif "agradecimento" in especiais and dados_contrato.get('agradecimento_exclusivo') is not False:
         estrategia = "encerramento_social"
         ancora = bruto
         nucleo = "reconhecer brevemente o agradecimento e encerrar o assunto atual"
