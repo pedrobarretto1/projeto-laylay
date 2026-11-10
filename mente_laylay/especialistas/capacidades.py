@@ -348,6 +348,16 @@ _CONTRATO_POR_DOMINIO = {
         "proprietario": "mente_laylay.autonomia.fluxos_conversa",
         "dependencias": ("provedor da habilidade quando necessário",),
         "limites": "sugestões não autorizam execução por conta própria",
+        # Contratos de resultado, sem criar intents executáveis para autoria.
+        "qualificacao_intencao": ({
+            "id": "conversa.formato_resposta",
+            "resultado": "autoria_conversacional",
+            "canal": "conversa_atual",
+            "unidades": ("frase", "frases", "palavra", "palavras", "parágrafo", "parágrafos", "linha", "linhas"),
+            "exige_destino_externo": False,
+            "autoriza_execucao": False,
+            "comprova_efeito": False,
+        },),
     },
 }
 
@@ -452,6 +462,13 @@ CAPACIDADES: Dict[str, Dict[str, Any]] = {
 
 def intents_registradas() -> frozenset[str]:
     return frozenset(CAPACIDADES)
+
+
+def contratos_qualificacao_intencao(dominio: str) -> tuple[dict[str, Any], ...]:
+    """Metadados do mesmo catálogo: qualificar resultado não concede permissão."""
+    return tuple({**item, "dominio": dominio,
+                  "proprietario": _CONTRATO_POR_DOMINIO[dominio]["proprietario"]}
+                 for item in _CONTRATO_POR_DOMINIO.get(dominio, {}).get("qualificacao_intencao", ()))
 
 
 def consultar_capacidade(

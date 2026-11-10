@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from mente_laylay.cognicao.normalizacao_linguagem import termina_em_interrogativo
+
 
 _DIRETIVA_OPERACIONAL = re.compile(
     r"\[\s*\.?\s*(?:abre|abrir|toca|toque|tocar|coloca|coloque|botar|bota|"
@@ -161,6 +163,7 @@ def remover_fragmento_final_incompleto(texto: str) -> str:
     if (
         not fala
         or _DOMINIO_FINAL.search(fala)
+        or termina_em_interrogativo(fala)
         or not _PALAVRA_PENDURADA.search(fala)
     ):
         return fala

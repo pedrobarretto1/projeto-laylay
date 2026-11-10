@@ -33,12 +33,14 @@ from mente_laylay.cognicao.reacao_social_curta import (
     resposta_contingencia_provocacao,
 )
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
+from mente_laylay.cognicao.normalizacao_linguagem import termina_em_interrogativo
 from mente_laylay.personalidade.contingencia_natural import fala_falha_geracao
 from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
 from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operacionais_sem_evidencia, validar_alegacoes_da_fala, fala_nega_capacidade_emocional
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.cognicao.continuidade_resposta import projetar_contrato_reparo_conversacional
+from mente_laylay.cognicao.formato_breve import DESCUMPRIDO as FORMATO_BREVE_DESCUMPRIDO, formato_breve_vigente
 
 
 def montar_mensagens_pedido_fonte_textual(
@@ -365,6 +367,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "enigma_numerico_sem_solucao_verificada",
     "nomeacao_sem_delimitacao",
     "metodo_de_inspecao_fora_do_limite",
+    FORMATO_BREVE_DESCUMPRIDO,
     "proximo_acontecimento_fora_do_recorte",
     "falha_operacional_sem_evidencia",
     "resultado_operacional_sem_evidencia",
@@ -488,6 +491,9 @@ def avaliar_qualidade_comunicacao(
     metodo = metodo_inspecao_vigente(plano_atual)
     if metodo is not None and metodo_inspecao_incompativel(resposta, metodo=metodo):
         problemas.append("metodo_de_inspecao_fora_do_limite")
+    formato_breve = formato_breve_vigente(plano_atual)
+    if formato_breve is not None and not formato_breve.aceita(resposta, ultima_resposta=resposta_anterior):
+        problemas.append(FORMATO_BREVE_DESCUMPRIDO)
     from mente_laylay.cognicao.fundamentacao_factual import nomeacao_exige_reparo
     if nomeacao_exige_reparo(resposta, texto_usuario=texto_usuario,
                             contexto_obra=plano_atual.get('dominio') == 'musica'):
@@ -650,7 +656,7 @@ def avaliar_qualidade_comunicacao(
         ):
             problemas.append("resposta_repetida_literal")
         if (
-            _FINAL_INCOMPLETO.search(resposta)
+            (_FINAL_INCOMPLETO.search(resposta) and not termina_em_interrogativo(resposta))
             or _CONTRASTE_TRUNCADO.search(resposta)
             or _RESPOSTA_VAZIA_DISFARCADA.fullmatch(resposta)
         ):
@@ -849,6 +855,8 @@ def avaliar_qualidade_comunicacao(
     contrato_reparo = dict(aderencia_contrato.get("contrato_reparo") or {})
     if metodo is not None and "metodo_de_inspecao_fora_do_limite" in problemas:
         contrato_reparo["limite_metodo_inspecao"] = metodo.instrucao()
+    if formato_breve is not None:
+        contrato_reparo['limite_formato_breve'] = formato_breve.instrucao()
     if retomada_usuario is not None and not retomada_usuario['admissivel']:
         contrato_reparo['retomada_usuario'] = {
             'nucleo': 'atribuir ao usuário somente relato apoiado no histórico; primeira pessoa nas fontes pertence a ele',
@@ -1263,6 +1271,8 @@ def montar_mensagens_reparo_comunicacao(
     if 'metodo_de_inspecao_fora_do_limite' in bloqueios and limite_metodo:
         payload.pop('rascunho_rejeitado', None)
         instrucao += " " + limite_metodo
+    if reparo.get('limite_formato_breve'):
+        instrucao += ' ' + reparo['limite_formato_breve']
     if 'proximo_acontecimento_fora_do_recorte' in bloqueios:
         payload.pop('rascunho_rejeitado', None)
         instrucao += (" Retome a premissa atual com um único acontecimento novo, "

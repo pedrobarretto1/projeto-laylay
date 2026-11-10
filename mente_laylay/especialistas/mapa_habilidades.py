@@ -15,7 +15,7 @@ from threading import RLock
 from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
-from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capacidade
+from mente_laylay.especialistas.capacidades import CAPACIDADES, consultar_capacidade, contratos_qualificacao_intencao
 from mente_laylay.personalidade.fala_capacidades import (
     falar_capacidades_gerais,
     falar_identidade_operacional,
@@ -225,7 +225,9 @@ _DESCRICAO_DOMINIO = {
         "acessibilidade seguem o executor normalmente. "
         + _CONTRATO_FEEDBACK_PRESENCA + ". " + _CONTRATO_PREFERENCIA_HUMOR + " " + _CONTRATO_EXPRESSAO_SOLICITADA
     ),
-    "conversa": "conversar, explicar, raciocinar, consultar clima e sugerir ações",
+    "conversa": "conversar, explicar, raciocinar, consultar clima e sugerir ações; "
+        "qualificar pedidos de formato da resposta no chat antes de considerar operação externa, "
+        "preservando destinatários, restrições e comandos independentes; formato não autoriza efeitos",
 }
 
 _TERMOS_DOMINIO = {
@@ -693,6 +695,7 @@ class MapaHabilidadesRuntime:
                 estado_calculado = str(estado_operacional.get("estado"))
             dominios[dominio] = {
                 "descricao": descricao,
+                "qualificacao_intencao": contratos_qualificacao_intencao(dominio),
                 "total": len(itens),
                 "disponiveis": disponiveis,
                 "estado": estado_calculado,
@@ -1437,7 +1440,9 @@ class MapaHabilidadesRuntime:
                 "Consigo conversar, explicar e raciocinar com você usando o modelo de linguagem "
                 "disponível. Também mantenho o contexto da "
                 "conversa separado das lembranças duráveis: conversar comigo não salva tudo nem "
-                "autoriza uma ação no computador."
+                "autoriza uma ação no computador. Pedidos de formato, como uma frase curta, "
+                "qualificam a resposta no chat; destinatários externos e comandos independentes "
+                "precisam manter seu próprio escopo de autorização."
             )
         return "Consigo, desde que essa habilidade esteja configurada e você faça o pedido de execução diretamente."
 

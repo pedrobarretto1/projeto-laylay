@@ -55,14 +55,18 @@ def _consulta(texto: str) -> ConsultaAtributo | None:
         return None
     complemento = complemento_recordacao_dialogo(perguntas[0])
     m = re.fullmatch(rf'se\s+(?P<objeto>.+?)\s+{_COPULA}\s+(?P<valores>.+)', complemento, re.I)
-    if m is None or intervalos_citados(texto):
+    aberta = re.fullmatch(rf'como\s+{_COPULA}\s+(?P<objeto>.+)', complemento, re.I)
+    if (m is None and aberta is None) or intervalos_citados(texto):
         return None
-    valores = tuple(_literal(v) for v in re.split(r'\s*,\s*|\s+ou\s+', m['valores']))
-    if not 2 <= len(valores) <= 8 or len(set(valores)) != len(valores):
-        return None
-    if not all(re.fullmatch(_PALAVRA, v) and (consultar_morfologia(v) or 0) & 2 for v in valores):
-        return None
-    identidade = _identidade(m['objeto'])
+    valores = ()
+    if m is not None:
+        valores = tuple(_literal(v) for v in re.split(r'\s*,\s*|\s+ou\s+', m['valores']))
+        if not 2 <= len(valores) <= 8 or len(set(valores)) != len(valores):
+            return None
+        if not all(re.fullmatch(_PALAVRA, v) and (consultar_morfologia(v) or 0) & 2 for v in valores):
+            return None
+    sujeito = (m if m is not None else aberta)['objeto']
+    identidade = _identidade(sujeito)
     if not identidade:
         return None
     # Não absorver outra pergunta/ordem como parte da resposta elíptica.
@@ -81,7 +85,22 @@ def _consulta(texto: str) -> ConsultaAtributo | None:
             if (not palavras or not re.fullmatch(_COPULA, palavras[0], re.I)
                     or any((t := consultar_morfologia(p) or 0) & 32 and not t & 1 for p in palavras[1:])):
                 return None
-    return ConsultaAtributo(m['objeto'], identidade, valores)
+    return ConsultaAtributo(sujeito, identidade, valores)
+
+
+def _predicacao_integral(texto: str) -> tuple[tuple[str, ...], str, str] | None:
+    """Forma integral: conserva cópula/tempo, sujeito e atributo, sem anexos.
+
+    A identidade nominal pode variar nos artigos já normalizados pelo owner.
+    Isso não certifica sinônimos, pronomes, causas ou equivalência semântica livre.
+    """
+    m = re.fullmatch(rf'(?P<objeto>.+?)\s+(?P<copula>{_COPULA})\s+(?P<valor>{_PALAVRA})', _literal(texto))
+    if m is None:
+        return None
+    relacao = _relacao(texto)
+    if relacao is None:
+        return None
+    return relacao[0], m['copula'], relacao[1]
 
 
 def _conteudo_declarado(frase: str) -> str:
@@ -159,11 +178,22 @@ class RecordacaoAtributo:
     valor: str
     estado: str
     fontes: tuple[tuple[int, str, str], ...]
+    declaracao: str = ''
 
     def resposta(self) -> str:
         if self.valor:
+            if not self.consulta.alternativas:
+                return f'Você descreveu: «{self.declaracao}».'
             return self.valor[0].upper() + self.valor[1:] + '.'
         return f'Como você tinha descrito {self.consulta.sujeito}?'
+
+    def aceita(self, fala: str) -> bool:
+        if _literal(fala) == _literal(self.resposta()):
+            return True
+        if self.consulta.alternativas or not self.valor:
+            return False
+        origem = _predicacao_integral(self.declaracao)
+        return origem is not None and _predicacao_integral(fala) == origem
 
 
 def construir_recordacao_atributo(texto: str, *, plano: Mapping[str, Any],
@@ -176,6 +206,7 @@ def construir_recordacao_atributo(texto: str, *, plano: Mapping[str, Any],
     if consulta is None:
         return None
     valor, estado = '', 'fonte_ausente'
+    declaracao = ''
     fontes = []
     from mente_laylay.cognicao.proveniencia_informacao import classificar_proveniencia_informacao
     from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
@@ -207,16 +238,18 @@ def construir_recordacao_atributo(texto: str, *, plano: Mapping[str, Any],
                     valor, estado = '', 'fonte_bloqueada'
                 elif corrigindo or estado == 'fonte_ausente' or (estado == 'conferido' and novo == valor):
                     valor, estado = novo, 'conferido'
+                    declaracao = declarado
                 else:
                     valor, estado = '', 'versoes_conflitantes'
             elif (corrigindo or all(re.search(r'(?<!\w)' + re.escape(n) + r'(?!\w)', _literal(corpo))
                                     for n in consulta.identidade)):
                 valor, estado = '', 'relacao_nao_conferida'
-    if valor and valor not in consulta.alternativas:
+    if valor and consulta.alternativas and valor not in consulta.alternativas:
         # Sem ontologia de atributos, não confundir peso com cor. Alternativas
         # delimitam a pergunta; nunca criam o valor que a fonte não declarou.
         valor, estado = '', 'dimensao_nao_conferida'
-    return RecordacaoAtributo(str(plano['id']), texto, consulta, valor, estado, tuple(fontes))
+    return RecordacaoAtributo(str(plano['id']), texto, consulta, valor, estado, tuple(fontes),
+                             declaracao if valor else '')
 
 
 def avaliar_recordacao_atributo(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -229,7 +262,7 @@ def avaliar_recordacao_atributo(fala: str, *, plano: Mapping[str, Any]) -> dict[
             or plano.get('requer_execucao') or plano.get('comandos') or plano.get('texto_operacional')):
         return None
     resposta = fonte.resposta()
-    r = {'admissivel': _literal(fala) == _literal(resposta), 'estado': 'recordacao_atributo_' + fonte.estado,
+    r = {'admissivel': fonte.aceita(fala), 'estado': 'recordacao_atributo_' + fonte.estado,
          'semantica_verificada': False, 'prova_implicacao': False, 'autoriza_execucao': False,
          'pode_confirmar_fato_externo': False, 'realizacoes': [resposta],
          'fontes_historicas': [{'indice': i, 'sha256': h} for i, h, _ in fonte.fontes]}

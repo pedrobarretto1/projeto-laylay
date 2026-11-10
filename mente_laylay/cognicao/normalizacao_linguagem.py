@@ -80,6 +80,11 @@ def separar_adjunto_papel_inicial(texto: str, *, fonte_literal: str = '') -> tup
     return bruto[:fim], bruto[fim:]
 
 
+def termina_em_interrogativo(texto: str) -> bool:
+    """Distingue interrogativo final pontuado de conector sem complemento."""
+    return bool(re.search(r"\b(?:por\s+qu[eê]|como|quando)\s*\?+$", str(texto or '').strip(), re.I))
+
+
 def remover_conector_discursivo_inicial(texto: str) -> str:
     """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
 
@@ -204,6 +209,12 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
     from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
 
+    # O mesmo parecer prévio usado pelo classificador também orienta os cortes.
+    # Não há segunda lista de frases nem autorização produzida pelo catálogo.
+    from mente_laylay.cognicao.qualificacao_intencao import qualificar_intencao_por_capacidades
+    if qualificar_intencao_por_capacidades(texto) is not None:
+        return "formato_resposta"
+
     # O mesmo objeto textual reconhecido pela recuperação também é autoria;
     # repetir seu conteúdo não autoriza executar o que estiver sendo citado.
     if pedido_repeticao_literal_da_fala(texto):
@@ -309,12 +320,8 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     # Quantificadores limitam a extensão do artefato textual, sem trocar
     # o alvo da instrução por uma operação. Consumir o grupo inteiro mantém
     # destinos externos e ordens coordenadas fora deste contrato.
-    numero_extensao = r'(?:uma?|dois|duas|tres|quatro|cinco|poucas?|\d+)'
-    quantidade_extensao = (
-        rf'(?:(?:ate|no maximo|pelo menos|ao menos|no minimo) {numero_extensao}'
-        rf'|entre {numero_extensao} e {numero_extensao}'
-        rf'|{numero_extensao}(?: ou {numero_extensao})?)'
-    )
+    from mente_laylay.cognicao.qualificacao_intencao import NUMERO_EXTENSAO, QUANTIDADE_EXTENSAO
+    numero_extensao, quantidade_extensao = NUMERO_EXTENSAO, QUANTIDADE_EXTENSAO
     modificador_forma = (
         rf"(?:(?:(?:em|com) {quantidade_extensao}|entre {numero_extensao} e {numero_extensao}|numa?) "
         r"(?:frases?|palavras?|paragrafos?|linhas?)|"

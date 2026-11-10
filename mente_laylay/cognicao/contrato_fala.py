@@ -1296,6 +1296,11 @@ def construir_contrato_semantico_fala(
     if metodo is not None:
         resultado['metodo_inspecao'] = metodo
         resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], metodo.instrucao()]
+    from mente_laylay.cognicao.formato_breve import construir_formato_breve
+    formato_breve = construir_formato_breve(texto, plano=planejamento)
+    if formato_breve is not None:
+        resultado['formato_breve'] = formato_breve
+        resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], formato_breve.instrucao()]
     return resultado
 
 

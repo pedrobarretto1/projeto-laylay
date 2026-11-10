@@ -194,6 +194,16 @@ def analisar_protecao_operacional(
             "natureza_acao": "mencao_operacional",
             "motivo": "citação integral é conteúdo mencionado, não pedido de execução",
         }
+    from mente_laylay.cognicao.qualificacao_intencao import qualificar_intencao_por_capacidades
+    qualificacao = qualificar_intencao_por_capacidades(texto)
+    if qualificacao is not None:
+        return {
+            "bloqueia_execucao": True,
+            "modalidade": "conversa",
+            "natureza_acao": "transformacao_conversacional",
+            "motivo": "entrega textual qualificada pelo contrato da capacidade, sem destino externo",
+            "qualificacao_intencao": qualificacao.como_dict(),
+        }
     if tipo_transformacao_conversacional(texto):
         return {
             "bloqueia_execucao": True,
@@ -515,6 +525,8 @@ def _classificar_modalidade_base(
             depende_contexto=protecao["modalidade"] == "recusa",
             requer_esclarecimento=protecao["natureza_acao"] == "capacidade",
         )
+        if protecao.get('qualificacao_intencao'):
+            resultado['qualificacao_intencao'] = protecao['qualificacao_intencao']
         return resultado
 
     # ROOT_AUTORIDADE_RESTAURACAO_V1_20260823
@@ -1915,6 +1927,8 @@ def _segmento_estrutural(
             resultado.get("veto_execucao_operacional")
         ),
     }
+    if resultado.get('qualificacao_intencao'):
+        segmento['qualificacao_intencao'] = resultado['qualificacao_intencao']
     if not segmento["autoriza_execucao"]:
         # Publica a relação que este owner já aplicou, sem pedir outra
         # classificação ao consumidor. Offsets são do texto estrutural, não
