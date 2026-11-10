@@ -65,7 +65,8 @@ def tipo_reconhecimento_afetivo(texto_usuario: str) -> str:
     )
     if any(sinal in t for sinal in elogios_pessoais):
         return "elogio_pessoal"
-    if any(sinal in t for sinal in ("obrigad", "brigad", "valeu", "valew", "vlw")):
+    from mente_laylay.cognicao.referencias_linguagem import contem_agradecimento_autoral
+    if contem_agradecimento_autoral(texto_usuario):
         return "agradecimento"
     return "elogio_resultado"
 

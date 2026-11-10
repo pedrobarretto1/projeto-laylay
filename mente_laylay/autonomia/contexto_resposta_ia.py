@@ -11,6 +11,7 @@ from mente_laylay.memoria_mental.registro_semantico import (
 )
 
 from mente_laylay.cognicao.contrato_fala import formatar_contrato_fala_para_prompt
+from mente_laylay.cognicao.seletor_contexto import inicio_contexto_discursivo
 from mente_laylay.cognicao.modelo_corporal import formatar_modelo_corporal
 from mente_laylay.cognicao.leitura_semantica_turno import INSTRUCAO_INTERPRETACAO_POR_ATO
 from mente_laylay.cognicao.saida_interpretacao_principal import criar_contrato_saida_interpretacao_principal
@@ -319,6 +320,22 @@ def preparar_contexto_resposta_ia(
     return mensagens, prompt_com_humor
 
 
+def _contrato_para_prompt(estado: Dict[str, Any], texto: str, *, compacto: bool) -> str:
+    contrato = estado.get("contrato_fala_atual")
+    if isinstance(contrato, dict) and contrato.get("respostas_recentes_evitar"):
+        dialogo = list(estado.get("messages") or []) + [{"role": "user", "content": texto}]
+        inicio = inicio_contexto_discursivo(dialogo, len(dialogo) - 1)
+        if inicio:
+            falas_do_tema = [
+                str(item.get("content") or "").strip()
+                for item in dialogo[inicio:] if isinstance(item, dict) and item.get("role") == "assistant"
+            ]
+            # A projeção para a autoria evita reintroduzir falas do outro tema.
+            # O contrato original e sua revisão ainda conhecem as repetições.
+            contrato = {**contrato, "respostas_recentes_evitar": falas_do_tema[-3:]}
+    return formatar_contrato_fala_para_prompt(contrato, compacto=compacto)
+
+
 class ContextoPromptRuntime:
     """Prepara o prompt ativo usando o retrato vivo da mesma mente."""
 
@@ -469,8 +486,8 @@ class ContextoPromptRuntime:
         contexto_contrato_fala = (
             ""
             if lista_factual_materializada
-            else formatar_contrato_fala_para_prompt(
-                estado.get("contrato_fala_atual"),
+            else _contrato_para_prompt(
+                estado, t,
                 # O contrato compacto preserva atos, referente, obrigações,
                 # proibições e limites. A versão longa duplicava o roteiro e as
                 # respostas recentes em todo turno normal.
@@ -750,10 +767,7 @@ class ContextoPromptRuntime:
             estado = {}
         estado = estado if isinstance(estado, dict) else {}
         try:
-            contrato = formatar_contrato_fala_para_prompt(
-                estado.get("contrato_fala_atual"),
-                compacto=True,
-            )
+            contrato = _contrato_para_prompt(estado, texto, compacto=True)
             operacional = bool(
                 dict(
                     dict(estado.get("especialistas_turno_atual") or {}).get("operacional")

@@ -28,6 +28,7 @@ from mente_laylay.memoria_mental.contexto_compartilhado import (
     registrar_mente_curta,
     registrar_oferta_pendente,
     registrar_pergunta_aberta,
+    registrar_resultado_execucao,
     texto_parece_pergunta_aberta,
 )
 from mente_laylay.memoria_mental.pendencia import pendencia_ativa
@@ -930,24 +931,34 @@ class DialogosComunicacaoTests(unittest.TestCase):
             params_cb=params,
             contexto_volume_ativo=True,
         )
-        corrigido = detectar_volume_ou_midia(
-            "nao lay o volume no maximo",
-            params_cb=params,
-        )
-        for resultado in (explicito, contextual, corrigido):
+        for resultado in (explicito, contextual):
             self.assertEqual(resultado["intent"], "VOLUME")
             self.assertEqual(resultado["params"]["acao"], "set")
             self.assertEqual(resultado["params"]["nivel_volume"], 100)
 
+        # O histórico misturava ajuste autorizado com correção sem comando.
+        # A frase original continua coberta, sem fabricar autoridade pelo nome
+        # do parâmetro nem retirar a negação para fazê-la passar pelo detector.
+        texto = "nao lay o volume no maximo"
+        self.assertFalse(classificar_modalidade_turno(texto)["autoriza_execucao"])
+        self.assertIsNone(detectar_volume_ou_midia(texto, params_cb=params))
+        self.assertIsNone(detectar_intencao_deterministica_mente(texto, {}))
+
     def test_continuidade_de_volume_chega_ao_roteador_antes_da_ia(self) -> None:
+        # Intenção/params anteriores não provam efeito. O publicador real é
+        # dono dos slots correlacionados usados pela continuidade atual.
+        estado = registrar_resultado_execucao(
+            estado_mental_inicial(),
+            ResultadoAcao(
+                id_solicitacao="dialogo-volume-40", intent="VOLUME",
+                status="volume_ajustado", executou=True, confirmado=True,
+                origem="executor", params={"acao": "set", "nivel_volume": 40},
+            ),
+            "coloca o volume em 40",
+        )
+        self.assertTrue(estado["ultima_acao_contrato"]["confirmado"])
         resultado = detectar_intencao_deterministica_mente(
-            "aumenta para o máximo",
-            {
-                "mente_integrada_estado": {
-                    "ultima_acao_intent": "VOLUME",
-                    "ultima_acao_params": {"acao": "set", "nivel_volume": 40},
-                }
-            },
+            "aumenta para o máximo", {"mente_integrada_estado": estado},
         )
         self.assertEqual(resultado, {
             "intent": "VOLUME",
@@ -957,6 +968,22 @@ class DialogosComunicacaoTests(unittest.TestCase):
                 "referencia_contextual": True,
             },
         })
+
+        sem_receipt = {
+            "ultima_acao_intent": "VOLUME",
+            "ultima_acao_params": {"acao": "set", "nivel_volume": 40},
+        }
+        expirado = {**estado, "ultima_acao_ts": 0.0}
+        nao_confirmado = {
+            **estado,
+            "ultima_acao_contrato": {**estado["ultima_acao_contrato"], "confirmado": False},
+        }
+        for nome, antecedente in (("sem_receipt", sem_receipt), ("expirado", expirado),
+                                  ("nao_confirmado", nao_confirmado)):
+            with self.subTest(antecedente=nome):
+                self.assertIsNone(detectar_intencao_deterministica_mente(
+                    "aumenta para o máximo", {"mente_integrada_estado": antecedente},
+                ))
 
     def test_confirmacao_de_volume_informa_o_nivel_aplicado(self) -> None:
         falas = []

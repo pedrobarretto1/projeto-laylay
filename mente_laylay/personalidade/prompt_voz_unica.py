@@ -10,6 +10,18 @@ from mente_laylay.personalidade.perfil_amizade import (
 
 _MARCA_PERFIL = f"[PERFIL_SOCIAL:{VERSAO_PERFIL_PERSONALIDADE}]"
 
+_FORMATO_LEGADO_COMPLETO = """
+
+Retorne somente JSON válido, sem markdown nem texto externo:
+{"fala":"","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa","leitura_turno":["relato"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}
+"""
+_FORMATO_LEGADO_COMPACTO = """
+
+FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON.
+Retorne somente JSON válido, sem markdown nem texto externo:
+{"fala":"resposta natural completa","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa|aprendizado","leitura_turno":["ato atual"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}
+""".rstrip()
+
 BASE_SYSTEM_PROMPT = _MARCA_PERFIL + "\n" + IDENTIDADE_VOZ_LAYLAY + "\n\n" + CONTRATO_AMIZADE_PROMPT + """
 
 CONTEXTO E REALIDADE:
@@ -28,9 +40,7 @@ COMANDOS:
 - leitura_turno: um ato por trecho entre saudacao|pergunta|pergunta_opiniao|pergunta_capacidade|resposta_social|relato|opiniao|reacao|agradecimento|correcao|recusa|confirmacao|contraproposta|pedido_acao|sugestao|deliberacao|encerramento|outro.
 - leitura_emocional lê frase inteira/contexto/figura, não palavras isoladas. Estados exatos: nenhum|alegria|alivio|ansiedade|cansaco|culpa|esgotamento|irritacao|medo|orgulho|tedio|tristeza. Intensidade inteira: 0 sem emoção, 1 leve ("um pouco"), 2 moderada; 3 só para emoção forte declarada ("muito"). Natureza exata: leitura_social quando o usuário nomeia emoção, inclusive "estou triste/feliz"; inferencia quando você a conclui por evento/contexto/figura, com intensidade máxima 2. Evento explícito não torna a emoção declarada. Prefira estado específico (respirar após longa pendência -> alivio). trecho_evidencia: menor cópia literal sem mudar conjugação; confiança >=0.72 só com suporte. Sem evidência: nenhum/0; nunca autoriza ação.
 
-Retorne somente JSON válido, sem markdown nem texto externo:
-{"fala":"","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa","leitura_turno":["relato"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}
-"""
+""".rstrip() + _FORMATO_LEGADO_COMPLETO
 
 
 # Representações compactas preservam identidade e formato. Só a rota rápida
@@ -49,10 +59,7 @@ RESPOSTA COMPACTA:
 - Um gosto ou fato pessoal explícito do usuário pode virar aprendizado; não invente nem infira.
 - leitura_emocional lê frase inteira/contexto/figura, não palavras isoladas. Estados exatos: nenhum|alegria|alivio|ansiedade|cansaco|culpa|esgotamento|irritacao|medo|orgulho|tedio|tristeza. Intensidade inteira: 0 sem emoção, 1 leve ("um pouco"), 2 moderada; 3 só para emoção forte declarada ("muito"). Natureza exata: leitura_social quando o usuário nomeia emoção, inclusive "estou triste/feliz"; inferencia quando você a conclui por evento/contexto/figura, com intensidade máxima 2. Evento explícito não torna a emoção declarada. Prefira estado específico (respirar após longa pendência -> alivio). trecho_evidencia: menor cópia literal sem mudar conjugação; confiança >=0.72 só com suporte. Sem evidência: nenhum/0.
 
-FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON.
-Retorne somente JSON válido, sem markdown nem texto externo:
-{"fala":"resposta natural completa","emocao":"calma","nivel_emocao":1,"tipo_interacao":"conversa|aprendizado","leitura_turno":["ato atual"],"leitura_emocional":{"estado_usuario":"nenhum","intensidade":0,"causa_expressa":"","trecho_evidencia":"","natureza_evidencia":"inferencia","hipotetica":false,"alvo":"estado_geral","confianca":0.0},"comandos":[],"aprendizados":[]}
-""".strip()
+""".strip() + _FORMATO_LEGADO_COMPACTO
 
 
 BASE_SYSTEM_PROMPT_COMPACTO = _construir_base_compacta(
@@ -63,3 +70,15 @@ BASE_SYSTEM_PROMPT_COMPACTO = _construir_base_compacta(
 BASE_SYSTEM_PROMPT_RAPIDO = _construir_base_compacta(
     "- Use uma ou duas frases, no máximo uma pergunta e nenhuma metáfora desnecessária.\n",
     "- Conversa, relato, pergunta e sugestão não autorizam ação. Retorne comandos vazios.\n")
+
+
+def projetar_base_para_schema_negociado(prompt: str) -> str:
+    """Retira somente o exemplo legado de uma base canônica do host."""
+    for base, formato in (
+        (BASE_SYSTEM_PROMPT, _FORMATO_LEGADO_COMPLETO),
+        (BASE_SYSTEM_PROMPT_COMPACTO, _FORMATO_LEGADO_COMPACTO),
+        (BASE_SYSTEM_PROMPT_RAPIDO, _FORMATO_LEGADO_COMPACTO),
+    ):
+        if base in prompt:
+            return prompt.replace(base, base.removesuffix(formato), 1)
+    return prompt

@@ -1,0 +1,26 @@
+{
+  "porta": "COM4",
+  "comando": "F",
+  "duracao_ms": 5000,
+  "pwm": 100,
+  "rodas_suspensas_confirmadas": true,
+  "movimento_fisico_confirmado": false,
+  "observacao_usuario": "Nenhuma roda girou",
+  "observacao_pendente": false,
+  "respostas": [
+    {
+      "t": 0.003,
+      "texto": "PWM aplicado aos dois motores por 5 segundos. S = parar."
+    },
+    {
+      "t": 5.002,
+      "texto": "Tempo encerrado; ponte desligada."
+    },
+    {
+      "t": 5.029,
+      "texto": "Ponte desligada por comando."
+    }
+  ],
+  "pwm_declarado_pelo_firmware": true,
+  "fim_de_prazo_declarado": true
+}

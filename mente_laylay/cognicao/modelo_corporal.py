@@ -197,11 +197,30 @@ def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_hist
         "Só afirme borda/obstáculo com leitura recente (frente/inferior; sem traseira/laterais). "
         "Frontal inválido é desconhecido; medo reage ao risco. Giro por tempo não mede ângulo. "
         "IMU recente mede inclinação/rotação relativa, nunca posição; possível levantamento é hipótese, não certeza de colo. "
-        "ACK confirma PWM/parada elétrica; deslocamento=false é NÃO MEDIDO, nunca ausência de movimento. "
+        "ACK confirma PWM/parada elétrica. prova_deslocamento=false significa NÃO MEDIDO, nunca ausência de movimento. "
         "GUARD confirma observação, não sucesso de comando. Histórico contém observações de sessões anteriores, não permissão atual. "
         "Resultado permanece no turno original. Proposta não significa ação executada; novo turno exige proposta atual, sem replay nem herdar receipt. "
         "decisao_origem é a regra anterior ao efeito; sem fonte, causa desconhecida. intencao_da_mente não explica o raciocínio da LLM. "
     )
+
+
+_PROTOCOLO_CORPORAL_INATIVO = (
+    "\nFORMATO ESTRUTURAL OBRIGATÓRIO DO JSON. Retorne só JSON, "
+    "preservando os campos do contrato principal. "
+    "Não copie o retrato para a saída. Redija a resposta com naturalidade, sem nomes técnicos. "
+    "Com companhia_ativa=false, omita intencao_corporal. "
+    "Pedidos manuais continuam sob autorização e validação do executor; "
+    "não anuncie movimento como feito antes do retorno."
+)
+_EXEMPLO_CORPORAL_INATIVO_LEGADO = (
+    ' Estrutura de saída: {"fala":"resposta breve ao usuário","emocao":"calma","nivel_emocao":1,"comandos":[]}'
+)
+
+
+def projetar_protocolo_corporal_para_schema_negociado(prompt: str) -> str:
+    """Preserva o estado e as restrições do corpo sem impor outro envelope."""
+    return prompt.replace(_PROTOCOLO_CORPORAL_INATIVO + _EXEMPLO_CORPORAL_INATIVO_LEGADO,
+                          _PROTOCOLO_CORPORAL_INATIVO)
 
 
 def formatar_modelo_corporal(modelo: Mapping[str, Any] | None) -> str:
@@ -211,34 +230,25 @@ def formatar_modelo_corporal(modelo: Mapping[str, Any] | None) -> str:
     if modelo.get("companhia_ativa") is False:
         # Estado observado permanece inteiro. Uma saída desabilitada não recebe
         # exemplos de proposta; isto não restringe comandos manuais autorizados.
-        return realidade + (
-            "\nFORMATO ESTRUTURAL OBRIGATÓRIO DO JSON. Retorne só JSON, "
-            "preservando os campos do contrato principal. "
-            "Não copie o retrato para a saída. Fale naturalmente em fala, sem nomes técnicos. "
-            "Com companhia_ativa=false, omita intencao_corporal. "
-            "Pedidos manuais continuam sob autorização e validação do executor; "
-            "não anuncie movimento como feito antes do retorno. Estrutura de saída: "
-            + json.dumps({"fala":"resposta breve ao usuário","emocao":"calma","nivel_emocao":1,"comandos":[]},
-                         ensure_ascii=False,separators=(",",":"))
-        )
+        return realidade + _PROTOCOLO_CORPORAL_INATIVO + _EXEMPLO_CORPORAL_INATIVO_LEGADO
     referencia = modelo.get("objetivo_para_continuar") or {}
     ref = referencia.get("objetivo_id") if isinstance(referencia, Mapping) else None
-    exemplo = {"fala": "resposta natural ao usuário", "emocao": "calma", "nivel_emocao": 1,
-               "comandos": [], "intencao_corporal": {"nome": "interagir"}}
+    exemplo = {"intencao_corporal": {"nome": "interagir"}}
     if ref and continuacao_objetivo_valida(modelo, ref, agora=time.monotonic()):
         exemplo["intencao_corporal"]["objetivo_id"] = ref
     exemplo_novo = {"intencao_corporal": {"nome": "atenta"}}
     contrato = (
         "\n"
         "FORMATO ESTRUTURAL OBRIGATÓRIO DO JSON. Preserve o contrato principal. "
-        "Não copie o retrato. Fale naturalmente em fala, sem termos técnicos. "
-        "Com companhia_ativa=false, omita intencao_corporal; ativa: proposta no objeto externo, fora de fala. "
+        "Não copie o retrato. Redija a resposta com naturalidade, sem termos técnicos. "
+        "Com companhia_ativa=false, omita intencao_corporal. Quando ativa, use esse campo fora de fala "
+        "e apenas se o schema permitir. "
         "Escolha nome: atenta (foco), interagir (conversa), expressar (emoção causal), comemorar (sucesso confirmado do pedido), "
         "reagir_falha (falha do pedido), explorar (passeio), descansar (sossego). "
         "Se o pedido continua o assunto de objetivo_contexto e objetivo_para_continuar.continuidade_disponivel=true, "
         "copie seu objetivo_id. Assunto novo omite objetivo_id. "
         "Nunca invente identificadores ou repita automaticamente o gesto anterior. "
-        "Estrutura para continuidade: "
+        "Estrutura para continuidade do complemento corporal: "
         + json.dumps(exemplo, ensure_ascii=False, separators=(",", ":"))
         + ". Novo assunto SEM objetivo_id: "
         + json.dumps(exemplo_novo, ensure_ascii=False, separators=(",", ":"))

@@ -1,6 +1,31 @@
 # Montagem do corpo com dois N20 de 3 V
 
 ESP32-C3 Super Mini, OLED SSD1306 e ponte dupla DRV8833.
+Atualização de 04/11/2026: o teste com os N20 na bateria de 3 V funcionou
+com PWM150/255 e 1 kHz. Pedro confirmou depois **mínimo 150, permitindo até
+255**. Na Laylay, `LAYLAY_CORPO_PWM_MINIMO=150` e
+`LAYLAY_CORPO_PWM_MAXIMO=255` em `configuracao.env` calibram comandos e gestos
+no owner do transporte antes de enviar MOTOR/TURN. Zero permanece desligado;
+uma roda solicitada abaixo do piso passa a 150, preservando seu sentido.
+Uma curva pode mudar de proporção quando uma das rodas alcança esse piso.
+MACK e o receipt usam os valores efetivamente enviados.
+
+O build do ESP também usa `LAYLAY_PWM_MINIMO_MOTOR=150` e
+`LAYLAY_PWM_MAXIMO_MOTOR=255`. A mesma saída elétrica cobre rampas, reflexos
+locais e giros medidos, sem deixar tração ativa abaixo de 150. Comandos MOTOR
+recebidos fora desse perfil são recusados antes de iniciar a tração;
+paradas, falhas e vencimento da sessão continuam cortando a ponte a zero.
+Os padrões genéricos do fonte mantêm piso zero; ao recompilar esta montagem,
+é necessário repetir os flags do perfil. O PWM do alto-falante é independente.
+
+Nesta restauração os sensores foram removidos por Pedro. O build usa
+Wi-Fi e USB, motores habilitados, janela máxima de 5000 ms, som no GPIO6,
+`LAYLAY_SENSORES_DISTANCIA=0`, `LAYLAY_PROTECAO_CORPORAL=0` e `LAYLAY_IMU=0`.
+Portanto não há proteção de queda, parede ou manuseio nesta instalação;
+usar rodas suspensas. Reconectar os sensores exige regravar o perfil com
+as proteções habilitadas. Os registros históricos abaixo descrevem outras
+montagens e builds, não a configuração atual.
+
 Pedro confirmou motores **3 V / 30 RPM**, alimentação atual pelo USB do PC
 de **5 V**, inscrições `EEP` e `ULT`, e ausência de conversor de tensão.
 

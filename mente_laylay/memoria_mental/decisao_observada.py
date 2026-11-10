@@ -394,13 +394,15 @@ class ExplicacaoHistoricaAto:
 
     def __post_init__(self) -> None:
         if (type(self.ato) is not ContratoExplicativoAto
-                or self.ato.modalidade not in {"pergunta", "deliberacao"}
+                or self.ato.modalidade not in {"pergunta", "deliberacao", "conversa", "reacao"}
                 or type(self.fonte_textual) is not SnapshotComandoIA
                 or (self.ocorrencia is not None and type(self.ocorrencia) is not ExplicacaoOcorrencia)
                 or (self.fala is not None and type(self.fala) is not SnapshotComandoIA)
                 or type(self.falha_fonte) is not bool
                 or (self.ocorrencia is not None and self.fala is not None)
-                or (self.falha_fonte and (self.ocorrencia is not None or self.fala is not None))):
+                or (self.falha_fonte and (self.ocorrencia is not None or self.fala is not None))
+                or (self.ato.modalidade in {"conversa", "reacao"} and (
+                    self.ocorrencia is not None or self.fala is not None or self.falha_fonte))):
             raise ValueError("Ato explicativo exige fonte exclusiva e leitura não operacional.")
 
 

@@ -9,6 +9,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import avaliar_qualidade_comuni
 from mente_laylay.autonomia.processamento_resposta_ia import preparar_resposta_para_execucao
 from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
 from mente_laylay.cognicao.validacao_contrato_fala import reconhecimento_estado_pessoal_valido
+from scripts.tests.test_ato_social_conferido import preparar
 
 
 def plano_para(texto):
@@ -69,6 +70,45 @@ def test_reparo_nao_pode_ser_aplicado_sobre_outro_rascunho():
     plano = plano_para(texto)
     avaliacao = avaliar_qualidade_comunicacao(texto, original, plano=plano)
     assert compor_reparo_comunicacao("Outro conteúdo.", "Que bom saber!", avaliacao, plano=plano) == ""
+
+
+@pytest.mark.parametrize("modo", ["validade", "fonte_alheia", "apoiada", "mista"])
+def test_reparo_local_sem_modelo_mantem_revisao_de_cada_unidade(modo):
+    plano, _, fala = preparar()
+    texto = plano["texto_usuario"]
+    url = "https://fonte.test/ato-social" if modo != "fonte_alheia" else "https://fonte.test/alheia"
+    if modo == "validade":
+        plano["fundamentacao_factual"]["evidencia_dentro_validade"] = False
+    inventada = "O disco também contém uma segunda cópia."
+    unidades = [{"texto": fala, "fontes": [url]}]
+    if modo == "mista":
+        unidades.append({"texto": inventada, "fontes": [url]})
+    original = " ".join(p["texto"] for p in unidades)
+    bruto = json.dumps({"fala": original, "comandos": [], "suporte_proposicoes": unidades})
+    resultado = preparar_resposta_para_execucao(texto, bruto,
+        limpar_texto_fala_cb=lambda x: x, fallback_fala="fallback", memoria_sqlite=None,
+        contexto_comunicacao={"plano_turno": plano, "mensagens": []}, log=lambda x: None)
+    assert resultado["fala"] == "Que bom que você está bem! " + original
+    assert not resultado["comandos"]
+    verificacao = verificar_fala_turno(resultado["fala"],
+        plano={**plano, "autoria_revisada_proposta": resultado["autoria_revisada_proposta"]})
+    proposicoes = verificacao["revisao_suporte_autoria"]["proposicoes"]
+    assert proposicoes[0]["estado"] == "ato_social_conferido"
+    assert (proposicoes[1]["estado"] == "literal_integral_na_fonte") == (modo in {"apoiada", "mista"})
+    assert (fala in verificacao["fala"]) == (modo in {"apoiada", "mista"})
+    assert inventada not in verificacao["fala"]
+
+
+def test_reparo_local_recusa_suporte_de_outra_emissao_principal():
+    from mente_laylay.cognicao.qualidade_comunicacao import montar_reparo_parcial_local
+    from mente_laylay.cognicao.suporte_autoria import montar_autoria_revisada
+
+    plano, _, fala = preparar()
+    suporte = plano["autoria_revisada_proposta"].partes[1]
+    anterior = montar_autoria_revisada("outra emissão", fala, (suporte,))
+    avaliacao = avaliar_qualidade_comunicacao(plano["texto_usuario"], fala, plano=plano)
+    assert anterior is not None
+    assert montar_reparo_parcial_local(fala, avaliacao, plano=plano, principal="atual", anterior=anterior) is None
 
 
 @pytest.mark.parametrize("fala", [

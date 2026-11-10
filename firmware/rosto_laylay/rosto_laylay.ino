@@ -10,6 +10,7 @@
 #include <math.h>
 #include "fonte_terminal.h"
 #include "transporte_wifi.h"
+#include "pwm_motores.h"
 #ifndef LAYLAY_TESTE_SOMENTE_IMU
 #define LAYLAY_TESTE_SOMENTE_IMU 0
 #endif
@@ -149,6 +150,13 @@ bool decimalSemSinal(const char *texto, uint32_t &valor) {
   return true;
 }
 
+bool escreverPwmMotores(int esquerdo, int direito) {
+  esquerdo = ajustarPwmMotor(esquerdo); direito = ajustarPwmMotor(direito);
+  int duties[4] = {max(0, esquerdo), max(0, -esquerdo), max(0, direito), max(0, -direito)};
+  for (int i = 0; i < 4; ++i) if (!ledcWrite(PINOS_MOTOR[i], duties[i])) return false;
+  return true;
+}
+
 bool decimalPwm(const char *texto, int &valor) {
   bool negativo = *texto == '-';
   uint32_t magnitude;
@@ -184,8 +192,7 @@ void atualizarMotor(uint32_t agora) {
       fator = .45f + .55f * fase * fase * (3 - 2 * fase);
     }
     int e = lroundf(pwmEsquerdo * fator), d = lroundf(pwmDireito * fator);
-    int duties[4] = {max(0, e), max(0, -e), max(0, d), max(0, -d)};
-    for (int i = 0; i < 4; ++i) if (!ledcWrite(PINOS_MOTOR[i], duties[i])) {
+    if (!escreverPwmMotores(e, d)) {
       pararMotor(); motoresProntos = false; responderLinha("ERROR 1 MOTOR_PWM_INDISPONIVEL"); return;
     }
     agora = millis();
@@ -342,6 +349,9 @@ void processarMotor(const char *entrada) {
   if (!conectado || !sessao[0] || strcmp(campos[2], sessao) || seq <= sequenciaMotor
       || agora - ultimoPacote >= ttl || !telaInicializada || !motoresProntos) {
     responderLinha("ERROR 1 MOTOR_NAO_AUTORIZADO"); return;
+  }
+  if (!pwmMotorNoPerfil(esquerdo) || !pwmMotorNoPerfil(direito)) {
+    responderLinha("ERROR 1 MOTOR_PWM_FORA_PERFIL"); return;
   }
   if (!parada && (motorPendente || motorAtivo)) {
     if (reflexoProtecaoAtivo()) admitirMovimentoProtegido(seq);

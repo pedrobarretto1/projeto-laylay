@@ -20,6 +20,11 @@ _ARTIGOS = {'o':1,'a':2,'os':4,'as':8,'um':1,'uma':2,'uns':4,'umas':8}
 _TERCEIRA_PESSOA = frozenset({'ele','ela','eles','elas','isso','isto','aquilo','alguém','ninguém'})
 _PESSOA_DIRETA = frozenset({'eu','tu','nós','nos','vós','voce','você','vocês'})
 
+# Leituras nominais suplementares ao índice congelado. A entrada não altera
+# os bits da forma verbal 'ia'; caixa alta seleciona a expansão documentada.
+_SIGLAS_NOMINAIS = {'IA': {'expansao': 'inteligência artificial',
+                          'origem': 'vocabulario_nominal_portugues_do_projeto'}}
+
 
 def _tokens(texto: str) -> list[str]:
     # O marcador canônico é opaco: não é apagado nem lido como uma palavra.
@@ -75,6 +80,29 @@ def _grupo_nominal(palavras: list[str], tipos: list[int]) -> bool:
             compativeis &= ((tipos[i]>>13)&15) or 15
         if compativeis:return True
     return False
+
+
+def grupo_nominal_de_papel(texto: str) -> bool:
+    """Grupo nominal raso de enquadramento, sem interpretar o papel ou autorizar.
+
+    Reutiliza o léxico e a concordância existentes. Siglas exigem a grafia
+    literal em caixa alta: uma projeção casefold não prova esse uso nominal.
+    Complementos nominais com preposição continuam dentro do mesmo grupo.
+    """
+    if not re.fullmatch(r"[^\W\d_]+(?:\s+[^\W\d_]+){0,7}", texto):
+        return False
+    expandido = ' '.join(_SIGLAS_NOMINAIS.get(p, {}).get('expansao', p) for p in texto.split())
+    grupos = re.split(r'\s+(?:de|do|da)\s+', expandido, flags=re.I)
+    for grupo in grupos:
+        palavras = grupo.split()
+        tipos = [consultar_morfologia(p) for p in palavras]
+        if any(t is None for t in tipos):
+            return False
+        if any(t == 0 for t in tipos):
+            return False
+        if not _grupo_nominal([p.casefold() for p in palavras], tipos):
+            return False
+    return True
 
 
 def continuacao_predicativa_possivel(esquerda: str, direita: str) -> bool | None:

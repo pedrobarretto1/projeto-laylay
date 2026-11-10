@@ -246,6 +246,10 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
             }
         if funcao == "conquista" and not _tem_conquista_autoral_afirmada(bruto, padrao):
             continue
+        if funcao == 'agradecimento':
+            from mente_laylay.cognicao.referencias_linguagem import contem_agradecimento_autoral
+            if not contem_agradecimento_autoral(bruto):
+                continue
         if re.search(padrao, base):
             emocao, postura, permite_pergunta = perfis.get(funcao, ("neutra", "natural", True))
             return {

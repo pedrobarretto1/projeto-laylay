@@ -74,10 +74,18 @@ class RostoOledRuntime:
         rede_local: Any = None,
         abrir_tcp: Callable[[ConfiguracaoCorpoWifi], Any] = abrir_corpo_tcp,
         identidade_usb_getter: Callable[[], Mapping[str, str]] | None = None,
+        pwm_maximo_motor: int = 255,
+        pwm_minimo_motor: int = 0,
         publicar_diagnostico: Callable[[dict[str, Any]], Any] | None = None,
         relatar_falha: Callable[..., Any] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
+        if type(pwm_maximo_motor) is not int or not 1 <= pwm_maximo_motor <= 255:
+            raise ValueError("pwm_maximo_motor_invalido")
+        if type(pwm_minimo_motor) is not int or not 0 <= pwm_minimo_motor <= pwm_maximo_motor:
+            raise ValueError("pwm_minimo_motor_invalido")
+        self._pwm_maximo_motor = pwm_maximo_motor
+        self._pwm_minimo_motor = pwm_minimo_motor
         self.estado_getter = estado_getter
         self.atividade_getter = atividade_getter or (lambda: {})
         self.interacao_getter = interacao_getter or (lambda: False)
@@ -245,6 +253,8 @@ class RostoOledRuntime:
                 },
                 "motor": {
                     "rampa_suportada": self._rampa_suportada,
+                    "pwm_maximo": self._pwm_maximo_motor,
+                    "pwm_minimo": self._pwm_minimo_motor,
                     "duracao_maxima_ms": self._limite_motor_ms,
                     "suportado": self._motor_suportado,
                     "disponivel": self._motor_suportado and recente and not self._erro,
@@ -912,6 +922,21 @@ class RostoOledRuntime:
                     or not 90 <= abs(pwm_esquerdo) <= 200 or pwm_direito != -pwm_esquerdo
                     or (pwm_esquerdo < 0) != (angulo_graus > 0)))):
             return self._receipt_motor(ok=False, motivo="parametros_invalidos")
+        # Calibração única para comandos e gestos, antes de serializar e validar
+        # o MACK. O teto reduz proporcionalmente; o piso nunca ativa uma roda
+        # parada. A proporção pode mudar quando uma roda alcança o piso físico.
+        pico = max(abs(pwm_esquerdo), abs(pwm_direito))
+        if pico > self._pwm_maximo_motor:
+            pwm_esquerdo = round(pwm_esquerdo * self._pwm_maximo_motor / pico)
+            pwm_direito = round(pwm_direito * self._pwm_maximo_motor / pico)
+        if pwm_esquerdo:
+            pwm_esquerdo = (1 if pwm_esquerdo > 0 else -1) * max(abs(pwm_esquerdo), self._pwm_minimo_motor)
+        if pwm_direito:
+            pwm_direito = (1 if pwm_direito > 0 else -1) * max(abs(pwm_direito), self._pwm_minimo_motor)
+        if angulo_graus is not None and abs(pwm_esquerdo) < 90:
+            return self._receipt_motor(ok=False, motivo="limite_pwm_insuficiente_para_giro_medido")
+        if angulo_graus is not None and abs(pwm_esquerdo) > 200:
+            return self._receipt_motor(ok=False, motivo="piso_pwm_incompativel_com_giro_medido")
         cancelar = threading.Event()
         pwm = parada = False
         motivo = ""
@@ -1106,6 +1131,10 @@ class RostoOledRuntime:
 
 
 def criar_rosto_oled_runtime(**kwargs: Any) -> RostoOledRuntime:
+    if "pwm_minimo_motor" not in kwargs:
+        kwargs["pwm_minimo_motor"] = int(os.environ.get("LAYLAY_CORPO_PWM_MINIMO", "0"))
+    if "pwm_maximo_motor" not in kwargs:
+        kwargs["pwm_maximo_motor"] = int(os.environ.get("LAYLAY_CORPO_PWM_MAXIMO", "255"))
     kwargs.pop("preferir_usb", False)  # Compatibilidade: AUTO agora considera os dois canais.
     porta = str(kwargs.pop("porta", os.environ.get("LAYLAY_ROSTO_PORTA", "AUTO"))).strip()
     automatico = porta.casefold() in {"", "auto"}

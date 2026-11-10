@@ -18,15 +18,18 @@ import textwrap
 
 import pytest
 
+from scripts.tests.observacao_tipadas import isolar_codigo_observado
+
 
 @pytest.fixture(scope="module")
-def composicao_erro_proposta() -> dict:
+def composicao_erro_proposta(tmp_path_factory: pytest.TempPathFactory) -> dict:
     # Bootstrap e mutex reais sob identidade própria: não disputa a sessão
     # aberta nem deixa configuração/print globais atingirem outros testes.
     codigo = textwrap.dedent('''
         import json
         import os
         import sys
+        from scripts.tests.observacao_tipadas import projetar_tipo_observado
         from copy import deepcopy
         from dataclasses import asdict, replace
         from types import SimpleNamespace
@@ -85,7 +88,13 @@ def composicao_erro_proposta() -> dict:
         def copiar_json(valor):
             # Os wrappers sincronizados carregam um lock: a observação deve
             # copiar seus dados, sem tentar serializar a implementação dele.
-            return json.loads(json.dumps(valor))
+            return json.loads(json.dumps(valor, default=projetar_tipo_observado))
+
+        def observar_plano(plano):
+            # Somente as decisões e vínculos verificados nesta prova.
+            # A autoria proposta e as credenciais internas ficam no runtime.
+            return copiar_json({chave: plano[chave] for chave in
+                ("id", "comandos", "evento_emocional_causal") if chave in plano})
 
         def provocar_brava(identidade):
             avaliacoes = []
@@ -187,7 +196,9 @@ def composicao_erro_proposta() -> dict:
 
             def writer(fase, principal, **campos):
                 plano = writer_real(fase, principal, **campos)
-                dados["writers"].append({"fase": fase, "campos": copiar_json(campos), "plano": copiar_json(plano)})
+                dados["writers"].append({"fase": fase, "campos": copiar_json({
+                    chave: campos[chave] for chave in ("comandos", "erros") if chave in campos}),
+                    "plano": observar_plano(plano)})
                 return plano
 
             def confirmar(prova, principal, extracao, evento):
@@ -227,7 +238,8 @@ def composicao_erro_proposta() -> dict:
 
             def finalizar(*args, **kwargs):
                 resultado = finalizador_real(*args, **kwargs)
-                dados["finalizacao"].append({"entrada": args[3], "resultado": copiar_json(resultado)})
+                dados["finalizacao"].append({"entrada": args[3], "resultado": copiar_json({
+                    chave: resultado[chave] for chave in ("fala", "comandos", "erros") if chave in resultado})})
                 return resultado
 
             ctx.update(
@@ -273,7 +285,7 @@ def composicao_erro_proposta() -> dict:
                 orquestrador._observadores_texto_final = observadores_texto
                 orquestrador._observadores_fala_final = observadores_fala
             dados["depois"] = retrato()
-            dados["plano_final"] = estado.obter_copia("mental", "plano_turno_atual")
+            dados["plano_final"] = observar_plano(estado.obter_copia("mental", "plano_turno_atual"))
             dados["quadro"] = estado.obter_copia("mental", "eventos_emocionais_causais")
             dados["receipts_preservados"] = historico_receipts == root._avaliador_eventos_emocionais_runtime._historico
             resultados["turnos"][nome] = dados
@@ -354,10 +366,12 @@ def composicao_erro_proposta() -> dict:
             },
             "autoriza": mapa.diagnostico()["autoriza_execucao"],
         }
-        sys.__stdout__.write("COMPOSICAO_ERRO_PROPOSTA " + json.dumps(resultados) + "\\n")
+        sys.__stdout__.write("COMPOSICAO_ERRO_PROPOSTA " + json.dumps(resultados,
+            default=projetar_tipo_observado) + "\\n")
     ''')
+    codigo = isolar_codigo_observado(codigo, tmp_path_factory.mktemp("erro-proposta"))
     processo = subprocess.run(
-        [sys.executable, "-c", codigo],
+        [sys.executable, "-B", "-c", codigo],
         cwd=Path(__file__).resolve().parents[2],
         env=dict(os.environ, PYTHONIOENCODING="utf-8"),
         capture_output=True, text=True, encoding="utf-8", timeout=90,

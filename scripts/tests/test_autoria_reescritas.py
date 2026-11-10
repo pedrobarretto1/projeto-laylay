@@ -38,14 +38,15 @@ def reescritas_instaladas(tmp_path_factory, request):
             return r
         root._preparar_resposta_para_execucao_mente = observar
         root._orquestrador_fala_runtime.registrar_observador_texto_final(lambda t, *_a, **_k: textos.append(t) or True)
+        falha_reparo = os.environ.get('LAYLAY_REESCRITAS_FALHA_REPARO', '')
         for dominio, fonte, pergunta in [
             ('arquivo', 'O disco usado para guardar a cópia é o disco C.', 'qual disco guarda a cópia?'),
             ('iot', 'A tensão nominal informada pelo registro é de 5 V.', 'qual é a tensão nominal informada?')]:
             for modo in (False, True):
-                for caminho in ('total', 'mescla'):
+                for caminho in (('mescla',) if falha_reparo else ('total', 'mescla')):
                     estado.substituir('mental', criar_estado_mental_inicial())
                     estado.atualizar_campos('memoria_conversa', messages=[])
-                    estado_relato = os.environ.get('LAYLAY_ESTADO_SOCIAL_TESTE', 'bem')
+                    estado_relato = ('cansada' if dominio == 'iot' else 'bem') if falha_reparo else os.environ.get('LAYLAY_ESTADO_SOCIAL_TESTE', 'bem')
                     texto = ('estou ' + estado_relato + ', ' if caminho == 'mescla' else '') + pergunta
                     url = 'https://fonte.test/' + dominio + '/reescrita'
                     fundamento = montar_fundamentacao('', {'ok': True, 'confianca': .9, 'resumo': fonte,
@@ -70,8 +71,13 @@ def reescritas_instaladas(tmp_path_factory, request):
                         item = esquema.get('properties', {}).get('suporte_proposicoes', {}).get('items', {})
                         if not any('sem_fonte' in f.get('properties', {}) for f in item.get('anyOf', [item])):
                             unidade.pop('sem_fonte', None)
-                        r = (original(self, req) if real and not principal else
-                             ResultadoModelo(json.dumps({'comandos': [], 'suporte_proposicoes': [unidade]}, ensure_ascii=False), True))
+                        if falha_reparo == 'prazo' and not principal:
+                            r = ResultadoModelo('__LAYLAY_LLM_ORCAMENTO_PRAZO_ESGOTADO__', False)
+                        else:
+                            if falha_reparo == 'rejeitado' and not principal:
+                                unidade['texto'] = 'Fico feliz porque seu dispositivo já ligou.'
+                            r = (original(self, req) if real and not principal else
+                                 ResultadoModelo(json.dumps({'comandos': [], 'suporte_proposicoes': [unidade]}, ensure_ascii=False), True))
                         enviados.append({'tipo': req.tipo_chamada, 'resposta': str(r.texto), 'payload': dict(req.payload)})
                         return r
                     ClienteLLMRuntime.executar = gerar
@@ -142,6 +148,32 @@ def reescritas_instaladas(tmp_path_factory, request):
             caminho = caminho.with_name(caminho.stem + '_' + request.module.__name__.rsplit('.', 1)[-1] + caminho.suffix)
         with caminho.open('x', encoding='utf-8') as f: json.dump(dados, f, ensure_ascii=False, indent=2)
     return dados
+
+
+@pytest.fixture(scope='module', params=['prazo', 'rejeitado'])
+def reparo_parcial_falhou_na_instalacao(tmp_path_factory, request):
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv('LAYLAY_REESCRITAS_FALHA_REPARO', request.param)
+        return reescritas_instaladas.__wrapped__(tmp_path_factory, request)
+
+
+@pytest.mark.parametrize('indice', range(4))
+def test_reparo_parcial_preserva_fonte_apos_falha_do_fragmento(reparo_parcial_falhou_na_instalacao, indice):
+    caso = reparo_parcial_falhou_na_instalacao[indice]
+    assert caso['enviados'][0]['tipo'] == 'principal'
+    assert caso['enviados'][1]['tipo'] == 'reparo_comunicacao'
+    assert caso['fonte'] in caso['preparadas'][0]['fala'], 'o fallback descartou a unidade temática'
+    assert [e['tipo'] for e in caso['enviados']] == ['principal', 'reparo_comunicacao']
+    assert caso['preparadas'][0]['autocorrigida']
+    assert len(caso['textos']) == 1 and caso['fonte'] in caso['textos'][0]
+    assert caso['textos'][0].startswith('Entendo que você está cansada.' if caso['dominio'] == 'iot'
+                                        else 'Que bom que você está bem!')
+    assert 'seu dispositivo já ligou' not in caso['textos'][0]
+    plano = caso['mental']['plano_turno_atual']
+    rev = plano['ultima_verificacao']['revisao_suporte_autoria']
+    assert [p['estado'] for p in rev['proposicoes']] == ['ato_social_conferido', 'literal_integral_na_fonte']
+    assert rev['semantica_verificada'] is rev['prova_implicacao'] is rev['autoriza_execucao'] is False
+    assert not caso['efeitos'] and not caso['preparadas'][0]['comandos']
 
 
 @pytest.mark.parametrize('indice', range(8))

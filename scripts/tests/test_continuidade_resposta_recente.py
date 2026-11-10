@@ -60,6 +60,52 @@ def test_juiz_final_rejeita_resposta_antiga_ao_pedido_de_nome_artistico():
     assert 'resposta_repetida_literal' in final['problemas']
 
 
+@pytest.mark.parametrize('texto,fala', [
+    ('Qual porta você escolheria?', 'A vermelha. Tem um jardim. A vermelha. Tem flores. A vermelha. Tem árvores. A vermelha.'),
+    ('Qual caminho você sugeriria?', 'Pela trilha. É mais calma. Pela trilha. Passa pelo rio. Pela trilha. Dá para descansar.'),
+    ('Qual porta você escolheria?', 'A vermelha. Tem um jardim. A vermelha. Tem um jardim. A vermelha. Tem um jardim.'),
+])
+def test_revisao_solicita_reparo_de_repeticao_dentro_da_fala(texto, fala):
+    p = plano_atual(texto, ())
+    q = avaliar_qualidade_comunicacao(texto, fala, plano=p)
+    assert not q['aceita'] and q['requer_reparo']
+    assert 'repeticao_interna_de_enunciado' in q['problemas_bloqueantes']
+    assert 'repeticao_interna_de_enunciado' in verificar_fala_turno(fala, plano=p)['problemas']
+
+
+@pytest.mark.parametrize('fala', [
+    'A vermelha. É a que leva ao jardim. A vermelha tem flores. A vermelha combina com a cena.',
+    'A vermelha! A vermelha! A vermelha!',
+    'A vermelha! A vermelha! A vermelha! Tem um jardim. Dá para descansar. A vermelha.',
+    'O robô cantou: «Volte para casa.» A estrela acendeu. «Volte para casa.» O céu clareou. «Volte para casa.»',
+])
+def test_repeticao_deliberada_ou_com_conteudo_novo_fica_fora_do_ciclo(fala):
+    texto = 'Como continuaria a história do castelo?'
+    q = avaliar_qualidade_comunicacao(texto, fala, plano=plano_atual(texto, ()))
+    assert 'repeticao_interna_de_enunciado' not in q['problemas']
+
+
+def test_reproducao_literal_do_objeto_pode_conter_repeticao():
+    fala = 'A vermelha. Tem um jardim. A vermelha. Tem flores. A vermelha.'
+    texto = 'Repita exatamente esta frase: ' + fala
+    q = avaliar_qualidade_comunicacao(texto, fala, plano=plano_atual(texto, ()))
+    assert 'repeticao_interna_de_enunciado' not in q['problemas']
+
+
+def test_consulta_retrospectiva_permite_reproduzir_o_ciclo_historico_literalmente():
+    fala = 'A vermelha. Tem um jardim. A vermelha. Tem flores. A vermelha.'
+    texto = 'Qual foi exatamente a sua última resposta?'
+    q = avaliar_qualidade_comunicacao(texto, fala, plano=plano_atual(texto, (fala,)))
+    assert 'repeticao_interna_de_enunciado' not in q['problemas']
+
+
+def test_pedido_de_reproduzir_fala_nao_isenta_um_ciclo_inventado():
+    fala = 'A vermelha. Tem um jardim. A vermelha. Tem flores. A vermelha.'
+    texto = 'Repita a sua última resposta.'
+    q = avaliar_qualidade_comunicacao(texto, fala, plano=plano_atual(texto, ('Escolhi a azul.',)))
+    assert 'repeticao_interna_de_enunciado' in q['problemas_bloqueantes']
+
+
 @pytest.mark.parametrize('fala', [
     'Eu chamaria esse robô de Parafuso Torto.',
     ROBO + ' Para o nome artístico, escolheria Parafuso Torto.',

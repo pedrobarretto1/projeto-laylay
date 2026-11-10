@@ -1,5 +1,254 @@
 # Mapa causal da conversa — investigação por contratos
 
+## Reencontro da biblioteca — conteúdo/formato e projeção, 01/11
+
+Sessão20261101T172322Z-4d9e8c27 carregou fontes atuais. Rodadas3/5 continuam a
+raiz autoria/operação: modificadores e prefácio escapavam do leitor integral.
+Rodada1 é consulta de consequência confundida com avaliação: contrato e qualidade
+exigiam posição/critério, então pediam reparo indevido. Histórico/saudação e
+ficção foram falsificados como causas necessárias; cenário real bateria confirma
+o mesmo mecanismo. Dispensa só por finalidade positiva nativa com todas as
+consultas qualificadas, sem apagar outra pergunta. Fontes, receipts e revisão
+factual preservados. Ver registro/RELATORIO_BIBLIOTECA_RETORNO_20261101.md.
+
+Final:160módulos,4.750aprovados,25skips,1deselected,3subtests,zero falhas/
+erros/xfails.44IDs e ambos musicais aprovados;original170aprovados.539fontes
+estáveis,3candidatos instalados e536outros originais preservados.
+
+## Rodada6 — enquadramento e referência indireta, 01/11
+
+Como+papel nominal conserva a matriz; IA usa leitura lexical documentada,
+sem promover verbos por caixa alta. Cabeçalho lexical não substitui fonte
+integral nem concede autoridade. Referência indireta localiza texto entregue
+com perspectiva canônica, sem recência como substituto ou prova de equivalência.
+Fonte singular continua integral; ausência/ambiguidade/TTL permanecem fechados.
+A qualificação é estritamente textual: presença não prova asserção nem causa.
+Os dois achados de revisão (caixa alta e qualificação assertiva excessiva) foram
+tratados nos contratos responsáveis, sem exceção para a frase histórica.
+Venv original377/1skip; revisão final29 +66testes e6sondas, sem blockers.
+Ver registro/RELATORIO_RODADA6_20261101.md. Testes naturais com Pedro.
+
+Final157módulos:4.695aprovados,25skips,1deselected,3subtests,zero falhas/erros/
+xfails;44IDs anteriores e ambos musicais aprovados. Original377/1skip.
+539fontes estáveis,7candidatos idênticos instalados,532outros preservados.
+
+## Biblioteca — continuação, vínculo misto e integridade, 31/10
+
+Rodada5 continua autoria/operação: continuação discursiva integral agora chega
+sem executor. Rodada6: binder aceita contexto conversa/reação sem perder fontes
+das consultas, nem criar fontes para os comentários. Lookup/paráfrase e o
+adjunto “Como IA” permanecem separados e abertos. Rodada8 continua escopo
+ficcional: convite após reação, consulta independente protegida e bloco
+ficcional fechado antes de isenção factual. Revisão não pode publicar recorte
+de criação rejeitada como conclusão integral. Não contar três novas raízes
+automaticamente. Ver registro/RELATORIO_BIBLIOTECA_CONTRATOS_20261031.md.
+
+Regressão de01/11: montagem agora verifica identidade de fonte explícita antes
+do binder; vínculo contextual válido não pode ocultar ocorrência estrangeira.
+3REDs de proveniência,125aprovados/1skip no foco posterior. Sem apagar o
+primeiro amplo interrompido ou a pendência de lookup.
+
+Final154módulos:4.600aprovados,25skips,1deselected,3subtests,zero falhas/
+erros/xfails;44IDs e ambos musicais aprovados. Original283/5skips.539fontes
+estáveis,7candidatos instalados,532outros preservados. Testes naturais com Pedro.
+
+## Biblioteca4–11 — novas evidências,raízes separadas,31/10
+
+Sessão20261031T155409Z-4eb70d7b mantida aberta,intocada.Não contar três novas
+raízes automaticamente.Rodada5 continua a raiz autoria/operação:"continue
+essa cena... conte as falas" ainda exige executor no snapshot e código atual.
+Rodada6 instala contrato histórico composto None quando há conversa entre
+os segmentos;lookup/paráfrase permanece outra fronteira aberta.Rodada8 foi
+reproduzida na factory:Qwen escreveu a pista,a revisão factual a removeu por
+data/característica sem evidência e publicou narrativa parcial como aceita.
+Não é só falha de contagem do modelo,nem prova de perda geral de memória.
+Sem produção alterada.Ver registro/DIAGNOSTICO_BIBLIOTECA_20261031.md.
+
+## Autoria e operação externa — observatório, 31/10
+
+rodada-nova-02/03,20261031T155409Z-4eb70d7b.Transformação discursiva e forma
+natural da fala escapavam do leitor,viravam comando e exigiam executor;
+proteção contra falso efeito então substituía autoria por contingência.
+Owner normalizacao_linguagem lê ato integral e componentes de forma/canal,
+sem absorver destino externo ou ordem independente.Revisores e receipts intactos.
+RED13/13controles;foco169,original297.Revisão independente corrigiu determinante
+esse/este;final sem blockers.Drafts históricos ainda expõem outras fronteiras
+de realidade/suporte/orçamento,sem declarar publicação integral dos históricos.
+Autoria adequada e reparo válido publicam pelo root nativo,sem voz/efeitos.
+Ver registro/RELATORIO_AUTORIA_OPERACAO_20261031.md.
+
+Validação final151módulos:4.538aprovados,zero falhas/erros/xfails,25skips,um
+deselected,três subtests,mesmo filtro prévio.44IDs anteriores e dois históricos
+musicais aprovados;539fontes estáveis.Original297aprovados;538outros fontes
+originais preservados.Autoria livre dos drafts históricos permanece limitada.
+
+## Proibição e operandos nomeados — duas evidências históricas, 31/10
+
+Dois REDs de escopo_ato_unico derivam da elegibilidade do mesmo predicado:
+tipos nominais iguais não distinguiam nomes literais;tipo ausente em
+"calculadora" também impedia independência.Não duplicar raízes por domínio.
+Evidência nominal compartilhada agora complementa os tipos disjuntos,com
+literal delimitado,qualificação morfológica unitária e igualdade/referência
+conservadoras.O veto continua por ato,sem liberar proposta negada ou duplicada.
+RED15/18controles,foco326;replay dos dois casos com baseline/candidato.
+Somente dois owners:gramatica_operacional e modalidade_turno;revisão e executor
+preservados.Nomes escritos não provam identidade física ou receipt.
+Relatório:registro/RELATORIO_NEGACAO_OPERANDOS_NOMEADOS_20261031.md.
+
+Checagem de pontuação externa revelou quatro REDs adicionais do mesmo leitor,
+corrigidos sem apagar conteúdo citado.Foco final330,original450aprovados;
+regressão inicial interrompida e preservada,execução final separada.
+
+Conclusão final146módulos:4.482aprovados,zero falhas/erros/xfails,25skips,um
+deselected,três subtests.Mesmo filtro anterior;44IDs anteriores e ambos os
+históricos musicais aprovados.539fontes estáveis,537outros originais preservados.
+As duas falhas vizinhas antes abertas estão corrigidas neste contrato;
+não encerrar compreensão geral,reprodução física ou entrega de outros fluxos.
+
+## Segmentação causal — adjunto temporal e matriz, 31/10
+
+Continuação da pendência histórica de finalidade_contexto_historico,sem criar
+ID de raiz por frase.Leitor reconhece "fala" no texto integral;segmentador
+corta atribuição e matriz na vírgula e nenhum ato mantém finalidade histórica.
+Owner modalidade_turno conserva a dependência interrogativa temporal,sem mudar
+agente,fonte,revisão ou autoridade.Fronteiras fortes e atos independentes
+continuam separados;fonte literal por ato preservada.RED10/11controles,foco111.
+Replay nativo:antes dois segmentos/sem fonte vinculada,aviso;depois um segmento/
+fonte publicada,conclusão limitada em uma chamada.Causa inventada recusada.
+
+Original291aprovados/um skip;negativas musicais vizinhas têm duas falhas iguais
+com baseline/candidato e310controles aprovados.Separadas,não corrigidas aqui.
+Relatório:registro/RELATORIO_ADJUNTO_TEMPORAL_CAUSAL_20261031.md.
+
+Conclusão ampla134:4.019aprovados,zero falhas/erros/xfails,25skips,um deselected,
+três subtests.Mesmo filtro anterior;44IDs históricos e quatro consultas causais
+aprovados,539fontes estáveis.Negação musical vizinha mantém duas falhas anteriores.
+
+## Fonte de revisão — compactação antes do recorte, 31/10
+
+Continuação da pendência histórica de revisão com520 espaços. Resolver fazia
+compactação→recorte; gate fazia recorte→compactação e perdia alvo/cancelamento.
+Não é a raiz da projeção idempotente da rodada18. Owner decisao_turno confere
+derivação a partir da entrada integral do plano identificado, sem relaxar veto,
+identidade, flags, modalidade ou ausência operacional. RED21/6controles; foco235.
+Factory real: curto publica nos dois owners; longo baseline sem_publicacao,
+candidato publica uma vez,uma chamada,sem voz/efeitos. Caso histórico mantido,
+xfail resolvido removido. Fonte/plano adulterados permanecem recusados.
+Relatório: registro/RELATORIO_FONTE_REVISAO_INTEGRAL_20261031.md.
+
+Conclusão:original251aprovados;ampla132módulos3.995aprovados,zero falhas/erros,
+mesmos filtros,25skips,um xfail causal anterior,um deselected,três subtests.
+44IDs anteriores e oito casos históricos de revisão aprovados,539fontes
+estáveis. Corrigida esta raiz;outras pendências continuam independentes.
+
+## Correlação de ocorrência — rodada 18 sem publicação, 31/10
+
+Continuação do contrato compartilhado de identidade, sem contabilizar sintomas
+como novas raízes de conversa. Evidência casa-20261030-18: strip antes do corte
+de500 não era idempotente. Turno/retrato recortados terminavam em espaço;
+plano integral e nova normalização produziam500 e499, respectivamente. Gate
+recusava a própria ocorrência, antes de publicar; orçamento disponível.
+
+Owner decisao_turno unifica a projeção idempotente já usada pelo vínculo.
+Mesmo HTTP/histórico/root: owner anterior sem_publicacao, candidato uma
+publicação integral; controles com autoria alternativa e cópia original verdes.
+ID/texto/operação divergentes permanecem recusados. Sufixo não concede
+autoridade; receipt/modelo/efeito continuam separados. Apenas um owner desta
+etapa, fontes paralelas conservadas. Testes naturais continuam com Pedro.
+
+O xfail de revisão com520 espaços permanece aberto por compactação da fonte
+após perda do sufixo no recorte, não resolvido por esta correção. Relatório e
+provas: registro/RELATORIO_PROJECAO_OCORRENCIA_20261030.md e
+resultados_testes/sem_publicacao_18_20261030. Não encerrar coerência geral.
+
+Validação final desta raiz: foco207, original301; ampla131módulos com3.967
+aprovados,zero falhas/erros,25skips,dois xfails anteriores,um deselected e três
+subtests. Mesmo filtro anterior;44IDs históricos aprovados,539fontes estáveis.
+
+## Pendências da regressão — contratos e evidências, 30/10
+
+As14falhas/30erros da seleção anterior foram congeladas por ID em
+resultados_testes/pendencias_44_20261030/ocorrencias.json. Não contar44raízes.
+Exportação diagnóstica obsoleta encobria31resultados; sua correção apenas nos
+coletores revelou seis falhas de cardinalidade de autorização, antes dos IDs.
+Um ato nominal pode possuir vários alvos literais: owner conserva intervalos,
+resolver qualifica membros e gate consome cada escopo uma vez. Nenhum alvo
+proposto pelo modelo amplia autoridade, e receipt continua independente.
+
+Outras fronteiras separadas: pergunta vizinha apagava declaração pessoal;
+adjetivo de estado fazia assunto discursivo exigir receipt; veto de condição
+impedia consulta read-only ao catálogo que já reconhecia a pergunta. Expectativas
+obsoletas de volume sem receipt, natureza condicional, fakeEstado, perfil social,
+motivo tardio de alívio e zero realização histórica foram revistas com fontes e
+controles, mantendo IDs. Não restaurar detector antigo que lia palavras dentro
+da citação para responder sobre o último volume.
+
+REDs, candidatos, revisão independente e limitações estão em
+registro/RELATORIO_PENDENCIAS_44_20261030.md. Foco dos owners264, revisão final
+52testes/24probes; admissão nominal24 com seis casos históricos intactos.
+Publicação controlada conserva texto e comandos vazios nas raízes conversacionais;
+execução operacional permanece simulada. Ampla127:3.760aprovados,zero falhas/
+erros;44IDs originais aprovados sem remoção/skip. Instalação por delta em sete
+fontes,532outros originais conservados; venv original489aprovados/5skips/
+3subtests,zero falhas/erros,44IDs aprovados nessa cópia também.
+Qwen espontâneo, áudio e efeito real não demonstrados.
+
+## Exemplo citado integral — continuação da revisão factual, 30/10
+
+Evidência `casa-20261030-14`, sessão `20261030T195853Z-0d4ab6c2`.
+Fala reparada integral era cortada antes da publicação. Owner factual perdia o
+papel de exemplos longos, separava sua pontuação interna e tomava a moldura
+condicional como afirmação. Não é defeito demonstrado do transporte ou TTS.
+
+Mesmo HTTP/histórico/publicador: retirada dos dois owners conserva o corte
+exato; candidato publica integralmente em uma chamada. Exemplos permanecem
+dados, não prova ou autoridade; fatos citados conservam revisão por oração.
+Default do segmentador e política de ponto e vírgula foram preservados após
+REDs de segurança da revisão independente. Foco217, incluindo49 novos casos
+e três composições controladas, sem Qwen novo, voz ou efeitos. Ampla123:
+3.625 aprovados;24 falhas/30 erros também reproduzidos na base. Dez falhas de
+preparo passaram nos dois após criar pastas;14 falhas/30 erros anteriores
+permanecem. Sem suíte global verde. Original instalado:49 aprovados,671 fontes
+equivalentes. Fontes alteradas2/671, demais669 preservadas.
+
+Relatório `registro/RELATORIO_EXEMPLO_CITADO_INTEGRAL_20261030.md`; plano
+`planos/PLANO_EXEMPLO_CITADO_INTEGRAL_20261030.md`; artefatos em
+`resultados_testes/exemplo_citado_20261030`. Continuação dos contratos de
+revisão/autoria, sem duplicar IDs F1/C5/C7 por sintoma. Rodadas3/16/18 e
+perguntas abertas permanecem separadas; nenhum encerramento global da conversa.
+
+## Retomada do improviso — continuidade dos contratos, 30/10
+
+Sessão20261030T094314Z-5cf00cff, fontes538 iguais à base. Evidências001/006/
+008/010/012/013/014/015 preservadas sem contagem automática de novas raízes.
+Separados: obrigação lexical tomada por gratidão; rótulo afetivo promovido a
+estado declarado; sujeito emprestado de outra frase; cópia extensa do usuário
+fora do alcance do revisor de reuso; atualidade somada entre enunciados de um
+só segmento; elaboração da interlocutora tomada por consulta externa; gratidão
+composta que impunha fechamento do conteúdo atual.
+
+Owners compartilhados conservam agente, fonte e escopo; a contingência respeita
+a estratégia recebida. Cópia usa PerspectivaEnunciador nativa vigente; reprodução
+pedida aceita só objeto literal. Declarações explícitas seguem exigindo
+acolhimento; rótulo afetivo sozinho não declara estado. Gratidão integral pode
+fechar, coordenação sem escopo comprovado conserva espaço para os demais atos.
+Fatos atuais e efeitos mantêm evidência/autoridade/receipt independentes.
+
+Quatro módulos novos,13 composições instaladas controladas e comparação de16
+percursos. Revisão independente com REDs preservados e controles verdes.
+Ampla final195:4.859 aprovados,zero falhas/erros,mesmos filtros e nenhum ID
+anterior ausente; primeira ampla4.850 aprovada antes do último
+ajuste está separada. Dez owners alterados entre538, demais528 intactos.
+Sem Qwen novo/conversa/voz/efeitos ou aumento de orçamento. Conversas com Pedro.
+
+HEAD externo ae7b8775 foi preservado sem atualizar baseline e não será ancestral
+da publicação: contém configuração privada. Export seguro parte do remoto
+c91cae1b em branch codex/correcao-autoria-conversa-20261030, com código/testes/
+documentação necessários e sem configuração, memória ou estado pessoal.
+Relatório registro/RELATORIO_RETOMA_IMPROVISO_20261030.md; provas e auditoria
+em resultados_testes/retoma_improviso_20261030. F1/C5/C7/AUT e personalidade
+espontânea não foram encerrados por essa composição controlada.
+
 ## Conversa casual — escopo de ato, agente e fonte, 30/10
 
 Sessão 20261030T021917Z-4f76db4d:16 entradas/publicações, sem queda. Os IDs

@@ -106,7 +106,19 @@ def test_ato_social_nao_empresta_apoio_ao_conteudo_factual():
     a, f = r.como_dict()['proposicoes']
     assert a['estado'] == 'ato_social_conferido'
     assert f['estado'] == 'apoio_semantico_pendente' and inventada not in r.fala_realizada
-    assert 'apoio não consegui verificar' in r.fala_realizada
+    assert r.fala_realizada == 'Que bom saber! Ainda falta saber qual disco guarda a cópia.'
+
+
+def test_ato_social_sozinho_nao_faz_sumir_a_pergunta_omitida():
+    from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
+    from mente_laylay.cognicao.suporte_autoria import montar_autoria_revisada
+
+    plano, _, _ = preparar()
+    social = 'Que bom saber!'
+    parte = emissao(social, [], turno=str(plano['id']), consulta=plano['texto_usuario'])
+    plano['autoria_revisada_proposta'] = montar_autoria_revisada('principal', social, (parte,))
+    r = revisar_suporte_autoria(social, plano=plano)
+    assert r.fala_realizada == 'Que bom saber! Ainda falta saber qual disco guarda a cópia.'
 
 
 @pytest.mark.parametrize('indice', [1, 3, 5, 7])

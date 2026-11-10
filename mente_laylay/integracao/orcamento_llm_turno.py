@@ -266,14 +266,11 @@ class OrcamentoLLMTurnoRuntime:
         agora = float(self.monotonic())
         chave = self._turno_contexto.get()
         with self._lock:
-            probe = False
             if self._circuito_ate > agora:
                 return self._registrar_bloqueio("circuito_aberto", tipo)
             if self._circuito_ate and agora >= self._circuito_ate:
                 if self._probe_circuito_ativo:
                     return self._registrar_bloqueio("probe_em_andamento", tipo)
-                self._probe_circuito_ativo = True
-                probe = True
 
             estado = self._turnos.get(chave) if chave else None
             if estado:
@@ -291,8 +288,6 @@ class OrcamentoLLMTurnoRuntime:
                     tipo in TIPOS_CHAMADA_SECUNDARIA_LLM
                     and restante < FATIA_MINIMA_CHAMADA_SECUNDARIA_S
                 ):
-                    if probe:
-                        self._probe_circuito_ativo = False
                     return self._registrar_bloqueio(
                         "fatia_secundaria_insuficiente", tipo,
                     )
@@ -323,6 +318,14 @@ class OrcamentoLLMTurnoRuntime:
                 # do chamador. O circuito continua protegendo falhas repetidas.
                 limite_timeout = None
 
+            # O callback de vigência pode reentrar sob o RLock e admitir ou
+            # concluir outra chamada. Reconfira o circuito antes da reserva.
+            if self._circuito_ate > float(self.monotonic()):
+                return self._registrar_bloqueio("circuito_aberto", tipo)
+            probe = bool(self._circuito_ate)
+            if probe and self._probe_circuito_ativo:
+                return self._registrar_bloqueio("probe_em_andamento", tipo)
+
             self._sequencia_chamadas += 1
             chamada_id = f"llm-{self._sequencia_chamadas:07d}"
             if estado is not None:
@@ -344,6 +347,11 @@ class OrcamentoLLMTurnoRuntime:
                 timeout_s=round(limite_timeout, 3) if limite_timeout is not None else None,
                 probe_circuito=probe,
             )
+            # A reserva pertence à chamada admitida, não à tentativa recusada.
+            # Admissão e reserva permanecem sob a mesma trava: nenhuma recusa
+            # ocupa a recuperação, e só uma sondagem pode entrar por vez.
+            if probe:
+                self._probe_circuito_ativo = True
         self._decisao("autorizar", "dentro_do_orcamento", tipo=tipo)
         self._publicar()
         return decisao

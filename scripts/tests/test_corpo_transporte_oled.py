@@ -1,10 +1,13 @@
 """A porta física é dublê; sessão, sincronização e executor serial são reais."""
 from threading import Event, Thread
+from types import SimpleNamespace
 import time
 
 import pytest
 
-from mente_laylay.especialistas.rosto_oled_runtime import RostoOledRuntime
+from mente_laylay.especialistas.rosto_oled_runtime import RostoOledRuntime, criar_rosto_oled_runtime
+from mente_laylay.integracao.composicao_rosto_oled import criar_composicao_rosto_oled_runtime
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import criar_estado_compartilhado_runtime
 
 
 class EspCorpo:
@@ -63,6 +66,106 @@ class EspCorpo:
 def criar(esp=None, **kwargs):
     esp = esp or EspCorpo()
     return RostoOledRuntime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=lambda _: esp, **kwargs), esp
+
+
+@pytest.mark.parametrize("pedido,aplicado", [
+    ((255, 255), (150, 150)), ((-230, 230), (-150, 150)),
+    ((255, 128), (150, 75)), ((0, -200), (0, -150)),
+    ((100, -100), (100, -100)),
+])
+def test_perfil_pwm_limita_no_owner_preservando_sentido_curva_e_receipt(monkeypatch, pedido, aplicado):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", "150")
+    esp = EspCorpo()
+    runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=lambda _: esp)
+    receipt = runtime.mover_corpo(*pedido, 50)
+    motores = [p.split() for p in esp.enviados if p.startswith("MOTOR ")]
+    assert len(motores) == 1
+    assert tuple(map(int, motores[0][4:6])) == aplicado
+    assert receipt["ok"] and receipt["parada_confirmada"]
+    assert (receipt["pwm_esquerdo"], receipt["pwm_direito"]) == aplicado
+    assert runtime.diagnostico()["motor"]["pwm_maximo"] == 150
+    assert not receipt["prova_rotacao"]
+
+
+@pytest.mark.parametrize("limite", ["0", "256", "invalido"])
+def test_perfil_pwm_invalido_nao_abre_transporte(monkeypatch, limite):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", limite)
+    aberturas = []
+    with pytest.raises(ValueError):
+        criar_rosto_oled_runtime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=aberturas.append)
+    assert not aberturas
+
+
+def test_limite_pwm_nao_substitui_receipt_ausente(monkeypatch):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", "150")
+    esp = EspCorpo(mack=False)
+    runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=lambda _: esp)
+    receipt = runtime.mover_corpo(255, 255, 50)
+    assert not receipt["ok"] and not receipt["aplicacao_pwm_confirmada"]
+    assert len([p for p in esp.enviados if p.startswith("MOTOR ")]) == 1
+    assert esp.enviados[-1].startswith("STOP 1 ")
+
+
+def test_composicao_instalada_publica_limite_e_receipt_do_mesmo_transporte(monkeypatch):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MINIMO", "150")
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", "150")
+    estado = criar_estado_compartilhado_runtime()
+    esp = EspCorpo()
+    runtime = criar_composicao_rosto_oled_runtime(
+        estado=estado, observabilidade=SimpleNamespace(relatar_falha=lambda *a, **k: None),
+        porta="TESTE", abrir_serial=lambda _: esp,
+    )
+    assert runtime.sincronizar()
+    assert not any(p.startswith("MOTOR ") for p in esp.enviados)
+    receipt = runtime.mover_corpo(-100, -100, 50)
+    assert receipt["ok"] and (receipt["pwm_esquerdo"], receipt["pwm_direito"]) == (-150, -150)
+    publicado = estado.obter_copia("mental", "rosto_oled", {})
+    assert publicado["motor"]["pwm_maximo"] == 150
+    assert publicado["motor"]["pwm_minimo"] == 150
+    assert publicado["motor"]["parada_confirmada"]
+
+
+def test_calibracao_nao_torna_pwm_invalido_em_ordem_valida():
+    runtime, esp = criar(pwm_maximo_motor=150)
+    receipt = runtime.mover_corpo(256, 256, 50)
+    assert not receipt["ok"] and receipt["motivo"] == "parametros_invalidos"
+    assert not esp.enviados
+
+
+@pytest.mark.parametrize("pedido,aplicado", [
+    ((100, 100), (150, 150)), ((-110, 110), (-150, 150)),
+    ((255, 128), (255, 150)), ((0, -90), (0, -150)),
+    ((230, -230), (230, -230)),
+])
+def test_piso_pwm_chega_ao_comando_e_ao_receipt_sem_ativar_roda_parada(monkeypatch, pedido, aplicado):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MINIMO", "150")
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", "255")
+    esp = EspCorpo()
+    runtime = criar_rosto_oled_runtime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=lambda _: esp)
+    receipt = runtime.mover_corpo(*pedido, 50)
+    motores = [p.split() for p in esp.enviados if p.startswith("MOTOR ")]
+    assert len(motores) == 1
+    assert tuple(map(int, motores[0][4:6])) == aplicado
+    assert receipt["ok"] and receipt["parada_confirmada"]
+    assert (receipt["pwm_esquerdo"], receipt["pwm_direito"]) == aplicado
+    assert runtime.diagnostico()["motor"]["pwm_minimo"] == 150
+
+
+@pytest.mark.parametrize("minimo,maximo", [("-1", "255"), ("256", "255"), ("150", "100"), ("erro", "255")])
+def test_faixa_pwm_invalida_nao_abre_porta(monkeypatch, minimo, maximo):
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MINIMO", minimo)
+    monkeypatch.setenv("LAYLAY_CORPO_PWM_MAXIMO", maximo)
+    aberturas = []
+    with pytest.raises(ValueError):
+        criar_rosto_oled_runtime(estado_getter=lambda: {}, porta="TESTE", abrir_serial=aberturas.append)
+    assert not aberturas
+
+
+def test_piso_incompativel_com_turn_nao_vira_comando_fora_do_protocolo():
+    runtime, esp = criar(pwm_minimo_motor=220)
+    receipt = runtime.mover_corpo(-160, 160, 5000, angulo_graus=90)
+    assert not receipt["ok"] and receipt["motivo"] == "piso_pwm_incompativel_com_giro_medido"
+    assert not esp.enviados
 
 
 def test_negociacao_motor_nao_aciona_e_receipt_face_nao_afirma_rotacao():

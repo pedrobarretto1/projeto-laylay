@@ -92,6 +92,12 @@ STATUS_RESULTADO_CANCELADO = {
     "cancelamento_confirmado",
 }
 
+# Esses estados já registram uma observação de foco pelo executor.
+STATUS_RESULTADO_FOCO_CONFIRMADO = frozenset({
+    "app_focado", "app_iniciado_focado", "ja_aberto_focado", "site_ja_aberto_focado",
+    "arquivo_aberto_focado", "aba_anterior_focada",
+})
+
 
 STATUS_RESULTADO_CONFIRMADO = {
     "aba_fechada", "aba_fechada_em_vez_de_app", "app_fechado",

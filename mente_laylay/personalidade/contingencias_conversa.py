@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from fractions import Fraction
 import random
 import re
 from typing import Any, Dict
@@ -112,43 +113,46 @@ def resolver_equacao_linear_local(texto_usuario: str) -> str:
     )
 
 
+def resolver_aritmetica_simples(texto: str, *, exato: bool = False) -> str | None:
+    """Resultado estável de uma expressão completa. Vazio representa divisão por zero."""
+    m = re.fullmatch(
+        r"(?:quanto\s+(?:e|é)\s+)?(?P<a>-?\d+(?:[,.]\d+)?)\s*(?P<op>\+|mais|-|menos|x|vezes|\*|dividido por|dividido|/)\s*(?P<b>-?\d+(?:[,.]\d+)?)\??",
+        texto.strip().casefold(),
+    )
+    if not m or len(m["a"]) + len(m["b"]) > 1000:
+        return None
+    try:
+        a = Fraction(m["a"].replace(",", "."))
+        b = Fraction(m["b"].replace(",", "."))
+    except ValueError:
+        return None
+    op = m["op"]
+    if op in {"+", "mais"}:
+        res = a + b
+    elif op in {"-", "menos"}:
+        res = a - b
+    elif op in {"x", "vezes", "*"}:
+        res = a * b
+    elif b:
+        res = a / b
+    else:
+        return ""
+    if exato and round(res, 4) != res:
+        return str(res)
+    return f"{res:.4f}".rstrip("0").rstrip(".")
+
+
 def responder_matematica_simples(ctx: Dict[str, Any], texto_usuario: str) -> str:
     linear = resolver_equacao_linear_local(texto_usuario)
     if linear:
         return _ajustar(ctx, linear, texto_usuario)
-    t = _normalizar(ctx, texto_usuario)
-    if not t:
+    res_txt = resolver_aritmetica_simples(_normalizar(ctx, texto_usuario))
+    if res_txt is None:
         return ""
-    m = re.fullmatch(
-        r"(?:quanto\s+(?:e|é)\s+)?(?P<a>-?\d+(?:[,.]\d+)?)\s*(?P<op>\+|mais|-|menos|x|vezes|\*|dividido por|dividido|/)\s*(?P<b>-?\d+(?:[,.]\d+)?)\??",
-        t,
-    )
-    if not m:
-        return ""
-    try:
-        a = float(str(m.group("a")).replace(",", "."))
-        b = float(str(m.group("b")).replace(",", "."))
-        op = str(m.group("op") or "").strip()
-        if op in {"+", "mais"}:
-            res = a + b
-        elif op in {"-", "menos"}:
-            res = a - b
-        elif op in {"x", "vezes", "*"}:
-            res = a * b
-        elif op in {"dividido por", "dividido", "/"}:
-            if b == 0:
-                return "Dividir por zero? Aí nem eu faço esse pacto com o caos."
-            res = a / b
-        else:
-            return ""
-        if float(res).is_integer():
-            res_txt = str(int(res))
-        else:
-            res_txt = f"{res:.4f}".rstrip("0").rstrip(".")
-        return _ajustar(ctx, random.choice([
-            f"Dá {res_txt}. Matemática sem drama.",
-            f"{res_txt}. Essa eu peguei sem tropeçar.",
-            f"Resultado: {res_txt}.",
-        ]), texto_usuario)
-    except Exception:
-        return ""
+    if not res_txt:
+        return "Dividir por zero? Aí nem eu faço esse pacto com o caos."
+    return _ajustar(ctx, random.choice([
+        f"Dá {res_txt}. Matemática sem drama.",
+        f"{res_txt}. Essa eu peguei sem tropeçar.",
+        f"Resultado: {res_txt}.",
+    ]), texto_usuario)

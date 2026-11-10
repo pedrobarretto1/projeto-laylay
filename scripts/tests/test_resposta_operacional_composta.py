@@ -22,7 +22,7 @@ from mente_laylay.personalidade.planejador_resposta import fala_factual_resultad
 from mente_laylay.cognicao.preferencia_humor import extrair_preferencia_humor
 
 
-def _montar(*, falha=False, redundante=False, modelo_invalido=False):
+def _montar(*, falha=False, redundante=False, modelo_invalido=False, detalhe_falha=""):
     estado = EstadoCompartilhadoRuntime()
     estado.mental.update({
         "turno_atual": {"id": "pedido-composto", "autoriza_execucao": True},
@@ -88,7 +88,7 @@ def _montar(*, falha=False, redundante=False, modelo_invalido=False):
         status = ("ja_estava_ligado" if redundante else "ligado") if alvo != "piano" else ("falha_execucao" if falha else "playlist_aberta")
         ok = status != "falha_execucao"
         adaptador = AdaptadorResultadoOperacional(resultado, resultado["params"], texto, "pc_a", contexto.montar())
-        adaptador.marcar_resultado(status, ok, confirmado=ok)
+        adaptador.marcar_resultado(status, ok, confirmado=ok, detalhe="" if ok else detalhe_falha)
         adaptador.falar_por_status(status, "Lâmpada do quarto ligada. Pronta pra brilhar." if alvo != "piano" else "Deixei piano aberto e em foco. Já puxei piano pra tocar.", alvo=alvo)
         return ok
     ciclo.executar_intencao = executor
@@ -111,15 +111,19 @@ def test_pedido_composto_tem_uma_autoria_e_uma_entrega(texto):
     assert [item["id_solicitacao"] for item in chamadas[0][0]["resultados"]] == [item["id_solicitacao"] for item in receipts]
 
 
-def test_falha_parcial_e_nao_execucao_das_proximas_etapas_sao_preservadas():
-    ciclo, _o, _e, falas, textos, receipts, chamadas, _s = _montar(falha=True)
+@pytest.mark.parametrize("detalhe", ["", "Não consegui abrir a playlist piano."])
+def test_falha_parcial_e_nao_execucao_das_proximas_etapas_sao_preservadas(detalhe):
+    ciclo, _o, _e, falas, textos, receipts, chamadas, _s = _montar(falha=True, detalhe_falha=detalhe)
     assert ciclo.processar_cadeia("liga a luz e depois coloca a playlist piano e depois abre o chrome")
     assert len(receipts) == 2
     assert receipts[0]["confirmado"] is True
     assert receipts[1]["confirmado"] is False
     assert len(textos) == len(falas) == 1
-    assert "Liguei a lâmpada" in falas[0] and "não consegui abrir a playlist piano" in falas[0]
     assert len(chamadas) == 1
+    if detalhe:
+        assert falas == textos == ["Liguei a lâmpada do quarto e não consegui abrir a playlist piano."]
+    else:
+        assert falas == textos == ["Liguei lâmpada do quarto; Não consegui concluir o pedido em piano."]
 
 
 def test_estado_ja_satisfeito_nao_vira_nova_execucao():
@@ -512,19 +516,28 @@ def test_aviso_direto_de_esclarecimento_ou_falha_sobrevive_no_lote():
     assert "Não consegui resolver" in textos[0] and "Qual arquivo" in textos[0]
 
 
-@pytest.mark.parametrize("quantidade", [3, 5])
-def test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts(quantidade):
+@pytest.mark.parametrize("quantidade,proposta,motivo", [
+    (3, "valida", ""), (5, "valida", ""),
+    (3, "fora_do_schema", "estrutura_composta_invalida"),
+    (3, "foco_inventado", "foco_composto_nao_confirmado"),
+])
+def test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipts(quantidade, proposta, motivo):
     from mente_laylay.integracao.composicao_inteligencia_externa import ComposicaoInteligenciaExternaRuntime
     import requests
     payloads = []
     alvos = ["Calculadora", "agenda", "editor", "navegador", "bloco"][:quantidade]
     trechos = ["Abri " + alvo for alvo in alvos]
+    if proposta == "foco_inventado":
+        trechos[0] += " e foquei a janela"
     fala = "; ".join(trechos) + "."
+    dados = {"fala": fala, "trechos": trechos}
+    if proposta == "fora_do_schema":
+        dados["comandos"] = [{"intent": "APP_OPEN"}]
     def post(_url, **kwargs):
         payloads.append(kwargs["json"])
         resposta = requests.Response()
         resposta.status_code = 200
-        resposta._content = json.dumps({"choices": [{"message": {"content": json.dumps({"fala": fala, "trechos": trechos})}}]}).encode()
+        resposta._content = json.dumps({"choices": [{"message": {"content": json.dumps(dados)}}]}).encode()
         return resposta
     def contexto_proibido(*_a, **_k):
         raise AssertionError("Autoria de receipts não consulta memória ou contexto externo")
@@ -532,8 +545,14 @@ def test_transporte_real_preserva_orcamento_e_contexto_fechado_de_varios_receipt
     modelo = runtime.conectar_cliente(memoria_inteligente=SimpleNamespace(resumo_do_dia="", data_atual=""), normalizar_texto=str.casefold, mapear_pastas=contexto_proibido, contexto_logs_getter=contexto_proibido, contexto_navegador_relevante=contexto_proibido, contexto_sistema_getter=contexto_proibido, obter_contexto_paginas=contexto_proibido, resumo_mente_integrada=contexto_proibido)
     itens = [ResultadoAcao(intent="APP_OPEN", status="app_aberto", alvo=alvo, executou=True, confirmado=True, origem="executor", id_solicitacao="pedido-" + str(i)) for i, alvo in enumerate(alvos)]
     resultado = personalizar_confirmacao_composta_llm(itens, "fallback", enviar_mensagem=modelo.enviar)
-    assert resultado.usada_llm, resultado.motivo_fallback
+    assert resultado.motivo_fallback == motivo
+    assert resultado.usada_llm is (not motivo)
+    assert resultado.fala == ("fallback" if motivo else fala)
     assert len(payloads) == 1
     assert payloads[0]["max_tokens"] == min(768, 128 + 96 * quantidade)
     assert len(payloads[0]["messages"]) == 2
     assert json.loads(payloads[0]["messages"][1]["content"])["resultados"][0]["id_solicitacao"] == "pedido-0"
+    formato = payloads[0]["response_format"]["json_schema"]
+    assert formato["strict"] and set(formato["schema"]["properties"]) == {"trechos", "fala"}
+    lista = formato["schema"]["properties"]["trechos"]
+    assert lista["minItems"] == lista["maxItems"] == quantidade

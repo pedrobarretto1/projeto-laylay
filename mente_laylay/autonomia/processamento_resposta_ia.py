@@ -33,6 +33,7 @@ from mente_laylay.cognicao.qualidade_comunicacao import (
     contingencia_comunicacao,
     montar_pacote_reparo_comunicacao,
     compor_reparo_comunicacao,
+    montar_reparo_parcial_local,
     remover_autopercepcao_emocional_sem_evento,
 )
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
@@ -998,6 +999,25 @@ def preparar_resposta_para_execucao(
                 avaliacao_comunicacao = avaliacao_local
                 comunicacao_autocorrigida = True
                 registrar_log("🧷 [COMUNICAÇÃO] autoria do relato preservada localmente.")
+    if (avaliacao_comunicacao.get('problemas_bloqueantes') == ['retomada_usuario_sem_nucleo_conferido']
+            and not comandos and not falha_tecnica_llm):
+        from mente_laylay.cognicao.recordacao_atributo import avaliar_recordacao_atributo
+        from mente_laylay.cognicao.plano_turno import verificar_fala_turno
+
+        recordacao = avaliar_recordacao_atributo(fala_limpa, plano=plano_comunicacao)
+        realizacao = (recordacao.get('resposta_conferida') or recordacao.get('esclarecimento_recordacao')) if recordacao else ''
+        if realizacao:
+            plano_revisao = {**plano_comunicacao, 'suporte_autoria_proposto': suporte_inicial}
+            verificacao = verificar_fala_turno(fala_limpa, plano=plano_revisao)
+            conferida = verificacao.get('fala')
+            if (conferida == realizacao
+                    and avaliar_qualidade_comunicacao(texto, conferida, plano=plano_revisao,
+                        ultima_resposta=ultima_resposta_comunicacao,
+                        entrada_usuario_repetida=entrada_usuario_repetida).get('aceita')):
+                # Mantém emissão/suporte originais. O juiz de publicação refaz
+                # a conferência da mesma fonte; não há nova geração para uma
+                # projeção literal que o host já conseguiu demonstrar.
+                avaliacao_comunicacao = {**avaliacao_comunicacao, 'requer_reparo': False}
     if avaliacao_comunicacao.get("requer_reparo"):
         problemas = list(avaliacao_comunicacao.get("problemas") or [])
         somente_consultiva = bool(avaliacao_comunicacao.get("somente_consultiva"))
@@ -1079,6 +1099,23 @@ def preparar_resposta_para_execucao(
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
                     f"{type(erro).__name__}"
+                )
+        if (not somente_consultiva and not fala_reparada
+            and motivo_falha_reparo not in {"orcamento_turno_obsoleto", "orcamento_turno_finalizado"}):
+            autoria_local = montar_reparo_parcial_local(
+                fala_limpa, avaliacao_comunicacao, plano=plano_comunicacao,
+                principal=resposta_bruta, anterior=autoria_atual,
+            )
+            if autoria_local is not None and avaliar_qualidade_comunicacao(
+                texto, autoria_local.fala_original, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            ).get("aceita"):
+                autoria_atual = autoria_local
+                reescrita_aceita = True
+                fala_reparada = autoria_local.fala_original
+                registrar_log(
+                    f"🧭 [COMUNICAÇÃO] lacuna preenchida localmente | causa={motivo_falha_reparo}"
                 )
         if somente_consultiva:
             pass

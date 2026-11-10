@@ -161,6 +161,11 @@ def _contextualizar_turno_misto(fala: str, texto_usuario: str) -> str:
     return fala
 
 
+def descrever_app_ja_aberto(alvo: str) -> str:
+    """Realiza só o estado observado, sem atribuir abertura ou foco."""
+    return f"{alvo.capitalize()} já está aberto"
+
+
 def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
     alvo = str(resultado.alvo or "").strip()
     objeto = alvo or "o que você pediu"
@@ -185,7 +190,7 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
         if status in {"ja_aberto_focado", "site_ja_aberto_focado"}:
             return f"{objeto.capitalize()} já está aberto e em foco; não repeti a abertura."
         if status == "app_ja_aberto_observado":
-            return f"{objeto.capitalize()} já está aberto; não repeti a abertura."
+            return f"{descrever_app_ja_aberto(objeto)}; não repeti a abertura."
         if status == "ja_estava_ligado":
             return f"{objeto.capitalize()} já está ligado; não repeti o comando."
         if status == "ja_estava_desligado":

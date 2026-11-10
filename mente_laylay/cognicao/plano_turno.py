@@ -312,6 +312,10 @@ def planejar_turno(
         "ts": time.time(),
     }
     plano["decisao_turno"] = criar_contrato_decisao(leitura, plano)
+    from mente_laylay.cognicao.recordacao_atributo import construir_recordacao_atributo
+    recordacao = construir_recordacao_atributo(texto, plano=plano, mente=estado)
+    if recordacao is not None:
+        plano['recordacao_atributo'] = recordacao
     return plano
 
 
@@ -600,6 +604,13 @@ def _verificar_fala_turno_base(
         )
         revisoes_relatos_usuario = list(validacao_factual.get('revisao_relatos_usuario') or [])
         problemas_fatuais = list(validacao_factual.get("problemas") or [])
+        if validacao_factual.get('requer_reparo') is True:
+            # Rejeição integral do owner não é uma projeção opcional. Uma fala
+            # vazia nesse resultado não permite reaproveitar o draft original.
+            return {'aceita': False, 'fala': '', 'acao': 'reparar',
+                'problemas': problemas + problemas_fatuais,
+                'requer_reparo': True, 'pontuacao': 0.0,
+                'fala_contingencia': contingencia_comunicacao(texto_usuario)}
         if problemas_fatuais:
             if relato_literal:
                 return concluir_relato_literal()

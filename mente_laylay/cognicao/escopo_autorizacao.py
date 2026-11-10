@@ -12,6 +12,9 @@ from typing import Any, Callable, Mapping
 
 from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
 from mente_laylay.cognicao.gramatica_operacional import texto_pede_ajuste_parametrico_contextual
+from mente_laylay.cognicao.coordenacao_nominal import (
+    CoordenacaoNominal, ler_coordenacao_nominal, alvo_resolvido_exato,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,6 +23,8 @@ class AutorizacaoAto:
     indice: int
     texto: str
     pedido: SnapshotComandoIA
+    indice_alvo: int = 0
+    fonte_nominal: CoordenacaoNominal | None = None
 
     def __post_init__(self) -> None:
         if not (isinstance(self.turno_id, str) and self.turno_id.strip() == self.turno_id
@@ -27,6 +32,17 @@ class AutorizacaoAto:
                 and isinstance(self.texto, str) and self.texto.strip()
                 and isinstance(self.pedido, SnapshotComandoIA)):
             raise ValueError("Autorização por ato exige identidade, fonte e snapshot canônicos.")
+        if type(self.indice_alvo) is not int or self.indice_alvo < 0 or (
+            self.fonte_nominal is None and self.indice_alvo != 0
+        ) or (self.fonte_nominal is not None and (
+            type(self.fonte_nominal) is not CoordenacaoNominal or not self.fonte_nominal.inequivoca
+            or not self.indice_alvo < len(self.fonte_nominal.alvos)
+        )):
+            raise ValueError("Autorização nominal exige membro da fonte qualificada.")
+
+    @property
+    def chave_consumo(self) -> tuple[int, int]:
+        return self.indice, self.indice_alvo
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +112,7 @@ def exige_escopo_por_ato(turno: Mapping[str, Any]) -> bool:
     """
     segmentos = turno.get("segmentos") or ()
     fonte = turno.get("texto_operacional_efetivo", turno.get("texto_original") or turno.get("texto") or "")
-    return texto_pede_ajuste_parametrico_contextual(fonte) or len(segmentos) > 1 or any(isinstance(s, Mapping) and (
+    return ler_coordenacao_nominal(str(fonte)) is not None or texto_pede_ajuste_parametrico_contextual(fonte) or len(segmentos) > 1 or any(isinstance(s, Mapping) and (
         s.get("autoriza_execucao") is False or s.get("veto_execucao_operacional") is True
     ) for s in segmentos)
 
@@ -127,6 +143,9 @@ def construir_autorizacoes_por_ato(
         if not texto:
             continue
         fonte_resolucao = fontes[indice].como_dict()["texto_original"]
+        nominal = ler_coordenacao_nominal(fonte_resolucao)
+        if nominal is not None and not nominal.inequivoca:
+            continue
         frame = deepcopy(dict(mental))
         # Um resolver não pode usar a permissão agregada como se pertencesse
         # ao ato isolado. O texto classificado identifica o ato; somente seu
@@ -136,11 +155,26 @@ def construir_autorizacoes_por_ato(
                                "texto_operacional": fonte_resolucao,
                                "segmentos": [deepcopy(dict(segmento))]}
         try:
-            pedido = resolver(fonte_resolucao, frame)
-            if not isinstance(pedido, dict) or not isinstance(pedido.get("params"), dict):
-                continue
-            autorizacoes.append(AutorizacaoAto(str(turno.get("id") or ""), indice,
-                                              texto, SnapshotComandoIA(pedido)))
+            membros = range(len(nominal.alvos)) if nominal else range(1)
+            resolvidos, identidades = [], set()
+            for membro in membros:
+                # O segmento e sua fonte continuam integrais. Apenas a entrada
+                # do resolver é uma projeção dos recortes explícitos do ato.
+                pedido = resolver(nominal.projetar(membro) if nominal else fonte_resolucao, deepcopy(frame))
+                if (not isinstance(pedido, dict) or not isinstance(pedido.get("params"), dict)
+                    or nominal is not None and not alvo_resolvido_exato(pedido, nominal, membro)):
+                    resolvidos = []  # Cardinalidade do conjunto não comprovada.
+                    break
+                identidade = _identidade_operacional(pedido)
+                if identidade is None:
+                    resolvidos = []
+                    break
+                if identidade in identidades:
+                    continue  # Repetir o nome num conjunto não pede repetir o efeito.
+                identidades.add(identidade)
+                resolvidos.append(AutorizacaoAto(str(turno.get("id") or ""), indice,
+                    texto, SnapshotComandoIA(pedido), membro, nominal))
+            autorizacoes.extend(resolvidos)
         except Exception:
             # Indeterminação ou dependência indisponível não é permissão.
             continue
@@ -172,7 +206,16 @@ def vincular_proposta_ao_ato(
     comando: dict, turno: Mapping[str, Any],
     autorizacoes: tuple[AutorizacaoAto, ...], usados: set[int],
 ) -> int | None:
-    """Uma operação exata por ato: não emprestar alvo ou repetir o efeito."""
+    """Compatibilidade dos consumidores por ato; não alterar seu índice."""
+    autorizacao = vincular_proposta_ao_escopo(comando, turno, autorizacoes, usados)
+    return autorizacao.indice if autorizacao is not None else None
+
+
+def vincular_proposta_ao_escopo(
+    comando: dict, turno: Mapping[str, Any],
+    autorizacoes: tuple[AutorizacaoAto, ...], usados: set[int | tuple[int, int]],
+) -> AutorizacaoAto | None:
+    """Uma operação por escopo de alvo, conservando a identidade do ato."""
     identidade = _identidade_operacional(comando)
     if identidade is None:
         return None
@@ -183,6 +226,7 @@ def vincular_proposta_ao_ato(
             or not autorizacao.turno_id
             or type(autorizacao.indice) is not int
             or autorizacao.indice in usados
+            or autorizacao.chave_consumo in usados
             or not 0 <= autorizacao.indice < len(segmentos)
         ):
             continue
@@ -195,6 +239,15 @@ def vincular_proposta_ao_ato(
             and str(segmento.get("texto") or "").strip() == autorizacao.texto
         ):
             continue
+        if autorizacao.fonte_nominal is not None:
+            from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+            fontes = fontes_textuais_dos_segmentos(
+                str(turno.get("texto_original") or turno.get("texto") or ""), segmentos,
+            )
+            if len(fontes) != len(segmentos) or autorizacao.fonte_nominal != ler_coordenacao_nominal(
+                fontes[autorizacao.indice].como_dict()["texto_original"]
+            ):
+                continue
         if identidade == _identidade_operacional(autorizacao.pedido.como_dict()):
-            return autorizacao.indice
+            return autorizacao
     return None

@@ -13,6 +13,7 @@ from mente_laylay.cognicao.identidade_conversacional import (
 from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
 from mente_laylay.cognicao.plano_turno import planejar_turno, verificar_fala_turno
 from mente_laylay.especialistas.mapa_habilidades import MapaHabilidadesRuntime
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
 
 
 @pytest.mark.parametrize(
@@ -50,7 +51,9 @@ def test_hipotese_de_criar_arquivo_preserva_conversa_e_nao_executa() -> None:
 
     resposta = mapa.responder_pergunta_capacidade(texto, turno=turno)
 
-    assert turno["natureza_acao"] == "hipotetica"
+    # A barreira canônica especializou a hipótese condicional; a natureza
+    # mudou, mas conversa e ausência de autoridade continuam obrigatórias.
+    assert turno["natureza_acao"] == "condicao_nao_verificada"
     assert turno["autoriza_execucao"] is False
     assert plano["requer_execucao"] is False
     assert plano["turno_sem_autorizacao"] is True
@@ -124,6 +127,98 @@ def test_porta_prioritaria_responde_sem_chamar_executor_ou_llm() -> None:
     ) is True
     assert falas and "não fiz nada" in falas[-1].casefold()
     assert execucoes == []
+
+
+@pytest.mark.parametrize("texto", (
+    "e se eu falar para você criar um arquivo? você vai criar?",
+    "se eu falar para você abrir um programa, você vai abrir?",
+))
+def test_capacidade_condicional_readonly_responde_antes_da_llm_sem_efeito(texto: str) -> None:
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+    estado = EstadoCompartilhadoRuntime(mental={"turno_atual": turno})
+    falas: list[str] = []
+    execucoes: list[dict] = []
+    chamadas_llm: list[str] = []
+    consultas: list[str] = []
+
+    def responder(fala: str) -> str:
+        consultas.append(fala)
+        return mapa.responder_pergunta_capacidade(fala, turno=turno)
+
+    imediato = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": responder,
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "executar_intencao": lambda comando, _texto: execucoes.append(comando) or True,
+        },
+        loop_getter=lambda: None,
+    )
+    runtime = RespostaIARuntime(
+        contexto_getter=lambda: {
+            "marcar_inicio_turno": lambda *_args, **_kwargs: None,
+            "obter_turno_atual": lambda: dict(turno),
+            "processar_comandos_prioritarios": imediato.processar_prioritarios,
+            "enviar_mensagem": lambda *_args, **_kwargs: chamadas_llm.append(texto) or "{}",
+        },
+        log=lambda *_args, **_kwargs: None,
+    )
+
+    assert turno["natureza_acao"] == "condicao_nao_verificada"
+    assert turno["autoriza_execucao"] is False
+    runtime.processar(texto)
+    assert consultas == [texto], "o veto à mutação não deve barrar a explicação read-only"
+    assert len(falas) == 1
+    assert execucoes == []
+    assert chamadas_llm == []
+    assert estado.mental["turno_atual"]["autoriza_execucao"] is False
+
+
+@pytest.mark.parametrize("texto", (
+    "quando eu confirmar, cria um arquivo chamado teste.txt",
+    'Se eu disser "o Opera está aberto?", isso é uma consulta.',
+))
+def test_condicao_ou_citacao_nao_reconhecida_pelo_catalogo_preserva_veto(texto: str) -> None:
+    mapa = MapaHabilidadesRuntime()
+    turno = classificar_modalidade_turno(texto)
+    estado = EstadoCompartilhadoRuntime(mental={"turno_atual": turno})
+    falas: list[str] = []
+    execucoes: list[dict] = []
+    runtime = ComandosImediatosRuntime(
+        namespace_getter=lambda: {
+            "_estado_compartilhado_runtime": estado,
+            "_responder_pergunta_capacidade_local": lambda fala: mapa.responder_pergunta_capacidade(
+                fala, turno=turno,
+            ),
+            "falar_com_lipsync": lambda fala, *_args: falas.append(fala),
+            "executar_intencao": lambda comando, _texto: execucoes.append(comando) or True,
+        },
+        loop_getter=lambda: None,
+    )
+
+    assert turno["autoriza_execucao"] is False
+    assert runtime.processar_prioritarios(texto) is False
+    assert falas == []
+    assert execucoes == []
+
+
+@pytest.mark.parametrize("texto", (
+    "se eu falar para você criar um arquivo, você vai criar?",
+    "se eu falar para você abrir um programa, você vai abrir?",
+))
+def test_capacidade_condicional_na_composicao_instalada_sem_modelo_ou_efeitos(tmp_path, texto: str) -> None:
+    from scripts.tests.test_contratos_basais_composicao import coletar
+
+    # A instalação isolada mantém os callbacks de laylay.py e bloqueia rede,
+    # áudio e executores. Lista vazia também reprova qualquer chamada ao modelo.
+    observado = coletar(tmp_path, {"entrada": texto, "propostas": []})
+    assert observado["autoriza"] is False
+    assert observado["comandos"] == []
+    assert len(observado["falas"]) == 1
+    assert observado["http"] == 0
+    assert observado["efeitos"] == []
+    assert observado["voz"] is False
 
 
 def test_exemplo_citado_sobre_consulta_nao_vira_pergunta_de_capacidade() -> None:

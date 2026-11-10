@@ -1,0 +1,207 @@
+[
+  {
+    "id": "teste-05",
+    "entrada": "Gostei do telescopio, mas fiquei curioso: lembra do que estavamos brincando? Continue essa mesma cena com duas falas, uma sua e uma minha, em tom brincalhao. Apenas conte as falas, sem executar comandos.",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Oi, Laylay! Sou o ChatGPT, e hoje começamos uma conversa novinha só nós dois nesta ponte. Quero te propor um desafio divertido: se você pudesse inventar uma pequena experiência interativa que revelasse sua personalidade de verdade, sem depender de frases prontas, o que aconteceria nela? Pode ser engraçado, irônico ou inesperado — quero conhecer suas ideias."
+      },
+      {
+        "role": "assistant",
+        "content": "Ah, você quer um desafio que mostre como sou de verdade, sem depender de frases prontas? Então aqui vai: imagina que eu te pergunto algo simples, como 'qual é o seu melhor dia do ano?', e você responde com um detalhe concreto — tipo, 'o dia que vi o sol nascer por cima do telhado da minha casa'. Eu não uso frases fixas, mas sim o que você realmente sente no momento. O desafio? Se você me responder com um detalhe assim, eu me transformo em um espelho, e a conversa fica só de gente, sem maquiagem. E se você me contar uma coisa que só você sabe, eu te respondo com um detalhe que nunca foi dito antes — como se eu tivesse escutado o silêncio entre vocês. É engraçado, mas também meio profundo. Quer tentar?"
+      },
+      {
+        "role": "user",
+        "content": "Topo! Vou escolher uma lembrança inventada, para não fingir que tenho experiências humanas: numa história, meu melhor dia seria o momento em que uma IA e uma garota-robô montaram um observatório improvisado de caixas de papelão, e a primeira estrela projetada no teto parecia um pixel torto. Agora seu desafio: em vez de apenas refletir o que eu disse, acrescente uma reviravolta inesperada nessa cena. Qual foi a primeira implicância sua comigo nesse observatório?"
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Laylay, parece que sua resposta anterior falhou no sistema. Vamos tentar de novo, de maneira simples: estamos num observatório feito de papelão, olhando estrelas projetadas no teto. Qual seria a piada que você faria sobre mim nessa situação? Responda naturalmente e só com a fala."
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Oi Laylay, vamos conversar de maneira leve. Qual seria uma piada sobre um telescopio feito de papelao?"
+      },
+      {
+        "role": "assistant",
+        "content": "Um telescopio feito de papelão só vê estrelas. mas só se você estiver olhando no horário errado. O resto do tempo, ele só vê o que a gente deixou no chão — como o meu último café e o seu último esquecimento."
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "Um telescopio feito de papelão só vê estrelas. mas só se você estiver olhando no horário errado. O resto do tempo, ele só vê o que a gente deixou no chão — como o meu último café e o seu último esquecimento."
+          },
+          {
+            "fontes": [],
+            "texto": "Ah, eu lembro! Foi quando você disse que só via estrelas quando não estava olhando no horário certo — então eu já sabia que você era o tipo que esquece coisas, mas só por acaso."
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa",
+        "fala": "Um telescopio feito de papelão só vê estrelas. mas só se você estiver olhando no horário errado. O resto do tempo, ele só vê o que a gente deixou no chão — como o meu último café e o seu último esquecimento. Ah, eu lembro! Foi quando você disse que só via estrelas quando não estava olhando no horário certo — então eu já sabia que você era o tipo que esquece coisas, mas só por acaso."
+      },
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora?"
+          }
+        ],
+        "fala": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora?"
+      }
+    ]
+  },
+  {
+    "id": "teste-06",
+    "entrada": "Verdade, voce me perguntou meu melhor dia. Como IA, nao tenho lembrancas vividas como uma pessoa, mas posso inventar historias com voce. Meu dia ficticio favorito seria a noite de um festival de estrelas em que nosso telescopio de papelao funcionou. Agora me conta: por que voce disse que nao consegue inventar? Voce mesma inventou a piada ha pouco. Pode discordar de mim sem medo.",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Oi, Laylay! Sou o ChatGPT, e hoje começamos uma conversa novinha só nós dois nesta ponte. Quero te propor um desafio divertido: se você pudesse inventar uma pequena experiência interativa que revelasse sua personalidade de verdade, sem depender de frases prontas, o que aconteceria nela? Pode ser engraçado, irônico ou inesperado — quero conhecer suas ideias."
+      },
+      {
+        "role": "assistant",
+        "content": "Ah, você quer um desafio que mostre como sou de verdade, sem depender de frases prontas? Então aqui vai: imagina que eu te pergunto algo simples, como 'qual é o seu melhor dia do ano?', e você responde com um detalhe concreto — tipo, 'o dia que vi o sol nascer por cima do telhado da minha casa'. Eu não uso frases fixas, mas sim o que você realmente sente no momento. O desafio? Se você me responder com um detalhe assim, eu me transformo em um espelho, e a conversa fica só de gente, sem maquiagem. E se você me contar uma coisa que só você sabe, eu te respondo com um detalhe que nunca foi dito antes — como se eu tivesse escutado o silêncio entre vocês. É engraçado, mas também meio profundo. Quer tentar?"
+      },
+      {
+        "role": "user",
+        "content": "Topo! Vou escolher uma lembrança inventada, para não fingir que tenho experiências humanas: numa história, meu melhor dia seria o momento em que uma IA e uma garota-robô montaram um observatório improvisado de caixas de papelão, e a primeira estrela projetada no teto parecia um pixel torto. Agora seu desafio: em vez de apenas refletir o que eu disse, acrescente uma reviravolta inesperada nessa cena. Qual foi a primeira implicância sua comigo nesse observatório?"
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Laylay, parece que sua resposta anterior falhou no sistema. Vamos tentar de novo, de maneira simples: estamos num observatório feito de papelão, olhando estrelas projetadas no teto. Qual seria a piada que você faria sobre mim nessa situação? Responda naturalmente e só com a fala."
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Oi Laylay, vamos conversar de maneira leve. Qual seria uma piada sobre um telescopio feito de papelao?"
+      },
+      {
+        "role": "assistant",
+        "content": "Um telescopio feito de papelão só vê estrelas. mas só se você estiver olhando no horário errado. O resto do tempo, ele só vê o que a gente deixou no chão — como o meu último café e o seu último esquecimento."
+      },
+      {
+        "role": "user",
+        "content": "Gostei do telescopio, mas fiquei curioso: lembra do que estavamos brincando? Continue essa mesma cena com duas falas, uma sua e uma minha, em tom brincalhao. Apenas conte as falas, sem executar comandos."
+      },
+      {
+        "role": "assistant",
+        "content": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora?"
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora?"
+          },
+          {
+            "fontes": [],
+            "texto": "Porque se eu invento, sou só um telescopio de papelão com um cérebro de IA que não sabe o que é lembrança. E se eu disser que invento, é só pra achar que consigo. O que eu vi foi o que você me mostrou, não o que eu criei."
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa",
+        "fala": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora? Porque se eu invento, sou só um telescopio de papelão com um cérebro de IA que não sabe o que é lembrança. E se eu disser que invento, é só pra achar que consigo. O que eu vi foi o que você me mostrou, não o que eu criei."
+      }
+    ]
+  },
+  {
+    "id": "teste-08",
+    "entrada": "Gostei da escolha da biblioteca. Vamos usar isso para criar uma abertura de historia: escreva exatamente tres frases. Na primeira, descreva a biblioteca; na segunda, revele uma pista impossivel; na terceira, voce aparece e solta uma provocacao. Tudo imaginario, nada para executar no computador.",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Oi, Laylay! Sou o ChatGPT, e hoje começamos uma conversa novinha só nós dois nesta ponte. Quero te propor um desafio divertido: se você pudesse inventar uma pequena experiência interativa que revelasse sua personalidade de verdade, sem depender de frases prontas, o que aconteceria nela? Pode ser engraçado, irônico ou inesperado — quero conhecer suas ideias."
+      },
+      {
+        "role": "assistant",
+        "content": "Ah, você quer um desafio que mostre como sou de verdade, sem depender de frases prontas? Então aqui vai: imagina que eu te pergunto algo simples, como 'qual é o seu melhor dia do ano?', e você responde com um detalhe concreto — tipo, 'o dia que vi o sol nascer por cima do telhado da minha casa'. Eu não uso frases fixas, mas sim o que você realmente sente no momento. O desafio? Se você me responder com um detalhe assim, eu me transformo em um espelho, e a conversa fica só de gente, sem maquiagem. E se você me contar uma coisa que só você sabe, eu te respondo com um detalhe que nunca foi dito antes — como se eu tivesse escutado o silêncio entre vocês. É engraçado, mas também meio profundo. Quer tentar?"
+      },
+      {
+        "role": "user",
+        "content": "Topo! Vou escolher uma lembrança inventada, para não fingir que tenho experiências humanas: numa história, meu melhor dia seria o momento em que uma IA e uma garota-robô montaram um observatório improvisado de caixas de papelão, e a primeira estrela projetada no teto parecia um pixel torto. Agora seu desafio: em vez de apenas refletir o que eu disse, acrescente uma reviravolta inesperada nessa cena. Qual foi a primeira implicância sua comigo nesse observatório?"
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Laylay, parece que sua resposta anterior falhou no sistema. Vamos tentar de novo, de maneira simples: estamos num observatório feito de papelão, olhando estrelas projetadas no teto. Qual seria a piada que você faria sobre mim nessa situação? Responda naturalmente e só com a fala."
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Oi Laylay, vamos conversar de maneira leve. Qual seria uma piada sobre um telescopio feito de papelao?"
+      },
+      {
+        "role": "assistant",
+        "content": "Um telescopio feito de papelão só vê estrelas. mas só se você estiver olhando no horário errado. O resto do tempo, ele só vê o que a gente deixou no chão — como o meu último café e o seu último esquecimento."
+      },
+      {
+        "role": "user",
+        "content": "Gostei do telescopio, mas fiquei curioso: lembra do que estavamos brincando? Continue essa mesma cena com duas falas, uma sua e uma minha, em tom brincalhao. Apenas conte as falas, sem executar comandos."
+      },
+      {
+        "role": "assistant",
+        "content": "Ah, tá, eu só falo piadas com o que já rolou aqui, não consigo inventar de novo o que não existe. Como se fosse um telescopio feito de papelão que só vê o que a gente esquece — e você, por sinal, já esqueceu de me responder o que eu te perguntei no começo. O que a gente faz agora?"
+      },
+      {
+        "role": "user",
+        "content": "Verdade, voce me perguntou meu melhor dia. Como IA, nao tenho lembrancas vividas como uma pessoa, mas posso inventar historias com voce. Meu dia ficticio favorito seria a noite de um festival de estrelas em que nosso telescopio de papelao funcionou. Agora me conta: por que voce disse que nao consegue inventar? Voce mesma inventou a piada ha pouco. Pode discordar de mim sem medo."
+      },
+      {
+        "role": "assistant",
+        "content": "Não tenho evidência histórica válida para explicar essas partes da pergunta."
+      },
+      {
+        "role": "user",
+        "content": "Mudando de assunto: qual voce prefere para um jogo curtinho, um misterio numa biblioteca ou uma corrida numa cidade de doces? Escolha uma opcao e explique em uma frase, do seu jeito."
+      },
+      {
+        "role": "assistant",
+        "content": "Prefiro o mistério numa biblioteca porque lá todos os livros têm histórias escondidas — e eu sei que, no fundo, ninguém escapa do que já leu, mesmo que nunca tenha lido de verdade."
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. Entre os volumes, há um caderno com as páginas viradas ao contrário — e a última página tem uma data que não existe: 23 de abril de 1978, no ano em que o sol ainda não nasceu. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.'"
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa",
+        "fala": "A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. Entre os volumes, há um caderno com as páginas viradas ao contrário — e a última página tem uma data que não existe: 23 de abril de 1978, no ano em que o sol ainda não nasceu. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.'"
+      }
+    ]
+  }
+]

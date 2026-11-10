@@ -260,11 +260,12 @@ def registrar_fala_observada(
 
 def selecionar_fala_observada(
     registro: Mapping[str, Any] | None, *, agora: float | None = None,
+    ocorrencia_id: str | None = None,
 ) -> Dict[str, Any]:
     """Resolve a referência do owner, sem inferir identidade por texto/recência."""
     if not isinstance(registro, Mapping):
         return {}
-    ident = registro.get('ultima_fala_observada_id')
+    ident = registro.get('ultima_fala_observada_id') if ocorrencia_id is None else ocorrencia_id
     candidatos = [f for f in registro.get('falas_observadas', ())
                   if isinstance(f, Mapping) and f.get('id') == ident] if ident else []
     if len(candidatos) != 1:
@@ -383,7 +384,7 @@ def _registrar_proposicoes_resultado(
 def recuperar_evidencia_da_fala(
     texto: str, mente: Mapping[str, Any], *, agora: float | None = None,
 ) -> Dict[str, Any]:
-    """Recupera citação literal ou a última fala selecionada pelo owner contextual.
+    """Recupera literal, conteúdo indireto conferível ou seleção contextual.
 
     Não usa a última ação como substituta da fonte ausente. A recuperação é
     histórica, efêmera e read-only; nenhuma alegação textual vira fato externo.
@@ -404,6 +405,18 @@ def recuperar_evidencia_da_fala(
             recentes.append(item)
     citados = [item for item in recentes if len(_normalizar(item["fala"])) >= 8
                and _normalizar(item["fala"]) in normalizado]
+    conteudo_indireto = False
+    if not citados:
+        from mente_laylay.cognicao.referencias_linguagem import (
+            conteudo_referido_fala_propria, fala_contem_trecho_pessoal_referido,
+        )
+        referencia_indireta = conteudo_referido_fala_propria(texto)
+        if referencia_indireta is not None:
+            citados = [item for item in recentes
+                       if fala_contem_trecho_pessoal_referido(item['fala'],referencia_indireta)]
+            if not citados:
+                return {}  # Conteúdo explícito não é elipse da última fala.
+            conteudo_indireto = len(citados) == 1
     if not citados:
         selecao = selecionar_contexto_turno(
             texto, turno=dict(mente.get("turno_atual") or {}), mente=dict(mente), agora=instante,
@@ -419,7 +432,9 @@ def recuperar_evidencia_da_fala(
         return {}
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     return {"referencia_ambigua": len(citados) > 1, "falas": EstadoCompartilhadoRuntime._copiar_valor(citados[-2:]),
-            "autoriza_execucao": False}
+            "autoriza_execucao": False,
+            **({'origem_referencia':'conteudo_indireto', 'prova_afirmacao':False,
+                'prova_equivalencia':False, 'prova_causa':False} if conteudo_indireto else {})}
 
 
 def formatar_evidencia_da_fala(texto: str, mente: Mapping[str, Any]) -> str:

@@ -211,48 +211,72 @@ def test_resultado_tardio_nao_conclui_plano_novo(monkeypatch):
     assert estado.mental["experiencia_corporal"]["pertence_ao_turno_atual"] is False
 
 
-def test_composicao_real_injeta_retrato_no_prompt_e_vincula_na_mesma_transacao(tmp_path):
+def executar_composicao_corporal_simulada(tmp_path, verificacoes: str, *, preferencia: bool = True):
+    """Usa o root instalado com perfil privado e somente serial simulado."""
     import subprocess, sys, os
-    codigo = f'''
-from mente_laylay.integracao import instancia_unica
-adquirir=instancia_unica.adquirir_instancia_unica
-instancia_unica.adquirir_instancia_unica=lambda _:adquirir({str(tmp_path/'instancia')!r})
-import laylay
+    from scripts.tests.instalacao_privada import isolar_base_do_codigo
+    from scripts.tests.test_modo_pessoal_apoio_relato import CODIGO_FACTORY
+
+    codigo = CODIGO_FACTORY.split('for fonte,pedido,rascunho in casos:')[0] + f'''
 from scripts.tests.test_corpo_na_mente import instalar_turno
+from scripts.tests.test_companhia_corporal import motores
 from scripts.tests.test_presenca_corporal_v2 import EspPresenca
-from scripts.tests.test_rosto_oled import estado_emocional
 from mente_laylay.especialistas.rosto_oled_runtime import RostoOledRuntime
-estado=laylay._estado_compartilhado_runtime
-corpo=laylay._corpo_motor_runtime
+corpo=root._corpo_motor_runtime
 esp=EspPresenca()
 rosto=RostoOledRuntime(estado_getter=lambda:estado.retrato_dominio("conversacional"),porta="TESTE",abrir_serial=lambda _:esp)
 corpo.transporte=rosto
 assert rosto.sincronizar()
-assert corpo.companhia.processar()["ok"]
+assert root._configuracao_aplicacao_runtime.companhia_bancada_ao_iniciar() is {preferencia}
+assert corpo.companhia.diagnostico()["ativa"] is False
+ativacao=corpo.companhia.processar()
+assert ativacao["ok"] is {preferencia}, ativacao
+if {preferencia}:
+    assert ativacao["evidencia"] == "concessao_temporaria_no_owner_corporal"
+else:
+    assert ativacao["motivo"] == "companhia_inativa"
+''' + verificacoes + '''
+corpo.companhia.revogar("fim_teste")
+rosto.encerrar()
+assert not motores(esp) and not envios and not efeitos and not falas and not violacoes_isolamento
+sys.__stdout__.write('CORPO_ISOLADO_OK\\n')
+'''
+    env = dict(os.environ, PYTHONIOENCODING="utf8", LAYLAY_ROSTO_PORTA="OFF", LAYLAY_CORPO_PERFIL="rodas_suspensas",
+        LAYLAY_CORPO_COMPANHIA_AO_INICIAR="1", LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR=str(int(preferencia)),
+        LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR="0", LAYLAY_CORPO_WIFI_CONFIG=str(tmp_path/"sem_wifi.json"))
+    r = subprocess.run([sys.executable, "-B", "-c", isolar_base_do_codigo(codigo), str(tmp_path), "[]"],
+        text=True, encoding="utf8", capture_output=True, env=env, timeout=40)
+    assert r.returncode == 0, r.stdout+r.stderr
+    assert 'CORPO_ISOLADO_OK' in r.stdout
+
+
+@pytest.mark.parametrize('preferencia', [False, True], ids=['chave_obsoleta', 'chave_canonica'])
+def test_composicao_real_injeta_retrato_no_prompt_e_vincula_na_mesma_transacao(tmp_path, preferencia):
+    verificacoes = '''
+from scripts.tests.test_rosto_oled import estado_emocional
+from mente_laylay.integracao.preparacao_llm import preparar_payload_llm
+from mente_laylay.integracao.llm_http import compactar_payload_llm_local
 estado.substituir("conversacional",estado_emocional("alegre"))
 assert rosto.sincronizar()
 p=instalar_turno(estado)
-pacote=laylay._contexto_prompt_runtime.preparar_pacote(p.texto_usuario)
+pacote=root._contexto_prompt_runtime.preparar_pacote(p.texto_usuario)
 assert "MEU CORPO AGORA" in pacote.prompt_sistema
 assert "intencao_corporal" in pacote.prompt_sistema
-assert "MEU CORPO AGORA" in laylay._contexto_prompt_runtime.preparar_instrucao_rapida(p.texto_usuario)
-from mente_laylay.integracao.preparacao_llm import preparar_payload_llm
-from mente_laylay.integracao.llm_http import compactar_payload_llm_local
-mensagens=list(pacote.mensagens)+[{{"role":"user","content":p.texto_usuario}}]
+assert "MEU CORPO AGORA" in root._contexto_prompt_runtime.preparar_instrucao_rapida(p.texto_usuario)
+mensagens=list(pacote.mensagens)+[{"role":"user","content":p.texto_usuario}]
 payload=preparar_payload_llm(mensagens,model="qwen3-vl:4b",max_tokens=256,endpoint_local=True)
-assert payload["response_format"]=={{"type":"json_object"}}
+assert payload["response_format"]=={"type":"json_object"}
 compacto=compactar_payload_llm_local(payload)
 assert "MEU CORPO AGORA" in compacto["messages"][-2]["content"]
 assert "fora de fala" in compacto["messages"][-2]["content"]
-plano=laylay._composicao_turno_runtime.atualizar_proposta("resposta_planejada",p)
-assert plano["intencao_corporal"]["sessao"]==rosto.diagnostico()["sessao"]
+plano=root._composicao_turno_runtime.atualizar_proposta("resposta_planejada",p)
+proposta=plano["intencao_corporal"]
+assert proposta["sessao"]==rosto.diagnostico()["sessao"]
+assert proposta["turno_id"]==p.turno_id and proposta["autoriza_execucao"] is False
+assert not proposta.get("resultado")
 assert plano["retrato_corporal"]["companhia_ativa"] is True
-assert corpo.companhia.coordenador is laylay._orquestrador_cooperativo_runtime
+assert corpo.companhia.coordenador is root._orquestrador_cooperativo_runtime
 assert corpo.companhia.coordenador.governanca.registrar_aprendizado is not None
-assert "intenção corporal" in laylay._mapa_habilidades_runtime.contexto_para_prompt("como controla seu corpo e seus motores?")
-corpo.companhia.revogar("fim_teste")
-rosto.encerrar()
+assert "intenção corporal" in root._mapa_habilidades_runtime.contexto_para_prompt("como controla seu corpo e seus motores?")
 '''
-    env = dict(os.environ, LAYLAY_CORPO_PERFIL="rodas_suspensas", LAYLAY_CORPO_COMPANHIA_AO_INICIAR="1", LAYLAY_CORPO_WIFI_CONFIG=str(tmp_path/"sem_wifi.json"))
-    r = subprocess.run([sys.executable, "-"], input=codigo, text=True, capture_output=True, env=env, timeout=40)
-    assert r.returncode == 0, r.stdout+r.stderr
+    executar_composicao_corporal_simulada(tmp_path, verificacoes if preferencia else '', preferencia=preferencia)

@@ -57,6 +57,29 @@ def separar_adjunto_pessoal_inicial(texto: str) -> tuple[str, str]:
     return bruto[:fim], bruto[fim:]
 
 
+def separar_adjunto_papel_inicial(texto: str, *, fonte_literal: str = '') -> tuple[str, str]:
+    """Projeta a matriz de 'como + grupo nominal, oração', sem dar autoridade.
+
+    O chamador conserva o ato integral e fornece a fonte canônica para siglas.
+    Não remove perguntas sem vírgula, predicados finitos ou comparações com se.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+    bruto = str(texto or '')
+    nucleo = remover_conector_discursivo_inicial(bruto)
+    padrao = r'^como\s+(?P<papel>[^,;.!?]{1,100}),\s*(?=\S)'
+    adjunto = re.match(padrao, nucleo, flags=re.I)
+    if adjunto is None:
+        return '', bruto
+    papel = adjunto['papel']
+    literal = re.match(padrao, remover_conector_discursivo_inicial(fonte_literal), flags=re.I)
+    if literal and literal['papel'].casefold() == papel.casefold():
+        papel = literal['papel']
+    if not grupo_nominal_de_papel(papel):
+        return '', bruto
+    fim = bruto.index(nucleo) + adjunto.end()
+    return bruto[:fim], bruto[fim:]
+
+
 def remover_conector_discursivo_inicial(texto: str) -> str:
     """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
 
@@ -120,6 +143,49 @@ def texto_discute_evidencia_textual(texto: str) -> bool:
     ))
 
 
+def _tema_de_redacao_discursiva(texto: str) -> bool:
+    """Tema nominal, com relativa opcional; não absorve outra ordem.
+
+    Nome desconhecido pode ocupar o núcleo do tema, sem resolver entidade ou
+    atribuir-lhe existência. Coordenação só nominal é conteúdo; predicados
+    coordenados ficam com o segmentador canônico, em vez de ganhar esse papel.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    citado = r'(?:"[^"\n]+"|“[^”\n]+”|«[^»\n]+»|\'[^\'\n]+\')'
+    if re.fullmatch(citado, texto):
+        return True
+    if re.search(r'[:,;.!?]', texto):
+        return False
+    grupos = re.split(rf'\s+(?:{PADRAO_COORDENACAO_OPERACIONAL}|mas)\s+', texto)
+    for grupo in grupos:
+        nominal, *relativa = re.split(r'\s+que\s+', grupo, maxsplit=1)
+        for parte in re.split(r'\s+(?:de|do|da|dos|das)\s+', nominal):
+            palavras = parte.split()
+            if palavras and palavras[0] in {'a','o','as','os','um','uma','uns','umas'}:
+                palavras = palavras[1:]
+            if not palavras or not all(re.fullmatch(r'[\w-]+', p) for p in palavras):
+                return False
+            tipos = [consultar_morfologia(p) for p in palavras]
+            if any(t is None for t in tipos):
+                return False
+            if tipos[0] != 0 and not tipos[0] & 1:
+                return False
+            if any(not t & 2 for t in tipos[1:]):
+                return False
+        if relativa:
+            predicado = re.fullmatch(r'(?:se )?(?P<verbo>\w+)(?: (?P<objeto>.+))?', relativa[0])
+            if not predicado or not (consultar_morfologia(predicado['verbo']) or 0) & 256:
+                return False
+            objeto = predicado['objeto']
+            if objeto:
+                objeto = re.sub(r'^(?:numa?|em (?:um|uma)) ', '', objeto)
+                # O complemento desta relativa é nominal, não outra oração,
+                # destino ou adjunto livre. Não aplicar relativa recursiva.
+                if ' que ' in objeto or not _tema_de_redacao_discursiva(objeto):
+                    return False
+    return True
+
+
 def tipo_transformacao_conversacional(texto: str) -> str:
     """Descreve um ato completo sobre a conversa, sem resolver sua fonte.
 
@@ -127,9 +193,31 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     no domínio operacional. O match integral não absorve atos subsequentes;
     o classificador canônico permanece dono da segmentação e da autoridade.
     """
-    t = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
+    literal = re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(texto or ""))).strip().casefold()
+    t = literal
     t = "".join(c for c in unicodedata.normalize("NFD", t) if not unicodedata.combining(c))
-    prefixo = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voce )?(?:pode|poderia|consegue) (?:me )?)?"
+    # Moldura de reformulação não muda alvo/canal. Só a instrução completa
+    # seguinte pode adquirir o papel discursivo; tentar abrir recurso externo
+    # continua fora deste leitor. O original não é reescrito.
+    t = re.sub(r'^(?:agora[, ]+)?(?:tente|tenta|experimente|experimenta) assim:\s*', '', t, count=1)
+    prefixo = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voc[eê] )?(?:pode|poderia|consegue) (?:me )?)?"
+    from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+
+    # O mesmo objeto textual reconhecido pela recuperação também é autoria;
+    # repetir seu conteúdo não autoriza executar o que estiver sendo citado.
+    if pedido_repeticao_literal_da_fala(texto):
+        return "reproducao"
+    # Em responder + com + grupo nominal, o complemento descreve o conteúdo
+    # da resposta, não um recurso a operar. A análise nominal conserva
+    # adjetivos e concordância sem enumerar cores, números ou outros temas.
+    # Match integral: destinos e orações coordenadas ficam com o segmentador.
+    resposta_nominal = re.fullmatch(
+        prefixo + r"(?:responda|responde|responder) com "
+        r"(?P<conteudo>(?:um|uma) [^.!?;,:]+)[.!?]*", literal,
+    )
+    if resposta_nominal and grupo_nominal_de_papel(resposta_nominal['conteudo']):
+        return "formato_resposta"
     resumo = (
         r"(?:resuma|resume|resumir|sintetize|sintetiza|sintetizar) "
         r"(?:(?:a ideia|o tema) d[ae] )?"
@@ -148,6 +236,11 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         return "resumo"
     if re.fullmatch(prefixo + comparacao, t):
         return "comparacao"
+    transicao = re.fullmatch(prefixo + r"(?:mude|muda|mudar|troque|troca|trocar) de "
+                           r"(?:assunto|tema|t[oó]pico)(?: para (?P<tema>[^,:;.!?]+?))?"
+                           r"(?:[, ]+por favor)?[.!?]*", literal)
+    if transicao and (not transicao['tema'] or _tema_de_redacao_discursiva(transicao['tema'])):
+        return "transicao_tematica"
     redacao = (
         r"(?:escreva|escreve|escrever|redija|redige|redigir|"
         r"formule|formula|formular|reescreva|reescreve|reescrever) "
@@ -160,12 +253,76 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     )
     if re.fullmatch(prefixo + redacao, t):
         return "redacao"
+    # Enriquecer conteúdo no próprio discurso é autoria. Destino e objeto
+    # precisam estar integralmente delimitados: escrever em arquivo/e-mail
+    # ou uma ordem coordenada não adquirem este papel por mencionar história.
+    elemento = r'(?:reviravolta|dialogo|piada|pergunta|frase|detalhe|personagem)'
+    atributo = r'(?:inesperad[oa]|engracad[oa]|curt[oa]|nov[oa]|divertid[oa]|estranh[oa])'
+    enriquecimento = (
+        r"(?:acrescente|acrescenta|acrescentar|adicione|adiciona|adicionar|inclua|inclui|incluir) "
+        r"(?:um|uma|esse|essa|este|esta) " + elemento + rf'(?: {atributo})? '
+        r"(?:ness[ae]|nest[ae]|n[ao]|a|ao) "
+        r"(?:historia|cena|conversa|narrativa|conto|resposta|texto)[.!?]*"
+    )
+    if re.fullmatch(prefixo + enriquecimento, t):
+        return "redacao"
+    # Continuação/relato do próprio conteúdo textual, com extensão e tom
+    # opcionais. O objeto discursivo e o canal fecham o ato; recurso externo
+    # ou coordenação de outra operação não são consumidos pelo match.
+    objeto_discursivo = (
+        r"(?:a|o|as|os|essa|esse|esta|este|nossa|nosso) "
+        r"(?:mesma? )?(?:cena|historia|narrativa|conto|dialogo|falas?)"
+    )
+    extensao_discursiva = (
+        r"(?: com| em) (?:uma?|duas?|tres|quatro|cinco|poucas?|\d+) "
+        r"(?:falas?|frases?|paragrafos?|linhas?)"
+        r"(?:, uma sua e uma minha)?"
+    )
+    continuacao = (
+        r"(?:(?:apenas|so|somente) )?"
+        r"(?:continue|continua|continuar|conte|conta|contar) "
+        + objeto_discursivo
+        + rf"(?:{extensao_discursiva})?"
+        + r"(?:,? em tom (?:brincalhao|divertido|engracado|serio|leve))?"
+        + r"(?: (?:aqui|no chat|nesta conversa))?"
+        + r"(?:, sem executar (?:comandos|nada|nenhuma acao))?[.!?]*"
+    )
+    if re.fullmatch(prefixo + continuacao, t):
+        return "redacao"
+    quantidade = r'(?:uma?|duas?|tres|quatro|cinco|poucas?|\d+)'
+    extensao = rf'(?:com|em) {quantidade} (?:falas?|frases?|paragrafos?|linhas?|palavras?)'
+    conteudo = rf'com (?:um|uma|esse|essa|este|esta) {elemento}(?: {atributo})?'
+    estilo = rf'(?:em tom|de (?:forma|maneira|modo)) {atributo}'
+    componente = rf'(?:{extensao}|{conteudo}|{estilo}|aqui|no chat|nesta conversa)'
+    # Conteúdo e formato são componentes combináveis, não frases históricas.
+    if re.fullmatch(prefixo + r'(?:continue|continua|continuar|conte|conta|contar) '
+            + objeto_discursivo + rf'(?:,? (?:e )?{componente})+[.!?]*', t):
+        return 'redacao'
+    criacao = re.fullmatch(prefixo + r'(?:me )?(?:escreva|escreve|escrever|redija|redige|redigir|conte|conta|contar) '
+        r'(?:uma?|a|o|essa|esse|esta|este) (?:mini[- ]?)?'
+        r'(?:historia|conto|cena|narrativa|aventura|piada)'
+        + rf'(?: {atributo})?(?: sobre (?P<tema>.+?))?'
+        + rf'(?:\. {quantidade} (?:frases?|paragrafos?|linhas?|palavras?)(?:, por favor)?)?[.!?]*', t)
+    if criacao and (not criacao['tema'] or _tema_de_redacao_discursiva(criacao['tema'])):
+        return 'redacao'
     adjetivo_forma = r"(?:breve|curta|objetiva|direta)"
+    # Quantificadores limitam a extensão do artefato textual, sem trocar
+    # o alvo da instrução por uma operação. Consumir o grupo inteiro mantém
+    # destinos externos e ordens coordenadas fora deste contrato.
+    numero_extensao = r'(?:uma?|dois|duas|tres|quatro|cinco|poucas?|\d+)'
+    quantidade_extensao = (
+        rf'(?:(?:ate|no maximo|pelo menos|ao menos|no minimo) {numero_extensao}'
+        rf'|entre {numero_extensao} e {numero_extensao}'
+        rf'|{numero_extensao}(?: ou {numero_extensao})?)'
+    )
     modificador_forma = (
-        r"(?:em (?:uma?|duas?|tres|quatro|cinco|poucas?|\d+) "
-        r"(?:frases?|palavras?|paragrafos?)|"
+        rf"(?:(?:(?:em|com) {quantidade_extensao}|entre {numero_extensao} e {numero_extensao}|numa?) "
+        r"(?:frases?|palavras?|paragrafos?|linhas?)|"
         rf"de (?:forma|maneira) {adjetivo_forma}(?: e {adjetivo_forma})*|"
-        r"brevemente|objetivamente|diretamente|sem (?:metaforas?|rodeios))"
+        r"brevemente|objetivamente|diretamente|naturalmente|espontaneamente|"
+        r"com (?:humor|naturalidade|espontaneidade)|"
+        r"(?:(?:so|apenas|somente) )?com (?:a fala|a resposta|o texto)|"
+        r"sem (?:metaforas?|rodeios))"
     )
     canal_atual = r"(?:aqui|no chat|nesta conversa)"
     ligacao_forma = r"(?:,\s*(?:e )?| e | )"
@@ -672,6 +829,13 @@ def localizar_enunciacao_avaliativa(texto: str) -> re.Match[str] | None:
         # ou o operador avaliativo da fala externa. Preservar os offsets.
         projecao[inicio:fim+1] = '\ufffc'*(fim+1-inicio)
     externo = ''.join(projecao)
+    contraste = re.compile(
+        r'(?P<sujeito>(?P<artigo>o|a|os|as)\s+[^,;.!?]+?)\s+n[aã]o\s+'
+        r'(?P<predicado>precisa|precisam|necessita|necessitam)\s+de\s+'
+        r'(?P<preterido>[^,;.!?]+),\s*(?:mas\s+)?'
+        r'(?P<retomada>[^,;.!?]+?)\s+(?P=predicado)\s+de\s+'
+        r'(?P<preferido>[^,;.!?]+)', re.I,
+    )
     autora = r'(?:eu\s+)?(?:n[aã]o\s+)?'
     conteudo = r'[\w\ufffc][^.!?;\n]*'
     padroes = (
@@ -709,6 +873,22 @@ def localizar_enunciacao_avaliativa(texto: str) -> re.Match[str] | None:
             for padrao in padroes:
                 m = re.compile(padrao,re.I).fullmatch(externo,comeco,fim)
                 if m:return m
+            # Priorizar Y em vez de X também expressa uma posição, sem
+            # exigir primeira pessoa. Conferir a mesma entidade e os dois
+            # complementos nominais; citação, pergunta e condição não
+            # recebem a voz da autora. Isso não certifica o conteúdo.
+            m = contraste.fullmatch(externo, comeco, fim)
+            if m:
+                from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+
+                artigo = m['artigo'].casefold()
+                pronome = {'o': 'ele', 'a': 'ela', 'os': 'eles', 'as': 'elas'}[artigo]
+                plural = artigo in {'os', 'as'}
+                if (m['retomada'].casefold() in {m['sujeito'].casefold(), pronome}
+                        and m['predicado'].casefold().endswith('m') == plural
+                        and all(grupo_nominal_de_papel(m[chave])
+                                for chave in ('sujeito', 'preterido', 'preferido'))):
+                    return m
     return None
 
 
@@ -755,6 +935,28 @@ def enunciacao_avaliativa_de_atividade(texto: str) -> bool:
         if tipo is None or nucleo or (tipo!=0 and not tipo&1):return False
         nucleo = True
     return True
+
+
+def texto_pede_projecao_de_consequencia(texto: str) -> bool:
+    """Resultado aberto condicionado não exige posição avaliativa do autor.
+
+    Recorte de predicados de acontecimento, não leitura genérica de qualquer
+    futuro ou de palavras terminadas em 'ria'. Não concede ficção, fontes ou
+    autorização; outra pergunta precisa ser qualificada em seu próprio ato.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    base = normalizar_texto_basico(texto_fora_de_citacoes(texto))
+    predicado = r'(?:aconteceria|ocorreria|mudaria|resultaria|sucederia)'
+    leitura = re.fullmatch(r'(?:o que|oque) (?:(?:voce|vc|tu) )?'
+        r'(?:acha|pensa) que ' + predicado + r' se (?P<condicao>[^?!.;:]+)[?!.]?', base)
+    if leitura is None:
+        return False
+    condicao = leitura['condicao']
+    # Outra consulta avaliativa dentro do mesmo trecho não é resultado
+    # aberto. Abstém-se sem reinterpretar seu sentido ou apagar a obrigação.
+    return not (texto_pede_opiniao(condicao) or re.search(
+        r'\b(?:acha|pensa|opina|prefere|opiniao)\b|'
+        r'\b(?:seria|e|parece|pareceria) (?:bom|boa|ruim|melhor|pior)\b', condicao))
 
 
 def texto_pede_opiniao(texto: str) -> bool:

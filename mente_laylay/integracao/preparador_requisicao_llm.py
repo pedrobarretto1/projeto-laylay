@@ -11,6 +11,8 @@ from mente_laylay.integracao.preparacao_llm import (
     texto_pede_contexto_pagina,
 )
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.cognicao.modelo_corporal import projetar_protocolo_corporal_para_schema_negociado
+from mente_laylay.personalidade.prompt_voz_unica import projetar_base_para_schema_negociado
 from mente_laylay.integracao.registro_conversa_llm import (
     PedidoModelo,
     RequisicaoTransporteLLM,
@@ -117,6 +119,16 @@ class PreparadorRequisicaoLLMRuntime:
         if pedido.tipo_chamada == "presenca_evento":
             # Contrato tipado do host, nunca inferido de conteúdo user/página.
             payload["_laylay_preservar_evento_sistema"] = True
+        if pedido.contrato_saida is not None:
+            for indice, mensagem in enumerate(payload["messages"]):
+                conteudo = mensagem.get("content")
+                if mensagem.get("role") != "system" or not isinstance(conteudo, str):
+                    continue
+                projetado = projetar_protocolo_corporal_para_schema_negociado(conteudo)
+                if indice == 0:
+                    projetado = projetar_base_para_schema_negociado(projetado)
+                if projetado != conteudo:
+                    payload["messages"][indice] = {**mensagem, "content": projetado}
         if pedido.contexto_canal is not None:
             # A seleção histórica pode descartar sistemas auxiliares. O
             # enquadramento nativo do canal não é histórico, página ou fala.

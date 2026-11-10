@@ -253,11 +253,19 @@ def recuperacao_instalada(tmp_path_factory):
                 root._verificar_fala_turno_mente = verificar_original
                 RegistroModeloLLM.executar = lambda self, pedido: ResultadoModelo("", False)
             variantes = []
-            for consulta in ('Por que você disse "' + fala_original + '"?',
-                             'Você pode explicar "' + fala_original + '"?'):
+            for consulta, retrospectiva in (
+                ('Por que você disse "' + fala_original + '"?', True),
+                ('Qual o motivo de você dizer "' + fala_original + '"?', True),
+                ('Você pode explicar "' + fala_original + '"?', False),
+            ):
                 root._iniciar_planejamento_turno(consulta, origem="teste_variante_retrospectiva")
                 variante = estado.retrato_dominio("mental")
+                from mente_laylay.memoria_mental.registro_semantico import recuperar_evidencia_da_fala
                 variantes.append({"texto": consulta, "turno": variante["turno_atual"],
+                    "retrospectiva": retrospectiva,
+                    "evidencia_recuperada": recuperar_evidencia_da_fala(consulta, variante),
+                    "comandos": variante["plano_turno_atual"]["comandos"],
+                    "requer_execucao": variante["plano_turno_atual"]["requer_execucao"],
                     "contrato": variante["plano_turno_atual"]["contrato_fala"]})
             saida["casos"][nome]["variantes"] = variantes
         # Exercita o contrato de entrega também fora da pergunta histórica.
@@ -359,6 +367,24 @@ def test_qwen_real_entrega_realizacao_negociada_antes_da_revisao_final(nome, rec
     assert not turno['mental_depois']['plano_turno_atual']['comandos']
 
 
+def _conferir_geracao_historica_unica(caso):
+    """Geração é anterior à entrega; o resumo diário não é outra resposta."""
+    turno = caso['turno_completo']
+    consultas = [(pedido, resposta) for mensagens, pedido, resposta in zip(
+        turno['chamadas'], turno['pedidos_modelo'], turno['respostas_modelo'], strict=True)
+        if mensagens[-1]['content'] == caso['pergunta']]
+    assert len(consultas) == 1, 'A mesma consulta deve gerar uma única realização histórica.'
+    pedido, resposta = consultas[0]
+    assert pedido['contexto_fechado']
+    assert pedido['response_format'] == caso['projecoes']['normal']['response_format']
+    assert resposta['sucesso']
+    autoria = json.loads(resposta['texto'])
+    assert autoria['fala'] == turno['textos_novos'][0]
+    assert autoria['comandos'] == []
+    from mente_laylay.cognicao.suporte_autoria import conferir_suporte_proposicoes
+    assert conferir_suporte_proposicoes(autoria)[1]['cobertura_textual'] is True
+
+
 @pytest.mark.parametrize('rota', ['normal', 'rapido'])
 @pytest.mark.parametrize('nome', ['composto_integral', 'composto_integral_modelo'])
 def test_historico_integral_instalado_preserva_oito_receipts_e_suporte(nome, rota, recuperacao_instalada):
@@ -383,15 +409,10 @@ def test_historico_integral_instalado_preserva_oito_receipts_e_suporte(nome, rot
     turno = caso['turno_completo']
     assert turno['textos_novos'] == [fala]
     assert not turno['mental_depois']['plano_turno_atual']['comandos']
-    respostas = [json.loads(r['texto']) for r in turno['respostas_modelo'] if r['sucesso']]
-    respostas_autorais = [r for r in respostas if r.get('fala') == fala]
-    if nome.endswith('_modelo'):
-        assert respostas_autorais
-    else:
-        assert not turno['chamadas'], 'controle: esse texto conclui no pré-fluxo instalado'
-    for resposta in respostas_autorais:
-        from mente_laylay.cognicao.suporte_autoria import conferir_suporte_proposicoes
-        assert conferir_suporte_proposicoes(resposta)[1]['cobertura_textual'] is True
+    # O controle antigo de zero geração dependia da palavra "resultado"
+    # citada ser interceptada como comentário do último volume. Perguntar
+    # pelos receipts exige a mesma geração fechada nos dois compostos.
+    _conferir_geracao_historica_unica(caso)
 
 
 def test_qwen_real_gera_realizacao_integral_em_varias_unidades(recuperacao_instalada):
@@ -495,17 +516,37 @@ def test_perguntas_retrospectivas_naturais_usam_o_mesmo_contrato(recuperacao_ins
         for variante in caso["variantes"]:
             assert variante["turno"]["autoriza_execucao"] is False
             assert variante["turno"]["modalidade"] == "pergunta"
+            assert variante["contrato"]["autoriza_execucao"] is False
+            assert variante["comandos"] == [] and variante["requer_execucao"] is False
+            recuperada = variante["evidencia_recuperada"]
+            assert recuperada and recuperada['autoriza_execucao'] is False
+            assert [r["id_solicitacao"] for r in recuperada["falas"][0]["resultados"]] == caso["ids_esperados"]
+            if not variante["retrospectiva"]:
+                # Explicar o literal não obriga auditar efeitos. A fonte
+                # continua recuperável; esta fixture só planeja a variante,
+                # sem provar que seu sentido foi respondido pelo runtime.
+                assert not {'evidencia_fala_historica', 'explicacao_ocorrencia',
+                    'explicacoes_historicas_por_ato', 'revisao_alegacao'}.intersection(variante["contrato"])
+                continue
             evidencia = variante["contrato"].get("evidencia_fala_historica")
             assert evidencia, "Pergunta retrospectiva perdeu os receipts por causa da modalidade."
             assert [r["id_solicitacao"] for r in evidencia["falas"][0]["resultados"]] == caso["ids_esperados"]
 
 
 def test_entrega_textual_no_pre_fluxo_nao_deve_cair_em_segunda_publicacao(recuperacao_instalada):
-    # RED histórico independente da fidelidade factual: o aceite textual deve
-    # concluir o pré-fluxo mesmo quando a porta de voz devolve False.
-    turno = recuperacao_instalada["casos"]["composto_arquivos_email"]["turno_completo"]
+    # ID histórico preservado: este mesmo caso passou à realização fechada,
+    # pois a pergunta já não é capturada como comentário do último volume.
+    # Continua provando publicação única com voz recusada. A entrega no
+    # pré-fluxo tem controles próprios por canal logo abaixo; aqui a única
+    # geração legítima precede a publicação, sem resposta adicional.
+    caso = recuperacao_instalada["casos"]["composto_arquivos_email"]
+    turno = caso["turno_completo"]
+    evidencia = caso['plano_pergunta']['contrato_fala']['evidencia_fala_historica']
+    assert [r['id_solicitacao'] for r in evidencia['falas'][0]['resultados']] == caso['ids_esperados']
     assert len(turno["textos_novos"]) == 1
-    assert not turno["chamadas"], "Não gerar outra resposta depois da conclusão observável."
+    _conferir_geracao_historica_unica(caso)
+    assert turno['mental_depois']['ultima_acao_contrato']['id_solicitacao'] == 'volume-intermediario'
+    assert not turno['mental_depois']['plano_turno_atual']['comandos']
 
 
 @pytest.mark.parametrize("nome", ["texto_sem_voz", "voz_sem_texto", "nenhum_canal", "deduplicacao_voz_real"])

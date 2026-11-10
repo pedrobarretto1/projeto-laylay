@@ -12,6 +12,7 @@ import unicodedata
 from typing import Any, Dict
 
 from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
 
 
 def _normalizar(texto: str) -> str:
@@ -50,6 +51,20 @@ def analisar_ato_social(
             "evidencias": ["moldura_metalinguistica"],
         }
 
+    externo = texto_fora_de_citacoes(bruto)
+    partes = enunciados_discursivos(externo)
+    if len(partes) > 1:
+        # A pergunta e o destinatário precisam pertencer ao mesmo enunciado
+        # que descreve o estado. A pontuação do pedido vizinho não conta.
+        atos = [analisar_ato_social(parte, mente=estado) for parte in partes]
+        for tipo in ("WELLBEING", "WELLBEING_REPLY"):
+            for ato in atos:
+                if ato.get("tipo") == tipo:
+                    return ato
+        return {}
+    bruto = externo
+    base = re.sub(r"^(?:oi|ola|opa|bom dia|boa tarde|boa noite)(?:[, ]+(?:lay|laylay))?[, ]+",
+                  "", _normalizar(externo), count=1)
     if re.search(r"[,;].+\?\s*$", base):
         return {
             "tipo": "COMPOSTO", "confianca": 0.98,
@@ -61,8 +76,10 @@ def analisar_ato_social(
     # esse referente opcional fazia perguntas metalinguísticas como "Como eu
     # perguntaria se o Opera está aberto?" virarem WELLBEING apenas porque
     # continham ``como`` e ``está`` em pontos diferentes da frase.
-    pergunta_estado_como = bool(re.search(
-        r"^como\s+(?:(?:e\s+)?que\s+)?(?:voce|tu|a laylay|lay|laylay)\s+(?:esta|ta)\b",
+    pessoa = r"(?:voce|tu|a laylay|lay|laylay)"
+    pergunta_estado_como = bool(re.fullmatch(
+        rf"como\s+(?:(?:e\s+)?que\s+)?(?:{pessoa}\s+(?:esta|ta|vai)|vai\s+{pessoa})"
+        r"(?:\s+(?:se sentindo|por ai|hoje|agora)){0,2}[?!.]*",
         base,
     ))
     vocabulario_estado = bool(re.search(
@@ -79,24 +96,32 @@ def analisar_ato_social(
     # Somente modificadores lexicais pertencem ao intervalo do estado.
     estado_vinculado = any(all((consultar_morfologia(p) or 0)&64
         for p in m['modificadores'].split()) for m in predicados)
-    estrutura_estado = bool(estado_vinculado or re.search(r"\btudo\s+bem\b", base))
+    bem = re.search(r"\btudo\s+bem\b", base)
+    if bem and re.match(r"\s+(?:com\s+)?(?:voce|tu|lay|laylay)\s+\w", base[bem.end():]) and not re.fullmatch(
+            r"\s+(?:com\s+)?(?:voce|tu)\s+(?:lay|laylay)[?!.]*", base[bem.end():]):
+        # O complemento pode ser uma ação consentida ("com você deixar").
+        # Essa forma não é a pergunta curta sobre o estado da interlocutora.
+        bem = None
+    estrutura_estado = bool(estado_vinculado or bem)
     if not ((vocabulario_estado and estrutura_estado) or pergunta_estado_como):
         return {}
 
     pergunta_grafica = "?" in bruto
     inicio_interrogativo = bool(re.match(r"^(?:como|e voce|e tu)\b", base))
     referencia_laylay = bool(re.search(
-        r"\b(?:voce|tu|lay|laylay|a laylay|com voce|do seu lado)\b",
+        rf"\b(?:{pessoa}|com voce|do seu lado)\b",
         base,
     ))
-    primeira_pessoa = bool(re.search(
+    recortes_estado = [r for r in re.split(r'[.!?;]+', base)
+        if re.search(r'\b(?:bem|mal|tranquil[oa]|feliz|triste|cansad[oa])\b', r)]
+    primeira_pessoa = any(re.search(
         r"\b(?:eu|comigo|meu lado|por aqui|aqui comigo)\b|^(?:estou|to)\b",
-        base,
-    ))
-    afirmacao_explicita = bool(re.search(
+        r.strip(),
+    ) for r in recortes_estado)
+    afirmacao_explicita = any(re.search(
         r"\b(?:sim|por aqui|do meu lado|comigo|estou|eu to|eu estou)\b",
-        base,
-    ))
+        r,
+    ) for r in recortes_estado)
     contexto_resposta = _pergunta_anterior_sobre_pedro(estado)
 
     pontos_pergunta = 0.0

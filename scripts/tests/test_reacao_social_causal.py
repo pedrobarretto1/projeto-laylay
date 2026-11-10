@@ -176,11 +176,18 @@ def test_prompt_publica_somente_expressao_causal_vigente(compacto):
 
 
 def test_composicao_instalada_publica_causa_antes_da_expressao_e_rosto(tmp_path):
+    from scripts.tests.observacao_tipadas import isolar_codigo_observado
+
     root = Path(__file__).resolve().parents[2]
     saida = tmp_path / "receipt.json"
+    codigo = isolar_codigo_observado(
+        "from scripts.analises.validar_reacao_social import coletar\n"
+        "from scripts.tests.observacao_tipadas import projetar_tipo_observado\n"
+        "import json\n"
+        f"Path({str(saida)!r}).write_text(json.dumps(coletar(), ensure_ascii=False, "
+        "default=projetar_tipo_observado), encoding='utf-8')\n", tmp_path)
     processo = subprocess.run([
-        sys.executable, str(root / "scripts/analises/validar_reacao_social.py"),
-        "--saida", str(saida),
+        sys.executable, "-B", "-c", codigo,
     ], cwd=root, env=dict(os.environ, PYTHONIOENCODING="utf-8", GMAIL_USER=" ",
         GMAIL_APP_PASSWORD=" ", LAYLAY_IOT_MODO="simulado"),
         capture_output=True, text=True, encoding="utf-8", timeout=120)

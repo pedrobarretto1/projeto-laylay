@@ -48,6 +48,64 @@ def _sobreposicao(a: str, b: str, *, somente_conteudo: bool = False) -> float:
     return len(ta & tb) / max(1, min(len(ta), len(tb)))
 
 
+_ABERTURA_DE_NOVO_TEMA = re.compile(
+    r"^(?:(?:mudando|trocando) de (?:assunto|tema|t[oó]pico)|"
+    r"vamos fazer uma mudan[cç]a(?: completa)? de (?:cen[aá]rio|assunto|tema))"
+    r"\s*:\s*(?=[^\W\d_])", re.IGNORECASE,
+)
+_RETOMADA_DE_TEMA = re.compile(
+    r"^(?:voltando|retomando)\s+(?:a|ao|à|o|os|as|aquele|aquela)\s+[^,;.!?]+,|"
+    r"^antes\s+de\s+(?:mudar|trocar)\s+de\s+(?:assunto|tema|t[oó]pico)\s*,|"
+    r"^(?:o que|qual|quais)\b[^,;.!?]*\bvoc[eê]\s+(?:disse|falou|respondeu|prop[oô]s|sugeriu)\b",
+    re.IGNORECASE,
+)
+
+
+def _consultas_discursivas(texto: str) -> tuple[str, ...]:
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos
+
+    return tuple(_ABERTURA_DE_NOVO_TEMA.sub("", fala)
+                 for fala in (texto, *enunciados_discursivos(texto)))
+
+
+def inicio_contexto_discursivo(mensagens: list[Any], indice_atual: int) -> int:
+    """Localiza a transição explícita para selecionar contexto, sem apagar fontes."""
+    from mente_laylay.cognicao.referencias_linguagem import (
+        enunciados_discursivos, pedido_consulta_fala_usuario,
+        pedido_repeticao_literal_da_fala, pedido_recordacao_dialogo, referencia_explicacao_historica,
+        texto_fora_de_citacoes,
+    )
+
+    if not 0 <= indice_atual < len(mensagens) or not isinstance(mensagens[indice_atual], dict):
+        return 0
+
+    def introduz_tema(texto: str) -> bool:
+        # Uma menção, negativa, reticências ou fala citada não abrem tema.
+        return any(_ABERTURA_DE_NOVO_TEMA.match(fala)
+                   for fala in enunciados_discursivos(texto_fora_de_citacoes(texto)))
+
+    atual = str(mensagens[indice_atual].get("content") or "")
+    # A consulta retrospectiva pode ser um dos atos do turno, inclusive
+    # depois do marcador. Ela reabre a busca, sem atestar nenhuma lembrança.
+    for consulta in _consultas_discursivas(atual):
+        if (pedido_consulta_fala_usuario(consulta) or pedido_repeticao_literal_da_fala(consulta)
+                or pedido_recordacao_dialogo(consulta)
+                or referencia_explicacao_historica(consulta)
+                or _RETOMADA_DE_TEMA.match(texto_fora_de_citacoes(consulta))):
+            return 0
+        if re.match(r"^antes\s+disso\s*,", consulta, re.IGNORECASE) and introduz_tema(atual):
+            # "Disso" sozinho pode apontar para algo do tema ativo. A
+            # mudança na própria fala fornece a âncora para voltar além dele.
+            return 0
+    for indice in range(indice_atual, -1, -1):
+        item = mensagens[indice]
+        if not isinstance(item, dict) or str(item.get("role") or "").casefold() != "user":
+            continue
+        if introduz_tema(str(item.get("content") or "")):
+            return indice
+    return 0
+
+
 def selecionar_fontes_dialogo(
     mensagens: list[Dict[str, Any]], *, indice_usuario_atual: int,
 ) -> list[int]:
@@ -64,8 +122,10 @@ def selecionar_fontes_dialogo(
     """
     if not 0 <= indice_usuario_atual < len(mensagens):
         return []
-    from mente_laylay.cognicao.referencias_linguagem import pedido_consulta_fala_usuario
-    if pedido_consulta_fala_usuario(str(mensagens[indice_usuario_atual].get('content') or '')):
+    from mente_laylay.cognicao.referencias_linguagem import pedido_consulta_fala_usuario, pedido_recordacao_dialogo
+    atual = str(mensagens[indice_usuario_atual].get('content') or '')
+    if any(pedido_consulta_fala_usuario(consulta) or pedido_recordacao_dialogo(consulta)
+           for consulta in _consultas_discursivas(atual)):
         # O referente é o ato de dizer: palavras da pergunta podem não estar
         # na declaração. Recuperar o intervalo inteiro não classifica seu
         # conteúdo e impede que outra pergunta vire âncora no lugar da fonte.

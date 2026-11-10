@@ -366,12 +366,14 @@ _OPERACOES_RESULTADO = (
     'retomar', 'ajustar', 'mover', 'copiar', 'renomear', 'remover', 'excluir',
 )
 _INFINITIVOS_RESULTADO = '(?:' + '|'.join(_OPERACOES_RESULTADO) + ')'
+_NEGACAO_RESULTADO_FINITO = (
+    r"\bn[aã]o\s+(?:(?:o|a|os|as)\s+)?"
+    r"(?:abriu|fechou|salvou|enviou|apagou|ligou|desligou|executou|agendou|tocou|reproduziu|funcionou|"
+    r"foi\s+(?:salv[oa]|enviad[oa]|apagad[oa]|criad[oa]|abert[oa]|fechad[oa]|agendad[oa]))\b"
+)
 _FALHA_OPERACIONAL = re.compile(
     rf"\bn[aã]o\s+consegui\s+{_INFINITIVOS_RESULTADO}\b|"
-    r"\bn[aã]o\s+(?:abriu|fechou|salvou|enviou|apagou|ligou|desligou|"
-    r"executou|agendou|tocou|reproduziu|funcionou|"
-    r"foi\s+(?:salv[oa]|enviad[oa]|apagad[oa]|criad[oa]|abert[oa]|"
-    r"fechad[oa]|agendad[oa]))\b|"
+    rf"{_NEGACAO_RESULTADO_FINITO}|"
     r"\b(?:abertura|envio|grava[cç][aã]o|execu[cç][aã]o|opera[cç][aã]o|"
     r"comando|conex[aã]o|download|agendamento)\s+falhou\b|"
     r"\b(?:foi|houve|ocorreu|deu)\s+(?:s[oó]\s+)?(?:um\s+)?"
@@ -409,6 +411,40 @@ _RESULTADO_PERIFRASTICO = re.compile(
     rf'(?:(?:eu|n[oó]s)\s+)?consegui(?:mos)?\s+(?P<operacao>{_INFINITIVOS_RESULTADO})\b', re.I)
 _COORDENACAO_RESULTADO = re.compile(
     rf'(?:,\s*|\s+e\s+(?:depois\s+)?)(?P<operacao>{_INFINITIVOS_RESULTADO})\b', re.I)
+_DESTINATARIO_RELATIVO_LIGACAO = re.compile(
+    r'\b(?:o|a|do|da|um|uma)\s+(?:amig[oa]|vizinh[oa]|irm[aã]o?|colega|parent[ea])\s+'
+    r'(?:que|(?:para|pra)\s+quem)\s+el[ea]\s*$', re.I,
+)
+_FIM_RELATIVA_LIGACAO = re.compile(
+    r'\s*(?:(?:ontem|hoje|anteontem|(?:h[aá]|faz)\s+'
+    r'(?:(?:uma?|duas?|tr[eê]s|\d+)\s+)?(?:dias?|semanas?|m[eê]s(?:es)?|anos?))\s*)?'
+    r'(?=$|[.!?,;:])', re.I,
+)
+_SUJEITO_ATO_DISCURSIVO = re.compile(
+    r"\s*(?:(?:s[oó]|apenas|somente)\s+)?(?:"
+    r"(?:(?:o\s+ato\s+de)\s+)?(?:explicar|descrever|interpretar|citar|traduzir)"
+    r"(?:\s+(?:isso|isto|aquilo))?|"
+    r"(?:a|essa|esta)\s+(?:explica[cç][aã]o|descri[cç][aã]o|interpreta[cç][aã]o|"
+    r"cita[cç][aã]o|tradu[cç][aã]o))\s+",
+    re.I,
+)
+
+
+def _nega_efeito_do_ato_discursivo(texto: str, predicado: re.Match[str]) -> bool:
+    """Uma negação com sujeito discursivo só limita o efeito da explicação."""
+    sujeito = re.split(r"[.!?;:]|\b(?:mas|e)\b", texto[:predicado.start()], flags=re.I)[-1]
+    return (predicado.group("falha") is not None
+            and re.fullmatch(_NEGACAO_RESULTADO_FINITO, predicado[0], re.I) is not None
+            and _SUJEITO_ATO_DISCURSIVO.fullmatch(sujeito) is not None)
+
+
+def _relativa_de_contato(texto: str, predicado: re.Match[str]) -> bool:
+    """O antecedente humano ocupa o objeto da ligação nesta oração relativa."""
+    return (
+        re.fullmatch(r'(?:n[aã]o\s+)?ligou', predicado[0], re.I) is not None
+        and _DESTINATARIO_RELATIVO_LIGACAO.search(texto, 0, predicado.start()) is not None
+        and _FIM_RELATIVA_LIGACAO.match(texto, predicado.end()) is not None
+    )
 
 
 def _complemento_discursivo(operacao: str, objeto: str) -> bool:
@@ -456,10 +492,25 @@ def _resultados_perifrasticos(texto: str) -> list[_ResultadoNarrado]:
 def _resultados_narrados(texto: str) -> list[_ResultadoNarrado]:
     """Representação única consumida pela revisão e pela guarda de entrega."""
     perifrases = _resultados_perifrasticos(texto)
+    def estado_discursivo(m: re.Match[str]) -> bool:
+        if m.group('estado') is None:
+            return False
+        # O predicado pode ter o mesmo adjetivo de um recurso operacional.
+        # Só o sujeito discursivo nominal inteiro muda de classe; nomes de
+        # arquivos, qualificações e outro predicado não herdam esse papel.
+        sujeito = re.split(r'[.!?,;:]|\b(?:mas|e)\b', texto[:m.start()], flags=re.I)[-1]
+        # Complementos coordenados podem reutilizar este mesmo predicado
+        # ('e o arquivo também'). Sem fim de oração, não dispensar evidência.
+        cauda = re.split(r'[.!?;]', texto[m.end():], maxsplit=1)[0]
+        return re.fullmatch(r'\s*(?:o|a|esse|essa|este|esta)\s+'
+            r'(?:assunto|tema|conversa|debate|discuss[aã]o)\s*', sujeito, re.I) is not None and not cauda.strip()
+
     resultados = [_ResultadoNarrado(m.start(), m.end(),
         'falha' if m.group('falha') is not None else 'estado' if m.group('estado') is not None else 'sucesso',
         m.start()) for m in _RESULTADO_NARRADO.finditer(texto)
-        if not any(p.inicio <= m.start() and m.end() <= p.fim for p in perifrases)]
+        if not any(p.inicio <= m.start() and m.end() <= p.fim for p in perifrases)
+        and not estado_discursivo(m) and not _relativa_de_contato(texto, m)
+        and not _nega_efeito_do_ato_discursivo(texto, m)]
     resultados.extend(p for p in perifrases if p.externo)
     return sorted(resultados, key=lambda p: (p.inicio, p.fim))
 
@@ -492,8 +543,9 @@ def detectar_resultados_operacionais_sem_evidencia(
     if not _resultados_narrados(str(fala or "")):
         return []
     contrato = dict(plano or {})
-    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
-    if criacao_ficcional_vigente(contrato) is not None and fala_ficcional_delimitada(str(fala)):
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
+    criacao = criacao_ficcional_vigente(contrato)
+    if criacao is not None and fala_ficcional_conferida(str(fala), criacao=criacao):
         return []
     usuario = str(contrato.get("texto_usuario") or "")
     fontes = []
@@ -505,9 +557,9 @@ def detectar_resultados_operacionais_sem_evidencia(
         ):
             fontes.append(_texto_alegacao(parte))
     fontes_receipt: dict[bool, list[str]] = {True: [], False: []}
+    estados_ja_abertos: set[str] = set()
     for item in _comandos_normalizados(contrato):
         # Os campos de capacidade são documentação, não observações do evento.
-        # Só o detalhe de resultado do executor pode servir de fonte.
         if item.get("origem") != "executor":
             continue
         sucesso = item.get("confirmado") is True
@@ -519,6 +571,11 @@ def detectar_resultados_operacionais_sem_evidencia(
             fontes_receipt[falha].extend(
                 _texto_alegacao(p) for p in re.split(r"(?<=[.!?])\s+", detalhe) if p
             )
+        if (sucesso and item.get("executou") is False and item.get("intent") == "APP_OPEN"
+            and item.get("status") == "app_ja_aberto_observado"
+            and item.get("id_solicitacao") and item.get("alvo")):
+            from mente_laylay.personalidade.planejador_resposta import descrever_app_ja_aberto
+            estados_ja_abertos.add(_texto_alegacao(descrever_app_ja_aberto(item["alvo"])))
 
     def ocultar_citacao(m: re.Match) -> str:
         trecho = next(grupo for grupo in m.groups() if grupo is not None)
@@ -532,7 +589,8 @@ def detectar_resultados_operacionais_sem_evidencia(
             r"\b(?:por\s+que|porque|qual\s+(?:foi\s+)?(?:a\s+)?causa)\b|"
             r"[,—]\s*(?:n[eé]|certo|correto|n[aã]o\s+[ée]|verdade)\s*\?$", frase, re.I,
         )
-        for ocorrencia in _resultados_narrados(frase):
+        ocorrencias = _resultados_narrados(frase)
+        for ocorrencia in ocorrencias:
             # O objeto pode coordenar nomes, mas não pode emprestar o pedido
             # anterior a outra alegação de estado/sucesso/falha independente.
             inicio_escopo = ocorrencia.inicio_escopo
@@ -552,6 +610,9 @@ def detectar_resultados_operacionais_sem_evidencia(
                 continue
             alegacao = _texto_alegacao(_ATRIBUICAO_RELATO.sub("", frase))
             falha = ocorrencia.tipo == 'falha'
+            if (ocorrencia.tipo == "estado" and len(ocorrencias) == 1
+                and _texto_alegacao(frase) in estados_ja_abertos):
+                continue
             # Relato do usuário pode provar o que ele relatou, não uma ação
             # em primeira pessoa da Laylay. Citação literal já foi delimitada.
             fontes_relato = [] if ocorrencia.primeira_pessoa else fontes
@@ -576,6 +637,9 @@ def validar_alegacoes_da_fala(
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     comandos_normalizados = _comandos_normalizados(contrato)
     confirmados = [item for item in comandos_normalizados if item.get("confirmado") is True]
+    # Uma observação idempotente comprova estado, mesmo com executou=False.
+    # Esse resultado não sustenta verbos de uma nova execução.
+    tem_execucao_confirmada = any(item.get("executou") is not False for item in confirmados)
     sem_confirmacao = [
         item for item in comandos_normalizados if item.get("confirmado") is not True
     ]
@@ -735,7 +799,7 @@ def validar_alegacoes_da_fala(
         if (
             origem_ia
             and _alega_execucao_afirmativa(frase)
-            and not confirmados
+            and not tem_execucao_confirmada
         ):
             problemas.append("execucao_alegada_sem_resultado")
             removidas.append(frase)

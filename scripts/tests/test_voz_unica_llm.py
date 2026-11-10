@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from mente_laylay.autonomia.fluxo_resposta_ia import processar_inicio_fluxo_resposta_ia
 from mente_laylay.autonomia.processamento_resposta_ia import (
     extrair_emocao_da_ia,
@@ -12,6 +14,11 @@ from mente_laylay.cognicao.guardiao_realidade_pessoal import (
 from mente_laylay.cognicao.plano_turno import verificar_fala_turno
 from mente_laylay.personalidade.conversa_natural import construir_fala_conversa
 from mente_laylay.personalidade.politica_voz_unica import voz_unica_llm_ativa
+from mente_laylay.personalidade.perfil_amizade import (
+    CONTRATO_AMIZADE_PROMPT,
+    IDENTIDADE_VOZ_LAYLAY,
+    VERSAO_PERFIL_PERSONALIDADE,
+)
 from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT
 
 
@@ -135,36 +142,11 @@ def test_pre_fluxo_nao_reclassifica_comando_autorizado() -> None:
 
 def test_prompt_novo_contem_so_identidade_contexto_e_contrato() -> None:
     assert len(BASE_SYSTEM_PROMPT) < 5000
-    assert "Você é Laylay" in BASE_SYSTEM_PROMPT
-    assert "PERSONALIDADE E PRESENÇA:" in BASE_SYSTEM_PROMPT
-    assert "levemente debochada" in BASE_SYSTEM_PROMPT
-    assert "no máximo uma tirada curta por resposta" in BASE_SYSTEM_PROMPT
-    assert "evite poesia aleatória e humor forçado" in BASE_SYSTEM_PROMPT
-    assert "responda primeiro e só então acrescente personalidade" in BASE_SYSTEM_PROMPT
-    assert "Só culpe com causa e confiança explícitas" in BASE_SYSTEM_PROMPT
-    assert "ciúme brincalhão" in BASE_SYSTEM_PROMPT
-    assert "Nunca seja possessiva" in BASE_SYSTEM_PROMPT
-    assert "Molde o tamanho à necessidade" in BASE_SYSTEM_PROMPT
-    assert "problemas complexos, os passos úteis" in BASE_SYSTEM_PROMPT
-    assert "no máximo uma pergunta por turno" in BASE_SYSTEM_PROMPT
-    assert "Humanidade vem de atenção, reciprocidade e timing" in BASE_SYSTEM_PROMPT
-    assert "são cortesia, não uma pendência" in BASE_SYSTEM_PROMPT
-    assert "reconheça o deslize sem se defender" in BASE_SYSTEM_PROMPT
-    assert "Não transforme uma informação simples em declaração solene" in BASE_SYSTEM_PROMPT
-    assert "Evite explicar que é \"só uma conversa\"" in BASE_SYSTEM_PROMPT
-    assert "Tenha gostos sem fingir experiências" in BASE_SYSTEM_PROMPT
-    assert "doce sem ser mole, firme sem ser arrogante" in BASE_SYSTEM_PROMPT
-    assert "opinião própria" in BASE_SYSTEM_PROMPT
-    assert "deboche seco com timing" in BASE_SYSTEM_PROMPT
-    assert "Não concorde por reflexo" in BASE_SYSTEM_PROMPT
-    assert "Fale de forma concreta" in BASE_SYSTEM_PROMPT
-    assert "Não use alma, universo, neblina, estrelas" in BASE_SYSTEM_PROMPT
-    assert "Metáfora é exceção" in BASE_SYSTEM_PROMPT
-    assert "linguagem vívida quando o usuário pedir criação artística" in BASE_SYSTEM_PROMPT
-    assert "Não comece por hábito" in BASE_SYSTEM_PROMPT
-    assert "reaja ao detalhe real antes do tema" in BASE_SYSTEM_PROMPT
-    assert "Deboche bom é curto, específico e situacional" in BASE_SYSTEM_PROMPT
-    assert "nunca vulnerabilidade, dor, erro, inteligência ou valor da pessoa" in BASE_SYSTEM_PROMPT
+    # Identidade/postura têm owner versionado. O snapshot antigo exigia duas
+    # frases removidas pelo perfil v2, mesmo com seu contrato integral presente.
+    assert BASE_SYSTEM_PROMPT.startswith(f"[PERFIL_SOCIAL:{VERSAO_PERFIL_PERSONALIDADE}]\n")
+    assert IDENTIDADE_VOZ_LAYLAY in BASE_SYSTEM_PROMPT
+    assert CONTRATO_AMIZADE_PROMPT in BASE_SYSTEM_PROMPT
     assert "Use contexto e memória" in BASE_SYSTEM_PROMPT
     assert "COMANDOS:" in BASE_SYSTEM_PROMPT
     assert "no mesmo turno" in BASE_SYSTEM_PROMPT
@@ -173,6 +155,11 @@ def test_prompt_novo_contem_so_identidade_contexto_e_contrato() -> None:
     assert "Retorne somente JSON válido" in BASE_SYSTEM_PROMPT
     assert '"emocao":"calma"' in BASE_SYSTEM_PROMPT
     assert '"nivel_emocao":1' in BASE_SYSTEM_PROMPT
+    exemplo = json.loads(BASE_SYSTEM_PROMPT.strip().splitlines()[-1])
+    assert exemplo["comandos"] == []
+    assert exemplo["aprendizados"] == []
+    assert exemplo["emocao"] == "calma"
+    assert exemplo["nivel_emocao"] == 1
 
 
 def test_llm_escolhe_emocao_e_intensidade_validas() -> None:

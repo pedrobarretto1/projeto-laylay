@@ -60,7 +60,7 @@ try:
                 raise RuntimeError("reflexo_terminou_antes_do_comando")
         escrever(linha)
     r._escrever=escrita
-    retorno=r.mover_corpo(100,100,250)
+    retorno=r.mover_corpo(150,150,250)
     registrar("receipt",retorno)
     depois=r.diagnostico()
 finally:

@@ -170,23 +170,116 @@ def test_soltura_fora_da_ilha_conclui_ultimo_deslocamento_e_salva_posicao_visive
     assert enviadas == []
 
 
-def test_passar_mouse_na_ilha_compacta_nao_expande_sem_clique(interface_web, monkeypatch):
+def test_hover_abre_resumo_apos_permanencia_e_recolhe_ao_sair(interface_web, monkeypatch):
+    from PySide6.QtCore import QPoint
     from PySide6.QtGui import QCursor
     from PySide6.QtTest import QTest
 
     app, _worker, janela, enviadas, _eventos = interface_web
+    cursor = [QPoint(-10000, -10000)]
+    monkeypatch.setattr(QCursor, 'pos', lambda: cursor[0])
     janela.show()
-    janela.apresentar("desktop")
+    janela.apresentar('desktop')
     app.processEvents()
+    janela.selecionar_pagina_desktop('music')
+    janela.recolher_desktop()
     compacta = janela.geometry()
-    monkeypatch.setattr(QCursor, "pos", lambda: janela.mapToGlobal(janela.rect().center()))
+    centro = compacta.center()
+    fora = QPoint(-10000, -10000)
+    hwnd = int(janela.winId())
+
+    cursor[0] = centro
     janela._observar_cursor_desktop()
-    QTest.qWait(400)
-    assert janela.estado_desktop == "compact", "Hover observa o olhar; só clique pode expandir"
+    QTest.qWait(60)
+    cursor[0] = fora
+    janela._observar_cursor_desktop()
+    QTest.qWait(260)
+    assert janela.estado_desktop == 'compact'
     assert janela.geometry() == compacta
-    janela.ponte_web.gesto_desktop("expandir")
-    assert janela.estado_desktop == "expanded"
+
+    cursor[0] = centro
+    janela._observar_cursor_desktop()
+    QTest.qWait(310)
+    assert janela.estado_desktop == 'expanded', 'Permanecer na cápsula deve abrir o resumo'
+    assert janela.apresentacao_publica()['desktop_view'] == 'overview'
+    assert janela.desktop_pagina == 'music', 'Espiar o resumo não deve substituir a aba escolhida'
+    assert not janela.desktop_fixado
+    assert int(janela.winId()) == hwnd
+
+    cursor[0] = fora
+    janela._observar_cursor_desktop()
+    janela._cursor_desktop_timer.stop()
+    cursor[0] = centro
+    QTest.qWait(850)
+    assert janela.estado_desktop == 'expanded', 'O timer deve conferir se o mouse voltou desde a última observação'
+    janela._cursor_desktop_timer.start()
+
+    cursor[0] = fora
+    janela._observar_cursor_desktop()
+    QTest.qWait(850)
+    assert janela.estado_desktop == 'compact'
+    assert janela.geometry() == compacta
     assert enviadas == []
+
+
+def test_fechamento_manual_e_interacao_protegem_ilha_aberta_por_hover(interface_web, monkeypatch):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtGui import QCursor
+    from PySide6.QtTest import QTest
+
+    _app, _worker, janela, enviadas, _eventos = interface_web
+    fora = QPoint(-10000, -10000)
+    cursor = [fora]
+    monkeypatch.setattr(QCursor, 'pos', lambda: cursor[0])
+    janela.show()
+    janela.apresentar('desktop')
+    centro = janela.geometry().center()
+
+    cursor[0] = centro
+    janela._observar_cursor_desktop()
+    QTest.qWait(310)
+    assert janela.estado_desktop == 'expanded'
+    janela.ponte_web.gesto_desktop('recolher')
+    QTest.qWait(310)
+    assert janela.estado_desktop == 'compact', 'Fechar sob o cursor não pode reabrir a ilha'
+
+    cursor[0] = fora
+    janela._observar_cursor_desktop()
+    cursor[0] = centro
+    janela._observar_cursor_desktop()
+    QTest.qWait(310)
+    assert janela.estado_desktop == 'expanded', 'Uma nova entrada deve rearmar a abertura'
+    janela.ponte_web.edicao_desktop(True)
+    cursor[0] = fora
+    janela._observar_cursor_desktop()
+    QTest.qWait(850)
+    assert janela.estado_desktop == 'expanded', 'Sair com edição em andamento deve preservar o painel'
+    janela.ponte_web.gesto_desktop('interagir')
+    janela.ponte_web.edicao_desktop(False)
+    QTest.qWait(850)
+    assert janela.estado_desktop == 'expanded', 'Interagir converte o resumo em painel de trabalho'
+    assert enviadas == []
+
+
+def test_rascunho_guardado_nao_impede_recolhimento_por_hover(conversa_web, monkeypatch):
+    from PySide6.QtCore import QPoint
+    from PySide6.QtGui import QCursor
+
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    fora = QPoint(-10000, -10000)
+    cursor = [fora]
+    monkeypatch.setattr(QCursor, 'pos', lambda: cursor[0])
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: js("LaylayInterface.state.mode==='desktop' && LaylayInterface.state.desktopPhase==='idle'"))
+    js("LaylayInterface.state.draft='Rascunho guardado'; LaylayInterface.invalidate()")
+    cursor[0] = janela.geometry().center()
+    aguardar(lambda: js("LaylayInterface.state.desktopState==='expanded' && LaylayInterface.state.desktopPhase==='idle'"))
+    assert js("document.getElementById('composer-input').value") == 'Rascunho guardado'
+
+    cursor[0] = fora
+    aguardar(lambda: js("LaylayInterface.state.desktopState==='compact' && LaylayInterface.state.desktopPhase==='idle'"))
+    assert js('LaylayInterface.state.draft') == 'Rascunho guardado'
+    assert entradas == []
 
 
 def test_player_streaming_e_filho_da_mesma_janela_sem_dialogo(interface_web):
@@ -488,11 +581,17 @@ def test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino(interf
     janela.expandir_desktop()
     animacao = janela._animacao_desktop
     assert animacao.state() == QAbstractAnimation.Running
+    duracao_abertura = animacao.duration()
+    area = janela.screen().availableGeometry()
+    for percentual in (10, 35, 60, 90):
+        animacao.setCurrentTime(duracao_abertura * percentual // 100)
+        assert area.contains(janela.geometry()), 'A expansão deve caber na área útil em todo quadro'
     animacao.setCurrentTime(animacao.duration() // 2)
     intermediaria = QRect(janela.geometry())
     janela.recolher_desktop()
     assert janela._animacao_desktop is animacao
     assert animacao.startValue() == intermediaria
+    assert 0 < animacao.duration() < duracao_abertura, 'Recolher deve ser mais rápido que expandir'
     janela.apresentar("full")
     assert animacao.state() == QAbstractAnimation.Stopped
     monkeypatch.setenv("LAYLAY_REDUZIR_MOVIMENTO", "1")
@@ -758,7 +857,7 @@ def test_painel_expandido_tem_canvas_opaco_sem_pontos_transparentes(interface_we
         assert janela.estado_desktop == 'expanded'
         assert janela._fundo_desktop_opaco is True
         assert janela.pagina_web.backgroundColor().alpha() == 255
-        assert janela.pagina_web.backgroundColor().name() == '#10141b'
+        assert janela.pagina_web.backgroundColor().name() == '#0b0c10'
         app.processEvents()
         QTest.qWait(30)
         assert int(janela.winId()) == hwnd
@@ -798,7 +897,6 @@ def test_m2_entrada_expansao_abas_e_recolhimento_preservam_hwnd_e_glitch_guard(c
     aguardar(lambda: janela.modo_apresentacao == 'desktop')
     js("LaylayInterface.state.preferences.reduced=false")
     hwnd = int(janela.winId())
-    assert janela._animacao_desktop.duration() == 230
     assert janela._animacao_entrada.duration() == 235
     assert janela.estado_desktop == 'compact'
     assert janela.pagina_web.backgroundColor().alpha() == 0
@@ -865,6 +963,32 @@ def test_m2_pref_reduzido_impede_efeitos_de_apresentacao(conversa_web):
     assert entradas == []
 
 
+def test_entrada_do_resumo_combina_escala_e_fade_apos_geometria_confirmada(conversa_web):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: js("LaylayInterface.state.desktopPhase==='idle'"))
+    js("""(() => {
+      window.__entradaResumo = [];
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function(frames, options) {
+        if (this.matches('.desktop-presence-copy, .desktop-wordmark')) {
+          window.__entradaResumo.push({frames, phase:LaylayInterface.state.desktopPhase});
+        }
+        return animate.call(this, frames, options);
+      };
+    })()""")
+    janela.expandir_desktop(fixar=True)
+    aguardar(lambda: js("window.__entradaResumo.length > 0"))
+    efeitos = json.loads(js("JSON.stringify(window.__entradaResumo)"))
+    assert all(efeito['phase'] == 'idle' for efeito in efeitos)
+    assert any(
+        efeito['frames'][0]['opacity'] < efeito['frames'][-1]['opacity']
+        and 'scale(' in efeito['frames'][0]['transform']
+        for efeito in efeitos
+    ), efeitos
+    assert entradas == []
+
+
 def test_m2_animacao_real_usada_apos_mudanca_de_aba(conversa_web):
     """Captura chamadas reais ao Web Animations API, sem depender de polling de frames."""
     janela, _ponte, entradas, js, aguardar = conversa_web
@@ -925,6 +1049,9 @@ def test_transicao_suave_congela_apenas_pintura_encoberta_e_restaura(interface_w
     assert janela._animacao_desktop.state() == QAbstractAnimation.Running
     assert janela._web_pintura_congelada is True
     assert not janela.web.updatesEnabled()
+    assert janela.childAt(janela.rect().center()) is janela._transicao_cobertura, (
+        'A cobertura deve impedir clique em controles ocultos durante o resize'
+    )
     hwnd = int(janela.winId())
 
     janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration())

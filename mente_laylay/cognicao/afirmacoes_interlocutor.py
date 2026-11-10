@@ -15,10 +15,14 @@ _FLEXOES = {'estou':'esta', 'to':'esta', 'ta':'esta', 'tenho':'tem', 'moro':'mor
     'comprei':'comprou', 'fui':'foi', 'sou':'e'}
 _VERBOS = '|'.join(sorted(set(_FLEXOES.values()) | {'ta'}, key=len, reverse=True))
 _ATRIBUICAO = re.compile(r'\bvoce\s+(?P<verbo>' + _VERBOS + r')\s+(?P<resto>.+)', re.I)
+_COORDENACAO_PREPOSICIONAL = re.compile(
+    r'\b(?P<prep>com|de|em|para|por|sem|sobre|contra)\s+voc[eê]\s+e\s+(?P=prep)\b',
+    re.I,
+)
 
 
 def _predicado(texto: str, *, origem: bool) -> str | None:
-    base = normalizar_texto_basico(texto).strip(' .!?')
+    base = normalizar_texto_basico(texto).strip(' .!?;')
     if origem:
         base = re.sub(r'^eu\s+', '', base)
         verbo, _, resto = base.partition(' ')
@@ -35,6 +39,37 @@ def _predicado(texto: str, *, origem: bool) -> str | None:
     return base
 
 
+def _declaracoes_da_fonte(texto: str) -> list[str]:
+    """Pergunta em outro ato não apaga um relato literal da mesma fonte.
+
+    Reusa a leitura canônica do texto, não rótulos de atos propostos no plano.
+    Isto só localiza dados declarados; não confirma verdade nem dá permissão.
+    """
+    if '?' not in texto:
+        return [texto]
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.cognicao.referencias_linguagem import (
+        enunciados_discursivos, pergunta_confirmatoria_eliptica,
+    )
+    declaracoes = []
+    for enunciado in enunciados_discursivos(texto):
+        if '?' not in enunciado:
+            # Ressalvas pertencem ao predicado: separar sua vírgula poderia
+            # transformar 'estou cansado, se é que estou' numa certeza.
+            declaracoes.append(enunciado)
+            continue
+        segmentos = classificar_modalidade_turno(enunciado)['segmentos']
+        # Só a relação binária declaração + pergunta autônoma tem escopo
+        # comprovado aqui. Um segmento intermediário pode ser uma ressalva;
+        # sua ausência na projeção não permitiria declarar o núcleo como certo.
+        if (len(segmentos) == 2 and segmentos[0].get('modalidade') == 'conversa'
+            and '?' not in segmentos[0]['texto']
+            and segmentos[1].get('modalidade') == 'pergunta'
+            and not pergunta_confirmatoria_eliptica(segmentos[1]['texto'])):
+            declaracoes.append(segmentos[0]['texto'])
+    return declaracoes
+
+
 def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
     """Detecta só o recorte declarativo, inclusive pergunta com pressuposto 'né'.
 
@@ -49,8 +84,9 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
         or str(c.get('turno_id')) != canal.turno_id or c.get('origem') != 'mente_unica'
         or plano.get('requer_execucao') or plano.get('comandos')):
         return None
-    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
-    if criacao_ficcional_vigente(plano) and fala_ficcional_delimitada(fala):
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
+    criacao = criacao_ficcional_vigente(plano)
+    if criacao is not None and fala_ficcional_conferida(fala, criacao=criacao):
         return None
     from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
     revisao = revisar_suporte_autoria(fala, plano=dict(plano))
@@ -59,18 +95,24 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
         # O owner histórico já substitui o rascunho por citação integral da
         # fonte. Não consumir outra autoria antes dessa realização conferida.
         return None
-    textos = [usuario] if '?' not in usuario else []
+    textos = _declaracoes_da_fonte(usuario)
     for relato in plano.get('relatos_usuario') or ():
         if (isinstance(relato, Mapping) and relato.get('autor') == 'usuario'
             and relato.get('origem') in {'historico_conversa', 'fala_atual'}
             and relato.get('status') == 'relatado_pelo_usuario'
-            and type(relato.get('texto')) is str and '?' not in relato['texto']):
-            textos.append(relato['texto'])
+            and type(relato.get('texto')) is str):
+            textos.extend(_declaracoes_da_fonte(relato['texto']))
     predicados = {_predicado(t, origem=True) for t in textos}
     predicados.discard(None)
     sem_apoio = []
     for frase in re.split(r'(?<=[.!?])\s+', str(fala or '')):
-        base = normalizar_texto_basico(texto_fora_de_citacoes(frase))
+        externa = texto_fora_de_citacoes(frase)
+        # Leia a coordenação antes de "é" perder o acento. "Você" dentro de
+        # dois complementos paralelos não é sujeito. Uma atribuição posterior
+        # continua visível, e só a projeção de leitura é alterada.
+        externa = _COORDENACAO_PREPOSICIONAL.sub(
+            lambda m: f"{m['prep']} [interlocutor] e {m['prep']}", externa)
+        base = normalizar_texto_basico(externa)
         # Um enunciado inteiro interrogativo não afirma o seu conteúdo;
         # a confirmação sugerida por uma cauda 'né/certo' preserva pressuposto.
         if frase.rstrip().endswith('?') and not re.search(r',\s*(?:ne|certo|nao e)\s*\?$', base):

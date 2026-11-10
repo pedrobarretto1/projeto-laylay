@@ -61,7 +61,7 @@ body.refined-ui .page-heading{margin-bottom:24px;align-items:start}
 body.refined-ui .page-heading h2{font-size:27px;line-height:1.2;font-weight:580;letter-spacing:-.035em}
 body.refined-ui .page-heading p{font-size:13px;line-height:1.7;color:#a4adbd;margin-top:8px}
 body.refined-ui .eyebrow{color:#a49bb7;font-size:10px;letter-spacing:.14em;margin-bottom:6px}
-body.refined-ui .desktop-island{border-radius:25px;background:#10141b;border:1px solid #3a3545;font:13px/1.55 var(--font)}
+body.refined-ui .desktop-island{border-radius:24px;background:#0b0c10;border:1px solid #ffffff18;font:13px/1.55 var(--font)}
 body.refined-ui .desktop-compact{height:54px;gap:12px;padding:0 18px;background:#10141b;border-radius:25px}
 body.refined-ui .desktop-compact:hover{background:#ffffff03}
 body.refined-ui .desktop-compact-copy small{font-size:11px}
@@ -574,16 +574,16 @@ body.refined-ui .tp-terminal-title .terminal-dots i:nth-child(3){background:#5e9
   .home-inteligente .pinned-mini-card *{animation:none!important;transition:none!important;}
 }
 
-/* Laylay Fluent — ilha compacta do Windows 11, acabamento com fallback opaco. */
+/* Cápsula escura com luz violeta junto ao mascote. */
 body.refined-ui .desktop-island[data-desktop-state="compact"] {
-  --fluent-border:rgba(213,190,255,.22);
+  --fluent-border:rgba(213,190,255,.16);
   position:relative;
   isolation:isolate;
   color:#f4effa;
   border:1px solid var(--fluent-border);
   border-radius:24px;
-  background:linear-gradient(112deg,#262434 0%,#1a202c 57%,#171e28 100%);
-  box-shadow:inset 0 1px 0 #ffffff22,inset 0 -1px 0 #04070c42;
+  background:linear-gradient(105deg,#14131c,#090a0e 72%);
+  box-shadow:inset 0 1px 0 #ffffff14;
 }
 body.refined-ui .desktop-island[data-desktop-state="compact"][data-desktop-material="acrylic"] {
   background:rgba(24,25,36,.73);
@@ -594,13 +594,13 @@ body.refined-ui .desktop-island[data-desktop-state="compact"][data-desktop-mater
 body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact {
   height:100%; width:100%; display:flex;align-items:center;gap:9px;
   padding:0 12px 0 10px;border-radius:23px;
-  background:linear-gradient(108deg,rgba(159,120,204,.16),rgba(75,80,110,.045) 52%,transparent 100%);
+  background:linear-gradient(108deg,rgba(159,120,204,.11),transparent 56%);
   color:inherit;
   cursor:grab;
   transition:background .18s ease;
 }
 body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:hover {
-  background:linear-gradient(108deg,rgba(179,137,223,.24),rgba(88,99,135,.10) 60%,rgba(255,255,255,.045) 100%);
+  background:linear-gradient(108deg,rgba(179,137,223,.19),rgba(255,255,255,.04) 66%);
 }
 body.refined-ui .desktop-island[data-desktop-state="compact"] .desktop-compact:active {
   cursor:grabbing;

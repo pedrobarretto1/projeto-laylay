@@ -96,14 +96,14 @@ void atualizarAlertaProtecao(uint32_t agora) {
     sinalAlertaProtecao(agora,classe==3 ? 11 : reacaoAlertaProtecao==2 ? 10 : 9);
 }
 bool aplicarReflexoProtecao(int e, int d, uint32_t agora) {
+  e = ajustarPwmMotor(e); d = ajustarPwmMotor(d);
   if (!motorPendente && !motorAtivo) {
     // Cada troca de sentido passa por ponte cortada e wake de pelo menos 1ms.
     pararMotor(); digitalWrite(PINO_NSLEEP, HIGH);
     inicioWakeMicros = micros(); motorPendente = true;
   }
   if (uint32_t(micros() - inicioWakeMicros) < 1000) return true;
-  int duties[4] = {max(0,e), max(0,-e), max(0,d), max(0,-d)};
-  for (int i = 0; i < 4; ++i) if (!ledcWrite(PINOS_MOTOR[i], duties[i])) {
+  if (!escreverPwmMotores(e, d)) {
     motoresProntos = false; terminarProtecao("FALHA_PWM", agora); return false;
   }
   pwmEsquerdo = e; pwmDireito = d; motorPendente = false; motorAtivo = true;

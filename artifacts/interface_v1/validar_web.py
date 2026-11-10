@@ -17,7 +17,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ))
 
 
-def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
+def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False, apenas_hover=False) -> dict:
     """Prova Windows da apresentação local, sem mente nem executor externo."""
     import ctypes
     from ctypes import wintypes
@@ -39,10 +39,17 @@ def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
     campo = QLineEdit("Este campo conserva o foco ao aproximar o mouse da Laylay.")
     layout.addWidget(campo)
     disponivel = janela.screen().availableGeometry()
-    QCursor.setPos(disponivel.left() + 25, disponivel.bottom() - 40)
+    cursor_anterior = QCursor.pos()
+    fora = QPoint(disponivel.left() + 25, disponivel.bottom() - 40)
+    QCursor.setPos(fora)
     bancada.setGeometry(QRect(disponivel.center().x() - 430, disponivel.top() + 20, 860, 400))
     identidade = (janela.web, janela.pagina_web, janela.canal, janela.controlador, janela.worker)
     trajetoria = []
+    trajetoria_recolhimento = []
+
+    def concluir_transicao():
+        aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.state.desktopPhase==='idle'"))
+
     try:
         janela.apresentar("desktop")
         aguardar(lambda: js("LaylayInterface.state.mode==='desktop'"))
@@ -57,23 +64,41 @@ def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
         assert foco_antes != int(janela.winId()), "A bancada precisa começar com a ilha passiva"
         janela.raise_()
         janela.recolher_desktop()
-        QTest.qWait(320)
+        concluir_transicao()
         foto("desktop-compacto")
         js("window.desktopProva={raiz:document.querySelector('.desktop-island'),avatar:document.querySelector('.desktop-island .avatar')}")
-        QCursor.setPos(janela.mapToGlobal(QPoint(janela.width() // 2, janela.height() // 2)))
-        QTest.qWait(450)
-        assert janela.estado_desktop == "compact", "Hover abriu a ilha sem clique"
-        assert int(user32.GetForegroundWindow() or 0) == foco_antes, "Hover retirou o foco do aplicativo em uso"
-        assert js("!document.hasFocus()"), "O renderer passivo ganhou foco sem clique"
-        receptor = janela.web.focusProxy() or janela.web
-        QTest.mouseClick(receptor, Qt.LeftButton, Qt.NoModifier, QPoint(janela.width() // 2, janela.height() // 2))
+        geometria_compacta = QRect(janela.geometry())
+        hwnd_desktop = int(janela.winId())
+        QCursor.setPos(geometria_compacta.center())
         aguardar(lambda: janela.estado_desktop == "expanded")
-        for _ in range(24):
+        for _ in range(36):
             trajetoria.append([janela.x(), janela.y(), janela.width(), janela.height()])
+            assert disponivel.contains(janela.geometry())
             QTest.qWait(16)
         assert len({tuple(p) for p in trajetoria}) >= 3, "A expansão não apresentou estados intermediários"
+        concluir_transicao()
+        assert int(user32.GetForegroundWindow() or 0) == foco_antes, "Hover retirou o foco do aplicativo em uso"
+        assert js("!document.hasFocus()"), "O renderer passivo ganhou foco sem clique"
         assert js("desktopProva.raiz===document.querySelector('.desktop-island')&&desktopProva.avatar===document.querySelector('.desktop-island .avatar')")
-        foto("desktop-expandido-clique")
+        foto("desktop-expandido-hover")
+        QCursor.setPos(fora)
+        aguardar(lambda: janela.estado_desktop == 'compact')
+        for _ in range(29):
+            trajetoria_recolhimento.append([janela.x(), janela.y(), janela.width(), janela.height()])
+            QTest.qWait(16)
+        concluir_transicao()
+        assert len({tuple(p) for p in trajetoria_recolhimento}) >= 3
+        assert janela.geometry() == geometria_compacta and int(janela.winId()) == hwnd_desktop
+        dados_hover = {
+            'hover_preserva_foco': True, 'expansao_por_hover': True,
+            'recolhimento_ao_sair': True, 'mesmo_hwnd': True,
+            'animacao_geometrias': trajetoria, 'geometrias_recolhimento': trajetoria_recolhimento,
+        }
+        if apenas_hover:
+            return dados_hover
+        QCursor.setPos(geometria_compacta.center())
+        aguardar(lambda: janela.estado_desktop == 'expanded')
+        concluir_transicao()
         canto = QPoint(1, janela.height() - 2)
         assert not janela.mask().contains(canto)
         ponto = janela.mapToGlobal(canto)
@@ -92,7 +117,7 @@ def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
         foto("desktop-expandido-fixado")
         janela.recolher_desktop()
         aguardar(lambda: janela.estado_desktop == "compact")
-        QTest.qWait(400)
+        concluir_transicao()
         janela.expandir_desktop(fixar=True)
         aguardar(lambda: js("document.getElementById('composer-input').value==='Rascunho de prova, sem envio'"))
         assert identidade == (janela.web, janela.pagina_web, janela.canal, janela.controlador, janela.worker)
@@ -126,6 +151,7 @@ def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
                     geometria_aba.append([atual.x(), atual.y(), atual.width(), atual.height()])
                     QTest.qWait(16)
                 assert janela.modo_apresentacao == "desktop"
+                concluir_transicao()
                 assert js("desktopProva.raiz===document.querySelector('.desktop-island')")
                 if anterior.size() != janela.size():
                     assert len({tuple(g) for g in geometria_aba}) >= 2, "A aba mudou de tamanho sem animação"
@@ -134,22 +160,23 @@ def validar_desktop(janela, js, aguardar, foto, *, janela_unica=False) -> dict:
                 navegacao.append({"pagina": pagina, "mesmo_hwnd": True, "mesmas_flags": True,
                                    "topo_e_centro_preservados": True, "geometrias": geometria_aba})
             janela.recolher_desktop()
-            QTest.qWait(320)
+            concluir_transicao()
             assert int(janela.winId()) == hwnd_inicial
             janela.expandir_desktop(fixar=True)
             aguardar(lambda: js("LaylayInterface.state.page==='settings'&&!!document.querySelector('.desktop-island #page-content')"))
             janela.ponte_web.gesto_desktop("resumo")
             aguardar(lambda: janela.desktop_pagina is None)
-            QTest.qWait(320)
+            concluir_transicao()
             foto("desktop-volta-resumo")
         janela.apresentar("full")
-        return {"hover_preserva_foco": True, "hover_nao_expande": True, "expansao_por_clique": True, "canto_transparente_nao_intercepta": True,
+        return {**dados_hover, "canto_transparente_nao_intercepta": True,
                 "janela_alvo_canto_distinta": raiz_alvo != int(janela.winId()),
                 "identidade_superficie_preservada": True, "rascunho_preservado": True,
                 "clique_explicito_permite_foco_e_teclado": True,
                 "abas_na_mesma_janela": navegacao,
-                "animacao_geometrias": trajetoria, "mente_iniciada": False}
+                "mente_iniciada": False}
     finally:
+        QCursor.setPos(cursor_anterior)
         bancada.close()
         if janela.modo_apresentacao == "full":
             janela.raise_()
@@ -162,6 +189,7 @@ def main() -> int:
     parser.add_argument("--movimento", action="store_true", help="Valida animação contínua e identidade DOM com telemetria real")
     parser.add_argument("--mascote", action="store_true", help="Inspeciona expressões de demonstração transportadas e olhar com mouse nativo")
     parser.add_argument("--desktop", action="store_true", help="Valida ilha expansível com foco e região de input reais do Windows")
+    parser.add_argument("--desktop-hover", action="store_true", help="Valida abertura e recolhimento passivos na janela real do Windows")
     parser.add_argument("--janela-unica", action="store_true", help="Clica nas nove abas dentro da ilha e verifica HWND, âncora e animação")
     parser.add_argument("--ilha-suave", action="store_true", help="Prova player integrado com captura real de janela própria e inatividade real de20s")
     parser.add_argument("--clique-windows", action="store_true", help="Aguarda clique Computer Use e marcador retomar-clique-windows antes das provas de foco")
@@ -273,9 +301,20 @@ def main() -> int:
             aguardar(marcador_clique.exists, 90)
             marcador_clique.unlink()
         foto("web-inicio")
-        if argumentos.desktop:
+        if argumentos.desktop or argumentos.desktop_hover:
             assert argumentos.movimento, "A prova desktop exige --movimento"
-            prova_desktop = validar_desktop(janela, js, aguardar, foto, janela_unica=argumentos.janela_unica)
+            prova_desktop = validar_desktop(janela, js, aguardar, foto, janela_unica=argumentos.janela_unica,
+                                            apenas_hover=argumentos.desktop_hover)
+            if argumentos.desktop_hover:
+                resultado_hover = {
+                    'plataforma': app.platformName(), 'frontend_local': janela.web.url().isLocalFile(),
+                    'ponte_autenticada': janela.controlador._conectado, 'entradas': len(entradas),
+                    'desktop': prova_desktop, 'capturas': capturas,
+                }
+                assert not entradas
+                (saida / 'resultado_hover.json').write_text(json.dumps(resultado_hover, indent=2), encoding='utf-8')
+                print('Hover e recolhimento validados na janela Qt do Windows, com foco preservado.')
+                return 0
             js("LaylayInterface.goPage('home')")
             aguardar(lambda: js("!!document.querySelector('.presence .avatar')"))
         if argumentos.movimento:

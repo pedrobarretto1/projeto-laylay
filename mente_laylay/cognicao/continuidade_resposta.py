@@ -1,4 +1,5 @@
 """Conferência lexical de reuso; não avalia verdade ou pertinência livre."""
+from collections import defaultdict
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Mapping
@@ -20,7 +21,7 @@ def projetar_contrato_reparo_conversacional(
             if chave != 'respostas_anteriores_turno'}
 
 
-def _reuso_predominante(candidata: str, anterior: str) -> bool:
+def _reuso_predominante(candidata: str, anterior: str, *, minimo_copiado: int = 64) -> bool:
     """Blocos literais longos cobrem ao menos 80% de uma candidata extensa.
 
     Não é similaridade semântica: palavras comuns soltas não contam. O piso
@@ -29,11 +30,36 @@ def _reuso_predominante(candidata: str, anterior: str) -> bool:
     """
     tokens = candidata.split()
     fonte = anterior.split()
-    if min(len(tokens), len(fonte)) < 64:
+    if min(len(tokens), len(fonte)) < minimo_copiado:
         return False
     blocos = SequenceMatcher(None, fonte, tokens, autojunk=False).get_matching_blocks()
     copiados = sum(bloco.size for bloco in blocos if bloco.size >= 8)
-    return copiados >= 64 and copiados * 5 >= len(tokens) * 4
+    return copiados >= minimo_copiado and copiados * 5 >= len(tokens) * 4
+
+
+def contem_copia_extensa(candidata: str, fonte: str) -> bool:
+    """Eco de outra autoria:32 palavras em blocos cobrem80% da candidata.
+
+    Retomadas da própria assistente preservam seu piso anterior de64; citar
+    algumas palavras do interlocutor não caracteriza esta cópia extensa.
+    """
+    return _reuso_predominante(normalizar_texto(candidata), normalizar_texto(fonte), minimo_copiado=32)
+
+
+def contem_ciclo_de_enunciados(fala: str) -> bool:
+    """Detecta reiteração literal na própria fala, fora de citações."""
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, intervalos_citados
+
+    partes = [normalizar_texto(trecho) if not intervalos_citados(trecho) else ""
+              for trecho in enunciados_discursivos(fala)]
+    ocorrencias: dict[str, list[int]] = defaultdict(list)
+    for indice, parte in enumerate(partes):
+        if len(parte.split()) >= 2:
+            ocorrencias[parte].append(indice)
+    # Três ocorrências intercaladas caracterizam o ciclo. Uma ênfase
+    # consecutiva ou duas menções da mesma escolha ainda podem ser naturais.
+    return any(sum(any(partes[inicio + 1:fim]) for inicio, fim in zip(indices, indices[1:])) >= 2
+               for indices in ocorrencias.values() if len(indices) >= 3)
 
 
 @dataclass(frozen=True, slots=True)

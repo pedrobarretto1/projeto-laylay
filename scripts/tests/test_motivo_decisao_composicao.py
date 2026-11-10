@@ -206,7 +206,8 @@ def decisao_instalada(tmp_path_factory):
                 try:
                     textos_ciclo = (("Por que você fez esse gesto? Por que você apagou esse arquivo?",
                                      "Por que você apagou esse arquivo? Por que você fez esse gesto?",
-                                     "Por que você fez esse gesto e por que você desligou essa tomada?")
+                                     "Por que você fez esse gesto e por que você desligou essa tomada?",
+                                     "Por que você fez esse gesto? Quanto é 6 + 3?")
                         if os.environ.get("LAYLAY_COLETAR_EXPLICACAO_MULTIPLA") == "1" else
                         ("Por que você reagiu daquele jeito?", "Por que você apagou esse arquivo?",
                          "Por que você desligou essa tomada?"))

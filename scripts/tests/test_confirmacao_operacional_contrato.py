@@ -74,10 +74,25 @@ def test_todo_intent_documenta_como_confirma_resultado() -> None:
         capacidade = consultar_capacidade(intent)
         assert capacidade["confirmacao_oferecida"] in {
             "estado_observado", "persistencia_local", "retorno_dados",
-            "estado_local", "variavel", "indisponivel",
+            "estado_local", "variavel", "indisponivel", "estado_firmware", "estado_owner",
         }
         assert capacidade["evidencia_confirmacao"]
         assert capacidade["estado_sem_confirmacao"] == "nao_confirmado"
+
+
+@pytest.mark.parametrize("intent,tipo", [
+    ("CORPO_MOVER", "estado_firmware"), ("CORPO_PARAR", "estado_firmware"),
+    ("CORPO_COMPANHIA", "estado_owner"),
+])
+def test_catalogo_do_corpo_descreve_fonte_sem_confirmar_uma_ocorrencia(intent, tipo):
+    capacidade = consultar_capacidade(intent)
+    assert capacidade["confirmacao_oferecida"] == tipo
+    resultado = normalizar_resultado_acao({
+        "intent": intent, "status": "comando_enviado", "executou": True, "origem": "executor",
+    })
+    assert resultado.confirmacao_oferecida == tipo
+    assert resultado.evidencia_confirmacao == capacidade["evidencia_confirmacao"]
+    assert resultado.confirmado is None
 
 
 @pytest.mark.parametrize(

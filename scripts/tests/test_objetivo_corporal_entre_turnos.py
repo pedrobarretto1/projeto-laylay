@@ -236,37 +236,23 @@ def test_tarefa_pc_interrompe_continuacao_e_receipt_nao_passam_a_outro_turno(mon
 
 
 def test_composicao_instalada_publica_referencia_apos_espera_sem_motor(tmp_path):
-    import subprocess, sys
-    codigo = f'''
-import json
-from mente_laylay.integracao import instancia_unica
-adquirir = instancia_unica.adquirir_instancia_unica
-instancia_unica.adquirir_instancia_unica = lambda _: adquirir({str(tmp_path/'instancia')!r})
-import laylay
-from scripts.tests.test_presenca_corporal_v2 import EspPresenca
-from scripts.tests.test_corpo_na_mente import instalar_turno
-from mente_laylay.especialistas.rosto_oled_runtime import RostoOledRuntime
+    from scripts.tests.test_corpo_na_mente import executar_composicao_corporal_simulada
+
+    verificacoes = '''
 from mente_laylay.cognicao.decisao_corporal import IntencaoCorporal
 from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal
-estado, corpo = laylay._estado_compartilhado_runtime, laylay._corpo_motor_runtime
-esp = EspPresenca()
-rosto = RostoOledRuntime(estado_getter=lambda: estado.retrato_dominio("conversacional"), porta="TESTE", abrir_serial=lambda _: esp)
-corpo.transporte = rosto
-assert rosto.sincronizar()
-assert corpo.companhia.processar()["ok"]
 instalar_turno(estado, turno_id="a")
 corpo.companhia._registrar_intencao(IntencaoCorporal("interagir", "conversa_em_andamento", 90, 0, 1, True))
 objetivo = estado.mental["intencao_corporal"]["objetivo_id"]
 instalar_turno(estado, turno_id="b")
 corpo.companhia._registrar_intencao(IntencaoCorporal("atenta", "atividade_pc_em_andamento", 100, 0, 1))
-pacote = laylay._contexto_prompt_runtime.preparar_pacote("gosto de você")
+pacote = root._contexto_prompt_runtime.preparar_pacote("gosto de você")
 assert "objetivo_para_continuar" in pacote.prompt_sistema and objetivo in pacote.prompt_sistema
-p = ContratoPropostaPrincipal("b", "gosto de você", json.dumps({{"fala":"Obrigada!","intencao_corporal":{{"nome":"interagir","objetivo_id":objetivo}}}}))
-plano = laylay._composicao_turno_runtime.atualizar_proposta("resposta_planejada", p)
+p = ContratoPropostaPrincipal("b", "gosto de você", json.dumps({
+    "fala": "Obrigada!", "intencao_corporal": {"nome": "interagir", "objetivo_id": objetivo}}))
+plano = root._composicao_turno_runtime.atualizar_proposta("resposta_planejada", p)
 assert plano["intencao_corporal"]["objetivo_id"] == objetivo
 assert plano["intencao_corporal"]["turno_id"] == "b" and not plano["intencao_corporal"]["autoriza_execucao"]
-assert not any(c.startswith("MOTOR ") for c in esp.enviados)
-rosto.encerrar()
+assert not plano["intencao_corporal"].get("resultado")
 '''
-    r = subprocess.run([sys.executable, "-"], input=codigo, text=True, capture_output=True, timeout=40)
-    assert r.returncode == 0, r.stdout + r.stderr
+    executar_composicao_corporal_simulada(tmp_path, verificacoes)

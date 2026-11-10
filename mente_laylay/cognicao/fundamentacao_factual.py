@@ -11,8 +11,16 @@ import unicodedata
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable
 
-from mente_laylay.cognicao.normalizacao_linguagem import texto_e_metalinguistico
+from mente_laylay.cognicao.normalizacao_linguagem import PADRAO_COORDENACAO_OPERACIONAL, texto_e_metalinguistico
+from mente_laylay.cognicao.referencias_linguagem import (
+    contem_moldura_narrativa,
+    enunciados_discursivos,
+    intervalos_citados,
+    texto_fora_de_citacoes,
+    trecho_retificacao_do_enunciador,
+)
 from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
+from mente_laylay.cognicao.retomada_criacao import ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO
 from mente_laylay.cognicao.proveniencia_informacao import (
     classificar_proveniencia_informacao,
     limitar_proveniencia_invalida,
@@ -35,6 +43,48 @@ _ABERTURA_CONSULTA = re.compile(
 _SINAL_TEMPO_EXPLICITO = re.compile(
     r"\b(?:agora|hoje|neste momento|atualmente|recente(?:mente)?|últim[oa]s?|ultim[oa]s?|"
     r"esta semana|este mês|este mes|este ano|ainda|já saiu|ja saiu)\b",
+    re.IGNORECASE,
+)
+_PEDIDO_NOMEACAO_DO_DIALOGO = re.compile(
+    r'(?:(?:qual|que)\s+(?:(?:seria|e)\s+)?(?:um\s+|o\s+)?'
+    r'(?:nome|titulo)(?:\s+\w+){0,2}\s+'
+    r'(?:(?:voce|tu)\s+(?:daria|escolheria)\s+)?(?:para\s+|a\s+)'
+    r'|como\s+(?:voce|tu)\s+chamaria\s+)'
+    r'(?:a\s+)?(?:nossa|esta|essa)\s+(?:conversa|historia|resposta|mensagem|frase)'
+    r'(?:\s+de\s+(?:hoje|ontem|agora))?[?!.]*'
+)
+_TEMPO_NO_ANTECEDENTE_HIPOTETICO = re.compile(
+    r"se\s+(?:[^\W\d_]+\s+){0,4}(?P<verbo>[^\W\d_]+ss(?:e|es|emos|em))\b"
+    r"[^,:;.!?—()]*\s+(?:agora|hoje|neste momento)"
+    r"(?:,|\s+—\s*(?P<aposto>[^—.!?;:]+)\s*—\s*,?|\s+\((?P<parentese>[^().!?;:]+)\),)\s*"
+    r"(?P<consulta>(?:qual|quais|que|como|quem|onde|quando|quanto|o que)\s+[^,:;.!?]+?)"
+    r"(?P<vocativo>,\s*(?:laylay|lay))?\?",
+    re.IGNORECASE,
+)
+_MATRIZ_DE_ELABORACAO = re.compile(
+    r"(?:qual|quais|que)\s+seri(?:a|am)\s+(?:o\s+|a\s+)?"
+    r"(?:meu|minha|seu|sua|nosso|nossa)\s+"
+    r"(?:plano|ideia|estrat[eé]gia|proposta|abordagem|roteiro)\s+para\s+\S.*|"
+    r"(?:qual|que)\s+(?:papel|personagem|tema|abordagem|prioridade)\s+"
+    r"(?:(?:eu|voc[eê]|n[oó]s)\s+)?escolher(?:ia|ias|[ií]amos|iam)(?:\s+.+)?|"
+    r"como\s+(?:(?:eu|voc[eê]|n[oó]s)\s+)?"
+    r"(?:(?:organiz|planej|improvis)ar|dividir)(?:ia|ias|[ií]amos|iam)\s+\S.*",
+    re.IGNORECASE,
+)
+_MATRIZ_DE_PROPOSTA = re.compile(
+    r"(?:qual|que)\s+seria\s+(?:a\s+)?(?:minha|sua|nossa)\s+(?:ideia|proposta)",
+    re.IGNORECASE,
+)
+_ORDEM_NO_TEXTO_HIPOTETICO = re.compile(
+    r"(?:(?:na|nesta|nessa)\s+(?:hist[oó]ria|fic[cç][aã]o)[:,]\s*)?"
+    r"(?:(?:(?:e )?voc[eê],\s*)?(?:laylay|lay):\s*)?"
+    r"se\s+[\w\s]+?\s+(?P<verbo>[\w-]+sse)\s+"
+    r"[oa]\s+(?:primeir[oa]|[uú]ltim[oa])\s+"
+    r"(?:(?P<colecao>livro\s+(?:dessa|desta)\s+biblioteca)|"
+    r"(?:cap[ií]tulo|p[aá]gina|cena)\s+(?:d[oa]|dess[ea]|dest[ea])\s+"
+    r"(?:livro|conto|hist[oó]ria|romance|roteiro|pe[cç]a|poema)),\s*"
+    r"(?:qual|que)\s+seria\s+[oa]\s+(?:primeir[oa]|[uú]ltim[oa])\s+"
+    r"(?:frase|linha|verso|fala)(?:\s+escrit[oa])?\s+nel[ea]\?",
     re.IGNORECASE,
 )
 _CONSULTA_PESSOAL_OU_INTERNA = re.compile(
@@ -116,10 +166,44 @@ def _normalizar(texto: str) -> str:
     return re.sub(r"\s+", " ", base).strip()
 
 
+def _tempo_qualifica_antecedente(texto: str, *, consulta_unica: bool) -> bool:
+    leitura = _TEMPO_NO_ANTECEDENTE_HIPOTETICO.fullmatch(texto)
+    if not leitura:
+        return False
+    consulta = leitura["consulta"]
+    aposto = leitura["aposto"] or leitura["parentese"]
+    proposta = _MATRIZ_DE_PROPOSTA.fullmatch(consulta)
+    if aposto or leitura["vocativo"] or proposta:
+        # A proposta do interlocutor precisa ocupar a matriz inteira e ser
+        # a única consulta. O aposto não estende a dispensa a outros atos.
+        if not consulta_unica or not proposta:
+            return False
+        from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+        if aposto and not all(grupo_nominal_de_papel(item.strip()) for item in
+                re.split(r"\s*,\s*|\s+(?:e|ou)\s+", aposto, flags=re.IGNORECASE)):
+            return False
+    elif (not _MATRIZ_DE_ELABORACAO.fullmatch(consulta) or _SINAL_TEMPO_EXPLICITO.search(consulta) or re.search(
+            rf"\b(?:{PADRAO_COORDENACAO_OPERACIONAL}|mas|ou|nem|por[eé]m)\b",
+            consulta, re.IGNORECASE)):
+        return False
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    tipo = consultar_morfologia(leitura["verbo"]) or 0
+    if not tipo & 32 or tipo & (1 | 256):
+        return False
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    # Uma segunda interrogação pode aparecer em ordem declarativa, sem
+    # repetir "qual"/"quem". Reutilizar o leitor de atos em vez de dispensá-la.
+    matriz = classificar_modalidade_turno(consulta + "?")
+    return len(matriz["segmentos"]) == 1 and not matriz["autoriza_execucao"]
+
+
 def classificar_atualidade_factual(
     texto: str,
     *,
     turno: Dict[str, Any] | None = None,
+    _consulta_unica: bool = True,
+    _ordem_em_cena: bool = False,
 ) -> Dict[str, Any]:
     """Classifica consultas cujo valor factual pode mudar com o tempo.
 
@@ -133,10 +217,18 @@ def classificar_atualidade_factual(
     modalidade = str(
         leitura.get("modalidade_geral") or leitura.get("modalidade") or ""
     ).casefold()
+    consulta_externa = texto_fora_de_citacoes(bruto)
+    ordem_em_cena = _ordem_em_cena or contem_moldura_narrativa(consulta_externa)
+    consulta_unica = _consulta_unica and sum(
+        "?" in trecho or bool(_ABERTURA_CONSULTA.search(trecho))
+        for trecho in enunciados_discursivos(consulta_externa)
+    ) <= 1
     eh_consulta = bool(
-        "?" in bruto
-        or modalidade in {"pergunta", "misto"}
-        or _ABERTURA_CONSULTA.search(bruto)
+        "?" in consulta_externa
+        or (modalidade in {"pergunta", "misto"}
+            and not intervalos_citados(bruto)
+            and not re.search(r'[.!;]\s*$', consulta_externa))
+        or _ABERTURA_CONSULTA.search(consulta_externa)
         or texto_consulta_estado_recurso(bruto)
     )
     base = {
@@ -149,6 +241,7 @@ def classificar_atualidade_factual(
     if texto_e_metalinguistico(bruto):
         return {**base, "motivos": ["fala_metalinguistica"]}
     segmentos = leitura.get("segmentos")
+    fontes_inconsistentes = False
     if isinstance(segmentos, list) and len(segmentos)>1:
         from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
         fontes = fontes_textuais_dos_segmentos(bruto, segmentos, limite_segmentos=32, limite_trecho=4000)
@@ -158,18 +251,46 @@ def classificar_atualidade_factual(
             # de outro trecho. Fontes incoerentes mantêm a leitura conservadora.
             avaliacoes = []
             for indice, (fonte, segmento) in enumerate(zip(fontes, segmentos)):
-                literal = fonte.como_dict()["texto_original"]
+                dados_fonte = fonte.como_dict()
+                literal = dados_fonte["texto_original"]
                 # Uma confirmação elíptica consulta a proposição imediatamente
                 # anterior. Não tratá-las como tema e pergunta independentes.
                 from mente_laylay.cognicao.referencias_linguagem import pergunta_confirmatoria_eliptica
                 if indice and pergunta_confirmatoria_eliptica(literal):
                     literal = fontes[indice-1].como_dict()["texto_original"] + ', ' + literal
+                elif indice:
+                    anterior = fontes[indice-1].como_dict()
+                    fim_anterior = anterior["intervalo"][1]
+                    inicio_atual = dados_fonte["intervalo"][0]
+                    if re.fullmatch(r"\s*,\s*", bruto[fim_anterior:inicio_atual]):
+                        trecho_contiguo = bruto[anterior["intervalo"][0]:dados_fonte["intervalo"][1]]
+                        if _ORDEM_NO_TEXTO_HIPOTETICO.fullmatch(trecho_contiguo):
+                            # A vírgula separou a condição da matriz. Só a
+                            # construção integral do owner recupera esse elo.
+                            literal = trecho_contiguo
                 avaliacoes.append(classificar_atualidade_factual(
-                    literal, turno={"modalidade": segmento.get("modalidade")}))
+                    literal, turno={"modalidade": segmento.get("modalidade")}, _consulta_unica=consulta_unica,
+                    _ordem_em_cena=ordem_em_cena))
             atuais = [a for a in avaliacoes if a["depende_atualidade"]]
             if atuais:
                 return min(atuais, key=lambda a: a["validade_sugerida_s"])
             return {**base, "confianca": 0.85, "motivos": ["atos_sem_consulta_mutavel"]}
+        fontes_inconsistentes = True
+    if not fontes_inconsistentes:
+        from mente_laylay.cognicao.referencias_linguagem import pergunta_confirmatoria_eliptica
+        enunciados = enunciados_discursivos(bruto)
+        if len(enunciados)>1:
+            avaliacoes = []
+            for indice, enunciado in enumerate(enunciados):
+                if indice and pergunta_confirmatoria_eliptica(enunciado):
+                    enunciado = enunciados[indice-1] + ', ' + enunciado
+                # A modalidade pertence ao segmento composto, não a cada
+                # enunciado. A consulta concreta conserva sua própria forma.
+                avaliacoes.append(classificar_atualidade_factual(enunciado, _consulta_unica=consulta_unica,
+                    _ordem_em_cena=ordem_em_cena))
+            atuais = [a for a in avaliacoes if a['depende_atualidade']]
+            return min(atuais,key=lambda a:a['validade_sugerida_s']) if atuais else {
+                **base,'confianca':0.85,'motivos':['enunciados_sem_consulta_mutavel']}
     afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto) or (
         eh_consulta and re.search(r"\b(?:ps\s*[3456]|playstation\s*[3456]|xbox|switch|pc)\b", bruto, re.I)))
     if not normalizado or (not eh_consulta and not afirmacao_mutavel):
@@ -187,7 +308,16 @@ def classificar_atualidade_factual(
             "motivos": ["estado_atual_exige_observacao"],
         }
 
-    sinal_temporal = bool(_SINAL_TEMPO_EXPLICITO.search(bruto))
+    # Em uma introdução volitiva seguida de pergunta retrospectiva sobre
+    # autoria, o marcador inicial situa o ato de perguntar. Outros sinais
+    # de tempo e domínios mutáveis continuam sob a classificação normal.
+    abertura = ABERTURA_RETOMADA_CRIACAO.match(consulta_externa)
+    inicio_tempo = (
+        abertura.end("transicao")
+        if abertura and MATRIZ_RETOMADA_CRIACAO.fullmatch(consulta_externa, abertura.end())
+        else 0
+    )
+    sinal_temporal = bool(_SINAL_TEMPO_EXPLICITO.search(bruto, inicio_tempo))
     if _ANCORA_HISTORICA.search(bruto) and not sinal_temporal:
         return {**base, "classe": "historica", "motivos": ["ancora_historica_explicita"]}
 
@@ -214,21 +344,28 @@ def classificar_atualidade_factual(
         }
 
     if sinal_temporal:
+        ordem = _ORDEM_NO_TEXTO_HIPOTETICO.fullmatch(consulta_externa)
+        if ordem and (not ordem['colecao'] or ordem_em_cena) and all(
+                         m[0].casefold() in {'último', 'última', 'ultimo', 'ultima'}
+                         for m in _SINAL_TEMPO_EXPLICITO.finditer(bruto)):
+            from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+            classe_verbo = consultar_morfologia(ordem['verbo']) or 0
+            if classe_verbo & 32 and not classe_verbo & (1 | 256):
+                return {**base, 'confianca': 0.85, 'motivos': ['ordem_do_texto_hipotetico']}
+        if _tempo_qualifica_antecedente(consulta_externa, consulta_unica=consulta_unica):
+            # Exigir elaboração positiva, pois uma ida hipotética também
+            # pode motivar consulta factual (portão do voo, saldo, preço).
+            return {**base, "confianca": 0.85, "motivos": ["tempo_do_antecedente_hipotetico"]}
+        from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+        if re.fullmatch(r'(?:se\s+[^,;.!?]+,\s*)?o que\s+(?:viria|vem|passa)\s+(?:(?:a|na|pela)\s+)?'
+            r'(?:sua|tua)\s+(?:cabeca|mente)(?:\s+agora)?[?!.]*', normalizar_texto_basico(bruto)):
+            return {**base,'classe':'contexto_pessoal','motivos':['elaboracao_da_interlocutora']}
         # Nomear um artefato do próprio diálogo é uma proposta local. O tempo
         # qualifica esse artefato, não uma fonte externa recente. Domínios e
         # afirmações mutáveis acima conservam sua obrigação de evidência.
-        artefato = (r'(?:a\s+)?(?:nossa|esta|essa)\s+'
-                    r'(?:conversa|historia|resposta|mensagem|frase)'
-                    r'(?:\s+de\s+(?:hoje|ontem|agora))?')
-        nomeacao = (
-            r'(?:(?:qual|que)\s+(?:(?:seria|e)\s+)?(?:um\s+|o\s+)?'
-            r'(?:nome|titulo)(?:\s+\w+){0,2}\s+'
-            r'(?:(?:voce|tu)\s+(?:daria|escolheria)\s+)?(?:para\s+|a\s+)'
-            r'|como\s+(?:voce|tu)\s+chamaria\s+)'
-        )
         convite = re.fullmatch(r'vamos\s+[^:;.!?]+:\s*(?P<consulta>[^:;.!?]+)[?!.]*', bruto, re.I)
         alvo_nomeacao = _normalizar(convite['consulta']) if convite else normalizado
-        if re.fullmatch(nomeacao + artefato + r'[?!.]*', alvo_nomeacao):
+        if _PEDIDO_NOMEACAO_DO_DIALOGO.fullmatch(alvo_nomeacao):
             return {**base, 'classe': 'contexto_pessoal',
                     'motivos': ['nomeacao_de_artefato_do_dialogo']}
         return {
@@ -314,6 +451,11 @@ def extrair_tema_fundamentacao(
     registro_semantico: Dict[str, Any] | None = None,
 ) -> str:
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    alvo, restante = separar_descricao_de_nomeacao(bruto)
+    if alvo and retrato and retrato.get('alvo_nomeacao_autoral') == alvo:
+        return ""
+    if alvo:
+        bruto = restante
     from mente_laylay.cognicao.referencias_linguagem import consulta_opiniao_propria
     if consulta_opiniao_propria(bruto) is not None:
         return ""
@@ -609,15 +751,17 @@ def _recursos_locais_documentados(documentacao: str) -> set[str]:
 
 
 _DESTAQUE_CITADO = re.compile(
-    r'["“]([^"”\n]{2,100})["”]|\'([^\'\n]{2,100})\'|‘([^’\n]{2,100})’|'
-    r'(?<!\*)\*{1,2}([^*\n]{2,100})\*{1,2}(?!\*)'
+    r'["“]([^"”\n]{2,})["”]|\'([^\'\n]{2,})\'|‘([^’\n]{2,})’|'
+    r'(?<!\*)\*{1,2}([^*\n]{2,})\*{1,2}(?!\*)'
 )
+_DESTAQUE_NOMEACAO = re.compile(_DESTAQUE_CITADO.pattern + r'|«([^«»\n]{2,})»')
 _INTRODUCAO_ENUNCIADO = re.compile(
     # A preposição pode introduzir o conteúdo citado do pedido. Reconhecer
     # essa relação não exige reconhecer/executar o verbo dentro da citação.
     # "pedir para tocar 'X'" não encaixa: tocar está FORA do enunciado citado.
     r"\b(?:diga|dizer|digite|digitar|fale|falar|escreva|escrever|"
     r"(?:pe[cç]a|pedir)(?:\s+(?:para|pra))?|pergunte|perguntar|pense|pensar|"
+    r"diria|responderia|escreveria|"
     r"(?:quer|quis|queria)\s+dizer\s+com|"
     r"(?:o|um)\s+comando|(?:a|uma)\s+(?:frase|pergunta))"
     r"(?:\s+(?:para|a)\s+(?:mim|ela|ele|voc[eê]|si\s+mesm[oa]))?"
@@ -652,6 +796,10 @@ _PROGRAMA_OPERACIONAL_CITADO = re.compile(
     r"\s+(?:(?:o|um|esse)\s+)?programa\s+(?:chamado\s+)?$", re.IGNORECASE,
 )
 _EXEMPLO_NOVA_FRASE = re.compile(r"[.!?]\s+(?:por\s+)?exemplo\s*:\s*$", re.IGNORECASE)
+_HIPOTESE_DE_ENUNCIADO = re.compile(
+    r"^se\s+[^.!?;:,\n]+,\s*(?:eu\s+)?(?:diria|responderia|escreveria)"
+    r"\s*:\s*(?=\[enunciado\])", re.IGNORECASE,
+)
 _ORIENTACAO_PEDIDO = re.compile(
     r"\b(?:pode|basta|[eé]\s+s[oó])\s+(?:"
     r"pedir(?!\s+(?:(?:o|a|um|uma)\s+)?(?:filme|m[uú]sica|livro|s[eé]rie|t[ií]tulo|obra)\b)|"
@@ -685,6 +833,103 @@ _APRESENTACAO_DE_OBRA = re.compile(
     r"(?:\s+que\s+eu\s+(?:adoro|gosto))?\s*:\s*$",
     re.IGNORECASE,
 )
+
+_ARTEFATO_NOMEAVEL = r"(?:jogo|conto|historia|narrativa|roteiro|livro|filme|serie|obra|cancao|musica|poema|romance)"
+_ALVO_NOMEACAO = (
+    rf"(?:para|pra|com|ao|a)\s+(?P<alvo>(?:(?:o|a|este|esta|esse|essa|nosso|nossa|um|uma)\s+)?"
+    rf"{_ARTEFATO_NOMEAVEL}(?P<descricao>\s+de\s+[\w-]+(?:\s+[\w-]+){{0,3}})?)"
+)
+_PEDIDO_NOMEACAO = re.compile(
+    r"(?:(?:qual|que)\s+(?:nome|titulo)\s+(?:(?:voce|tu)\s+)?"
+    r"(?:daria|escolheria|proporia|sugeriria|sugere|combinaria|ficaria\s+bem)|"
+    r"(?:invente|sugira|crie|proponha|escolha)\s+um\s+(?:nome|titulo))\s+"
+    + _ALVO_NOMEACAO
+)
+_PEDIDO_IDENTIFICACAO_TITULO = re.compile(
+    r"\b(?:nome|titulo)\s+(?:oficial|original|real|verdadeiro|registrado|publicado)\b|"
+    r"\b(?:qual|que)\s+(?:e\s+o\s+)?(?:nome|titulo)(?:\s+(?:d[ao]\b|dele\b|dela\b|"
+    r"(?:a\s+editora|o\s+estudio)\s+(?:publicou|usou)\b)|\s*$)|"
+    r"\bcomo\s+(?:se\s+chama|(?:ele|ela|o\s+jogo|a\s+obra)\s+se\s+chama)\b|"
+    r"\b(?:quero|preciso|confirme|consulte|descubra)\s+(?:saber\s+)?o\s+(?:nome|titulo)\b|"
+    r"\bnao\s+(?:quero|preciso\s+de)\s+(?:uma\s+)?sugest(?:ao|oes)\b"
+)
+_MOLDURA_NOME_PROPOSTO = re.compile(
+    r"\b(?:(?:t[ií]tulo|nome)(?:\s+(?:sugerido|proposto))?|"
+    r"sugest[aã]o(?:\s+de\s+(?:t[ií]tulo|nome))?)\s*:\s*$|"
+    r"\b(?:eu\s+)?(?:chamaria\s+de|sugeriria|proporia)\s*:?\s*$", re.IGNORECASE,
+)
+_MOLDURA_TITULO_IDENTIFICADO = re.compile(
+    r"\b(?:encontrei|achei|localizei)\s*:?\s*$|"
+    r"\b(?:t[ií]tulo|nome)(?:\s+(?:oficial|original|real|verdadeiro|registrado|publicado))?"
+    r"\s+[eé]\s*:?\s*$", re.IGNORECASE,
+)
+_TITULO_IDENTIFICADO_NO_ENTORNO = re.compile(
+    r"\b(?:t[ií]tulo|nome)\s+(?:oficial|original|real|verdadeiro|registrado|publicado)\b",
+    re.IGNORECASE,
+)
+
+
+def _finalidade_nomeacao(texto_usuario: str) -> tuple[bool, bool]:
+    """Lê o ato da entrada vigente, com alvo explícito e sem adotar citações."""
+    proposta = identificacao = False
+    for enunciado in enunciados_discursivos(texto_fora_de_citacoes(texto_usuario)):
+        texto = _normalizar(enunciado).rstrip(".")
+        if _PEDIDO_IDENTIFICACAO_TITULO.search(texto):
+            identificacao = True
+        elif _PEDIDO_NOMEACAO.fullmatch(texto) or _PEDIDO_NOMEACAO_DO_DIALOGO.fullmatch(texto):
+            proposta = True
+        else:
+            retificacao = _normalizar(trecho_retificacao_do_enunciador(enunciado))
+            identificacao |= bool(re.match(r"(?:o\s+)?(?:nome|titulo)\b", retificacao))
+    return proposta, identificacao
+
+
+def separar_descricao_de_nomeacao(texto: str) -> tuple[str, str]:
+    """Separa o alvo descrito dos enunciados que podem conter nomes próprios."""
+    if ' de ' not in texto.casefold():
+        return '', texto
+    partes = enunciados_discursivos(texto)
+    alvos = []
+    for indice, parte in enumerate(partes):
+        pedido = _PEDIDO_NOMEACAO.fullmatch(_normalizar(parte).rstrip('.'))
+        if (pedido is not None and pedido['descricao'] and not intervalos_citados(parte)
+                and not re.search(r'\b(?:e|ou|mas|porem|tambem|chamad[oa])\b', pedido['descricao'])):
+            quantidade = len(pedido['alvo'].split())
+            alvos.append((indice, ' '.join(parte.rstrip(' .!?;').split()[-quantidade:])))
+    if len(alvos) != 1 or _finalidade_nomeacao(texto)[1]:
+        return '', texto
+    indice, alvo = alvos[0]
+    return alvo, ' '.join(partes[:indice] + partes[indice + 1:])
+
+
+def alvo_nomeacao_autoral(texto: str) -> str:
+    """Identifica o alvo de uma proposta sem absorver outras solicitações."""
+    alvo, restante = separar_descricao_de_nomeacao(texto)
+    if not alvo or not restante:
+        return alvo
+    if all(_preambulo_sem_outro_pedido(parte) for parte in enunciados_discursivos(restante)):
+        return alvo
+    return ''
+
+
+def _preambulo_sem_outro_pedido(texto: str) -> bool:
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    leitura = classificar_modalidade_turno(texto)
+    if leitura.get('modalidade') != 'conversa' or leitura.get('natureza_acao') != 'nenhuma':
+        return False
+    base = _normalizar(texto).rstrip('.')
+    if re.fullmatch(r'(?:vamos|podemos) (?:deixar|guardar|adiar) (?:\w+ ){1,6}'
+                    r'para (?:depois|mais tarde|outro momento)', base):
+        return True
+    # A modalidade de conversa também abriga imperativos de autoria/ensino.
+    # Sem distinguir esses verbos, um título poderia consumir a outra tarefa.
+    abertura = re.sub(r'^(?:(?:agora|tamb[eé]m|depois|por favor|me|n[aã]o|voc[eê]|tu)[ ,]+)+',
+                      '', texto.casefold())
+    primeira = re.match(r'[^\W\d_]+', abertura)
+    tipo = consultar_morfologia(primeira[0]) if primeira else None
+    return tipo is not None and not tipo & 32  # verbo no léxico canônico
 
 
 def _indicio_de_obra(prefixo: str, sufixo: str, *, contexto_obra: bool = False) -> bool:
@@ -738,24 +983,35 @@ def _destaques_com_papel(
 ) -> list[tuple[re.Match[str], str]]:
     destaques = []
     fim_anterior, papel_anterior = 0, ""
+    pede_proposta, pede_identificacao = _finalidade_nomeacao(texto_usuario)
+    nomeacao_em_pauta = pede_proposta or pede_identificacao
+    destaques_do_turno = _DESTAQUE_NOMEACAO if nomeacao_em_pauta else _DESTAQUE_CITADO
     # Resposta só de nomes pode herdar o tipo solicitado. Isso não transforma
     # toda ênfase de uma conversa sobre filmes em título nem concede autoridade.
     resposta_nominal = bool(
         re.search(rf"\b{_TIPO_OBRA}\b", texto_usuario, re.IGNORECASE)
-        and _DESTAQUE_CITADO.search(texto)
+        and destaques_do_turno.search(texto)
         and re.fullmatch(r"[\s,.;:!?\d\-]*(?:(?:e|ou)[\s,.;:!?\d\-]*)*",
-                         _DESTAQUE_CITADO.sub("", texto), re.IGNORECASE)
+                         destaques_do_turno.sub("", texto), re.IGNORECASE)
     )
     contexto_obra = contexto_obra or bool(re.search(
         rf"\b{_TIPO_OBRA}\b", texto_usuario, re.IGNORECASE,
     ))
-    for destaque in _DESTAQUE_CITADO.finditer(texto):
+    identificacao_no_entorno = nomeacao_em_pauta and bool(
+        _TITULO_IDENTIFICADO_NO_ENTORNO.search(destaques_do_turno.sub("", texto))
+    )
+    for destaque in destaques_do_turno.finditer(texto):
         # Só enumeração direta herda o papel: "diga A ou B". Uma oração
         # como "e recomendo B" inicia outra relação e será avaliada do zero.
         papel_enumerado = papel_anterior if _ENUMERACAO_CITADA.fullmatch(
             texto[fim_anterior:destaque.start()]
         ) else ""
         prefixo = texto[:destaque.start()]
+        sufixo = texto[destaque.end():]
+        moldura_nominal = _MOLDURA_NOME_PROPOSTO.search(prefixo)
+        nome_isolado = (not prefixo or _MOLDURA_NOME_PROPOSTO.fullmatch(prefixo)) and bool(
+            re.fullmatch(r"\s*[.!?]*\s*", sufixo)
+        )
         # Referências já tipificadas podem aparecer entre o verbo de pedir e
         # seu exemplo. Só essas referências são abstraídas, preservando frases,
         # títulos e outras citações como fronteiras da relação linguística.
@@ -771,13 +1027,25 @@ def _destaques_com_papel(
             papel = "referencia_operacional"
         elif _REFERENCIA_CONCEITUAL_CITADA.search(prefixo):
             papel = "referencia_conceitual"
-        elif papel_enumerado == "enunciado" or _citacao_didatica(
-            prefixo_relacional, next(g for g in destaque.groups() if g is not None),
+        elif not _TIPO_OBRA_POSPOSTO.search(sufixo) and (
+            papel_enumerado == "enunciado" or _citacao_didatica(
+                prefixo_relacional, next(g for g in destaque.groups() if g is not None),
+            )
         ):
             papel = "enunciado"
+        elif pede_proposta and not pede_identificacao and nome_isolado:
+            # A entrega inteira é uma denominação para o artefato pedido.
+            # Um rótulo dentro de um rascunho misto não basta para essa leitura.
+            papel = "nome_proposto"
+        elif nomeacao_em_pauta and (
+            nome_isolado or moldura_nominal or identificacao_no_entorno
+            or _MOLDURA_TITULO_IDENTIFICADO.search(prefixo)
+            or _indicio_de_obra(prefixo, sufixo, contexto_obra=contexto_obra)
+        ):
+            papel = "obra_identificada" if pede_identificacao else "nomeacao_inconclusiva"
         elif (papel_enumerado == "obra_candidata" or resposta_nominal
               or _indicio_de_obra(
-                  prefixo, texto[destaque.end():], contexto_obra=contexto_obra,
+                  prefixo, sufixo, contexto_obra=contexto_obra,
               )):
             papel = "obra_candidata"
         else:
@@ -792,9 +1060,13 @@ def _destaques_com_papel(
 def _sem_enunciados_didaticos(texto: str, *, posicoes: set[int] | None = None) -> str:
     if posicoes is None:
         posicoes = {m.start() for m, papel in _destaques_com_papel(texto) if papel == "enunciado"}
-    return _DESTAQUE_CITADO.sub(
+    projetado = _DESTAQUE_CITADO.sub(
         lambda m: "[enunciado]" if m.start() in posicoes else m.group(0), texto,
     )
+    # A condição de um exemplo de fala não afirma que o cenário ocorreu.
+    # Só a moldura local com uma única oração condicional é abstraída;
+    # predicados fora dela e da citação continuam nos verificadores factuais.
+    return _HIPOTESE_DE_ENUNCIADO.sub('[hipotese_de_fala] ', projetado)
 
 
 def extrair_titulos_citados(texto: str, *, texto_usuario: str = "") -> list[str]:
@@ -803,8 +1075,21 @@ def extrair_titulos_citados(texto: str, *, texto_usuario: str = "") -> list[str]
     return list(dict.fromkeys(
         next(g for g in m.groups() if g is not None).strip()
         for m, papel in _destaques_com_papel(bruto, texto_usuario=texto_usuario)
-        if papel == "obra_candidata"
+        if papel in {"obra_candidata", "obra_identificada"}
     ))
+
+
+def nomeacao_exige_reparo(fala: str, *, texto_usuario: str, contexto_obra: bool = False) -> bool:
+    """Projeta a decisão do revisor factual para a tentativa de reautoria."""
+    papeis = {papel for _, papel in _destaques_com_papel(
+        fala, texto_usuario=texto_usuario, contexto_obra=contexto_obra,
+    )}
+    return _nomeacao_fora_do_escopo(texto_usuario, papeis)
+
+
+def _nomeacao_fora_do_escopo(texto_usuario: str, papeis: set[str]) -> bool:
+    return ('nomeacao_inconclusiva' in papeis
+            or ('nome_proposto' not in papeis and bool(alvo_nomeacao_autoral(texto_usuario))))
 
 
 def _titulos_citados(texto: str) -> list[str]:
@@ -1200,6 +1485,10 @@ def avaliar_nucleo_retomada_usuario(fala: str, *, plano: Dict[str, Any]) -> Dict
     revisores. A gramática existente sustenta paráfrases; citação integral
     preserva apenas o dizer. Nenhum desses passos certifica verdade externa.
     """
+    from mente_laylay.cognicao.recordacao_atributo import avaliar_recordacao_atributo
+    recordacao = avaliar_recordacao_atributo(fala, plano=plano)
+    if recordacao is not None:
+        return recordacao
     from mente_laylay.cognicao.referencias_linguagem import (
         PerspectivaEnunciador, pedido_consulta_fala_usuario, recorte_consulta_fala_usuario,
     )
@@ -1277,8 +1566,11 @@ def realizacoes_retomada_usuario(*, plano: Dict[str, Any]) -> tuple[str, ...]:
     Não recorta, ranqueia nem transforma fontes; a revisão final permanece dona
     da conferência. A escolha do modelo não prova implicação ou verdade atual.
     """
-    if avaliar_nucleo_retomada_usuario('', plano=plano) is None:
+    nucleo = avaliar_nucleo_retomada_usuario('', plano=plano)
+    if nucleo is None:
         return ()
+    if 'realizacoes' in nucleo:
+        return tuple(nucleo['realizacoes'])
     opcoes: list[str] = []
     for item in plano.get('relatos_usuario') or ():
         if (not isinstance(item, dict) or item.get('origem') != 'historico_conversa'
@@ -1315,6 +1607,24 @@ def validar_fala_com_fundamentacao(
     plano: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     original = re.sub(r"\s+", " ", str(fala or "")).strip()
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_em_bloco
+    criacao_vinculada = False
+    if (plano and texto_usuario == plano.get('texto_usuario')
+            and criacao_ficcional_vigente(plano) is not None):
+        from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
+        revisao = revisar_suporte_autoria(original, plano=plano, agora=agora)
+        if (revisao is not None and not revisao.aplicar_limite
+                and revisao.como_dict()['estado'] == 'criacao_ficcional_delimitada'):
+            criacao_vinculada = True
+        if criacao_vinculada and fala_ficcional_em_bloco(original):
+            # O owner já conferiu contrato nativo, ocorrência, proposta inteira,
+            # ausência de fontes e moldura integral. Datas e características
+            # nesse conteúdo não são alegações do mundo. Não isentar o pedido
+            # ou um prefixo isolado; os demais revisores continuam ativos.
+            return {'fala': original, 'problemas': [], 'acao': 'aceita',
+                'escopo': 'criacao_ficcional_delimitada', 'prova_factual': False,
+                'prova_semantica_livre': False, 'autoriza_execucao': False,
+                'relatos_usuario_conferidos': [], 'revisao_relatos_usuario': []}
     from mente_laylay.cognicao.opiniao_autoral import avaliar_opiniao_autoral
     opiniao = avaliar_opiniao_autoral(texto_usuario, original, plano=plano or {})
     if opiniao is not None and opiniao['aceita']:
@@ -1324,6 +1634,10 @@ def validar_fala_com_fundamentacao(
             'opiniao_autoral_conferida': True, 'prova_factual': False,
             'prova_semantica_livre': False, 'autoriza_execucao': False,
             'relatos_usuario_conferidos': [], 'revisao_relatos_usuario': []}
+    if criacao_vinculada:
+        # Sem bloco fechado, a finalidade não dispensa revisão das alegações,
+        # inclusive na rota sem pesquisa que normalmente confere só relatos.
+        apenas_relatos_usuario = False
     base = avaliar_validade_fundamentacao(fundamentacao, agora=agora)
     reparo_recomendacao = reparar_recomendacao_com_evidencia(base, original)
     if (
@@ -1349,7 +1663,6 @@ def validar_fala_com_fundamentacao(
         or extrair_aprendizados_pessoais_explicitos(texto_usuario)
     )
     problemas: list[str] = []
-    frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
     rejeitadas: list[str] = []
     relatos_conferidos: list[dict[str, Any]] = []
     revisoes_relatos: list[dict[str, Any]] = []
@@ -1370,8 +1683,22 @@ def validar_fala_com_fundamentacao(
     papeis_citados = _destaques_com_papel(
         original, texto_usuario=texto_usuario, contexto_obra=contexto_obra,
     )
+    if _nomeacao_fora_do_escopo(texto_usuario, {papel for _, papel in papeis_citados}):
+        # A proposta misturada a uma identificação precisa voltar à autoria.
+        # Uma pesquisa pelo próprio título sugerido não resolveria a mistura.
+        return {"fala": "", "problemas": ["nomeacao_sem_delimitacao"], "acao": "reparar",
+                "trechos_rejeitados": [original], "autoriza_execucao": False,
+                "requer_reparo": True}
+    # Um exemplo ou título tipificado é indivisível. Demais citações conservam
+    # a revisão por oração. O papel do título não se transfere para o entorno.
+    frases = list(enunciados_discursivos(original, intervalos_protegidos=tuple(
+        m.span() for m, papel in papeis_citados
+        if papel in {"enunciado", "nome_proposto", "obra_identificada"}
+    ), separar_ponto_e_virgula=False))
     posicoes_didaticas = {m.start() for m, papel in papeis_citados if papel == "enunciado"}
     recursos_locais = _recursos_locais_documentados(documentacao_capacidades)
+    evidencia_obra = _normalizar(base.get("resumo")) if base.get("confiavel") else ""
+    identificacao_sem_evidencia = False
     fim_frase = 0
     for frase_original in frases:
         inicio_frase = original.index(frase_original, fim_frase)
@@ -1386,7 +1713,13 @@ def validar_fala_com_fundamentacao(
                 rejeitadas.append(frase_original)
             # Pesquisa do assunto não pode suprir a declaração do usuário.
             continue
-        if apenas_relatos_usuario:
+        destaques_frase = [(m, papel) for m, papel in papeis_citados
+                           if inicio_frase <= m.start() < fim_frase]
+        if any(papel == "nome_proposto" for _, papel in destaques_frase):
+            continue
+        obras_identificadas = [next(g for g in m.groups() if g is not None).strip()
+                              for m, papel in destaques_frase if papel == "obra_identificada"]
+        if apenas_relatos_usuario and not obras_identificadas:
             continue
         # Datas/medidas dentro de um exemplo de pedido também são conteúdo
         # citado, não afirmações factuais. O restante continua sendo validado.
@@ -1400,11 +1733,17 @@ def validar_fala_com_fundamentacao(
         # Reusar o papel completo, inclusive 'Recomendo um filme. Exemplo: X'.
         # Reclassificar apenas a segunda frase perderia a relação comprovada.
         titulos = [next(g for g in m.groups() if g is not None).strip()
-                   for m, papel in papeis_citados
-                   if papel == "obra_candidata" and inicio_frase <= m.start() < fim_frase]
+                   for m, papel in destaques_frase if papel == "obra_candidata"]
+        identificacao_sem_fonte = any(
+            not _normalizar(titulo) or not re.search(
+                rf"(?<!\w){re.escape(_normalizar(titulo))}(?!\w)", evidencia_obra,
+            )
+            for titulo in obras_identificadas
+        )
+        identificacao_sem_evidencia |= identificacao_sem_fonte
         titulo_sem_evidencia = bool(
-            not explicacao_metalinguistica
-            and any(_normalizar(titulo) not in evidencia_norm for titulo in titulos)
+            identificacao_sem_fonte or (not explicacao_metalinguistica
+            and any(_normalizar(titulo) not in evidencia_norm for titulo in titulos))
         )
         anos = set(re.findall(r"\b(?:18|19|20)\d{2}\b", _normalizar(frase)))
         ano_sem_evidencia = any(ano not in evidencia_norm for ano in anos)
@@ -1486,6 +1825,15 @@ def validar_fala_com_fundamentacao(
                 "relatos_usuario_conferidos": relatos_conferidos,
                 "revisao_relatos_usuario": revisoes_relatos}
 
+    if criacao_vinculada:
+        # Uma narrativa não é uma coleção de respostas independentes. Se a
+        # moldura não fecha o corpo e há conteúdo não conferido, rejeitar a
+        # unidade; não publicar o recorte restante como conclusão bem-sucedida.
+        return {'fala': '', 'problemas': list(dict.fromkeys(problemas)),
+            'acao': 'criacao_sem_delimitacao_integral',
+            'trechos_rejeitados': rejeitadas, 'autoriza_execucao': False,
+            'requer_reparo': True}
+
     if reparo_recomendacao and {
         "obra_sem_evidencia", "descricao_obra_sem_evidencia",
     }.intersection(problemas):
@@ -1504,7 +1852,9 @@ def validar_fala_com_fundamentacao(
     # Saudações soltas como "isso é ótimo" não sustentam a resposta depois
     # que os detalhes inventados são removidos.
     possui_relato_conferido = any(r['texto_destino'] in restantes for r in relatos_conferidos)
-    if len(_normalizar(fala_segura).split()) < 7 and not possui_relato_conferido:
+    if identificacao_sem_evidencia or (
+        len(_normalizar(fala_segura).split()) < 7 and not possui_relato_conferido
+    ):
         fala_segura = ('Não consegui conferir essa preferência no que você contou.'
             if 'relato_usuario_sem_apoio' in problemas else _fallback_sem_inventar(tema, texto_usuario))
     return {

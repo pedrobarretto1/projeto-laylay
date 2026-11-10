@@ -39,4 +39,3 @@ def test_redacao_nao_faz_a_ia_confirmar_um_efeito_mencionado():
     t = classificar_modalidade_turno(texto)
     assert not t['segmentos'][0]['autoriza_execucao']
     assert t['segmentos'][-1]['autoriza_execucao']
-

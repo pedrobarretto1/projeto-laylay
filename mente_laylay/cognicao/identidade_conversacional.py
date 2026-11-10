@@ -21,6 +21,18 @@ IDENTIDADE_USUARIO = {
     "papel": "usuario e interlocutor",
 }
 
+# Flexão de perspectiva, sem sinonímia, alteração de tempo ou juízo factual.
+_FLEXOES_AUTORREFERENCIA = {
+    "pode": "posso", "consegue": "consigo", "acha": "acho", "pensa": "penso",
+    "está": "estou", "esta": "estou", "vai": "vou", "quer": "quero",
+    "precisa": "preciso", "gosta": "gosto", "lembra": "lembro", "sabe": "sei",
+}
+
+
+def flexao_primeira_pessoa_assistente(verbo: str) -> str | None:
+    """Mesma perspectiva usada na realização; não infere sujeito omitido."""
+    return _FLEXOES_AUTORREFERENCIA.get(str(verbo or '').casefold())
+
 
 def remover_vocativo_laylay(texto: str) -> str:
     """Remove o chamado, preservando nomes de arquivo como Laylay.py."""
@@ -110,16 +122,12 @@ def ajustar_autorreferencia_assistente(texto: str) -> str:
     for padrao, troca in substituicoes:
         fala = re.sub(padrao, troca, fala, flags=re.IGNORECASE)
 
-    verbos = {
-        "pode": "posso", "consegue": "consigo", "acha": "acho", "pensa": "penso",
-        "está": "estou", "esta": "estou", "vai": "vou", "quer": "quero",
-        "precisa": "preciso", "gosta": "gosto", "lembra": "lembro", "sabe": "sei",
-    }
+    verbos = _FLEXOES_AUTORREFERENCIA
     padrao_verbo = "|".join(sorted(map(re.escape, verbos), key=len, reverse=True))
 
     def primeira_pessoa(match: re.Match[str]) -> str:
         verbo = match.group("verbo").casefold()
-        convertido = verbos.get(verbo, match.group("verbo"))
+        convertido = flexao_primeira_pessoa_assistente(verbo) or match.group("verbo")
         return convertido.capitalize() if match.group(0)[:1].isupper() else convertido
 
     fala = re.sub(

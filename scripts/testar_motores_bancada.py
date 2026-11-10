@@ -15,10 +15,10 @@ import time
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--pwm", type=int, default=180, help="Intensidade 1–255")
+    parser.add_argument("--pwm", type=int, default=180, help="Intensidade 150–255 nesta montagem")
     args = parser.parse_args()
-    if not 1 <= args.pwm <= 255:
-        parser.error("PWM precisa estar entre 1 e 255")
+    if not 150 <= args.pwm <= 255:
+        parser.error("PWM precisa estar entre 150 e 255 nesta montagem")
     import laylay as root
     runtime = root._rosto_oled_runtime
     owner = root._atividade_operacional_runtime

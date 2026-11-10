@@ -21,8 +21,12 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     normalizar_texto_basico as _normalizar,
 )
 from mente_laylay.integracao.llm_http import eh_estado_tecnico_llm
+from mente_laylay.integracao.contrato_saida_estruturada import (
+    CONTRATO_SAIDA_CONFIRMACAO_COMPOSTA, ContratoSaidaEstruturada,
+)
 from mente_laylay.memoria_mental.resultado_acao import (
     ResultadoAcao,
+    STATUS_RESULTADO_FOCO_CONFIRMADO,
     STATUS_RESULTADO_JA_SATISFEITO,
 )
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
@@ -34,6 +38,31 @@ EMOCOES_PERMITIDAS = frozenset({
     "calma", "alegre", "debochada", "envergonhada", "surpresa",
     "triste", "irritada", "brava", "acalmando-se",
 })
+
+_ESTADO_FOCO_JANELA = (
+    r"focad[oa]s?|(?:em|no|ao|pro|para o) (?:foco|primeiro plano)|(?:a|na|pra|para(?: a)?) frente"
+)
+_FOCO_REALIZADO = (
+    r"foquei|focamos|focou|focaram|foco (?:foi )?confirmado|"
+    r"(?:dei|ajustei|mudei|troquei|retomei|alterei) (?:o )?foco"
+)
+_FOCO_JANELA_ALEGADO = re.compile(rf"\b(?:{_FOCO_REALIZADO}|{_ESTADO_FOCO_JANELA})\b")
+_FOCO_JANELA_NARRADO = re.compile(
+    rf"\b(?:{_FOCO_REALIZADO}|"
+    rf"(?:esta|ficou|segue|foi|deixei|trouxe|puxei|coloquei) (?:\w+ ){{0,6}}(?:{_ESTADO_FOCO_JANELA}))\b"
+)
+
+
+def _abertura_sem_foco_confirmado(resultado: ResultadoAcao) -> bool:
+    return (
+        ("abert" in resultado.status or resultado.status in STATUS_RESULTADO_FOCO_CONFIRMADO)
+        and not (resultado.origem == "executor" and resultado.confirmado is True
+                 and resultado.status in STATUS_RESULTADO_FOCO_CONFIRMADO)
+    )
+
+
+def _alega_foco_sem_evidencia(fala: str, resultado: ResultadoAcao) -> bool:
+    return _abertura_sem_foco_confirmado(resultado) and bool(_FOCO_JANELA_ALEGADO.search(_normalizar(fala)))
 
 _PARAMETROS_AUTORIA = frozenset({
     "acao", "alvo", "cor", "nome_app", "nome", "nome_arquivo",
@@ -951,6 +980,46 @@ def personalizar_confirmacao_llm(
     return ConfirmacaoPersonalizada(fala, emocao_llm, nivel_llm, usada_llm=True)
 
 
+def _contrato_saida_confirmacao_composta(
+    quantidade: int, *, conversa: bool, realizacoes: int,
+) -> ContratoSaidaEstruturada:
+    """Declara a cobertura posicional. O owner ainda confere cada receipt e o complemento."""
+    texto = {"type": "string", "minLength": 1, "maxLength": 1000}
+    propriedades: dict[str, Any] = {
+        "trechos": {"type": "array", "minItems": quantidade, "maxItems": quantidade, "items": texto},
+    }
+    campo = "conversa" if conversa else "fala"
+    if realizacoes:
+        campo = "realizacoes"
+        propriedades[campo] = {"type": "array", "minItems": realizacoes, "maxItems": realizacoes,
+            "items": {"type": "object", "additionalProperties": False, "required": ["indice", "opcao"],
+                      "properties": {"indice": {"type": "integer"}, "opcao": texto}}}
+    else:
+        propriedades[campo] = texto
+
+    def texto_valido(valor: Any) -> bool:
+        return type(valor) is str and bool(valor.strip()) and len(valor) <= 1000
+
+    def validar(dados: dict[str, Any]) -> None:
+        trechos = dados.get("trechos")
+        if (set(dados) != set(propriedades) or type(trechos) is not list
+            or len(trechos) != quantidade or any(not texto_valido(t) for t in trechos)):
+            raise ValueError("trechos_fora_do_contrato_composto")
+        valor = dados[campo]
+        if realizacoes:
+            if (type(valor) is not list or len(valor) != realizacoes
+                or any(type(r) is not dict or set(r) != {"indice", "opcao"}
+                       or type(r["indice"]) is not int or not texto_valido(r["opcao"]) for r in valor)):
+                raise ValueError("realizacoes_fora_do_contrato_composto")
+        elif not texto_valido(valor):
+            raise ValueError("texto_fora_do_contrato_composto")
+
+    return ContratoSaidaEstruturada(CONTRATO_SAIDA_CONFIRMACAO_COMPOSTA, "[CONFIRMACAO_COMPOSTA]", {
+        "type": "object", "additionalProperties": False,
+        "properties": propriedades, "required": list(propriedades),
+    }, validar)
+
+
 def personalizar_confirmacao_composta_llm(
     resultados: Sequence[ResultadoAcao],
     fala_segura: str,
@@ -1021,8 +1090,8 @@ def personalizar_confirmacao_composta_llm(
         "classe_resultado": classe,
         "fato_verificado": fala_factual_resultados_compostos([item], informacoes=informacoes),
         "limite_evidencia": (
-            "abertura confirmada; foco e reprodução não foram confirmados"
-            if "abert" in item.status.casefold() and "focad" not in item.status.casefold()
+            "declare a abertura somente quando confirmada; o registro não sustenta foco"
+            if _abertura_sem_foco_confirmado(item)
             else "declare apenas o resultado e a certeza informados"
         ),
         "params": {chave: valor for chave, valor in item.params.items()
@@ -1103,6 +1172,9 @@ def personalizar_confirmacao_composta_llm(
                 "não os copie. Não escreva conversa, fala, comandos ou outros campos. "
                 'Formato: {"trechos":[],"realizacoes":[{"indice":1,"opcao":"condicao_1"}]}.'
             )
+    codec = _contrato_saida_confirmacao_composta(
+        len(itens), conversa=bool(conversa), realizacoes=len(realizacoes),
+    )
     try:
         resposta = enviar_mensagem(
             [{"role": "system", "content": sistema},
@@ -1111,7 +1183,7 @@ def personalizar_confirmacao_composta_llm(
             modo_rapido=False, timeout=15.0 if conversa else _timeout_autoria_operacional(),
             _prioridade_interativa=True, _permitir_durante_interacao=True,
             _tipo_chamada="autoria_operacional", _classe_timeout="normal" if conversa else "rapida",
-            _contexto_fechado=True,
+            _contexto_fechado=True, _contrato_saida=codec,
         )
     except Exception as erro:
         return _com_motivo_fallback(fallback, f"erro_chamada_{type(erro).__name__.lower()}")
@@ -1198,14 +1270,13 @@ def personalizar_confirmacao_composta_llm(
                 return _com_motivo_fallback(fallback, "vinculo_composto_invalido")
             item, classe = por_id[identidade]
             status = item.status.casefold()
-            if "abert" in status and "focad" not in status:
-                # A certeza pertence a este receipt, não às outras etapas.
-                base_trecho = _normalizar(trecho)
-                if (re.search(r"\b(?:foco|focad[oa]|frente)\b", base_trecho)
-                    and item.params.get("foco_confirmado") is not True):
-                    return _com_motivo_fallback(fallback, "foco_composto_nao_confirmado")
-                if re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", base_trecho):
-                    return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
+            # A certeza pertence a este receipt, não às outras etapas, mesmo
+            # quando o trecho contém uma informação literal obrigatória.
+            if _alega_foco_sem_evidencia(trecho, item):
+                return _com_motivo_fallback(fallback, "foco_composto_nao_confirmado")
+            if ("abert" in status and "focad" not in status
+                and re.search(r"\b(?:tocando|reproduzindo|ouvindo|ouvid[oa])\b", _normalizar(trecho))):
+                return _com_motivo_fallback(fallback, "reproducao_composta_nao_confirmada")
             literal = informacoes.get(identidade, "")
             if item.tem_observacoes_do_executor and trecho.rstrip(" .;") != fala_resultado_por_aspectos(item).rstrip(" .;"):
                 return _com_motivo_fallback(fallback, "aspectos_compostos_alterados")
@@ -1230,6 +1301,10 @@ def personalizar_confirmacao_composta_llm(
         if conversa:
             trecho_conversa = (str(dados.get("trecho_conversacional") or "") if realizacoes
                               else re.sub(r"\s+", " ", str(dados.get("trecho_conversacional") or "")).strip())
+            if not realizacoes:
+                from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+                if _FOCO_JANELA_NARRADO.search(_normalizar(texto_fora_de_citacoes(trecho_conversa))):
+                    return _com_motivo_fallback(fallback, "conversa_composta_invalida:foco_sem_receipt")
             # Prosa livre mantém suas guardas. Na realização controlada, a
             # fonte citada é literal, não uma promessa assumida pela Laylay;
             # seu vínculo já foi conferido pelo verificador canônico acima.
@@ -1271,13 +1346,19 @@ def personalizar_confirmacao_composta_llm(
             return _com_motivo_fallback(fallback, "alegacao_composta_sem_receipt")
         numeros = lambda texto: set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?(?!\w)", texto))
         evidencia = " ".join((fallback.fala, json.dumps(contrato, ensure_ascii=False)))
-        fala_operacional = " ".join(str(c.get("trecho") or "") if isinstance(c, dict) else str(c) for c in trechos)
+        # Cada intervalo já foi vinculado e revisado com o próprio receipt.
+        # Revalidar com essas fronteiras evita procurar uma oração coordenada
+        # inteira no detalhe de uma única etapa.
+        fala_operacional = " ".join(
+            (str(c.get("trecho") or "") if isinstance(c, dict) else str(c)).rstrip(" .;") + "."
+            for c in trechos
+        )
         fala_conferida = fala_operacional if conversa else fala
         evidencia_numerica = json.dumps(contrato["resultados"], ensure_ascii=False) if conversa else evidencia
         if not numeros(fala_conferida).issubset(numeros(evidencia_numerica)):
             return _com_motivo_fallback(fallback, "detalhe_numerico_nao_evidenciado")
         guardiao = validar_alegacoes_da_fala(
-            fala_conferida, plano={"requer_execucao": True, "comandos": [item.como_dict() for item in itens]},
+            fala_operacional, plano={"requer_execucao": True, "comandos": [item.como_dict() for item in itens]},
             origem="canal_voz",
         )
         if guardiao.get("problemas"):
@@ -1318,7 +1399,7 @@ def personalizar_confirmacao_composta_llm(
             modo_rapido=False, timeout=15.0,
             _prioridade_interativa=True, _permitir_durante_interacao=True,
             _tipo_chamada="reparo_factual", _classe_timeout="normal",
-            _contexto_fechado=True,
+            _contexto_fechado=True, _contrato_saida=codec,
         )
     except Exception as erro:
         return _com_motivo_fallback(fallback, f"erro_reparo_{type(erro).__name__.lower()}")

@@ -1,5 +1,178 @@
 # Laylay — registro de problemas e correções
 
+### Reencontro da biblioteca — 01/11
+
+Eventos confirmam três entregas problemáticas, sem atribuir todas à mesma raiz.
+Autoria com tema/modificadores não deve exigir executor. Pergunta de consequência
+não deve exigir posição avaliativa. Primeiro retorno já existia; reparo indevido
+consumia prazo. Replays reais controlados das entradas1/3/5 publicam em1HTTP,
+sem efeitos/voz. Candidato em três owners, revisão final sem blockers após REDs
+de destino, opinião não coberta e perguntas independentes. Ver relatório
+RELATORIO_BIBLIOTECA_RETORNO_20261101.md; qualidade livre das demais falas não
+é declarada resolvida por esses testes.
+
+Ampla final160módulos:4.750aprovados,25skips,1deselected,3subtests,zero
+falhas/erros/xfails.44IDs anteriores e dois musicais aprovados. Original170
+aprovados;539fontes estáveis,3candidatos instalados e536outros preservados.
+
+### Pendências da rodada6 — 01/11
+
+Enquadramento nominal deixou de virar pergunta artificial; a consulta indireta
+encontra a fala integral sem remover restrições ou declarar equivalência/causa.
+Qualificação textual é explícita e mantém agente, polaridade, modalidade, TTL,
+ambiguidade e receipts separados.7owners,3módulos novos, histórico preservado
+com expectativas atualizadas. Composição6 publica em1HTTP, não degradada,
+sem efeitos/voz. Original377aprovados/1skip. Relatório:RELATORIO_RODADA6_20261101.md.
+
+Final157módulos:4.695aprovados,25skips,1deselected,3subtests,zero falhas/erros/
+xfails.44IDs anteriores e dois musicais aprovados.539fontes estáveis,7candidatos
+instalados e532outros fontes originais preservados. Testes naturais com Pedro.
+
+### Biblioteca — correção por contratos, 31/10
+
+Continuação textual sem executor; contexto social preservado no vínculo
+histórico sem emprestar fontes; criação em bloco fechado conserva a pista e
+não isenta consulta factual independente. Rejeição integral é respeitada na
+composição sem publicar fragmento ou reaproveitar o draft. Revisão independente
+encontrou dois bloqueios no primeiro candidato, corrigidos após6REDs adicionais;
+89testes focados aprovados pelo revisor. Rodada6 segue com limite de adjunto
+e lookup, explicitamente aberto. Ver RELATORIO_BIBLIOTECA_CONTRATOS_20261031.md.
+
+Complemento de01/11: fonte explícita de outro turno/texto/tipo não pode sumir
+porque o binder agora admite contexto social. contrato_fala verifica identidade
+antes do vínculo.3REDs,125aprovados/1skip no foco; revisão independente53/2
+excluídos sem blockers. Instalação original final283aprovados,5skips.
+
+Ampla final154módulos:4.600aprovados,25skips,1deselected,3subtests,zero
+falhas/erros/xfails.44IDs anteriores e ambos musicais aprovados.539fontes
+estáveis,7candidatos instalados e532outros fontes originais preservados.
+
+### Autoria conversacional confundida com operação externa — 31/10
+
+Observatório02/03:leitor desconhecia enriquecimento narrativo/formato natural;
+plano exigia execução sem comando e trocava fala por contingência operacional.
+Candidato só em normalizacao_linguagem,consumido pelos owners existentes.
+Destinos externos,ordens compostas,condição/citação/negação e receipts forjados
+continuam protegidos.RED13/13controles,foco169,original297.Replay histórico
+remove exigência operacional;aceite dos drafts continua sob revisão distinta.
+Autoria adequada publica literal em uma chamada;reparo válido histórico3
+conclui em duas,sem bloqueio.Ver RELATORIO_AUTORIA_OPERACAO_20261031.md.
+
+Ampla151:4.538aprovados,25skips,um deselected,três subtests,zero falhas/erros/
+xfails.44IDs e ambos históricos musicais preservados,539fontes sem drift.
+Somente normalizacao_linguagem alterada nesta etapa;538fontes originais intactas.
+
+### Duas falhas de negação musical — escopo nominal da proibição, 31/10
+
+IDs históricos de escopo_ato_unico preservados.Sem independência por nome,
+predicado só aceitava tipos explícitos distintos;mesmo tipo musical e nome de
+app sem tipo ficavam fundidos.gramatica_operacional fornece evidência nominal
+restrita;modalidade_turno a consome no contrato compartilhado com revisão.
+Mesmo alvo,pronome,elipse e cancelamento global continuam fechados.Foco326;
+root instalado admite só query literal permitida uma vez e simula sem efeito.
+Ver registro/RELATORIO_NEGACAO_OPERANDOS_NOMEADOS_20261031.md.
+
+Pontuação terminal externa também reproduziu a perda do operando,com quatro
+REDs.Foco final330aprovados e original450aprovados;ajuste preserva nomes
+entre aspas.Regressão inicial interrompida antes do candidato final e preservada.
+
+Ampla final146:4.482aprovados,25skips,um deselected,três subtests,zero falhas/
+erros/xfails.Mesmo filtro anterior;44IDs e ambos históricos musicais aprovados,
+539fontes estáveis.Originais537fontes preservados,dois owners autorizados.
+
+### Segmentação causal — mesma pergunta perde atribuição temporal, 31/10
+
+Pendência histórica de finalidade_contexto_historico:consulta integral reconhece
+referência à fala,mas vírgula era tratada como pergunta independente.Owner
+modalidade_turno conserva adjunto e matriz interrogativa como um ato,com fonte
+literal integral.Não une outros atos nem afrouxa revisão.Caso histórico mantido,
+xfail removido após GREEN.Foco111/um skip;original291/um skip.Replay recupera
+só fala publicada,sem promover texto da IA a prova de causa ou efeito.Duas
+falhas musicais vizinhas são anteriores e foram reproduzidas no baseline.
+Ver registro/RELATORIO_ADJUNTO_TEMPORAL_CAUSAL_20261031.md.
+
+Ampla134:4.019aprovados,25skips,um deselected,três subtests,zero falhas/erros/
+xfails,mesmo filtro anterior.44IDs e quatro históricos causais aprovados,
+539fontes estáveis.Não é encerramento das duas negações musicais anteriores.
+
+### Pendência de revisão com espaços longos — fonte anterior ao recorte, 31/10
+
+Primeira divergência no gate de coerência: compactar recorte perde o alvo que
+o resolver preservou ao compactar a entrada integral. decisao_turno usa a fonte
+integral do plano para conferir a derivação,conservando todas as guardas de
+revisão bloqueada. RED21/6controles,foco235. Replay pareado longo recupera uma
+publicação literal;curto permanece verde. Caso histórico e ID mantidos;removida
+somente sua marca xfail. Apps,arquivos,IoT,música,ambiguidade e adulterações
+cobertos. Ver registro/RELATORIO_FONTE_REVISAO_INTEGRAL_20261031.md.
+
+Original251aprovados;ampla132módulos3.995aprovados,zero falhas/erros,25skips,
+um xfail anterior,um deselected,três subtests. Mesmo filtro anterior;44IDs
+preservados,oito casos históricos de revisão aprovados,539fontes estáveis.
+
+### Rodada18 — identidade textual recusava a própria ocorrência, 31/10
+
+casa-20261030-18, sessão20261030T195853Z-0d4ab6c2. Entrada510, recorte500
+terminado em espaço; strip antes do corte produzia499 ao reaplicar. Primeira
+fronteira RED: coerência de turno/plano, não resposta do modelo ou publicação.
+Owner decisao_turno reutiliza projeção idempotente em coerência e vínculo;
+IDs, textos internos, veto, autorização e receipts preservados. Replay pareado
+com fonte anterior/candidato e autoria constante: zero/uma publicação nativa,
+sem orçamento bloqueado. Instalação original também publica integralmente.
+Foco207, original301 aprovados, xfail anterior preservado. A revisão com520
+espaços segue separada e aberta. Relatório:
+registro/RELATORIO_PROJECAO_OCORRENCIA_20261030.md. Sem Qwen novo, voz ou efeitos.
+
+Ampla final131:3.967aprovados,25skips,dois xfails preexistentes,um deselected,
+três subtests,zero falhas/erros. Mesma exclusão prévia,44IDs históricos verdes,
+539fontes sem drift. Cópia original301aprovados,um xfail; um owner alterado.
+
+### 14falhas/30erros da regressão — continuação por raiz, 30/10
+
+Manifesto44IDs preservado. Coletores passam a exportar observações explícitas,
+sem achatar fontes tipadas em produção; o desbloqueio revela cardinalidade
+nominal, anterior à correlação de IDs. Escopos por alvo no mesmo ato conservam
+fonte literal e consumo único. Apoio pessoal por enunciado não perde declaração
+por causa de pergunta independente; ressalvas continuam vinculadas. Estado
+discursivo estrito não confirma recurso, e coordenação elíptica não é isenta.
+Catálogo read-only responde pergunta condicional sem permitir a operação.
+Atualizações de fixtures/expectativas foram justificadas individualmente, com
+controles mais fortes e os mesmos IDs. Validação e pendências remanescentes
+estão em RELATORIO_PENDENCIAS_44_20261030.md; nenhuma conclusão global da mente.
+
+### Exemplo citado integral — revisão factual, 30/10
+
+`casa-20261030-14`: exemplo hipotético presente na autoria reparada desaparecia
+parcialmente na revisão, antes do publicador. Mesma composição/HTTP/histórico
+reproduz o corte com owners congelados e conserva a fala inteira com candidato.
+Mudança só em fundamentação e serviço de fronteiras textuais: exemplo mantém
+papel, sem fornecer verdade, autorização ou receipt. Fatos externos não herdam
+dispensa; citações reais conservam conferência por oração. Foco217 aprovado;
+ampla e limites no relatório `RELATORIO_EXEMPLO_CITADO_INTEGRAL_20261030.md`.
+Rodadas3/16/18, perguntas retóricas e tema antigo não foram encerrados por esta
+prova. Resultados intermediários e REDs da revisão independente preservados.
+
+### Retomada do improviso — escopo social e autoria, 30/10
+
+Oito evidências da sessão20261030T094314Z-5cf00cff, com538 fontes iguais à
+base. IDs mantidos e vinculados aos contratos: gratidão não é particípio de
+obrigação; função emocional não é declaração pessoal; fonte de pessoa e estado
+pertence ao mesmo enunciado; autoria livre não é cópia extensa da fala atual;
+segmento composto não distribui sua interrogação a todas as frases; agradecimento
+composto não fecha os outros conteúdos atuais. Elaboração da interlocutora
+não exige pesquisa recente só por “agora”.
+
+Dez owners compartilhados alterados,528 fontes preservadas. Revisor protege
+reprodução pedida, declarações reais, consultas externas e receipts. Revisão
+independente sem pendência no recorte, REDs e primeira ampla preservados.
+Ampla final195:4.859 aprovados,zero falhas/erros,mesmos filtros e nenhum ID
+anterior ausente. Treze composições instaladas com HTTP fixo; sem
+conversa/Qwen novo/voz/efeitos, modelo/orçamento alterado ou commit no main.
+
+Commit paralelo preservado fora da cadeia de publicação devido a configuração
+privada. Export seguro em branch codex/ a partir do remoto, sem dados pessoais.
+Relatório RELATORIO_RETOMA_IMPROVISO_20261030.md. Espontaneidade, cópia curta,
+factualidade livre e memória futura permanecem limites; F1/C5/C7/AUT preservados.
+
 ### Conversa casual — modalidade e escopo das obrigações, 30/10
 
 Sessão 20261030T021917Z-4f76db4d preservada:16 rodadas sem queda, mas comandos

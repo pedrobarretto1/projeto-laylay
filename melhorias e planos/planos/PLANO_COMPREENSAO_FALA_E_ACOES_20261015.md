@@ -1,5 +1,132 @@
 # Compreensão da própria fala e das ações — plano integrado da Laylay
 
+## Reencontro da biblioteca — finalidade antes de revisar, 01/11
+
+Objeto discursivo com modificadores continua autoria; consulta de consequência
+é distinta de posição avaliativa. A qualidade consome qualificação positiva do
+contrato nativo, sem promover ausência de opinião a licença ou dispensar outra
+pergunta. Preservar as fontes, a revisão factual e o receipt antes do efeito.
+Plano:PLANO_BIBLIOTECA_RETORNO_20261101.md; relatório:
+registro/RELATORIO_BIBLIOTECA_RETORNO_20261101.md. Testes naturais com Pedro.
+
+## Rodada6 — conservar matriz e localizar texto sem certificar sentido, 01/11
+
+Enquadramento nominal pertence à oração principal. Referência indireta recupera
+a fonte inteira e não a troca pelo resumo do interlocutor. Localizar trecho
+não prova asserção, equivalência ou motivo; a realização não inventa justificativa.
+Owners, REDs e controles em PLANO_RODADA6_20261101.md; provas e limites em
+registro/RELATORIO_RODADA6_20261101.md. Testes naturais continuam com Pedro.
+
+## Biblioteca — continuar, vincular e preservar a criação, 31/10
+
+Autoria/operação e finalidade ficcional continuam nas raízes existentes.
+Relato social não deve invalidar consulta histórica nem adquirir suas fontes.
+Revisão só dispensa fatos do corpo ficcional em bloco fechado, com vínculo
+nativo integral; outra pergunta conserva sua revisão. Recorte rejeitado não
+equivale a resposta completa. Plano:PLANO_BIBLIOTECA_CONTRATOS_20261031.md;
+relatório:registro/RELATORIO_BIBLIOTECA_CONTRATOS_20261031.md. Lookup por
+paráfrase e adjunto “Como IA” continuam abertos. Testes naturais com Pedro.
+
+## Autoria no canal atual não exige executor — 31/10
+
+Objeto/destino discursivo e componentes da forma da própria fala pertencem
+ao leitor compartilhado,antes da classificação prática.Não corrigir a frase
+de contingência nem relaxar revisão para aceitar qualquer narrativa.Destino
+externo mantém autorização e receipt;ficção/modelo não provam efeito.
+Plano:PLANO_AUTORIA_OPERACAO_20261031.md;relatório:
+registro/RELATORIO_AUTORIA_OPERACAO_20261031.md.Testes naturais com Pedro.
+
+## Proibição conserva o operando nomeado — 31/10
+
+Duas falhas musicais históricas investigadas no contrato compartilhado de
+independência nominal.Evidência escrita qualificada permite segmentar o pedido
+e a proibição,sem assumir entidade física,resolver alias ou executar o negado.
+Revisão consome o mesmo owner,sem parser musical paralelo.Controles em quatro
+domínios,referência/cancelamento/condição e fonte literal por ato;testes naturais
+com Pedro.Plano:PLANO_NEGACAO_OPERANDOS_NOMEADOS_20261031.md;relatório:
+registro/RELATORIO_NEGACAO_OPERANDOS_NOMEADOS_20261031.md.
+
+## Dependência temporal antes do vínculo causal — 31/10
+
+Adjunto e matriz interrogativa conservam um ato e uma fonte textual.A leitura
+histórica e a revisão mantêm seus owners;não reconstruir a dependência perdida
+no binder nem dispensar evidência para causas.Exemplo histórico aprovado,
+xfail resolvido removido;controles de ficção,futuro e atos independentes.
+Plano:PLANO_ADJUNTO_TEMPORAL_CAUSAL_20261031.md;relatório:
+registro/RELATORIO_ADJUNTO_TEMPORAL_CAUSAL_20261031.md.Testes naturais com Pedro.
+
+## Fonte da revisão precisa preceder a projeção — 31/10
+
+Pendência dos520 espaços: conferir derivação compactada pela entrada integral
+do plano,conservando identidade/veto/autorização/efeito separados. Owner único
+decisao_turno;sem exceção por domínio ou nova interpretação do cancelamento.
+Caso histórico continua no teste,agora aprovado. Plano detalhado:
+PLANO_FONTE_REVISAO_INTEGRAL_20261031.md;relatório:
+registro/RELATORIO_FONTE_REVISAO_INTEGRAL_20261031.md. Conversas com Pedro.
+
+## Vínculo da resposta depende de projeção idempotente — 31/10
+
+Rodada18 sem_publicacao reproduzida antes do publicador: normalização da borda
+do recorte divergia entre a fonte integral e seu próprio snapshot. Contrato
+compartilhado decisao_turno deve reconhecer a mesma ocorrência ao reaplicar
+a projeção, sem certificar sufixo/autoridade/efeito. Replay histórico e autoria
+alternativa publicam integralmente com candidato; instalação original validada.
+Owner único e delta isolado; não compensar com publicação de proposta obsoleta.
+Revisão com520 espaços e qualidade livre permanecem pendentes distintas.
+Plano: PLANO_PROJECAO_OCORRENCIA_20261030.md; relatório:
+registro/RELATORIO_PROJECAO_OCORRENCIA_20261030.md. Conversas naturais com Pedro.
+
+## Pendências da regressão — contratos compartilhados, 30/10
+
+As44ocorrências da seleção anterior são evidências, não44raízes. Separar
+observação exportável de fonte nativa; declaração do usuário de pergunta ou
+ressalva; estado discursivo de recurso; veto à mutação de explicação read-only;
+ato de cardinalidade dos alvos. A lista da IA não fornece membros autorizados.
+Mantêm-se receipt, identidade de solicitação, sucesso parcial e entrega única.
+Os testes históricos continuam por ID, com preparação pelo owner real quando
+fixtures antigas já não representam a arquitetura. Relatório e provas:
+registro/RELATORIO_PENDENCIAS_44_20261030.md e
+resultados_testes/pendencias_44_20261030. Sem Qwen novo, voz ou efeitos reais.
+
+## Exemplo de enunciado conserva escopo na revisão — 30/10
+
+Continuidade por raiz, evidência `casa-20261030-14`. Entrega deve conservar a
+formulação hipotética validada; citar uma ação não a autoriza nem a comprova.
+Owner factual protege o exemplo delimitado sem agrupar afirmações reais nem
+inventar fronteiras na pontuação interna. Políticas anteriores de enunciados
+e ponto e vírgula continuam explícitas. RED → candidato → revisão independente
+→ comparação instalada com mesma autoria: corte histórico antes, fala inteira
+depois, uma HTTP por caminho. Foco217; regressão ampliada e limitações no
+relatório `registro/RELATORIO_EXEMPLO_CITADO_INTEGRAL_20261030.md`. Sem conversa
+nova/Qwen, voz ou efeitos reais; demais problemas da sessão continuam abertos.
+
+## Retomada do improviso — critérios e limites, 30/10
+
+Novas evidências preservam os IDs e contratos anteriores. Owner comum de
+linguagem lê gratidão, declaração pessoal, objeto de reprodução e fronteiras
+fora de aspas. Leitores afetivos reutilizam essa fonte; rótulo emocional não
+impõe fato pessoal. Contrato/geração preservam o conteúdo de gratidão composta,
+e contingência não reinterpreta um ato que já tem estratégia canônica.
+
+Autoria compara blocos da fala também com a mensagem atual sob fonte nativa
+de perspectiva, preservando reprodução autorizada do objeto literal. Owner
+factual avalia o enunciado consultado dentro do segmento; pergunta de outra
+frase ou dentro de citação não fornece obrigação recente. Fato externo atual
+e efeito operacional continuam exigindo sua própria prova.
+
+Critérios:13 composições instaladas controladas, oito respostas pertinentes
+e três reparos de cópia; negativos de fonte externa/receipt. Revisão independente
+aprovada após REDs. Ampla final195:4.859 aprovados,zero falhas/erros,mesmos
+filtros e nenhum ID anterior ausente; primeira ampla4.850 preservada
+como estado anterior ao ajuste final de gratidão. Dez owners entre538;528
+fontes preservadas, sem Qwen novo/conversa/voz/efeitos ou orçamento ampliado.
+
+Publicação segregada do commit paralelo com configuração privada, mantendo
+main/arquivos pessoais. Branch codex/ parte do remoto conhecido. Relatório
+registro/RELATORIO_RETOMA_IMPROVISO_20261030.md e plano específico
+planos/PLANO_RETOMA_IMPROVISO_20261030.md. Testes naturais com Pedro;
+não declarar F1/C5/C7/AUT ou compreensão global concluídos.
+
 ## Conversa casual — responsabilidades e critérios, 30/10
 
 Os leitores compartilhados de modalidade/morfologia conservam agente e

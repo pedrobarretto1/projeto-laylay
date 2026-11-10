@@ -10,6 +10,70 @@ from dataclasses import asdict, FrozenInstanceError
 import pytest
 
 
+CASOS_APOIO_PARCIAL = (
+    ("Qual é a tensão nominal? Qual é a corrente máxima?", "A tensão nominal é 5 V.",
+     "A corrente máxima é 3 A.", "qual é a corrente máxima"),
+    ("Oi, qual é o tamanho da cópia? E qual é a data da cópia?", "O tamanho da cópia é 8 MB.",
+     "A data da cópia é 12 de maio.", "qual é a data da cópia"),
+)
+
+
+@pytest.mark.parametrize("omitir", [False, True])
+@pytest.mark.parametrize("outro_turno", [False, True])
+@pytest.mark.parametrize("consulta,confirmada,recusada,lacuna", CASOS_APOIO_PARCIAL)
+def test_apoio_parcial_preserva_fato_e_localiza_so_a_pergunta_pendente(
+    consulta, confirmada, recusada, lacuna, omitir, outro_turno,
+):
+    from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
+    from mente_laylay.cognicao.suporte_autoria import montar_autoria_revisada
+    from scripts.tests.test_ato_social_conferido import preparar
+    from scripts.tests.test_autoria_reescritas import emissao
+
+    plano, _, _ = preparar(texto=consulta)
+    fonte = plano["fundamentacao_factual"]["fontes"][0]
+    fonte["trecho"] = confirmada
+    # A fonte citada na segunda unidade é válida, mas não sustenta o seu conteúdo.
+    textos = (confirmada,) if omitir else (confirmada, recusada)
+    partes = tuple(emissao(t, [fonte["url"]], turno=str(plano["id"]), consulta=consulta)
+                   for t in textos)
+    fala = " ".join(textos)
+    plano["autoria_revisada_proposta"] = montar_autoria_revisada("principal", fala, partes)
+    if outro_turno:
+        plano["contrato_fala"]["turno_id"] = "anterior"
+    r = revisar_suporte_autoria(fala, plano=plano)
+    estados = ["literal_integral_na_fonte"]
+    if not omitir:
+        estados.append("apoio_semantico_pendente")
+    assert [p["estado"] for p in r.como_dict()["proposicoes"]] == estados
+    assert r.aplicar_limite and confirmada in r.fala_realizada and recusada not in r.fala_realizada
+    if outro_turno:
+        assert not r.como_dict()["perguntas_pendentes"] and lacuna not in r.fala_realizada
+    else:
+        assert r.fala_realizada.endswith(f"Ainda falta saber {lacuna}.")
+        assert [p.casefold() for p in r.como_dict()["perguntas_pendentes"]] == [lacuna]
+    assert "outras afirmações" not in r.fala_realizada
+    assert r.como_dict() == revisar_suporte_autoria(r.fala_realizada, plano=plano).como_dict()
+
+
+def test_proposta_recusada_nao_cria_pergunta_nova_quando_a_consulta_ja_foi_respondida():
+    from mente_laylay.cognicao.revisao_suporte_autoria import revisar_suporte_autoria
+    from scripts.tests.test_ato_social_conferido import preparar
+    from scripts.tests.test_autoria_reescritas import emissao
+    from mente_laylay.cognicao.suporte_autoria import montar_autoria_revisada
+
+    consulta = "Qual é a tensão nominal?"
+    plano, _, _ = preparar(texto=consulta)
+    fonte = plano["fundamentacao_factual"]["fontes"][0]
+    confirmada = fonte["trecho"] = "A tensão nominal é 5 V."
+    recusada = "A tensão nominal é 12 V."
+    fala = f"{confirmada} {recusada}"
+    partes = tuple(emissao(t, [fonte["url"]], turno=str(plano["id"]), consulta=consulta)
+                   for t in (confirmada, recusada))
+    plano["autoria_revisada_proposta"] = montar_autoria_revisada("principal", fala, partes)
+    revisao = revisar_suporte_autoria(fala, plano=plano)
+    assert revisao.fala_realizada == f"Os trechos consultados registram: «{confirmada}»"
+
+
 def _plano(texto="A avaliação depende de confirmação.", *, referencias=None, trecho=None):
     from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal
     from mente_laylay.cognicao.suporte_autoria import capturar_suporte_autoria
@@ -115,7 +179,7 @@ def test_realizacao_limitada_e_idempotente_sem_apagar_qualificador_da_fonte():
 
 
 @pytest.fixture(scope="module")
-def revisao_fontes_instalada(tmp_path_factory):
+def revisao_fontes_instalada(tmp_path_factory, request):
     pasta = tmp_path_factory.mktemp("revisao_fontes_instalada")
     codigo = textwrap.dedent(r'''
         import dataclasses, json, os, sys
@@ -138,10 +202,15 @@ def revisao_fontes_instalada(tmp_path_factory):
         contexto_original = runtime._contexto_getter
         textos, casos = [], []
         root._orquestrador_fala_runtime.registrar_observador_texto_final(lambda t, *_a, **_k: textos.append(t) or True)
-        for dominio, partes in (("arquivo", ["O arquivo alfa tem uma cópia.", "A estratégia de restauração é adequada."]),
-                                ("iot", ["A tomada da sala tem proteção elétrica.", "A estratégia de alimentação é adequada."])):
+        casos_parciais = json.loads(os.environ["LAYLAY_REVISAO_CASOS_PARCIAIS"])
+        matriz = (("arquivo", ["O arquivo alfa tem uma cópia.", "A estratégia de restauração é adequada."]),
+                  ("iot", ["A tomada da sala tem proteção elétrica.", "A estratégia de alimentação é adequada."]))
+        if casos_parciais:
+            matriz = tuple((str(i), [caso[1], caso[2]]) for i, caso in enumerate(casos_parciais))
+        for dominio, partes in matriz:
             for modo in (False, True):
-                for variante in ("literal", "irrelevante", "parcial", "ausente"):
+                variantes = ("irrelevante",) if casos_parciais else ("literal", "irrelevante", "parcial", "ausente")
+                for variante in variantes:
                     estado.substituir("mental", criar_estado_mental_inicial())
                     estado.atualizar_campos("memoria_conversa", messages=[])
                     urls = ["https://fonte.test/" + dominio + "/a", "https://fonte.test/" + dominio + "/b"]
@@ -177,7 +246,8 @@ def revisao_fontes_instalada(tmp_path_factory):
                     contexto["contexto_dispatch_runtime"] = SimpleNamespace(montar=lambda: {"executar_intencao": impedir})
                     runtime._contexto_getter = lambda: contexto
                     inicio = len(textos)
-                    runtime.processar("Quais informações você tem sobre esse exemplo?", origem="teste_revisao_fontes")
+                    entrada = casos_parciais[int(dominio)][0] if casos_parciais else "Quais informações você tem sobre esse exemplo?"
+                    runtime.processar(entrada, origem="teste_revisao_fontes")
                     caso = {"dominio": dominio, "modo": modo, "variante": variante, "partes": partes,
                             "fundamento": fundamento, "enviados": enviados, "efeitos": efeitos,
                             "textos": textos[inicio:], "mental": estado.retrato_dominio("mental")}
@@ -205,7 +275,9 @@ def revisao_fontes_instalada(tmp_path_factory):
         sys.__stdout__.write("REVISAO_FONTES_INSTALADA " + json.dumps(casos, ensure_ascii=False, default=dataclasses.asdict) + "\n")
     ''')
     p = subprocess.run([sys.executable, "-c", codigo], cwd=Path(__file__).resolve().parents[2],
-        env=dict(os.environ, PYTHONIOENCODING="utf-8", LAYLAY_REVISAO_FONTES_MEMORIA=str(pasta)),
+        env=dict(os.environ, PYTHONIOENCODING="utf-8", LAYLAY_IOT_MODO="simulado",
+                 LAYLAY_REVISAO_FONTES_MEMORIA=str(pasta),
+                 LAYLAY_REVISAO_CASOS_PARCIAIS=json.dumps(CASOS_APOIO_PARCIAL if getattr(request, "param", False) else ())),
         capture_output=True, text=True, encoding="utf-8", timeout=180)
     assert p.returncode == 0, p.stdout[-3000:] + p.stderr[-5000:]
     dados = json.loads(next(l.removeprefix("REVISAO_FONTES_INSTALADA ") for l in p.stdout.splitlines() if l.startswith("REVISAO_FONTES_INSTALADA ")))
@@ -213,6 +285,22 @@ def revisao_fontes_instalada(tmp_path_factory):
         with Path(destino).open("x", encoding="utf-8") as out:
             json.dump(dados, out, ensure_ascii=False, indent=2)
     return dados
+
+
+@pytest.mark.parametrize("revisao_fontes_instalada", [True], indirect=True)
+def test_composicao_publica_apoio_parcial_e_lacuna_do_turno(revisao_fontes_instalada):
+    assert len(revisao_fontes_instalada) == 4
+    for caso in revisao_fontes_instalada:
+        _, confirmada, recusada, lacuna = CASOS_APOIO_PARCIAL[int(caso["dominio"])]
+        plano = caso["mental"]["plano_turno_atual"]
+        assert not plano["autoriza_execucao"] and not plano["requer_execucao"]
+        assert not caso["efeitos"] and not plano["comandos"]
+        revisao = plano["ultima_verificacao"]["revisao_suporte_autoria"]
+        assert [p["estado"] for p in revisao["proposicoes"]] == [
+            "literal_integral_na_fonte", "apoio_semantico_pendente"]
+        texto, = caso["textos"]
+        assert confirmada in texto and recusada not in texto
+        assert texto.endswith(f"Ainda falta saber {lacuna}.")
 
 
 @pytest.mark.parametrize("indice", range(16))

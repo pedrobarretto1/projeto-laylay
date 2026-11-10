@@ -6,8 +6,10 @@ Os receipts históricos nunca entram na lista de comandos do pedido atual.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import math
+import re
 import time
 from typing import Any, Callable, Mapping, Sequence, TYPE_CHECKING
 
@@ -63,8 +65,13 @@ def vincular_explicacoes_por_ato(
     partes = []
     for segmento, fonte_textual in zip(segmentos, fontes):
         ato = ContratoExplicativoAto.do_segmento(segmento)
-        if ato is None or ato.modalidade not in {"pergunta", "deliberacao"}:
+        if ato is None or ato.modalidade not in {"pergunta", "deliberacao", "conversa", "reacao"}:
             return None
+        if ato.modalidade in {"conversa", "reacao"}:
+            # Um relato ou reação social conserva sua posição e fonte textual,
+            # mas não pede explicação histórica nem consulta o owner de ações.
+            partes.append(ExplicacaoHistoricaAto(ato, fonte_textual))
+            continue
         literal = fonte_textual.como_dict()["texto_original"]
         referencia = referencia_explicacao_historica(literal)
         ocorrencia, evidencia = None, {}
@@ -110,30 +117,76 @@ def tem_obrigacao_historica_por_ato(fonte: ExplicacoesHistoricasPorAto | None) -
         p.ocorrencia is not None or p.fala is not None or p.falha_fonte for p in fonte.partes)
 
 
-def realizacoes_explicacoes_por_ato(fonte: ExplicacoesHistoricasPorAto, *, agora: float | None = None) -> tuple[str, ...]:
-    """Uma resposta conjunta, preservando a cobertura e os limites de cada parte."""
+@dataclass(frozen=True, slots=True)
+class _RealizacaoDoAto:
+    indice: int
+    fala: str
+    fonte_historica: bool = False
+    pendente: bool = False
+
+
+def _lacuna_da_pergunta(literal: str, *, historica: bool) -> str:
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
+
+    citacao = json.dumps(literal, ensure_ascii=False) if "«" in literal or "»" in literal else f"«{literal}»"
+    if historica:
+        return f"Sobre {citacao}, você lembra de quando foi?"
+    pergunta = literal.rstrip("?").strip()
+    if (literal.endswith("?") and texto_fora_de_citacoes(literal) == literal
+        and len(enunciados_discursivos(literal)) == 1
+        and re.match(r"(?:qual|quais|quem|onde|quando|como|quanto|o que|por que)\s+\S", pergunta, re.I)):
+        return f"Ainda falta saber {pergunta[:1].lower()}{pergunta[1:]}."
+    return f"Na pergunta {citacao}, você pode indicar o detalhe que quer esclarecer?"
+
+
+def _realizar_atos_historicos(
+    fonte: ExplicacoesHistoricasPorAto, *, agora: float | None = None,
+) -> tuple[_RealizacaoDoAto, ...]:
+    from mente_laylay.personalidade.contingencias_conversa import resolver_aritmetica_simples
+
     if not tem_obrigacao_historica_por_ato(fonte):
         return ()
     respostas = []
     for parte in fonte.partes:
+        if parte.ato.modalidade in {"conversa", "reacao"}:
+            # Contexto preservado no vínculo não é uma pergunta por responder.
+            # As perguntas sem fonte continuam visíveis no ramo abaixo.
+            continue
         literal = parte.fonte_textual.como_dict()["texto_original"]
         limite_agente = _limite_agente(literal)
+        historica = parte.ocorrencia is not None or parte.fala is not None or parte.falha_fonte
+        prefixo = f"Sobre {json.dumps(literal, ensure_ascii=False)}: "
+        indice = parte.ato.indice
         if limite_agente:
-            opcoes = limite_agente
-        elif parte.falha_fonte:
-            opcoes = ("Não tenho evidência histórica válida para explicar esta parte.",)
-        elif parte.ocorrencia is not None:
+            respostas.append(_RealizacaoDoAto(indice, prefixo + limite_agente[0], pendente=True))
+            continue
+        opcoes = ()
+        ambigua = False
+        if parte.ocorrencia is not None and parte.ocorrencia.referencia == "unica":
             opcoes = realizacoes_explicacao_ocorrencia(parte.ocorrencia, agora=agora)
+        elif parte.ocorrencia is not None:
+            ambigua = parte.ocorrencia.referencia == "ambigua" and bool(
+                realizacoes_explicacao_ocorrencia(parte.ocorrencia, agora=agora))
         elif parte.fala is not None:
-            opcoes = realizacoes_fala_historica(parte.fala.como_dict(), agora=agora)
+            evidencia = parte.fala.como_dict()
+            opcoes = realizacoes_fala_historica(evidencia, agora=agora)
+            ambigua = bool(opcoes) and evidencia.get("referencia_ambigua") is True
+        if ambigua:
+            respostas.append(_RealizacaoDoAto(indice, prefixo + "De qual episódio você está falando?", pendente=True))
+        elif opcoes:
+            respostas.append(_RealizacaoDoAto(indice, prefixo + opcoes[0], fonte_historica=True))
+        elif not historica and (numero := resolver_aritmetica_simples(literal, exato=True)) is not None:
+            fala = f"Dá {numero.replace('.', ',')}." if numero else "A divisão por zero não está definida."
+            respostas.append(_RealizacaoDoAto(indice, prefixo + fala))
         else:
-            # Elipse não resolvida ou pergunta de outra natureza continua
-            # visível, sem inventar a herança da causa ou declarar conclusão.
-            opcoes = ("Esta parte ainda não foi respondida; preciso tratá-la separadamente.",)
-        if not opcoes:
-            opcoes = ("Não tenho evidência histórica válida para explicar esta parte.",)
-        respostas.append(f"Sobre {json.dumps(literal, ensure_ascii=False)}: {opcoes[0]}")
-    return (" ".join(respostas),)
+            respostas.append(_RealizacaoDoAto(indice, _lacuna_da_pergunta(literal, historica=historica), pendente=True))
+    return tuple(respostas)
+
+
+def realizacoes_explicacoes_por_ato(fonte: ExplicacoesHistoricasPorAto, *, agora: float | None = None) -> tuple[str, ...]:
+    """Uma resposta conjunta, preservando a cobertura e os limites de cada parte."""
+    partes = _realizar_atos_historicos(fonte, agora=agora)
+    return (" ".join(p.fala for p in partes),) if partes else ()
 
 
 def formatar_explicacoes_por_ato(contrato: Mapping[str, Any]) -> str:
@@ -336,6 +389,9 @@ def realizacoes_fala_historica(
     if not isinstance(resultados, list) or len(resultados) > 16:
         return ()
     if not resultados:
+        if evidencia.get('origem_referencia') == 'conteudo_indireto':
+            return ('Encontrei esse trecho no que eu disse, mas o motivo de eu ter usado '
+                    'essa formulação não ficou registrado. Não vou inventar uma justificativa para a frase.',)
         return ("Essa fala foi entregue, mas não tem resultado operacional vinculado nesta fonte; "
                 "isso não prova que uma ação aconteceu nem que deixou de acontecer.",)
     etapas = []
@@ -380,6 +436,9 @@ def realizacoes_fala_historica(
 def avaliar_fala_historica(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
     """Valida escopo e cobertura pelo owner, nunca por autoaprovação da LLM."""
     contrato = plano.get("contrato_fala")
+    if isinstance(contrato, Mapping) and "retomada_criacao" in contrato:
+        from mente_laylay.cognicao.retomada_criacao import avaliar_retomada_criacao
+        return avaliar_retomada_criacao(fala, plano=plano)
     if isinstance(contrato, Mapping) and "revisao_alegacao" in contrato:
         return _avaliar_revisao_alegacao(fala, plano=plano)
     if not isinstance(contrato, Mapping) or not {"evidencia_fala_historica", "explicacao_ocorrencia", "explicacoes_historicas_por_ato"}.intersection(contrato):
@@ -398,10 +457,12 @@ def avaliar_fala_historica(fala: str, *, plano: Mapping[str, Any]) -> dict[str, 
         and plano.get("autoriza_execucao") is False
         and not plano.get("requer_execucao") and not plano.get("comandos")
     )
+    partes = ()
     if composta:
         vinculo_valido = bool(vinculo_valido and type(evidencia) is ExplicacoesHistoricasPorAto
                              and evidencia.turno_consulta == str(plano.get("id")))
-        opcoes = realizacoes_explicacoes_por_ato(evidencia) if vinculo_valido else ()
+        partes = _realizar_atos_historicos(evidencia) if vinculo_valido else ()
+        opcoes = (" ".join(p.fala for p in partes),) if partes else ()
     elif decisional:
         vinculo_valido = bool(vinculo_valido and type(evidencia) is ExplicacaoOcorrencia
                              and evidencia.turno_consulta == str(plano.get("id")))
@@ -410,9 +471,10 @@ def avaliar_fala_historica(fala: str, *, plano: Mapping[str, Any]) -> dict[str, 
         opcoes = realizacoes_fala_historica(evidencia) if vinculo_valido and isinstance(evidencia, Mapping) else ()
         if opcoes:
             opcoes = _limite_agente(str(plano.get("texto_usuario") or "")) or opcoes
-    fonte_valida = bool(opcoes)
+    realizacao_vinculada = bool(opcoes)
+    fonte_valida = any(p.fonte_historica for p in partes) if composta else realizacao_vinculada
     if not opcoes:
-        opcoes = ("Não tenho evidência histórica válida para explicar essas partes da pergunta." if composta else
+        opcoes = ("Você lembra de qual episódio ou fala quer retomar?" if composta else
                   "Não tenho evidência histórica válida para explicar essa ocorrência." if decisional
                   else "Não tenho evidência histórica válida para explicar essa fala.",)
     texto = " ".join(str(fala or "").split())
@@ -421,12 +483,17 @@ def avaliar_fala_historica(fala: str, *, plano: Mapping[str, Any]) -> dict[str, 
     # estável mesmo quando o usuário escreveu dois espaços dentro da pergunta.
     indice = next((i for i, opcao in enumerate(opcoes) if texto == " ".join(opcao.split())), None)
     coberta = indice is not None
+    cobertura = "realizacao_controlada_resultados_historicos" if coberta else "ausente"
+    if composta and coberta and not fonte_valida:
+        cobertura = "esclarecimento_historico" if realizacao_vinculada else "ausente"
     return {
         "fala": opcoes[indice] if coberta else opcoes[0],
-        "problemas": [] if coberta else ["explicacao_historica_sem_cobertura" if fonte_valida else "evidencia_historica_invalida"],
+        "problemas": [] if coberta else ["explicacao_historica_sem_cobertura" if realizacao_vinculada else "evidencia_historica_invalida"],
         "acao": "aceita" if coberta else "ajustada",
-        "cobertura": "realizacao_controlada_resultados_historicos" if coberta else "ausente",
+        "cobertura": cobertura,
         "fonte_valida": fonte_valida,
+        "realizacao_vinculada": realizacao_vinculada,
+        "partes_pendentes": [p.indice for p in partes if p.pendente],
         "prova_semantica_livre": False, "autoriza_execucao": False,
     }
 
@@ -442,7 +509,7 @@ def montar_pacote_explicacao_historica(plano: Mapping[str, Any]) -> PacotePrompt
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
     from mente_laylay.cognicao.suporte_autoria import segmentar_realizacao_autoral
     avaliacao = avaliar_fala_historica("", plano=plano)
-    if not avaliacao or not avaliacao["fonte_valida"]:
+    if not avaliacao or not avaliacao.get("realizacao_vinculada", avaliacao["fonte_valida"]):
         return None
     fala = avaliacao["fala"]
     if not segmentar_realizacao_autoral(fala):

@@ -1,0 +1,71 @@
+{
+  "head": "ae7b8775daab6637026829e20890a76d983477e4",
+  "firmware_gravado": true,
+  "firmware_sha256": "e4ddf3e38a3265d7491c436e942b91ed107c6ed36f439bcc12e99c596bd83393",
+  "pwm_maximo_host": 150,
+  "frequencia_motor_hz": 1000,
+  "perfil_build": {
+    "wifi": 1,
+    "motor": 1,
+    "limite_motor_ms": 5000,
+    "sensores": 0,
+    "protecao": 0,
+    "imu": 0,
+    "som_ponte": 0
+  },
+  "validacao_real": {
+    "COM4": {
+      "transporte": "serial",
+      "face_confirmada": true,
+      "motor": {
+        "rampa_suportada": true,
+        "pwm_maximo": 150,
+        "duracao_maxima_ms": 5000,
+        "suportado": true,
+        "disponivel": true,
+        "aplicacao_pwm_confirmada": false,
+        "parada_confirmada": false,
+        "em_andamento": false,
+        "motivo": "",
+        "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+        "prova_rotacao": false,
+        "prova_parada_fisica": false,
+        "autoriza_execucao": false
+      },
+      "sensores_ativos": false,
+      "imu_ativa": false,
+      "parada_confirmada": true,
+      "falhas": []
+    },
+    "WIFI": {
+      "transporte": "tcp",
+      "face_confirmada": true,
+      "motor": {
+        "rampa_suportada": true,
+        "pwm_maximo": 150,
+        "duracao_maxima_ms": 5000,
+        "suportado": true,
+        "disponivel": true,
+        "aplicacao_pwm_confirmada": false,
+        "parada_confirmada": false,
+        "em_andamento": false,
+        "motivo": "",
+        "evidencia": "negociacao_firmware_e_receipts_correlacionados",
+        "prova_rotacao": false,
+        "prova_parada_fisica": false,
+        "autoriza_execucao": false
+      },
+      "sensores_ativos": false,
+      "imu_ativa": false,
+      "parada_confirmada": true,
+      "falhas": []
+    }
+  },
+  "movimentos_enviados": 0,
+  "testes_transporte": "36 passed",
+  "regressivos": "142 passed antes de falha preexistente no teste de token; 44 passed antes de falha preexistente na expectativa ICAPS",
+  "falhas_preexistentes_confirmadas_em_HEAD": [
+    "test_token_de_outro_pareamento_nao_autoriza_sessao_tcp",
+    "test_intervalo_sem_heartbeats_renova_sessao_antes_de_acordar_com_pose_atual"
+  ]
+}

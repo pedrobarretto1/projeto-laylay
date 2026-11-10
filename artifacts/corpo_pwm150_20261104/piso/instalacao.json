@@ -1,0 +1,56 @@
+{
+  "firmware_gravado": true,
+  "firmware_sha256": "d7969d51fbdd541f1288dbefb9764c4e19990ddb26a05dbc03b2272a239ecb5f",
+  "pwm_minimo": 150,
+  "pwm_maximo": 255,
+  "piso_firmware_flags": [
+    "LAYLAY_PWM_MINIMO_MOTOR=150",
+    "LAYLAY_PWM_MAXIMO_MOTOR=255"
+  ],
+  "frequencia_hz": 1000,
+  "sensores_e_protecoes_instaladas": false,
+  "python": "177 passed",
+  "host": [
+    "rampa",
+    "reflexo",
+    "giro",
+    "admissao"
+  ],
+  "host_regressivos": [
+    "motor_continuo",
+    "motor_longo",
+    "protecao",
+    "imu"
+  ],
+  "runtime": {
+    "COM4": {
+      "face_confirmada": true,
+      "transporte": "serial",
+      "pwm_minimo": 150,
+      "pwm_maximo": 255,
+      "parada_confirmada": true
+    },
+    "WIFI": {
+      "face_confirmada": true,
+      "transporte": "tcp",
+      "pwm_minimo": 150,
+      "pwm_maximo": 255,
+      "parada_confirmada": true
+    }
+  },
+  "movimentos_enviados_na_validacao_real": 0,
+  "prova_rotacao_nova": false,
+  "caminhos_auditados": [
+    "comandos naturais",
+    "gestos e companhia",
+    "comemoracoes",
+    "passeios",
+    "MOTOR v1 e v2/rampas",
+    "giros medidos",
+    "reflexos de parede e borda",
+    "ferramentas de diagnostico direto",
+    "firmware isolado de rodas"
+  ],
+  "parada_zero_preservada": true,
+  "observacao": "Faixa aplica-se aos motores. Intensidades de origem nos planos e testes historicos podem ser menores; sao calibradas pelo owner. PWM do alto-falante e independente."
+}

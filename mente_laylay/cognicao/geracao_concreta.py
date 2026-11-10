@@ -256,7 +256,7 @@ def _sequencia_multiacto(atos: Iterable[str]) -> tuple[str, ...]:
     if "esclarecimento" in presentes:
         sequencia.append("explicar literalmente a fala anterior")
     if "agradecimento" in presentes:
-        sequencia.append("reconhecer o agradecimento e encerrar sem retomar a tarefa anterior")
+        sequencia.append("reconhecer o agradecimento preservando os outros atos e conteúdos atuais")
     if "adiamento" in presentes:
         sequencia.append("aceitar o adiamento de forma curta e literal")
     if "provocacao_curta" in presentes:
@@ -652,7 +652,7 @@ def construir_roteiro_geracao_concreta(
             "cumprimentar de volta",
             "fazer no máximo uma pergunta simples, se couber",
         )
-    elif "agradecimento" in especiais:
+    elif "agradecimento" in especiais and dados_contrato.get('agradecimento_exclusivo') is not False:
         estrategia = "encerramento_social"
         ancora = bruto
         nucleo = "reconhecer brevemente o agradecimento e encerrar o assunto atual"

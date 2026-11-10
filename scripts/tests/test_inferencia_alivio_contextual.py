@@ -236,7 +236,10 @@ def test_relato_de_alivio_longo_e_fantasioso_volta_a_fala_causal_curta():
         analisar_intencao_emocional(texto), turno_id=str(plano["id"]),
     )
 
-    assert "alivio_resposta_desproporcional" in avaliar_qualidade_comunicacao(
+    # A revisão de atribuição agora precede estilo/proporção. A mesma fala
+    # inventa uma cena sobre o interlocutor; deve continuar bloqueada antes
+    # da continuação causal curta, sem forçar o revisor a um motivo posterior.
+    assert "afirmacao_interlocutor_sem_apoio" in avaliar_qualidade_comunicacao(
         texto, fala, plano=plano,
     )["problemas_bloqueantes"]
 

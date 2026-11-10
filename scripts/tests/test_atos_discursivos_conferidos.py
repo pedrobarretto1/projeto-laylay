@@ -330,7 +330,8 @@ def test_ato_nao_empresta_suporte_nem_ignora_referencia_invalida(usuario, social
     a, f = revisao.como_dict()['proposicoes']
     assert a['estado'] == 'ato_social_conferido'
     assert f['estado'] == 'apoio_semantico_pendente' and inventada not in revisao.fala_realizada
-    assert 'apoio não consegui verificar' in revisao.fala_realizada
+    complemento = ' Ainda falta saber qual disco guarda a cópia.' if usuario.startswith('Oi,') else ''
+    assert revisao.fala_realizada == social + complemento
     parte = emissao(social, ['https://fonte.test/alheia'], turno=str(plano['id']), consulta=usuario)
     plano['autoria_revisada_proposta'] = montar_autoria_revisada('principal', social, (parte,))
     revisao = revisar_suporte_autoria(social, plano=plano)

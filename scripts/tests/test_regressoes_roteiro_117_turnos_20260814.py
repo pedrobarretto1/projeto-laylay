@@ -42,8 +42,11 @@ from mente_laylay.integracao.adaptadores_aplicacao_runtime import (
 )
 from mente_laylay.memoria_mental.contexto_compartilhado import (
     estado_mental_inicial,
+    limpar_pergunta_aberta,
+    registrar_pergunta_aberta,
     registrar_resultado_execucao,
 )
+from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
 from mente_laylay.memoria_mental.contexto_imediato import (
     referencia_contextual_imediata,
     resolver_comando_acao_geral_contextual,
@@ -541,19 +544,24 @@ def test_porta_prioritaria_entrega_continuacoes_ao_executor_antes_de_arquivo_e_l
 
 
 def test_resultado_operacional_limpa_pergunta_casual_anterior() -> None:
-    class _Estado:
-        def __init__(self) -> None:
-            self.mental = {"plano_turno_atual": {"fase": "executado", "comandos": []}}
-
-        def atualizar_campos(self, secao: str, **campos) -> None:
-            assert secao == "mental"
-            self.mental.update(campos)
-
-    estado = _Estado()
+    # O fake histórico não implementava snapshots, agora necessários à guarda
+    # de ocorrência. O owner real e o limpador real verificam o estado resultante.
+    mental = registrar_pergunta_aberta(
+        estado_mental_inicial(),
+        "Quer que eu puxe uma música, um filme curto ou alguma ideia pra gente fazer agora?",
+        topico="noite chata",
+    )
+    mental["plano_turno_atual"] = {"fase": "executado", "comandos": []}
+    estado = EstadoCompartilhadoRuntime(mental=mental)
     limpezas: list[bool] = []
+
+    def limpar() -> None:
+        limpezas.append(True)
+        estado.atualizar("mental", limpar_pergunta_aberta)
+
     namespace = {
         "_registrar_resultado_execucao_base": lambda *_args, **_kwargs: None,
-        "_limpar_pergunta_aberta": lambda: limpezas.append(True),
+        "_limpar_pergunta_aberta": limpar,
         "_estado_compartilhado_runtime": estado,
         "_atualizar_plano_turno_mente": lambda plano, **kwargs: {
             **plano, "comandos": kwargs["comandos"],
@@ -562,13 +570,23 @@ def test_resultado_operacional_limpa_pergunta_casual_anterior() -> None:
         "print": lambda *_args: None,
     }
 
+    assert estado.mental["pergunta_aberta_texto"]
+    assert estado.mental["pendencia_atual"]["origem"] == "pergunta_aberta"
+    # Receipt é fixture de efeito observado, não execução de uma exclusão.
+    # Não usar proposta/intent mais bool legado como prova do efeito.
+    receipt = ResultadoAcao(
+        id_solicitacao="playlist-excluida-roteiro", intent="PLAYLIST_DELETE",
+        params={"nome_playlist": "roteiro teste"}, status="playlist_deletada",
+        executou=True, confirmado=True, origem="executor",
+    )
     AdaptadoresAplicacaoRuntime(lambda: namespace).registrar_resultado_execucao(
-        {"intent": "PLAYLIST_DELETE", "params": {"nome_playlist": "roteiro teste"}},
+        receipt,
         "Apaga a playlist roteiro teste.",
-        True,
     )
 
     assert limpezas == [True]
+    assert estado.mental["pergunta_aberta_texto"] == ""
+    assert not estado.mental["pendencia_atual"]
 
 
 def test_saudacao_com_nome_de_terceiro_e_bloqueante_para_entrega() -> None:

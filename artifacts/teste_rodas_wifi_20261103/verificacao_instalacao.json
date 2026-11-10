@@ -1,0 +1,10 @@
+{
+  "autenticacao_incorreta_rejeitada": true,
+  "protocolo_completo_rejeitado_sem_movimento": true,
+  "status_confirmado": "TESTSTATUS 1 1 PARADO 0 100",
+  "endpoint": "192.168.137.109:8765",
+  "firmware_gravado": true,
+  "bin_sha256": "d73a3b2620e2891098f6c72eb70605a763ecefa071b843df5b13ffee04c16872",
+  "dependencia_canonica_identica": true,
+  "movimento_wifi_enviado": false
+}

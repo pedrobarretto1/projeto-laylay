@@ -17,6 +17,8 @@ import textwrap
 
 import pytest
 
+from scripts.tests.observacao_tipadas import isolar_codigo_observado
+
 
 @pytest.fixture(scope="module")
 def correlacao_composicao(tmp_path_factory: pytest.TempPathFactory) -> dict:
@@ -24,6 +26,7 @@ def correlacao_composicao(tmp_path_factory: pytest.TempPathFactory) -> dict:
         import json
         import os
         import sys
+        from scripts.tests.observacao_tipadas import projetar_tipo_observado
         from copy import deepcopy
         from types import SimpleNamespace
         from mente_laylay.integracao import instancia_unica
@@ -190,17 +193,23 @@ def correlacao_composicao(tmp_path_factory: pytest.TempPathFactory) -> dict:
                 resultados["casos"][formato] = {
                     "fonte_preservada": fonte == original,
                     "fonte": original, "capturas": capturas,
-                    "plano": plano, "verificacao": verificacao,
+                    # O relatório observa execução e correlação; o plano
+                    # retém credenciais nativas que não são dados de exportação.
+                    "plano": {chave: plano[chave] for chave in ("id", "comandos", "fase")},
+                    "verificacao": {chave: verificacao[chave] for chave in ("fala", "problemas")},
                     "alias": alias.get("comandos") or [], "outro": outro.get("comandos") or [],
                 }
         finally:
             adaptadores._namespace_getter = namespace_getter_original
-        sys.__stdout__.write("CORRELACAO_COMPOSICAO " + json.dumps(resultados, ensure_ascii=False) + "\n")
+        sys.__stdout__.write("CORRELACAO_COMPOSICAO " + json.dumps(resultados, ensure_ascii=False,
+            default=projetar_tipo_observado) + "\n")
     ''')
+    perfil = tmp_path_factory.mktemp("correlacao-sqlite")
+    codigo = isolar_codigo_observado(codigo, perfil)
     processo = subprocess.run(
-        [sys.executable, "-c", codigo], cwd=Path(__file__).resolve().parents[2],
+        [sys.executable, "-B", "-c", codigo], cwd=Path(__file__).resolve().parents[2],
         env=dict(os.environ, PYTHONIOENCODING="utf-8",
-                 LAYLAY_SONDA_SQLITE=str(tmp_path_factory.mktemp("correlacao-sqlite"))), capture_output=True,
+                 LAYLAY_SONDA_SQLITE=str(perfil)), capture_output=True,
         text=True, encoding="utf-8", timeout=60,
     )
     assert processo.returncode == 0, processo.stderr[-3000:]

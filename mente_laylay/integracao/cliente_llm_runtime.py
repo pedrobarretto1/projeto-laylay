@@ -7,6 +7,7 @@ import json
 import time
 from typing import Any, Callable
 from mente_laylay.cognicao.estado_tecnico_llm import estado_bloqueio_orcamento_llm
+from mente_laylay.integracao.contrato_saida_estruturada import CONTRATO_SAIDA_CONFIRMACAO_COMPOSTA
 
 from mente_laylay.integracao.llm_http import (
     FALHA_LLM_OCUPADA,
@@ -289,7 +290,14 @@ class ServicoModeloLLMRuntime:
         autoral_auxiliar = pedido.tipo_chamada in {
             "reparo_comunicacao", "reparo_factual", "reparo_json", "autoria_operacional", "presenca_evento",
         } or (pedido.tipo_chamada == "continuacao" and pedido.prioridade_interativa)
-        if autoral_auxiliar:
+        # A confirmação composta declara a cobertura em trechos vinculados a
+        # receipts e revisados pelo próprio owner depois do transporte.
+        suporte_por_receipt = (
+            pedido.contexto_fechado and pedido.tipo_chamada in {"autoria_operacional", "reparo_factual"}
+            and pedido.contrato_saida is not None
+            and pedido.contrato_saida.nome == CONTRATO_SAIDA_CONFIRMACAO_COMPOSTA
+        )
+        if autoral_auxiliar and not suporte_por_receipt:
             from dataclasses import replace
             from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
             from mente_laylay.integracao.registro_conversa_llm import PacotePrompt

@@ -889,7 +889,7 @@ class ComandosImediatosRuntime:
             and (
                 not turno_tem_veto_execucao(turno_atual)
                 or str(turno_atual.get("natureza_acao") or "").casefold()
-                in {"capacidade", "instrucao_ou_explicacao", "hipotetica"}
+                in {"capacidade", "instrucao_ou_explicacao", "hipotetica", "condicao_nao_verificada"}
             )
             and callable(responder_capacidade)
         ):

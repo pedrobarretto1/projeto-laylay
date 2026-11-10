@@ -10,11 +10,14 @@ import textwrap
 
 import pytest
 
+from scripts.tests.observacao_tipadas import isolar_codigo_observado
+
 
 @pytest.fixture(scope="module")
-def composicao_real() -> dict:
+def composicao_real(tmp_path_factory: pytest.TempPathFactory) -> dict:
     codigo = textwrap.dedent('''
         import json, os
+        from scripts.tests.observacao_tipadas import projetar_tipo_observado
         import requests
         from mente_laylay.integracao import instancia_unica
         nome_real = instancia_unica.nome_mutex_instancia
@@ -25,6 +28,7 @@ def composicao_real() -> dict:
         root._composicao_turno_runtime._servicos["_coleta_entradas_neurais"] = None
         contexto = root._resposta_ia_runtime._contexto()
         pesquisa = root._pesquisa_contextual_runtime
+        root._composicao_turno_runtime._servicos["_pesquisa_contextual_runtime"] = pesquisa
         def indisponivel(*args, **kwargs):
             raise requests.ConnectionError("fonte indisponível no controle")
         pesquisa.requests_get = indisponivel
@@ -69,13 +73,14 @@ def composicao_real() -> dict:
                 "validacao": contexto["validar_comandos_planejados"]([
                     {"intent": "DELETE_ITEM", "params": {"nome": nome}}]),
             }
-        print("P02_P06_JSON=" + json.dumps(saidas, ensure_ascii=False))
+        print("P02_P06_JSON=" + json.dumps(saidas, ensure_ascii=False, default=projetar_tipo_observado))
     ''')
+    codigo = isolar_codigo_observado(codigo, tmp_path_factory.mktemp("recomendacao"))
     ambiente = dict(os.environ, GMAIL_USER=" ", GMAIL_APP_PASSWORD=" ",
         LAYLAY_IOT_MODO="simulado", LAYLAY_TERMINAL_2="0",
         LAYLAY_MICROFONE_ATIVO="0", LAYLAY_BRIEFING_INICIAL="0",
         LAYLAY_FALAS_INICIAIS="0", LAYLAY_PRESENCA="0")
-    processo = subprocess.run([sys.executable, "-c", codigo],
+    processo = subprocess.run([sys.executable, "-B", "-c", codigo],
         cwd=Path(__file__).resolve().parents[2], env=ambiente,
         capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert processo.returncode == 0, processo.stdout + processo.stderr

@@ -69,7 +69,7 @@ def main() -> None:
         ocupada.set(); resultado.set("Teste em andamento…")
         def executar():
             try:
-                r = rosto.mover_corpo(140,140,3000)
+                r = rosto.mover_corpo(150,150,3000)
                 receipts.append(r)
             except Exception as e:
                 receipts.append({"ok":False,"motivo":type(e).__name__ + ": " + str(e)})

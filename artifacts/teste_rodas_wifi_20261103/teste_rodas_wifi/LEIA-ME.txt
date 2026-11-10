@@ -1,0 +1,41 @@
+TESTE DAS RODAS POR WI-FI - ESP32-C3 SUPER MINI
+
+Este e um sketch independente de bancada. A Laylay completa deve ficar fechada.
+Nao usa os sensores removidos nem comprova rotacao ou deslocamento das rodas.
+
+MONTAGEM
+AIN1/2: GPIO1/2. BIN1/2: GPIO3/4. SLEEP/EEP: GPIO7.
+OLED SSD1306 128x64: VCC3V3, GND, SDA8, SCL9.
+Neste teste, N20 de 3 V: bateria de 3 V no VM da ponte; negativo no GND comum.
+O ESP continua alimentado pela USB durante a gravacao. Nao unir VM a USB5V.
+
+REDE
+Reutiliza credenciais, IP por rede e token ja salvos na NVS da placa.
+O arquivo transporte_wifi.h e uma copia identica da dependencia canonica
+firmware/rosto_laylay/transporte_wifi.h, incluido para o sketch abrir completo.
+Servidor TCP autenticado na porta8765; nao exige senha escrita neste codigo.
+O OLED mostra o IPv4 quando conectado. A rede local do PC deve estar ativa.
+
+CONTROLE NO PC
+No projeto Laylay, abra scripts/abrir_controle_rodas_wifi.cmd.
+Digite um comando e pressione ENTER:
+F: frente por 5 segundos continuos, PWM150/255 e frequencia1kHz.
+S: parar.
+STATUS: consultar o estado confirmado pelo ESP.
+SAIR: solicitar parada e encerrar o controle.
+CTRL+C tambem solicita parada antes de sair.
+
+O primeiro STATUS nao movimenta. Autenticar nao movimenta. F nao e repetido
+automaticamente, nem prolonga um movimento ativo. Perder a conexao ou ficar
+2s sem renovacao do controle corta a ponte. Cada F tem limite local de5s.
+
+USB
+Monitor Serial115200 com terminacao NOVA LINHA: F, S, STATUS.
+Tambem preserva os comandos USB WIFI_STATUS1 / WIFI_DIAG1 do transporte.
+Feche o Monitor Serial antes de gravar. Nao mantenha outro controlador ativo.
+
+GRAVACAO
+Abra teste_rodas_wifi.ino junto de transporte_wifi.h nesta mesma pasta.
+Placa ESP32C3 Dev Module, USB CDC On Boot Enabled, core Arduino-ESP323.x.
+Bibliotecas Adafruit SSD1306, Adafruit GFX e Adafruit BusIO.
+O sketch inicia com a ponte desligada e espera um comando explicito.

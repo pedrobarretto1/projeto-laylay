@@ -1,6 +1,7 @@
 """Somente uma saída corporal habilitada recebe sua gramática de proposta."""
 
 import copy
+import json
 
 import pytest
 
@@ -10,7 +11,9 @@ from mente_laylay.cognicao.modelo_corporal import (
 from mente_laylay.autonomia.contexto_resposta_ia import ContextoPromptRuntime
 from mente_laylay.integracao.preparacao_llm import preparar_payload_llm
 from mente_laylay.integracao.llm_http import compactar_payload_llm_local
-from mente_laylay.personalidade.prompt_voz_unica import BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_RAPIDO
+from mente_laylay.personalidade.prompt_voz_unica import (
+    BASE_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT_COMPACTO, BASE_SYSTEM_PROMPT_RAPIDO,
+)
 
 
 def modelo_inativo(conectada=False):
@@ -95,39 +98,53 @@ def test_porta_preserva_realidade_e_veto_sem_protocolo_inativo(texto, rapido):
         assert "Escolha nome:" not in instrucao
         assert "omita intencao_corporal" in instrucao
         assert payload["messages"][-1] == {"role": "user", "content": texto}
-        # A porta rápida já substitui a base pela versão rápida canônica.
-        base = BASE_SYSTEM_PROMPT_RAPIDO if rapido else BASE_SYSTEM_PROMPT
+        # As duas rotas locais selecionam bases canônicas antes do transporte.
+        base = BASE_SYSTEM_PROMPT_RAPIDO if rapido else BASE_SYSTEM_PROMPT_COMPACTO
         assert base in payload["messages"][0]["content"]
         payload = compactar_payload_llm_local(payload)
 
 
 def test_estado_inativo_nao_restringe_comando_manual_nem_confirma_movimento():
-    from scripts.tests.test_companhia_corporal import montar
+    from scripts.tests.test_companhia_corporal import montar, motores
     estado, esp, rosto, corpo, _, _ = montar()
     modelo = corpo.modelo_para_mente("manual")
     assert modelo["companhia_ativa"] is False
+    assert not motores(esp)
+    resultado = corpo.executar("CORPO_MOVER", {"direcao": "frente", "duracao_ms": 250})
+    assert resultado["ok"] and resultado["aplicacao_pwm_confirmada"] and resultado["parada_confirmada"]
+    assert len(motores(esp)) == 1
+    modelo = corpo.modelo_para_mente("manual")
+    assert modelo["companhia_ativa"] is False
     prompt = formatar_modelo_corporal(modelo)
+    fatos = json.loads(prompt.splitlines()[1])
+    assert fatos["ultima_experiencia"]["prova_deslocamento"] is False
+    assert fatos["percepcao_fisica"]["deslocamento"] == "nao_medido"
     assert "omita intencao_corporal" in prompt
     assert "prova_deslocamento=false significa NÃO MEDIDO" in prompt
-    assert not any(p.startswith("MOTOR ") for p in esp.enviados)
-    resultado = corpo.executar("CORPO_MOVER", {"direcao": "frente", "duracao_ms": 250})
-    assert resultado["ok"]
-    assert not corpo.modelo_para_mente("manual")["companhia_ativa"]
     assert not estado.mental["corpo_motor"]["prova_rotacao"]
     assert corpo.executar("CORPO_PARAR", {})["ok"]
     rosto.encerrar()
 
 
 def test_protocolo_ativo_conserva_objetivo_e_receipt_sem_replay(monkeypatch):
-    from scripts.tests.test_objetivo_corporal_entre_turnos import preparar_objetivo
-    estado, _, rosto, corpo, _, _, objetivo = preparar_objetivo(monkeypatch)
+    from scripts.tests.test_companhia_corporal import motores
+    from scripts.tests.test_objetivo_corporal_entre_turnos import continuar, preparar_objetivo
+    estado, esp, rosto, corpo, _, _, objetivo = preparar_objetivo(monkeypatch)
     modelo = corpo.modelo_para_mente("novo")
     assert modelo["companhia_ativa"] is True
     prompt = formatar_modelo_corporal(modelo)
     assert "Escolha nome:" in prompt
     assert objetivo in prompt and "historico_recente" in prompt
-    assert "Novo turno exige proposta atual" in prompt
-    assert "nunca ausência de movimento" in prompt
+    fatos = json.loads(prompt.splitlines()[1])
+    assert fatos["objetivo_para_continuar"]["objetivo_id"] == objetivo
+    assert fatos["objetivo_para_continuar"]["continuidade_disponivel"] is True
+    assert fatos["intencao_em_curso"]["turno_id"] != fatos["turno_id"]
+    assert not motores(esp)
+    _, plano = continuar(estado, corpo, objetivo)
+    proposta = plano["intencao_corporal"]
+    assert proposta["objetivo_id"] == objetivo and proposta["turno_id"] == "b"
+    assert proposta["estado"] == "proposta" and proposta["autoriza_execucao"] is False
+    assert not proposta.get("resultado") and not motores(esp)
     rosto.encerrar()
 
 

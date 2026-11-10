@@ -1,0 +1,9 @@
+{
+  "porta": "COM4",
+  "comando": "S",
+  "movimento_enviado": false,
+  "respostas": [
+    "Ponte desligada por comando."
+  ],
+  "teste_respondeu": true
+}

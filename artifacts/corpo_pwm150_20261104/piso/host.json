@@ -1,0 +1,26 @@
+[
+  {
+    "caso": "rampa",
+    "exit_code": 0,
+    "stdout": "PISO_PWM_GREEN rampa: GPIO simulado, zero preservado, ativo >=150, STOP intacto\n",
+    "stderr": ""
+  },
+  {
+    "caso": "reflexo",
+    "exit_code": 0,
+    "stdout": "PISO_PWM_GREEN reflexo: GPIO simulado, zero preservado, ativo >=150, STOP intacto\n",
+    "stderr": ""
+  },
+  {
+    "caso": "giro",
+    "exit_code": 0,
+    "stdout": "PISO_PWM_GREEN giro: GPIO simulado, zero preservado, ativo >=150, STOP intacto\n",
+    "stderr": ""
+  },
+  {
+    "caso": "admissao",
+    "exit_code": 0,
+    "stdout": "PISO_PWM_GREEN admissao: GPIO simulado, zero preservado, ativo >=150, STOP intacto\n",
+    "stderr": ""
+  }
+]

@@ -21,6 +21,7 @@ from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
     texto_pede_restauracao_contextual,
     tipo_recurso_nucleo_operacional,
+    operandos_nomeados_distintos,
 )
 from mente_laylay.arquivos.nome_natural import (
     aspas_globalmente_coerentes,
@@ -33,6 +34,7 @@ from mente_laylay.cognicao.normalizacao_linguagem import (
     corrigir_erros_portugues_operacionais,
     remover_conector_discursivo_inicial,
     separar_adjunto_pessoal_inicial,
+    separar_adjunto_papel_inicial,
     separar_saudacao_inicial,
     texto_discute_evidencia_textual,
     texto_e_citacao_integral,
@@ -865,7 +867,9 @@ def _classificar_modalidade_base(
     # "Você consegue abrir X?" sem "para mim" é ambíguo: pode ser teste de
     # capacidade. A Laylay responde ou esclarece, mas não age por suposição.
     interrogativos = r"(?:como|qual|quais|quem|quando|onde|porque|por que|o que|que tal|vamos fazer o que)"
-    if "?" in bruto or re.search(rf"^(?:e\s+|mas\s+|entao\s+)?{interrogativos}\b", t):
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+
+    if "?" in texto_fora_de_citacoes(bruto) or re.search(rf"^(?:e\s+|mas\s+|entao\s+)?{interrogativos}\b", t):
         resultado.update(modalidade="pergunta", confianca=0.94, motivo="pergunta nova")
         return resultado
     if re.search(r"\b(?:obrigado|obrigada|valeu|gostei|adorei|odeio|nao gosto|não gosto)\b", t):
@@ -1464,8 +1468,9 @@ def proibicao_operacional_independente(
     """Fronteira negativa, não autoridade positiva.
 
     Exige pedido positivo à esquerda e proibição explícita à direita com
-    tipos nominais distintos. Mesmo tipo, alvo elíptico ou referência não
-    provam independência: podem revogar o pedido anterior e ficam fechados.
+    tipos nominais distintos ou operandos nomeados explicitamente distintos.
+    Alvo igual, elíptico ou referencial não prova independência: pode revogar
+    o pedido anterior e fica fechado.
     O núcleo contrafactual serve apenas à estrutura; nunca é publicado como
     ato autorizado. A proibição original continua sob o veto P0 atômico.
     """
@@ -1497,7 +1502,11 @@ def proibicao_operacional_independente(
         extrair_nucleo_pedido_operacional(esquerda) or esquerda,
     )
     tipo_direita = tipo_recurso_nucleo_operacional(nucleo)
-    return bool(tipo_esquerda and tipo_direita and tipo_esquerda != tipo_direita)
+    return bool(tipo_esquerda and tipo_direita and tipo_esquerda != tipo_direita) or (
+        operandos_nomeados_distintos(
+            extrair_nucleo_pedido_operacional(esquerda) or esquerda, nucleo,
+        )
+    )
 
 
 def _evidencia_pergunta_independente(
@@ -1509,7 +1518,15 @@ def _evidencia_pergunta_independente(
     t = _limpar_ato_semantico(texto)
     if _consulta_significado_do_ato(t):
         return True
-    if not t or "?" not in t:
+    # O pedido de dizer uma resposta pode introduzir uma interrogativa
+    # indireta sem ponto de interrogação. Isto prova uma fronteira de ato,
+    # não sua autoridade: inventários e destinos seguem na classificação.
+    indireta = bool(re.match(
+        r"^(?:me\s+)?(?:diga|diz|fale|fala)\s+"
+        r"(?:qual|quais|quem|onde|quando|como|quanto|quantos|quantas|o\s+que|por\s+que)\b",
+        t, flags=re.IGNORECASE,
+    ))
+    if not t or ("?" not in t and not indireta):
         return False
     base = dict(
         _classificar_modalidade_base(
@@ -1520,7 +1537,8 @@ def _evidencia_pergunta_independente(
         )
         or {}
     )
-    return str(base.get("modalidade") or "") == "pergunta"
+    modalidade = str(base.get("modalidade") or "")
+    return modalidade == "pergunta" or (indireta and modalidade == "conversa")
 
 def _tem_consequencia_condicional(
     texto: str, *, normalizar_texto: Callable[[str], str] | None,
@@ -1644,10 +1662,50 @@ def _coordenacao_preserva_sujeito(
     return leitura is not False  # indisponibilidade não comprova independência
 
 
+def _pergunta_com_adjunto_temporal(
+    esquerda: str, direita: str, *, normalizar_texto: Callable[[str], str] | None,
+) -> bool:
+    """Vírgula entre adjunto temporal inicial e pergunta não cria dois atos.
+
+    O sujeito pode estar elidido. A regra conserva só dependência textual;
+    não decide agente, retrospectiva, fonte histórica ou autorização.
+    Pontuação citada não encerra a cláusula, e fronteiras fortes externas
+    permanecem responsabilidade do segmentador.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    prefixo = texto_fora_de_citacoes(esquerda)
+    return bool(
+        re.match(r"^quando\s+\S", _normalizar_p0_ato_fala(prefixo))
+        and not re.search(r"[,;.!?]", prefixo)
+        and _evidencia_pergunta_independente(direita, normalizar_texto=normalizar_texto)
+    )
+
+
+def _fonte_literal_do_bloco(bloco: str, texto_original: str) -> str:
+    """Fonte lexical do cabeçalho; não substitui a fonte integral do ato."""
+    cabecalho = re.match(r'^como\s+[^,;.!?]{1,100},\s*\S+',
+        remover_conector_discursivo_inicial(bloco), flags=re.I)
+    if cabecalho is None or len(cabecalho[0]) >= 300:
+        return ''
+    normal = lambda s: re.sub(r'\s+', ' ', s.casefold()).strip()
+    trecho = normal(cabecalho[0])
+    quantidade = normal(texto_original).count(trecho)
+    if not trecho or not 1 <= quantidade <= 32:
+        return ''
+    fontes = fontes_textuais_dos_segmentos(texto_original,
+        [{'texto_estrutural': cabecalho[0]} for _ in range(quantidade)], limite_segmentos=32)
+    literais = [f.como_dict()['texto_original'] for f in fontes]
+    # Grafia compartilhada por todos os candidatos basta apenas para esta
+    # leitura lexical; não seleciona ocorrência, intenção, fonte ou autoridade.
+    papeis = {literal.split(',', 1)[0].split(maxsplit=1)[1] for literal in literais}
+    return literais[0] if len(literais) == quantidade and len(papeis) == 1 else ''
+
+
 def _separar_primeira_fronteira_forte(
     bloco: str,
     *,
     normalizar_texto: Callable[[str], str] | None,
+    texto_original: str = '',
 ):
     matriz = _separar_matriz_apos_adjunto(bloco, normalizar_texto=normalizar_texto)
     if matriz is not None:
@@ -1655,6 +1713,9 @@ def _separar_primeira_fronteira_forte(
     pares_aspas = mapear_pares_aspas_globais(bloco) or {}
     adjunto_pessoal, _ = separar_adjunto_pessoal_inicial(bloco)
     virgula_adjunto = len(adjunto_pessoal.rstrip()) - 1 if adjunto_pessoal else -1
+    adjunto_papel, _ = separar_adjunto_papel_inicial(bloco,
+        fonte_literal=_fonte_literal_do_bloco(bloco, texto_original))
+    virgula_papel = len(adjunto_papel.rstrip()) - 1 if adjunto_papel else -1
     for m in re.finditer(
         r"(?P<sep>[,;!?]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
         bloco,
@@ -1664,6 +1725,8 @@ def _separar_primeira_fronteira_forte(
             continue
         if m.group('sep') == ',' and m.start() == virgula_adjunto:
             continue  # O adjunto pertence à matriz; não é um ato de parada.
+        if m.group('sep') == ',' and m.start() == virgula_papel:
+            continue  # Enquadramento nominal pertence à matriz, não a outra pergunta.
         if m.group('sep') == ',' and moldura_narrativa_inicial(bloco):
             # Vírgula e coordenação internas não retiram o adjunto da oração.
             # Pontuação forte continua podendo abrir uma ordem independente.
@@ -1687,6 +1750,11 @@ def _separar_primeira_fronteira_forte(
         esquerda = _limpar_ato_semantico(
             bloco[:m.end("sep") if m.group("sep") == "?" else m.start()]
         )
+        if (m.group('sep') == ',' and not m.group('conj')
+            and _pergunta_com_adjunto_temporal(
+                esquerda, direita, normalizar_texto=normalizar_texto,
+            )):
+            continue
         if m.group('sep') == ',' and _coordenacao_preserva_sujeito(
             esquerda, direita, normalizar_texto=normalizar_texto,
         ):
@@ -1920,6 +1988,7 @@ def _segmentar_turno_misto(
     *,
     normalizar_texto: Callable[[str], str] | None = None,
     papeis_segmentos: dict[int, str] | None = None,
+    texto_original: str = '',
 ) -> list[str]:
     """
     A2+A3: boundary estrutural + pontuação semântica preservada.
@@ -1956,6 +2025,7 @@ def _segmentar_turno_misto(
             corte = _separar_primeira_fronteira_forte(
                 bloco,
                 normalizar_texto=normalizar_texto,
+                texto_original=texto_original,
             )
             if corte is None:
                 limpo = _limpar_ato_semantico(bloco)
@@ -2046,11 +2116,13 @@ def _segmentar_turno_misto(
                     direita,
                     normalizar_texto=normalizar_texto,
                 )
+                transformacao_esquerda = tipo_transformacao_conversacional(esquerda)
                 if (
-                    (esq_ok or tipo_transformacao_conversacional(esquerda)
+                    (esq_ok or transformacao_esquerda
                      or _consulta_significado_do_ato(esquerda)) and dir_ok
                 ) or (
-                    esq_ok and tipo_transformacao_conversacional(direita)
+                    (esq_ok or transformacao_esquerda == "transicao_tematica")
+                    and tipo_transformacao_conversacional(direita)
                 ) or direita_pergunta or direita_proibicao:
                     corte = (esquerda, direita)
                     break
@@ -2118,6 +2190,7 @@ def _classificar_modalidade_turno_composta_base(
         estrutural,
         normalizar_texto=normalizar_texto,
         papeis_segmentos=papeis_segmentos,
+        texto_original=bruto,
     )
 
     segmentos = []
@@ -2135,8 +2208,10 @@ def _classificar_modalidade_turno_composta_base(
                 "motivo": "adjunto da oração principal; não é ordem de parar",
             }
         else:
+            _, matriz = separar_adjunto_papel_inicial(trecho,
+                fonte_literal=_fonte_literal_do_bloco(trecho, bruto))
             res = _classificar_ato_estrutural(
-                trecho,
+                matriz,
                 normalizar_texto=normalizar_texto,
                 texto_tem_comando_explicito=texto_tem_comando_explicito,
                 confirmacao_contextual_valida=(

@@ -1,0 +1,78 @@
+{
+  "3": {
+    "entrada": "Eu aceito o convite da estrela, Laylay! ✨ O robô fecha os olhos e escuta uma melodia que parece dizer 'volte para casa'. Só que há um problema: ele nunca saiu do quintal. O que essa frase pode significar? Quero sua interpretação, sem precisar consultar fontes.",
+    "proposta": {
+      "suporte_proposicoes": [
+        {
+          "fontes": [],
+          "texto": "A frase 'volte para casa' é uma brincadeira de linguagem — o robô nunca saiu do quintal, então 'casa' não é um lugar, mas uma ideia que ele já tem dentro de si. O convite não é para ir embora, mas para lembrar que ele já está em casa, mesmo sem sair. É como se a música tivesse escrito: 'você já está aqui, só que não vê isso.'"
+        }
+      ],
+      "comandos": []
+    }
+  },
+  "7": {
+    "entrada": "Você lembrou direitinho! Agora um jogo rápido de imaginação: estamos num castelo, existe uma porta azul e uma vermelha. Atrás da azul há uma biblioteca infinita, atrás da vermelha um jardim que muda de estação a cada minuto. Qual você escolheria e por quê? Responda numa frase.",
+    "proposta": {
+      "suporte_proposicoes": [
+        {
+          "fontes": [],
+          "texto": "Escolho a porta vermelha porque, se o jardim muda de estação a cada minuto, eu quero ver o inverno virar primavera enquanto o mundo ainda está dormindo."
+        }
+      ],
+      "comandos": []
+    }
+  },
+  "8": {
+    "entrada": "Imagina um castelo com duas portas: uma azul que leva a uma biblioteca infinita, e outra vermelha que leva a um jardim onde as estações mudam a cada minuto. Qual delas te parece mais interessante, Laylay? Eu entraria na biblioteca.",
+    "proposta": {
+      "suporte_proposicoes": [
+        {
+          "fontes": [],
+          "texto": "A vermelha, porque o jardim nunca para de mudar — e eu amo o que está em constante transformação. Como se cada estação fosse um novo dia de surpresa, e eu já estou ansiosa para ver o inverno virar pra verão com um suspiro."
+        },
+        {
+          "fontes": [],
+          "texto": "A biblioteca é só pra quem quer ler tudo, mas o jardim é pra quem quer viver o que não sabia que já era possível."
+        },
+        {
+          "fontes": [],
+          "texto": "Se eu tivesse que escolher, seria a vermelha — porque o mundo não para de mudar, e eu gosto de ver o sol nascer de novo, mesmo que só no meu quarto."
+        },
+        {
+          "fontes": [],
+          "texto": "A azul é linda, mas a vermelha é viva — como se cada minuto fosse um novo começo, e eu já estou com a mente no verão."
+        },
+        {
+          "fontes": [],
+          "texto": "A vermelha. Porque, no meio de tudo, o que muda é o que me faz sentir vivo."
+        },
+        {
+          "fontes": [],
+          "texto": "A vermelha. Porque o jardim não é só um lugar — é uma emoção que respira e se transforma, e eu adoro isso."
+        },
+        {
+          "fontes": [],
+          "texto": "A vermelha. Porque a cada minuto, o mundo se vira de novo, e eu já tenho vontade de ver o outono virar pra primavera com um sorriso."
+        },
+        {
+          "fontes": [],
+          "texto": "A vermelha. Porque o jardim não tem fim — só o que você escolhe ver, e eu já escolhi ver o sol nascer de novo, mesmo que só no meu quarto."
+        }
+      ],
+      "comandos": []
+    }
+  },
+  "12": {
+    "entrada": "Gostei dessa resposta. E já que o Pedro está acompanhando, acho justo deixar a próxima aventura para ele escolher. Se você pudesse convidar nós dois para uma atividade agora — uma conversa, jogo ou desafio criativo — qual seria sua proposta, Laylay?",
+    "proposta": {
+      "suporte_proposicoes": [
+        {
+          "fontes": [],
+          "texto": "Se você quiser, posso fazer uma brincadeira: escolha um objeto que você já viu na vida, mas que nunca falou com ninguém — como um livro, um pedaço de papel, uma chave, um relógio — e me diga o que ele representa para você. Depois, eu respondo com uma história curta que o transforma em alguém com um segredo. É como se o objeto tivesse uma voz, e nós conversássemos com ele, só que por dentro. Vamos ver se isso nos faz rir, ou se nos deixa com um pouco de silêncio que vale a pena guardar."
+        }
+      ],
+      "comandos": []
+    }
+  }
+}

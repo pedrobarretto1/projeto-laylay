@@ -465,7 +465,7 @@ class AdaptadorResultadoOperacional:
         )
         acumular = self.ctx.get("_acumular_resultado_operacional")
         if callable(acumular) and acumular(
-            contrato, plano.fala, plano.emocao, plano.nivel,
+            receipt if receipt is not None else contrato, plano.fala, plano.emocao, plano.nivel,
             contexto=self.contexto_fala({"avaliacao_evento": avaliacao_evento}),
         ):
             # O receipt já foi publicado. A autoria e a entrega pertencem ao

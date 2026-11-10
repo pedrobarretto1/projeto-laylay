@@ -1,0 +1,9 @@
+validar_motor_continuo.cpp
+Perfil normal: ordem de 5s rejeitada GREEN (GPIO simulado).
+PWM de referencia: quatro GPIOs em 1kHz/8bits, ambos canais em +/-100 e STOP GREEN (GPIO simulado).
+validar_motor_longo.cpp
+MOTOR_LONGO_OK: LONGO1/5s continuo/corte absoluto/TTL/limite5001 rejeitado
+validar_protecao.cpp
+PROTECAO_GREEN: limiares, corte, medo, recuo, giro, 3 amostras, falha, STOP, sem loop
+validar_imu.cpp
+IMU_GREEN: calibracao, giro medido, replay, manuseio, sem fuga no colo, falha fechada

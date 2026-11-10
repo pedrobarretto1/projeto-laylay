@@ -50,9 +50,7 @@ def motivo(frame):
     "pausa a música... não pausa",
     "cria um arquivo teste.txt... na verdade alguma outra coisa",
     "abre\t o aplicativo\nCalculadora... não abre",
-    pytest.param("abre " + " " * 520 + "o aplicativo Calculadora... não abre",
-        marks=pytest.mark.xfail(strict=True,
-            reason="fronteira anterior: projeções de identidade truncam espaços em ordens diferentes")),
+    "abre " + " " * 520 + "o aplicativo Calculadora... não abre",
 ])
 def test_revisao_bloqueada_tem_frame_coerente_e_proposta_vinculada_sem_permissao(texto):
     frame = frame_bloqueado(texto)

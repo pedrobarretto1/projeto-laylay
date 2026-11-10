@@ -45,8 +45,7 @@ def test_contexto_narrativo_ou_receipt_anterior_nao_criam_obrigacao(texto, com_r
 
 
 @pytest.mark.parametrize('texto', [
-    pytest.param('Quando disse "Registrei o resultado do pedido.", por que aconteceu?',
-        marks=pytest.mark.xfail(strict=True, reason='RED anterior ao candidato: segmentação separa atribuição e pergunta causal')),
+    'Quando disse "Registrei o resultado do pedido.", por que aconteceu?',
     'Por que você disse isso?', 'Não entendi por que você disse isso?',
     'Qual o motivo de você dizer "Registrei o resultado do pedido."?',
 ])

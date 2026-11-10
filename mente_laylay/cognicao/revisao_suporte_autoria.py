@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import hashlib
 import re
 from typing import Any
+import unicodedata
 from urllib.parse import urlsplit
 
 from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
@@ -33,6 +34,62 @@ class RevisaoSuporteAutoria:
 _LIMITE = "Não consegui verificar se as fontes citadas sustentam essas afirmações."
 _LIMITE_EXPLICACAO = "Não consegui conferir o apoio dessa explicação. Preciso de uma fonte para responder com segurança."
 _APOIOS_CONFERIDOS = frozenset({"literal_integral_na_fonte", "parafrase_estrutural_conferida"})
+_CONSULTA_ATRIBUTO = re.compile(r"qual\s+(?P<verbo>é|são|era|eram|foi|foram)\s+(?P<termo>.+)", re.I)
+_ATRIBUICAO_DIRETA = re.compile(r"(?P<termo>.+?)\s+(?P<verbo>é|são|era|eram|foi|foram)\s+\S.*", re.I)
+_PERGUNTA_DIRETA = re.compile(r"(?:qual|quais|quem|onde|quando|como|quanto|por que|o que)\s+\S", re.I)
+
+
+def _perguntas_pendentes(plano: dict[str, Any], fatos_conferidos: list[str]) -> tuple[str, ...]:
+    """Aponta lacunas pelo ato literal e por atribuições já conferidas."""
+    from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
+
+    contrato = plano.get("contrato_fala") or {}
+    consulta = plano.get("texto_usuario")
+    atos = plano.get("atos")
+    if (not plano.get("id") or contrato.get("turno_id") != plano["id"]
+        or contrato.get("origem") != "mente_unica" or contrato.get("autoriza_execucao") is not False
+        or (contrato.get("roteiro_concreto") or {}).get("ancora_literal") != consulta
+        or plano.get("autoriza_execucao") is not False or plano.get("comandos")
+        or plano.get("requer_execucao") or not isinstance(consulta, str)
+        or plano.get("natureza_entrada") not in {None, "", "fala_usuario"}
+        or not isinstance(atos, list) or not atos
+        or any(not isinstance(ato, dict) or ato.get("ordem") != indice or ato.get("requer_execucao")
+               or ato.get("tipo") not in {"pergunta", "conversa", "reacao"} for indice, ato in enumerate(atos))):
+        return ()
+
+    fontes = fontes_textuais_dos_segmentos(consulta, atos)
+    if len(fontes) != len(atos):
+        return ()
+    perguntas = []
+    for ato, fonte in zip(atos, fontes):
+        if ato.get("tipo") != "pergunta":
+            continue
+        pergunta = fonte.como_dict()["texto_original"]
+        if (not pergunta.endswith("?") or len(enunciados_discursivos(pergunta)) != 1
+            or texto_fora_de_citacoes(pergunta) != pergunta or not _PERGUNTA_DIRETA.match(pergunta)):
+            return ()
+        perguntas.append(pergunta[:-1])
+    if not fatos_conferidos:
+        return tuple(perguntas) if len(perguntas) == 1 else ()
+
+    def chave(padrao: re.Pattern[str], trecho: str) -> tuple[str, str] | None:
+        literal = " ".join(unicodedata.normalize("NFC", trecho).split())
+        leitura = padrao.fullmatch(literal)
+        if leitura and grupo_nominal_de_papel(leitura["termo"]):
+            return leitura["verbo"].casefold(), leitura["termo"].casefold()
+        return None
+
+    alvos = {chave(_CONSULTA_ATRIBUTO, pergunta): pergunta for pergunta in perguntas}
+    if None in alvos or len(alvos) != len(perguntas):
+        return ()
+    if any(len(enunciados_discursivos(fato)) != 1 for fato in fatos_conferidos):
+        return ()
+    cobertos = {chave(_ATRIBUICAO_DIRETA, fato.removesuffix(".")) for fato in fatos_conferidos}
+    if not cobertos <= alvos.keys():
+        return ()
+    return tuple(pergunta for alvo, pergunta in alvos.items() if alvo not in cobertos)
 
 
 def _relato_da_consulta_modo_pessoal(plano: dict[str, Any]) -> dict[str, Any] | None:
@@ -176,7 +233,7 @@ def revisar_suporte_autoria(
     """
     from mente_laylay.cognicao.contrato_fala import explicacao_exige_apoio_individual
     obrigacao_explicativa = explicacao_exige_apoio_individual(plano)
-    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
     criacao = criacao_ficcional_vigente(plano)
     exige_moldura_ficcional = 'criacao_ficcional' in (plano.get('contrato_fala') or {})
     exige_declaracao = obrigacao_explicativa or exige_moldura_ficcional
@@ -190,12 +247,14 @@ def revisar_suporte_autoria(
     if type(revisada) is AutoriaRevisadaProposta:
         suporte = revisada.suporte_composto()
     def resultado(estado: str, proposicoes: list[dict[str, Any]], fontes: list[dict[str, Any]],
-                  realizada: str = fala, aplicar: bool = False) -> RevisaoSuporteAutoria:
+                  realizada: str = fala, aplicar: bool = False, *,
+                  perguntas_pendentes: tuple[str, ...] = ()) -> RevisaoSuporteAutoria:
         return RevisaoSuporteAutoria(SnapshotComandoIA({
             "estado": estado, "turno_id": str(plano.get("id") or ""),
             "proposicoes": proposicoes, "fontes_lidas": fontes,
             "obrigacao_fonte_individual": obrigacao_explicativa,
             "retomada_usuario": retomada_usuario,
+            "perguntas_pendentes": list(perguntas_pendentes),
             "pode_confirmar_fato_externo": False,
         }), realizada, aplicar)
 
@@ -215,7 +274,8 @@ def revisar_suporte_autoria(
         return resultado('adequacao_sem_vinculo_atual', [], [], limite, True)
     if retomada_usuario is not None and not retomada_usuario['admissivel']:
         return resultado('retomada_usuario_sem_nucleo_conferido', [], [],
-                         LIMITE_CONFERENCIA_RELATO_USUARIO, True)
+                         retomada_usuario.get('resposta_conferida',
+                             retomada_usuario.get('esclarecimento_recordacao', LIMITE_CONFERENCIA_RELATO_USUARIO)), True)
 
     relato_pessoal = _relato_da_consulta_modo_pessoal(plano)
     if relato_pessoal is not None:
@@ -258,7 +318,8 @@ def revisar_suporte_autoria(
         return resultado("declaracao_sem_cobertura", [], [],
                          limite if exige_declaracao else fala, exige_declaracao)
 
-    if (criacao is not None and fala == suporte.fala_original and fala_ficcional_delimitada(fala)
+    if (criacao is not None and fala == suporte.fala_original
+        and fala_ficcional_conferida(fala, criacao=criacao)
         and all(not p['fontes'] for p in declaracao.get('proposicoes') or ())):
         # O host confere apenas escopo e vínculo. O corpo é uma criação, não
         # prova semântica nem relato do mundo real. Fontes citadas continuam
@@ -334,6 +395,7 @@ def revisar_suporte_autoria(
         return resultado('redacao_nao_assertiva_conferida', proposicoes, snapshots, fala, False)
     requer_revisao = bool(exige_declaracao or tem_referencia or fontes or base.get("requer_evidencia_recente"))
     realizada = limite
+    perguntas_pendentes = ()
     if literais or parafrases or atos_sociais or redacoes:
         if parafrases or atos_sociais or redacoes:
             # Citação e paráfrase têm atribuições distintas; agrupá-las por
@@ -346,11 +408,16 @@ def revisar_suporte_autoria(
                 for p in proposicoes if p["estado"] in _APOIOS_CONFERIDOS or p["estado"] in {"ato_social_conferido", "redacao_nao_assertiva_conferida"})
         else:
             realizada = "Os trechos consultados registram: " + "; ".join("«" + t + "»" for t in literais)
-        if len(literais) + len(parafrases) + len(atos_sociais) + len(redacoes) < len(proposicoes):
-            separador = " " if realizada.endswith(".") else ". "
-            realizada += separador + "Há outras afirmações cujo apoio não consegui verificar."
         if len(realizada) > 4000:
             realizada = limite
+        elif requer_revisao:
+            perguntas_pendentes = _perguntas_pendentes(plano, [*literais, *parafrases])
+            if perguntas_pendentes:
+                separador = " " if realizada.endswith((".", "!", "?")) else ". "
+                complemento = " ".join(f"Ainda falta saber {p[:1].lower()}{p[1:]}."
+                                       for p in perguntas_pendentes)
+                if len(realizada) + len(separador) + len(complemento) <= 4000:
+                    realizada += separador + complemento
     # Só a própria emissão ou a realização limitada deste mesmo contrato pode
     # receber este julgamento. Não tomar o suporte para fala de outro owner.
     if fala not in {suporte.fala_original, realizada}:
@@ -362,4 +429,5 @@ def revisar_suporte_autoria(
         return resultado("fala_nao_vinculada", proposicoes, snapshots,
                          limite if limitar else fala, limitar)
     return resultado("revisao_limitada" if requer_revisao else "sem_obrigacao_de_fonte_individual",
-                     proposicoes, snapshots, realizada if requer_revisao else fala, requer_revisao)
+                     proposicoes, snapshots, realizada if requer_revisao else fala, requer_revisao,
+                     perguntas_pendentes=perguntas_pendentes if requer_revisao else ())

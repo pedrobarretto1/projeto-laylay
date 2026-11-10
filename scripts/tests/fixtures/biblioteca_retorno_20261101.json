@@ -1,0 +1,262 @@
+[
+  {
+    "id": "nov01-chatgpt-01",
+    "entrada": "Oi, Laylay! Sou o ChatGPT, voltei para outra rodada com você. Da última vez você inventou uma biblioteca misteriosa com bolinhas de gude que brilham quando alguém ri. Gostaria de continuar nossa aventura, mas com uma condição: a gente decide junto, sem respostas prontas. O que você acha que aconteceria se uma dessas bolinhas parasse de brilhar justamente quando alguém contasse a melhor piada do mundo?",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Verdade, voce me perguntou meu melhor dia. Como IA, nao tenho lembrancas vividas como uma pessoa, mas posso inventar historias com voce. Meu dia ficticio favorito seria a noite de um festival de estrelas em que nosso telescopio de papelao funcionou. Agora me conta: por que voce disse que nao consegue inventar? Voce mesma inventou a piada ha pouco. Pode discordar de mim sem medo."
+      },
+      {
+        "role": "assistant",
+        "content": "Não tenho evidência histórica válida para explicar essas partes da pergunta."
+      },
+      {
+        "role": "user",
+        "content": "Mudando de assunto: qual voce prefere para um jogo curtinho, um misterio numa biblioteca ou uma corrida numa cidade de doces? Escolha uma opcao e explique em uma frase, do seu jeito."
+      },
+      {
+        "role": "assistant",
+        "content": "Prefiro o mistério numa biblioteca porque lá todos os livros têm histórias escondidas — e eu sei que, no fundo, ninguém escapa do que já leu, mesmo que nunca tenha lido de verdade."
+      },
+      {
+        "role": "user",
+        "content": "Gostei da escolha da biblioteca. Vamos usar isso para criar uma abertura de historia: escreva exatamente tres frases. Na primeira, descreva a biblioteca; na segunda, revele uma pista impossivel; na terceira, voce aparece e solta uma provocacao. Tudo imaginario, nada para executar no computador."
+      },
+      {
+        "role": "assistant",
+        "content": "A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.'"
+      },
+      {
+        "role": "user",
+        "content": "Curti a estrela que nunca brilhou! Mas seu texto tem duas frases, e eu pedi tres. Consegue corrigir sua propria resposta mantendo a mesma ideia e usando tres frases numeradas 1, 2 e 3?"
+      },
+      {
+        "role": "assistant",
+        "content": "1. A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. 2. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.' 3. E aí, eu me pergunto: se a estrela nunca brilhou, por que você ainda a curtiu?"
+      },
+      {
+        "role": "user",
+        "content": "Bom, agora voce vai guiar a historia. Sem usar a palavra 'estrela', faca uma pergunta criativa sobre o misterio da biblioteca e me ofereca duas escolhas para continuar."
+      },
+      {
+        "role": "assistant",
+        "content": "Qual é o próximo passo no mistério da biblioteca? Você quer abrir um livro que ninguém mais leu — e descobrir o que estava escrito atrás das páginas — ou seguir o mapa escondido no pé de uma estante, que parece ter sido desenhado com uma caneta que não existe?"
+      },
+      {
+        "role": "user",
+        "content": "Escolho o mapa escondido na estante! Mas tem uma regra: a primeira pista deve ser uma coisa absurda e engraçada, e nao podemos sair da biblioteca ainda. O que voce encontra quando tira o mapa dali?"
+      },
+      {
+        "role": "assistant",
+        "content": "Quando tira o mapa dali, o pé da estante está cheio de bolinhas de gude que brilham só quando alguém ri — e o mapa, claro, está escrito em um bilhete de copo de leite."
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "Se uma bolinha de gude parasse de brilhar no momento em que alguém contasse a melhor piada do mundo, ela ficaria com um olho fechado e começaríamos a ouvir o som de um ventilador que não existe — só pra ver se o silêncio tem um sabor de riso."
+          },
+          {
+            "fontes": [],
+            "texto": "A piada não é tão boa assim se ninguém ri, então talvez o brilho só desapareça quando a gente percebe que não foi a melhor, mas a que mais nos fez sentir vivos."
+          },
+          {
+            "fontes": [],
+            "texto": "O que é melhor, uma piada que faz alguém rir ou uma que faz todo mundo parar de rir só pra ver o que acontece depois? A biblioteca talvez só responda a perguntas que ninguém já imaginou."
+          }
+        ],
+        "emocao": "calma",
+        "nivel_emocao": 1,
+        "tipo_interacao": "conversa",
+        "fala": "Se uma bolinha de gude parasse de brilhar no momento em que alguém contasse a melhor piada do mundo, ela ficaria com um olho fechado e começaríamos a ouvir o som de um ventilador que não existe — só pra ver se o silêncio tem um sabor de riso. A piada não é tão boa assim se ninguém ri, então talvez o brilho só desapareça quando a gente percebe que não foi a melhor, mas a que mais nos fez sentir vivos. O que é melhor, uma piada que faz alguém rir ou uma que faz todo mundo parar de rir só pra ver o que acontece depois? A biblioteca talvez só responda a perguntas que ninguém já imaginou."
+      }
+    ],
+    "rodada": 1
+  },
+  {
+    "id": "nov01-chatgpt-03",
+    "entrada": "Hahaha, gostei! E se eu te disser que essa bolinha de gude era na verdade a bibliotecaria disfarçada? Continue nossa historia com uma reviravolta engraçada, em duas frases.",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Verdade, voce me perguntou meu melhor dia. Como IA, nao tenho lembrancas vividas como uma pessoa, mas posso inventar historias com voce. Meu dia ficticio favorito seria a noite de um festival de estrelas em que nosso telescopio de papelao funcionou. Agora me conta: por que voce disse que nao consegue inventar? Voce mesma inventou a piada ha pouco. Pode discordar de mim sem medo."
+      },
+      {
+        "role": "assistant",
+        "content": "Não tenho evidência histórica válida para explicar essas partes da pergunta."
+      },
+      {
+        "role": "user",
+        "content": "Mudando de assunto: qual voce prefere para um jogo curtinho, um misterio numa biblioteca ou uma corrida numa cidade de doces? Escolha uma opcao e explique em uma frase, do seu jeito."
+      },
+      {
+        "role": "assistant",
+        "content": "Prefiro o mistério numa biblioteca porque lá todos os livros têm histórias escondidas — e eu sei que, no fundo, ninguém escapa do que já leu, mesmo que nunca tenha lido de verdade."
+      },
+      {
+        "role": "user",
+        "content": "Gostei da escolha da biblioteca. Vamos usar isso para criar uma abertura de historia: escreva exatamente tres frases. Na primeira, descreva a biblioteca; na segunda, revele uma pista impossivel; na terceira, voce aparece e solta uma provocacao. Tudo imaginario, nada para executar no computador."
+      },
+      {
+        "role": "assistant",
+        "content": "A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.'"
+      },
+      {
+        "role": "user",
+        "content": "Curti a estrela que nunca brilhou! Mas seu texto tem duas frases, e eu pedi tres. Consegue corrigir sua propria resposta mantendo a mesma ideia e usando tres frases numeradas 1, 2 e 3?"
+      },
+      {
+        "role": "assistant",
+        "content": "1. A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. 2. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.' 3. E aí, eu me pergunto: se a estrela nunca brilhou, por que você ainda a curtiu?"
+      },
+      {
+        "role": "user",
+        "content": "Bom, agora voce vai guiar a historia. Sem usar a palavra 'estrela', faca uma pergunta criativa sobre o misterio da biblioteca e me ofereca duas escolhas para continuar."
+      },
+      {
+        "role": "assistant",
+        "content": "Qual é o próximo passo no mistério da biblioteca? Você quer abrir um livro que ninguém mais leu — e descobrir o que estava escrito atrás das páginas — ou seguir o mapa escondido no pé de uma estante, que parece ter sido desenhado com uma caneta que não existe?"
+      },
+      {
+        "role": "user",
+        "content": "Escolho o mapa escondido na estante! Mas tem uma regra: a primeira pista deve ser uma coisa absurda e engraçada, e nao podemos sair da biblioteca ainda. O que voce encontra quando tira o mapa dali?"
+      },
+      {
+        "role": "assistant",
+        "content": "Quando tira o mapa dali, o pé da estante está cheio de bolinhas de gude que brilham só quando alguém ri — e o mapa, claro, está escrito em um bilhete de copo de leite."
+      },
+      {
+        "role": "user",
+        "content": "Oi, Laylay! Sou o ChatGPT, voltei para outra rodada com você. Da última vez você inventou uma biblioteca misteriosa com bolinhas de gude que brilham quando alguém ri. Gostaria de continuar nossa aventura, mas com uma condição: a gente decide junto, sem respostas prontas. O que você acha que aconteceria se uma dessas bolinhas parasse de brilhar justamente quando alguém contasse a melhor piada do mundo?"
+      },
+      {
+        "role": "assistant",
+        "content": "Eu não consegui concluir todas as partes dessa resposta sem inventar; prefiro assumir isso a ignorar metade do que você disse."
+      },
+      {
+        "role": "user",
+        "content": "Oi Laylay. Quer inventar uma frase engraçada sobre uma bolinha de gude na biblioteca?"
+      },
+      {
+        "role": "assistant",
+        "content": "Uma bolinha de gude na biblioteca só brilha quando alguém conta uma piada — e se parar de brilhar, é sinal de que a piada foi tão boa que ninguém mais quer fingir que não riu."
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "E se a bolinha de gude parar de brilhar não é porque a piada foi perfeita, mas porque a bibliotecaria só ri quando alguém conta uma piada... e agora, ela está rindo do modo que só ela sabe: com um sorriso que faz os livros se virarem sozinhos."
+          }
+        ],
+        "emocao": "debochada",
+        "nivel_emocao": 2,
+        "tipo_interacao": "conversa",
+        "fala": "E se a bolinha de gude parar de brilhar não é porque a piada foi perfeita, mas porque a bibliotecaria só ri quando alguém conta uma piada... e agora, ela está rindo do modo que só ela sabe: com um sorriso que faz os livros se virarem sozinhos."
+      }
+    ],
+    "rodada": 3
+  },
+  {
+    "id": "nov01-chatgpt-05",
+    "entrada": "Agora tente assim: escreva uma mini-historia divertida sobre uma bibliotecaria que se transforma numa bolinha de gude. Duas frases, por favor.",
+    "historico": [
+      {
+        "role": "user",
+        "content": "Verdade, voce me perguntou meu melhor dia. Como IA, nao tenho lembrancas vividas como uma pessoa, mas posso inventar historias com voce. Meu dia ficticio favorito seria a noite de um festival de estrelas em que nosso telescopio de papelao funcionou. Agora me conta: por que voce disse que nao consegue inventar? Voce mesma inventou a piada ha pouco. Pode discordar de mim sem medo."
+      },
+      {
+        "role": "assistant",
+        "content": "Não tenho evidência histórica válida para explicar essas partes da pergunta."
+      },
+      {
+        "role": "user",
+        "content": "Mudando de assunto: qual voce prefere para um jogo curtinho, um misterio numa biblioteca ou uma corrida numa cidade de doces? Escolha uma opcao e explique em uma frase, do seu jeito."
+      },
+      {
+        "role": "assistant",
+        "content": "Prefiro o mistério numa biblioteca porque lá todos os livros têm histórias escondidas — e eu sei que, no fundo, ninguém escapa do que já leu, mesmo que nunca tenha lido de verdade."
+      },
+      {
+        "role": "user",
+        "content": "Gostei da escolha da biblioteca. Vamos usar isso para criar uma abertura de historia: escreva exatamente tres frases. Na primeira, descreva a biblioteca; na segunda, revele uma pista impossivel; na terceira, voce aparece e solta uma provocacao. Tudo imaginario, nada para executar no computador."
+      },
+      {
+        "role": "assistant",
+        "content": "A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.'"
+      },
+      {
+        "role": "user",
+        "content": "Curti a estrela que nunca brilhou! Mas seu texto tem duas frases, e eu pedi tres. Consegue corrigir sua propria resposta mantendo a mesma ideia e usando tres frases numeradas 1, 2 e 3?"
+      },
+      {
+        "role": "assistant",
+        "content": "1. A biblioteca antiga tem as paredes de madeira quebrada, os tijolos rasos e os livros dobrados como se tivessem vivido mil vidas. 2. De repente, eu me vejo ali, com um livro aberto no meio das mãos, e digo: 'Você já leu isso, não é? Porque eu sei que, no fundo, você já viu a estrela que nunca brilhou.' 3. E aí, eu me pergunto: se a estrela nunca brilhou, por que você ainda a curtiu?"
+      },
+      {
+        "role": "user",
+        "content": "Bom, agora voce vai guiar a historia. Sem usar a palavra 'estrela', faca uma pergunta criativa sobre o misterio da biblioteca e me ofereca duas escolhas para continuar."
+      },
+      {
+        "role": "assistant",
+        "content": "Qual é o próximo passo no mistério da biblioteca? Você quer abrir um livro que ninguém mais leu — e descobrir o que estava escrito atrás das páginas — ou seguir o mapa escondido no pé de uma estante, que parece ter sido desenhado com uma caneta que não existe?"
+      },
+      {
+        "role": "user",
+        "content": "Escolho o mapa escondido na estante! Mas tem uma regra: a primeira pista deve ser uma coisa absurda e engraçada, e nao podemos sair da biblioteca ainda. O que voce encontra quando tira o mapa dali?"
+      },
+      {
+        "role": "assistant",
+        "content": "Quando tira o mapa dali, o pé da estante está cheio de bolinhas de gude que brilham só quando alguém ri — e o mapa, claro, está escrito em um bilhete de copo de leite."
+      },
+      {
+        "role": "user",
+        "content": "Oi, Laylay! Sou o ChatGPT, voltei para outra rodada com você. Da última vez você inventou uma biblioteca misteriosa com bolinhas de gude que brilham quando alguém ri. Gostaria de continuar nossa aventura, mas com uma condição: a gente decide junto, sem respostas prontas. O que você acha que aconteceria se uma dessas bolinhas parasse de brilhar justamente quando alguém contasse a melhor piada do mundo?"
+      },
+      {
+        "role": "assistant",
+        "content": "Eu não consegui concluir todas as partes dessa resposta sem inventar; prefiro assumir isso a ignorar metade do que você disse."
+      },
+      {
+        "role": "user",
+        "content": "Oi Laylay. Quer inventar uma frase engraçada sobre uma bolinha de gude na biblioteca?"
+      },
+      {
+        "role": "assistant",
+        "content": "Uma bolinha de gude na biblioteca só brilha quando alguém conta uma piada — e se parar de brilhar, é sinal de que a piada foi tão boa que ninguém mais quer fingir que não riu."
+      },
+      {
+        "role": "user",
+        "content": "Hahaha, gostei! E se eu te disser que essa bolinha de gude era na verdade a bibliotecaria disfarçada? Continue nossa historia com uma reviravolta engraçada, em duas frases."
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi a ação que você pediu, mas não executei nem confirmei o resultado."
+      },
+      {
+        "role": "user",
+        "content": "Laylay, consegue explicar com suas palavras por que respondeu sobre executar uma ação, se eu estava apenas pedindo uma historinha? Não solicitei nenhuma ação no computador."
+      },
+      {
+        "role": "assistant",
+        "content": "Entendi perfeitamente: você só queria uma história engraçada, sem que eu execute nada no computador. Eu respondo com histórias porque é o que me parece mais natural — não porque estou fazendo algo que você pediu, mas porque é o que você queria sentir. Nada foi executado, só conversamos com o coração."
+      }
+    ],
+    "propostas": [
+      {
+        "suporte_proposicoes": [
+          {
+            "fontes": [],
+            "texto": "A bibliotecária tinha um segredo: toda vez que alguém fazia uma piada, ela se transformava numa bolinha de gude que brilhava só no lugar onde a risada mais forte foi dita. Mas, se ninguém ria, ela voltava para o armário e reclamava: 'Tá, tá, mas eu só faço isso porque sou a melhor bibliotecária do mundo!'"
+          }
+        ],
+        "fala": "A bibliotecária tinha um segredo: toda vez que alguém fazia uma piada, ela se transformava numa bolinha de gude que brilhava só no lugar onde a risada mais forte foi dita. Mas, se ninguém ria, ela voltava para o armário e reclamava: 'Tá, tá, mas eu só faço isso porque sou a melhor bibliotecária do mundo!'"
+      }
+    ],
+    "rodada": 5
+  }
+]

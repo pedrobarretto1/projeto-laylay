@@ -422,7 +422,8 @@ def coletar_instalado(pasta: Path, *, contraprova_retornar_nao_tratado: bool = F
                 "autoria_mista_nao_preservou_contrato" if deve_continuar
                 and not compromisso_injetado
                 and (mental.get("plano_turno_atual") or {}).get("fase") == "tratado_prioritario_parcial" else ""),
-            "plano": mental.get("plano_turno_atual")})
+            "plano": {campo: (mental.get("plano_turno_atual") or {}).get(campo)
+                      for campo in ("id", "fase", "comandos", "erros")}})
     return {"instalacao": instalacao, "resultados": resultados,
             "transportes": transportes, "selecao_persistida": selecao,
             "ablacao_projecao": ablacao_projecao,
@@ -513,8 +514,9 @@ def _coletar(*, contraprova_retornar_nao_tratado: bool = False, modelo_real: boo
             LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR="0", GMAIL_USER=" ", GMAIL_APP_PASSWORD=" ")
         codigo = ("import sys,json; from pathlib import Path; sys.path.insert(0,sys.argv[1]); "
             "from scripts.analises.sonda_prioridade_turnos_mistos import coletar_instalado; "
+            "from scripts.tests.observacao_tipadas import projetar_tipo_observado; "
             "r=coletar_instalado(Path(sys.argv[2]),contraprova_retornar_nao_tratado=sys.argv[3]=='1',modelo_real=sys.argv[4]=='1',ablacao_projecao=sys.argv[5]=='1',ablacao_avisos=sys.argv[6]=='1',painel_pospostas=sys.argv[7]=='1',contraprova_compromisso=sys.argv[8]=='1',contraprova_reparo=sys.argv[9]=='1',ablacao_nucleo=sys.argv[10]=='1',realizacao_controlada=sys.argv[11]=='1'); "
-            "sys.__stdout__.write('PRIORIDADE_JSON='+json.dumps(r,ensure_ascii=False)+'\\n')")
+            "sys.__stdout__.write('PRIORIDADE_JSON='+json.dumps(r,ensure_ascii=False,default=projetar_tipo_observado)+'\\n')")
         processo = subprocess.run([sys.executable, "-c", codigo, str(RAIZ), pasta,
                                   "1" if contraprova_retornar_nao_tratado else "0",
                                   "1" if modelo_real else "0", "1" if ablacao_projecao else "0",

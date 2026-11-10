@@ -183,4 +183,3 @@ def test_redacao_sem_conflito_de_perfil_nao_recebe_roteiro_de_verificacao(pedido
     p = preparar(pedido)
     assert 'redacao_discursiva' not in p['contrato_fala']
     assert p['contrato_fala']['roteiro_concreto']['estrategia'] != 'redacao_discursiva'
-

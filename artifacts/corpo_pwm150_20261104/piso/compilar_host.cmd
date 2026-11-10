@@ -1,0 +1,4 @@
+@echo off
+call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul
+if errorlevel 1 exit /b 1
+cl.exe /nologo /std:c++17 /EHsc /MT /O1 /I"C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\firmware\rosto_laylay\validacao_host" "C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\firmware\rosto_laylay\validacao_host\validar_piso_pwm.cpp" /Fe:"C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\artifacts\corpo_pwm150_20261104\piso\validar_piso_pwm.exe" /Fo:"C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\artifacts\corpo_pwm150_20261104\piso\validar_piso_pwm.obj" /Fd:"C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\artifacts\corpo_pwm150_20261104\piso\validar_piso_pwm.pdb"

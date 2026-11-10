@@ -1,4 +1,4 @@
-"""Um único teste de bancada autorizado: frente/PWM100/5000ms, sem replay.
+"""Um único teste de bancada autorizado: frente/PWM150/5000ms, sem replay.
 
 Exige perfil temporário LAYLAY_LIMITE_MOTOR_TESTE_MS=5000 na placa.
 Não ativa autonomia nem muda os limites dos comandos naturais.
@@ -27,7 +27,7 @@ def main() -> None:
     prova = {
         "ts_utc": instante.isoformat(), "endpoint": config.endpoint,
         "autorizacao": "Pedro: teste continuo para frente por 5 segundos; area delimitada ou rodas suspensas confirmadas",
-        "pwm_esquerdo": 100, "pwm_direito": 100, "duracao_ms": 5000,
+        "pwm_esquerdo": 150, "pwm_direito": 150, "duracao_ms": 5000,
         "comandos_motor_enviados": 0, "hardware_simulado": False,
         "prova_rotacao": False, "prova_parada_fisica": False,
         "aplicacao_pwm_confirmada": False,
@@ -63,7 +63,7 @@ def main() -> None:
         with runtime._lock:
             runtime._seq_motor += 1
             sessao = runtime._sessao
-            campos = f"{sessao} {runtime._seq_motor} 100 100 5000"
+            campos = f"{sessao} {runtime._seq_motor} 150 150 5000"
             inicio = time.monotonic()
             runtime._escrever("MOTOR 1 " + campos)
             prova["comandos_motor_enviados"] = 1
@@ -71,7 +71,7 @@ def main() -> None:
             prova["aplicacao_pwm_confirmada"] = confirmado
             if not confirmado:
                 raise ConnectionError("Sem MACK do comando continuo; nenhum reenvio.")
-        print("Um MOTOR enviado: frente/PWM100/5000ms; MACK recebido.", flush=True)
+        print("Um MOTOR enviado: frente/PWM150/5000ms; MACK recebido.", flush=True)
         while time.monotonic() - inicio < 5.05:
             with runtime._lock:
                 if runtime._sessao != sessao or runtime._serial is None:

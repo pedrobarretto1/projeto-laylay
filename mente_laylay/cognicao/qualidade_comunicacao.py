@@ -15,6 +15,7 @@ from collections.abc import Iterable
 from typing import Any, Dict, Mapping, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from mente_laylay.cognicao.suporte_autoria import AutoriaRevisadaProposta
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
 
 from mente_laylay.memoria_mental.memoria_confiavel import (
@@ -359,6 +360,12 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "declaracao_introduziu_entidade_ausente",
     "declaracao_extrapolou_estado_informado",
     "resposta_repetida_literal",
+    "repeticao_interna_de_enunciado",
+    "citacao_incompleta_na_autoria",
+    "enigma_numerico_sem_solucao_verificada",
+    "nomeacao_sem_delimitacao",
+    "metodo_de_inspecao_fora_do_limite",
+    "proximo_acontecimento_fora_do_recorte",
     "falha_operacional_sem_evidencia",
     "resultado_operacional_sem_evidencia",
 })
@@ -477,10 +484,28 @@ def avaliar_qualidade_comunicacao(
     foco = _foco_do_plano(plano)
     resposta_anterior = _normalizar(ultima_resposta)
     plano_atual = dict(plano or {})
-    from mente_laylay.cognicao.criacao_ficcional import avaliar_consulta_realidade_narrativa
+    from mente_laylay.cognicao.metodo_inspecao import metodo_inspecao_incompativel, metodo_inspecao_vigente
+    metodo = metodo_inspecao_vigente(plano_atual)
+    if metodo is not None and metodo_inspecao_incompativel(resposta, metodo=metodo):
+        problemas.append("metodo_de_inspecao_fora_do_limite")
+    from mente_laylay.cognicao.fundamentacao_factual import nomeacao_exige_reparo
+    if nomeacao_exige_reparo(resposta, texto_usuario=texto_usuario,
+                            contexto_obra=plano_atual.get('dominio') == 'musica'):
+        problemas.append('nomeacao_sem_delimitacao')
+    from mente_laylay.cognicao.enigma_numerico import avaliar_enigma_numerico
+    enigma = avaliar_enigma_numerico(texto_usuario, resposta, plano=plano_atual)
+    if enigma is not None:
+        problemas.extend(enigma['problemas'])
+    from mente_laylay.cognicao.criacao_ficcional import (
+        avaliar_consulta_realidade_narrativa, criacao_ficcional_vigente, fala_ficcional_conferida,
+    )
     realidade_narrativa = avaliar_consulta_realidade_narrativa(fala, plano=plano_atual)
     if realidade_narrativa is not None:
         return realidade_narrativa
+    criacao = criacao_ficcional_vigente(plano_atual)
+    if (criacao is not None and criacao.recorte_proximo_acontecimento
+            and not fala_ficcional_conferida(resposta, criacao=criacao)):
+        problemas.append('proximo_acontecimento_fora_do_recorte')
     from mente_laylay.cognicao.afirmacoes_interlocutor import conferir_afirmacoes_interlocutor
     pessoal = conferir_afirmacoes_interlocutor(fala, plano=plano_atual)
     if pessoal is not None:
@@ -504,6 +529,19 @@ def avaliar_qualidade_comunicacao(
     from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
     contrato_atual = dict(plano_atual.get('contrato_fala') or {})
     fonte_canal = contrato_atual.get('perspectiva_enunciador')
+    contrato_fala_vigente = bool(type(fonte_canal) is PerspectivaEnunciador
+        and fonte_canal.vigente(texto_usuario, plano_atual.get('id'))
+        and plano_atual.get('texto_usuario') == texto_usuario
+        and str(contrato_atual.get('turno_id')) == fonte_canal.turno_id
+        and contrato_atual.get('origem') == 'mente_unica')
+    # A finalidade já foi qualificada pelo owner do contrato. Uma projeção
+    # não volta a exigir avaliação por conter "você acha" no texto bruto.
+    pergunta_de_posicao = bool(_PERGUNTA_DE_POSICAO.search(usuario))
+    if contrato_fala_vigente:
+        if 'opiniao' in (contrato_atual.get('atos') or ()):
+            pergunta_de_posicao = True
+        elif contrato_atual.get('projecao_de_consequencia') is True:
+            pergunta_de_posicao = False
     ato_conversacional_atual = bool(type(fonte_canal) is PerspectivaEnunciador
         and fonte_canal.vigente(texto_usuario,plano_atual.get('id'))
         and str(contrato_atual.get('turno_id')) == fonte_canal.turno_id
@@ -522,10 +560,38 @@ def avaliar_qualidade_comunicacao(
         }
     # Owners de realizações conferidas acima decidem se sua fala canônica
     # continua válida. A igualdade textual só julga a autoria livre restante.
-    if (type(respostas_recentes) is RespostasAnterioresTurno
-            and respostas_recentes.vigente(texto_usuario, plano_atual.get('id'))
-            and str(contrato_recente.get('turno_id')) == respostas_recentes.turno_id
-            and contrato_recente.get('origem') == 'mente_unica'
+    from mente_laylay.cognicao.continuidade_resposta import contem_ciclo_de_enunciados, contem_copia_extensa
+    from mente_laylay.cognicao.normalizacao_linguagem import tipo_transformacao_conversacional
+    from mente_laylay.cognicao.referencias_linguagem import (
+        contem_citacao_incompleta_na_autoria, texto_de_reproducao_solicitada,
+    )
+    objeto_literal = texto_de_reproducao_solicitada(texto_usuario)
+    reproducao_solicitada = bool(objeto_literal and normalizar_texto_memoria(fala)==normalizar_texto_memoria(objeto_literal))
+    recentes_vigentes = (
+        type(respostas_recentes) is RespostasAnterioresTurno
+        and respostas_recentes.vigente(texto_usuario, plano_atual.get('id'))
+        and str(contrato_recente.get('turno_id')) == respostas_recentes.turno_id
+        and contrato_recente.get('origem') == 'mente_unica'
+    )
+    anterior_conferida = (
+        _normalizar(respostas_recentes.falas[-1])
+        if recentes_vigentes and respostas_recentes.falas else resposta_anterior
+    )
+    retomada_literal = bool(anterior_conferida and resposta == anterior_conferida
+                           and pedido_retomada_fala_assistente(texto_usuario))
+    if not (reproducao_solicitada or retomada_literal):
+        if contem_citacao_incompleta_na_autoria(resposta):
+            problemas.append("citacao_incompleta_na_autoria")
+        elif contem_ciclo_de_enunciados(resposta):
+            problemas.append("repeticao_interna_de_enunciado")
+    copia_usuario = bool(type(fonte_canal) is PerspectivaEnunciador
+        and fonte_canal.vigente(texto_usuario, plano_atual.get('id'))
+        and str(contrato_atual.get('turno_id')) == fonte_canal.turno_id
+        and contrato_atual.get('origem') == 'mente_unica'
+        and not tipo_transformacao_conversacional(texto_usuario)
+        and not reproducao_solicitada
+        and contem_copia_extensa(fala, fonte_canal.texto_usuario))
+    if copia_usuario or (recentes_vigentes
             and not plano_atual.get('requer_execucao') and not plano_atual.get('comandos')
             and not pedido_retomada_fala_assistente(texto_usuario)
             and respostas_recentes.contem_reuso_predominante(fala)):
@@ -533,14 +599,20 @@ def avaliar_qualidade_comunicacao(
             texto_usuario, fala, contrato_fala=plano_atual.get('contrato_fala'),
             ultima_resposta=resposta_anterior, turno_id=plano_atual.get('id'),
             modelo_corporal=plano_atual.get('retrato_corporal'))
+        reparo = {**dict(aderencia.get('contrato_reparo') or {}),
+            'responder_ao_pedido_atual': True, 'autoriza_execucao': False}
+        if type(respostas_recentes) is RespostasAnterioresTurno:
+            reparo['respostas_anteriores_turno'] = respostas_recentes
+        if copia_usuario:
+            reparo['preservar_autoria_do_interlocutor'] = (
+                'a mensagem atual pertence ao usuário; reagir ou acrescentar uma contribuição própria, '
+                'sem devolver os blocos extensos como fala nova da Laylay')
         return {'aceita': False, 'requer_reparo': True,
             'problemas': ['resposta_repetida_literal'],
             'problemas_bloqueantes': ['resposta_repetida_literal'],
             'somente_consultiva': False, 'foco': foco, 'ultima_resposta': '',
             'aderencia_contrato': aderencia, 'pontuacao': 0.0,
-            'contrato_reparo': {**dict(aderencia.get('contrato_reparo') or {}),
-                'responder_ao_pedido_atual': True,
-                'respostas_anteriores_turno': respostas_recentes, 'autoriza_execucao': False}}
+            'contrato_reparo': reparo}
     aderencia_contrato = {
         "avaliado": False,
         "aceita": True,
@@ -586,11 +658,11 @@ def avaliar_qualidade_comunicacao(
         if _PEDIDO_DE_ENTREGA.search(usuario) and len(palavras) < 7:
             problemas.append("entrega_prometida_ausente")
         if (
-            _PERGUNTA_DE_POSICAO.search(usuario)
+            pergunta_de_posicao
             and not _respondeu_posicao(usuario, resposta)
         ):
             problemas.append("pergunta_direta_nao_respondida")
-        if _PERGUNTA_DE_POSICAO.search(usuario) and _EVASAO_OPINIAO.search(resposta):
+        if pergunta_de_posicao and _EVASAO_OPINIAO.search(resposta):
             problemas.append("opiniao_evitada_sem_necessidade")
         if (
             _RELATO_SEM_PEDIDO.search(usuario)
@@ -637,7 +709,7 @@ def avaliar_qualidade_comunicacao(
         }
         if (
             foco_musical
-            and _PERGUNTA_DE_POSICAO.search(usuario)
+            and pergunta_de_posicao
             and _DERIVA_FILOSOFICA.search(resposta)
             and not _MARCADORES_MUSICA.search(resposta)
         ):
@@ -775,6 +847,8 @@ def avaliar_qualidade_comunicacao(
         resposta, plano={**plano_atual, "texto_usuario": usuario},
     ))
     contrato_reparo = dict(aderencia_contrato.get("contrato_reparo") or {})
+    if metodo is not None and "metodo_de_inspecao_fora_do_limite" in problemas:
+        contrato_reparo["limite_metodo_inspecao"] = metodo.instrucao()
     if retomada_usuario is not None and not retomada_usuario['admissivel']:
         contrato_reparo['retomada_usuario'] = {
             'nucleo': 'atribuir ao usuário somente relato apoiado no histórico; primeira pessoa nas fontes pertence a ele',
@@ -839,6 +913,39 @@ def compor_reparo_comunicacao(
     if validar_alegacoes_da_fala(candidata, plano=dict(plano)).get("problemas"):
         return ""
     return candidata.strip() + " " + original
+
+
+def montar_reparo_parcial_local(
+    original: str, avaliacao: Mapping[str, Any], *, plano: Mapping[str, Any],
+    principal: str, anterior: AutoriaRevisadaProposta | None,
+) -> AutoriaRevisadaProposta | None:
+    """Preenche o ato ausente e mantém o suporte do restante para nova revisão."""
+    from mente_laylay.cognicao.contratos_turno import SnapshotComandoIA
+    from mente_laylay.cognicao.suporte_autoria import (
+        SuporteAutoriaProposto, conferir_suporte_proposicoes, montar_autoria_revisada,
+    )
+
+    reparo = avaliacao.get("contrato_reparo") or {}
+    if (reparo.get("escopo") != "reconhecimento_estado_pessoal"
+        or plano.get("autoriza_execucao") is not False
+        or anterior is None or anterior.fala_original != original
+        or anterior.principal_sha256 != hashlib.sha256(principal.encode("utf-8")).hexdigest()):
+        return None
+    # Prefira o reconhecimento explícito que o owner já confere sobre o
+    # relato. Ele não atesta a realidade do estado nem acrescenta uma causa.
+    fragmento = max(realizacoes_ato_social(plano), key=len, default="")
+    if not fragmento:
+        return None
+    fala = compor_reparo_comunicacao(original, fragmento, avaliacao, plano=plano)
+    if fala != fragmento + " " + original:
+        return None
+    _, declaracao = conferir_suporte_proposicoes({
+        "fala": fragmento, "suporte_proposicoes": [{"texto": fragmento, "fontes": []}],
+    })
+    suporte_local = SuporteAutoriaProposto(
+        str(plano["id"]), plano["texto_usuario"], fragmento, SnapshotComandoIA(declaracao),
+    )
+    return montar_autoria_revisada(principal, fala, (suporte_local, *anterior.partes))
 
 
 def montar_pacote_reparo_comunicacao(
@@ -1151,6 +1258,29 @@ def montar_mensagens_reparo_comunicacao(
             'sem afirmar uma cena antes ou sugerir confirmação por né. Não explique esta revisão nem '
             'peça fontes para conversar. Se o usuário pede criação, delimite-a explicitamente como ficção. '
             'Retorne somente JSON: {"fala":"resposta completa","comandos":[]}.')
+    bloqueios = set(avaliacao.get('problemas_bloqueantes') or ())
+    limite_metodo = reparo.get('limite_metodo_inspecao')
+    if 'metodo_de_inspecao_fora_do_limite' in bloqueios and limite_metodo:
+        payload.pop('rascunho_rejeitado', None)
+        instrucao += " " + limite_metodo
+    if 'proximo_acontecimento_fora_do_recorte' in bloqueios:
+        payload.pop('rascunho_rejeitado', None)
+        instrucao += (" Retome a premissa atual com um único acontecimento novo, "
+                      "em uma oração dentro de Na história, «acontecimento». "
+                      "Use um elemento da cena e preserve o escopo ficcional.")
+    if 'nomeacao_sem_delimitacao' in bloqueios:
+        payload.pop('rascunho_rejeitado', None)
+        instrucao += (" Proponha somente um título para o artefato solicitado. Use a forma "
+                      "Título: «sugestão», sem apresentá-la como descoberta ou identificação oficial.")
+    if 'citacao_incompleta_na_autoria' in bloqueios:
+        if bloqueios == {'citacao_incompleta_na_autoria'}:
+            payload.pop("rascunho_rejeitado", None)
+        instrucao += (" Refaça a resposta com citações completas ou discurso indireto. "
+                      "Apresente cada ideia uma vez.")
+    if 'repeticao_interna_de_enunciado' in bloqueios:
+        if bloqueios == {'repeticao_interna_de_enunciado'}:
+            payload.pop("rascunho_rejeitado", None)
+        instrucao += " Apresente a escolha ou conclusão uma vez e acrescente só o que trouxer conteúdo novo."
     payload['contrato_de_reparo'] = projetar_contrato_reparo_conversacional(payload['contrato_de_reparo'])
     return [
         {"role": "system", "content": instrucao},
@@ -1216,11 +1346,12 @@ def contingencia_comunicacao(
         texto,
         re.IGNORECASE,
     ))
-    pergunta_bem_estar = bool(_PERGUNTA_SOCIAL_LAYLAY.search(texto))
-    if estrategia == "reciprocidade_social" or pergunta_bem_estar:
+    from mente_laylay.cognicao.interpretacao_social import analisar_ato_social
+    pergunta_bem_estar = not estrategia and analisar_ato_social(texto_usuario).get("tipo") == "WELLBEING"
+    if estrategia == "reciprocidade_social" or (not estrategia and pergunta_bem_estar):
         prefixo = "Oi! " if saudacao else ""
         return f"{prefixo}Tô bem por aqui. E você, como tá?"
-    if estrategia == "saudacao_simples" or (saudacao and "?" not in texto):
+    if estrategia == "saudacao_simples" or (not estrategia and saudacao and "?" not in texto):
         return escolher_variacao(
             ["Oi! Tô aqui.", "Opa, tô por aqui.", "Oi. Cheguei inteira dessa vez kkk."],
             evitar=falas_evitar,
@@ -1432,12 +1563,6 @@ def contingencia_comunicacao(
             "Agora ficou claro, quem gosta de {valor} é sua {relacao}.",
         ], evitar=falas_evitar)
         return molde.format(relacao=relacao, valor=valor)
-    if re.search(r"\b(?:tudo\s+bem|como\s+(?:voc[eê]|vai\s+voc[eê]))\b", texto, re.I):
-        return escolher_variacao([
-            "Tô bem por aqui. E você, como tá?",
-            "Tô bem, com a cabeça no lugar por enquanto kkk. E você?",
-            "Por aqui tá tudo certo. Agora quero saber de você.",
-        ], evitar=falas_evitar)
     if re.search(r"\b(?:eu\s+)?(?:estou|t[oô])\s+bem\b", texto, re.I):
         return escolher_variacao([
             "Que bom. Fico feliz de saber.",

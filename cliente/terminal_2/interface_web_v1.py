@@ -17,7 +17,7 @@ import re
 from typing import Any, TYPE_CHECKING
 import uuid
 
-from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPoint, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent
+from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPoint, QPointF, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 from PySide6.QtGui import QImage, QColor, QCursor, QPainterPath, QRegion, QIcon, QPixmap, QPainter, QAction, QGuiApplication
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings, QWebEngineUrlRequestInterceptor, QWebEngineUrlRequestInfo, QWebEngineUrlScheme, QWebEngineUrlSchemeHandler, QWebEngineUrlRequestJob
@@ -336,6 +336,7 @@ class PonteInterfaceWebV1(QObject):
             self.janela._desktop_transitorio = False
             self.janela._recolher_desktop_timer.stop()
             self.janela.ativar_desktop()
+            self.janela.registrar_atividade_desktop()
         elif gesto == 'resumo':
             self.janela.desktop_pagina = None
             self.janela.expandir_desktop(fixar=True)
@@ -572,6 +573,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.desktop_pagina: str | None = None
         self.desktop_fixado = False
         self._desktop_transitorio = False
+        self._desktop_resumo_por_hover = False
         self._desktop_edicao = False
         self._desktop_compondo = False
         self._desktop_adiamentos = 0
@@ -580,8 +582,6 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._ultimo_cursor_global = None
         self._telas_observadas = set()
         self._animacao_desktop = QPropertyAnimation(self, b'geometry', self)
-        self._animacao_desktop.setEasingCurve(QEasingCurve.OutCubic)
-        self._animacao_desktop.setDuration(230)
         self._animacao_desktop.finished.connect(self._geometria_desktop_concluida)
         self._desktop_fase = 'idle'
         self._desktop_sequencia = 0
@@ -622,7 +622,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._abrir_desktop_timer = QTimer(self)
         self._abrir_desktop_timer.setSingleShot(True)
         self._abrir_desktop_timer.setInterval(200)
-        # Mantido como handle local legado; hover não possui transição de abrir.
+        self._abrir_desktop_timer.timeout.connect(self._expandir_desktop_por_hover)
         self._cursor_desktop_timer = QTimer(self)
         self._cursor_desktop_timer.setInterval(40)
         self._cursor_desktop_timer.timeout.connect(self._observar_cursor_desktop)
@@ -632,7 +632,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         # Pintar o fundo do painel também no host evita blocos do Windows atrás
         # vazarem durante frames atrasados do WebEngine acelerado por GPU.
         self._fundo_desktop_opaco = False
-        self._cor_fundo_desktop = QColor('#10141b')
+        self._cor_fundo_desktop = QColor('#0b0c10')
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setWindowTitle("Laylay — Interface 1.0")
         self.setMinimumSize(375, 620)
@@ -829,7 +829,11 @@ class JanelaInterfaceWebV1(QMainWindow):
         buffer.close()
         self.ponte_web.publicar({"type": "avatar_ui", "data_url": "data:image/png;base64," + bytes(dados.toBase64()).decode("ascii")})
 
+    def _pagina_apresentada_desktop(self) -> str | None:
+        return None if self._desktop_resumo_por_hover else self.desktop_pagina
+
     def apresentacao_publica(self) -> dict:
+        pagina = self._pagina_apresentada_desktop()
         tela = self._resolver_tela_desktop()
         disponivel = tela.availableGeometry() if tela is not None else QRect(0, 0, 800, 600)
         return {
@@ -841,8 +845,8 @@ class JanelaInterfaceWebV1(QMainWindow):
             "desktop_material": self._material_desktop if self.modo_apresentacao == "desktop" else "fallback",
             "desktop_entry": self._desktop_entrada_ativa,
             "desktop_pinned": self.desktop_fixado,
-            "desktop_page": self.desktop_pagina,
-            "desktop_view": 'page' if self.desktop_pagina else 'overview',
+            "desktop_page": pagina,
+            "desktop_view": 'page' if pagina else 'overview',
             "desktop_phase": self._desktop_fase,
             "desktop_transition": self._desktop_sequencia,
             "desktop_target_width": self._desktop_destino.width() or self.width(),
@@ -922,7 +926,9 @@ class JanelaInterfaceWebV1(QMainWindow):
             self.estado_desktop = 'compact'
             self.desktop_fixado = False
             self._desktop_transitorio = False
+            self._desktop_resumo_por_hover = False
             self._desktop_dentro = False
+            self._ultimo_cursor_global = None
             desejada = geometria_desktop(disponivel, ancora=self._ancora_para_geometria())
         else:
             self.setMinimumSize(240, 70) if modo == "island" else self.setMinimumSize(320, 420)
@@ -1010,6 +1016,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             return
         if normalizada != 'streaming':
             self.parar_streaming()
+        self._desktop_resumo_por_hover = False
         self.desktop_pagina = normalizada
         self._pagina_web_ativa = normalizada
         self.expandir_desktop(fixar=True)
@@ -1023,6 +1030,8 @@ class JanelaInterfaceWebV1(QMainWindow):
     def iniciar_arrasto_desktop(self) -> None:
         if self._fechada or self.modo_apresentacao != 'desktop' or self._arrastando_desktop:
             return
+        self._abrir_desktop_timer.stop()
+        self._recolher_desktop_timer.stop()
         self._animacao_desktop.stop()
         self._retomar_pintura_web_desktop()
         self._desktop_sequencia += 1
@@ -1108,6 +1117,7 @@ class JanelaInterfaceWebV1(QMainWindow):
     def expandir_desktop(self, fixar: bool = False) -> None:
         if self.modo_apresentacao != 'desktop':
             return
+        self._abrir_desktop_timer.stop()
         self._recolher_desktop_timer.stop()
         self.desktop_fixado = self.desktop_fixado or bool(fixar)
         self._desktop_transitorio = not self.desktop_fixado
@@ -1127,8 +1137,11 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._cancelar_arrasto_desktop()
         self._recolher_desktop_timer.stop()
         self._abrir_desktop_timer.stop()
+        # Um fechamento explícito sob o cursor só rearma com nova entrada.
+        self._desktop_dentro = self.mask().contains(self.mapFromGlobal(QCursor.pos()))
         self.desktop_fixado = False
         self._desktop_transitorio = False
+        self._desktop_resumo_por_hover = False
         self.estado_desktop = 'compact'
         self._desktop_edicao = False
         self._inatividade_desktop_timer.stop()
@@ -1137,9 +1150,35 @@ class JanelaInterfaceWebV1(QMainWindow):
         permitir_ativacao_desktop(int(self.winId()), False)
         self._animar_geometria_desktop()
 
+    def _expandir_desktop_por_hover(self) -> None:
+        if (self.modo_apresentacao != 'desktop' or not self.isVisible() or self._fechada
+                or self.estado_desktop != 'compact' or self._arrastando_desktop
+                or self._entrada_pendente or self.windowOpacity() <= 0
+                or botao_esquerdo_pressionado()):
+            return
+        cursor = QCursor.pos()
+        if not self.mask().contains(self.mapFromGlobal(cursor)):
+            return
+        if (QGuiApplication.platformName() == 'windows'
+                and QGuiApplication.topLevelAt(cursor) != self.windowHandle()):
+            return
+        if self._animacao_desktop.state() == QPropertyAnimation.Running:
+            destino = self._desktop_destino
+            regiao_compacta = self._regiao_desktop(destino.width(), destino.height())
+            if not regiao_compacta.contains(cursor - destino.topLeft()):
+                return
+        self._desktop_resumo_por_hover = True
+        self.expandir_desktop()
+
     def _recolher_desktop_transitorio(self) -> None:
-        if self._desktop_transitorio and not self.desktop_fixado and not self._desktop_edicao and not self._desktop_dentro:
-            self.recolher_desktop()
+        if (not self._desktop_transitorio or self.desktop_fixado or self._desktop_dentro
+                or self._desktop_edicao or self._desktop_compondo or self._arrastando_desktop
+                or self._fala_em_andamento() or self._streaming_em_transmissao()
+                or QApplication.activeModalWidget() is not None or QApplication.activePopupWidget() is not None):
+            return
+        if self.mask().contains(self.mapFromGlobal(QCursor.pos())):
+            return
+        self.recolher_desktop()
 
     def registrar_atividade_desktop(self) -> None:
         """Só gestos humanos locais renovam o único prazo de inatividade."""
@@ -1161,7 +1200,8 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def _recolher_por_perda_de_foco(self) -> None:
         if (self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded'
-                or self._fechada or self._arrastando_desktop or not self._foco_desktop_observado):
+                or self._fechada or self._arrastando_desktop or self._desktop_transitorio
+                or not self._foco_desktop_observado):
             return
         if self._desktop_em_foco():
             return
@@ -1187,7 +1227,8 @@ class JanelaInterfaceWebV1(QMainWindow):
         return super().event(evento)
 
     def _recolher_por_inatividade(self) -> None:
-        if self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded' or self._fechada or self._arrastando_desktop:
+        if (self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded'
+                or self._fechada or self._arrastando_desktop or self._desktop_transitorio):
             return
         # A janela em uso permanece aberta: sem recolher no meio da digitação.
         if self._desktop_em_foco():
@@ -1235,7 +1276,8 @@ class JanelaInterfaceWebV1(QMainWindow):
         if tela is None:
             return
         self._observar_tela_desktop(tela)
-        destino = geometria_desktop(tela.availableGeometry(), self.estado_desktop == 'expanded', self.desktop_pagina, self._ancora_para_geometria())
+        destino = geometria_desktop(tela.availableGeometry(), self.estado_desktop == 'expanded',
+                                    self._pagina_apresentada_desktop(), self._ancora_para_geometria())
         if self._desktop_destino == destino and self._animacao_desktop.state() == QPropertyAnimation.Running:
             self.ponte_web.publicar(self.apresentacao_publica())
             return
@@ -1259,6 +1301,14 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._geometria_desktop_concluida()
         else:
             self._pausar_pintura_web_desktop()
+            expandindo = self.estado_desktop == 'expanded'
+            curva = QEasingCurve(QEasingCurve.BezierSpline)
+            # O conteúdo pode ultrapassar a escala final. O retângulo nativo
+            # fica na área útil para preservar a máscara e o hit test.
+            controle_1, controle_2 = ((.34, 1.), (.5, 1.)) if expandindo else ((.3, 0.), (.15, 1.))
+            curva.addCubicBezierSegment(QPointF(*controle_1), QPointF(*controle_2), QPointF(1., 1.))
+            self._animacao_desktop.setEasingCurve(curva)
+            self._animacao_desktop.setDuration(620 if expandindo else 500)
             self._animacao_desktop.setStartValue(self.geometry())
             self._animacao_desktop.setEndValue(destino)
             self._animacao_desktop.start()
@@ -1268,11 +1318,11 @@ class JanelaInterfaceWebV1(QMainWindow):
             return
         # A textura WebEngine chega depois da geometria HWND. Congelar o
         # quadro anterior sobre fundo opaco impede buracos e reflow aparente.
+        # A cobertura também retém cliques até os controles voltarem a aparecer.
         quadro = self.web.grab()
         cobertura = QLabel(self)
         cobertura.setObjectName('desktopTransitionCover')
-        cobertura.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        cobertura.setStyleSheet('background:#0b0d12;border:0')
+        cobertura.setStyleSheet(f'background:{self._cor_fundo_desktop.name()};border:0')
         cobertura.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         cobertura.setPixmap(quadro)
         cobertura.setGeometry(self.rect())
@@ -1327,12 +1377,15 @@ class JanelaInterfaceWebV1(QMainWindow):
             if not self._fechada:
                 self.ponte_web.publicar(self.apresentacao_publica())
 
-    def _atualizar_mascara_desktop(self) -> None:
-        if self.modo_apresentacao != 'desktop':
-            return
+    @staticmethod
+    def _regiao_desktop(largura: int, altura: int) -> QRegion:
         forma = QPainterPath()
-        forma.addRoundedRect(0, 0, self.width(), self.height(), 24, 24)
-        self.setMask(QRegion(forma.toFillPolygon().toPolygon()))
+        forma.addRoundedRect(0, 0, largura, altura, 24, 24)
+        return QRegion(forma.toFillPolygon().toPolygon())
+
+    def _atualizar_mascara_desktop(self) -> None:
+        if self.modo_apresentacao == 'desktop':
+            self.setMask(self._regiao_desktop(self.width(), self.height()))
 
     def resizeEvent(self, evento) -> None:  # noqa: N802
         super().resizeEvent(evento)
@@ -1368,11 +1421,22 @@ class JanelaInterfaceWebV1(QMainWindow):
         global_cursor = QCursor.pos()
         ponto = self.mapFromGlobal(global_cursor)
         dentro = self.rect().contains(ponto) and self.mask().contains(ponto)
+        estava_dentro = self._desktop_dentro
         self._desktop_dentro = dentro
         cursor_global = (global_cursor.x(), global_cursor.y())
-        if self._ultimo_cursor_global is not None and cursor_global != self._ultimo_cursor_global and dentro:
+        moveu = cursor_global != self._ultimo_cursor_global
+        if self._ultimo_cursor_global is not None and moveu and dentro:
             self.registrar_atividade_desktop()
         self._ultimo_cursor_global = cursor_global
+        if not self._arrastando_desktop:
+            if dentro:
+                self._recolher_desktop_timer.stop()
+                if self.estado_desktop == 'compact' and not estava_dentro and moveu:
+                    self._abrir_desktop_timer.start()
+            else:
+                self._abrir_desktop_timer.stop()
+                if self._desktop_transitorio and not self._recolher_desktop_timer.isActive():
+                    self._recolher_desktop_timer.start()
         cursor = (ponto.x(), ponto.y(), dentro)
         if cursor != self._ultimo_cursor_desktop and not self.preferencias_publicas()['reduced']:
             self._ultimo_cursor_desktop = cursor

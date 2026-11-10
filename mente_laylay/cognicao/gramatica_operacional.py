@@ -90,6 +90,48 @@ def tipo_recurso_nucleo_operacional(texto: str) -> str:
     return _TIPOS_RECURSO_NOMINAL.get(m.group("tipo").casefold(), "") if m else ""
 
 
+def operandos_nomeados_distintos(esquerda: str, direita: str) -> bool:
+    """Evidência nominal para fronteira, não resolução de entidades ou efeito.
+
+    Ao menos um operando deve ser literal delimitado. O outro conserva um
+    literal ou um nome unitário qualificado pelo léxico compartilhado. Sem
+    evidência, igualdade possível, referência ou quantificador, não decidir
+    independência. O chamador continua dono da diretividade e da polaridade.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import (
+        separar_tipo_e_alvo_nomeado, operando_inicia_com_referencia_contextual,
+        valor_e_referencia_contextual,
+    )
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    def ler(texto: str) -> tuple[str, bool]:
+        # Pontuação após o operando é sintaxe. Um nome delimitado termina
+        # na aspa, portanto seus caracteres internos permanecem intactos.
+        operacional = texto.strip().rstrip('.!?').rstrip()
+        pedido = re.fullmatch(r"\s*\w+\s+(?P<objeto>.+?)\s*", operacional)
+        if not pedido:
+            return "", False
+        objeto = pedido['objeto']
+        alvo, _, literal = separar_tipo_e_alvo_nomeado(objeto, tuple(_TIPOS_RECURSO_NOMINAL))
+        if not alvo:
+            return "", False
+        if not literal:
+            if (operando_inicia_com_referencia_contextual(objeto)
+                or valor_e_referencia_contextual(alvo)
+                or not re.fullmatch(r"[^\W\d_]+", alvo)):
+                return "", False
+            tipo = consultar_morfologia(alvo) or 0
+            if not tipo & 1 or tipo & 8:  # Nome, sem leitura pronominal.
+                return "", False
+        return normalizar_texto_basico(alvo), literal
+
+    a, literal_a = ler(esquerda)
+    b, literal_b = ler(direita)
+    # Igualdade/contenção conservam a possível retomada de um nome abreviado.
+    # Diferença aqui é de operandos escritos; aliases físicos não são provados.
+    return bool(a and b and (literal_a or literal_b) and a not in b and b not in a)
+
+
 def candidato_respeita_tipo_recurso(candidato: dict, tipo: str) -> bool:
     """Compatibilidade do tipo explícito com a capacidade, não prova do alvo.
 

@@ -205,6 +205,48 @@ def test_realizacao_cotidiana_preserva_certeza_independente_do_receipt(status, e
     assert r.fala.startswith(fato + " ")
 
 
+@pytest.mark.parametrize("alvo", ["Calculadora", "Firefox"])
+@pytest.mark.parametrize("variante", [
+    "observada", "outro_alvo", "foco", "outro_estado", "alvo_com_alegacao", "sem_id", "sem_confirmacao",
+    "proposta", "nova_execucao", "abertura_nova", "atribuicao", "alega_nova_acao",
+])
+def test_estado_ja_aberto_exige_observacao_do_executor_do_mesmo_alvo(alvo, variante):
+    from mente_laylay.cognicao.guardiao_alegacoes import validar_alegacoes_da_fala
+    from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
+
+    receipt = ResultadoAcao(intent="APP_OPEN", alvo=alvo, status="app_ja_aberto_observado",
+        origem="executor", id_solicitacao="abertura-observada", executou=False, confirmado=True)
+    fala = f"{alvo} já está aberto."
+    if variante == "outro_alvo":
+        fala = "Editor já está aberto."
+    elif variante == "foco":
+        fala = f"{alvo} já está aberto e em foco."
+    elif variante == "outro_estado":
+        fala += " A música está pausada."
+    elif variante == "alvo_com_alegacao":
+        receipt = replace(receipt, alvo=f"A música está pausada e {alvo}")
+        fala = f"A música está pausada e {fala}"
+    elif variante == "sem_id":
+        receipt = replace(receipt, id_solicitacao="")
+    elif variante == "sem_confirmacao":
+        receipt = replace(receipt, confirmado=False)
+    elif variante == "proposta":
+        receipt = replace(receipt, origem="ia")
+    elif variante == "nova_execucao":
+        receipt = replace(receipt, executou=True)
+    elif variante == "abertura_nova":
+        receipt = replace(receipt, status="app_aberto", executou=True)
+    elif variante == "atribuicao":
+        fala = f"Você disse que {fala}"
+    elif variante == "alega_nova_acao":
+        fala += f" Abri {alvo}."
+    r = validar_alegacoes_da_fala(fala, plano={"comandos": [receipt.como_dict()]}, origem="canal_voz")
+    if variante == "alega_nova_acao":
+        assert "execucao_alegada_sem_resultado" in r["problemas"]
+    else:
+        assert ("resultado_operacional_sem_evidencia" not in r["problemas"]) == (variante == "observada")
+
+
 @pytest.mark.parametrize("violacao", ["indice", "opcao", "promessa", "comando", "texto_livre", "sucesso_falso"])
 def test_protocolo_cotidiano_rejeita_conteudo_nao_coberto_sem_receipt_emprestado(violacao):
     from mente_laylay.personalidade.confirmacao_llm import personalizar_confirmacao_composta_llm
@@ -235,6 +277,8 @@ def test_protocolo_cotidiano_rejeita_conteudo_nao_coberto_sem_receipt_emprestado
 
 @pytest.mark.parametrize("mudanca", ["nenhuma", "turno", "pessoa"])
 def test_lote_cotidiano_revalida_escolha_e_nao_apaga_pendencias_alheias(mudanca):
+    from types import SimpleNamespace
+    from mente_laylay.memoria_mental.continuidade_contexto import registrar_continuidade_da_fala
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     from mente_laylay.personalidade.orquestrador_fala_runtime import OrquestradorFalaRuntime
     from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
@@ -242,17 +286,25 @@ def test_lote_cotidiano_revalida_escolha_e_nao_apaga_pendencias_alheias(mudanca)
     turno = classificar_modalidade_turno(c.texto_usuario, normalizar_texto=normalizar_texto,
                                         texto_tem_comando_explicito=texto_tem_comando_explicito)
     turno["id"] = c.turno_id
-    estado = EstadoCompartilhadoRuntime(mental={"turno_atual": turno},
+    estado = EstadoCompartilhadoRuntime(mental={"turno_atual": turno, "plano_turno_atual": {
+            "id": c.turno_id, "texto_usuario": c.texto_usuario, "requer_execucao": True,
+        }},
         continuidades={"comando_sugerido_estado": {"tipo": "salvar", "dominio": "notas", "alvo": "nota-a"}})
     pendencias_antes = estado.snapshot()["continuidades"]
     orq = OrquestradorFalaRuntime(servicos_iniciais={
-        "_estado_compartilhado_runtime": estado, "print": lambda *_: None})
-    chamadas, publicados = [], []
-    orq.falar = lambda fala, *_: publicados.append(fala) or True
+        "_estado_compartilhado_runtime": estado, "print": lambda *_: None,
+        "_voz_runtime": SimpleNamespace(falar=lambda *_a, **_k: False),
+        "_dirigir_fala_mente": lambda fala, **_k: {"fala": fala},
+        "_registrar_continuidade_da_fala_mente": registrar_continuidade_da_fala,
+    })
+    chamadas, publicados, entregas = [], [], []
+    orq.registrar_observador_texto_final(lambda fala, *_a, **_k: publicados.append(fala) or True)
+    orq.registrar_observador_entrega_resultados(lambda **dados: entregas.append(dados))
     itens = [ResultadoAcao(id_solicitacao="nuclear-ok", intent="APP_OPEN", alvo="calculadora",
                 status="aberto", executou=True, confirmado=True, origem="executor"),
              ResultadoAcao(id_solicitacao="nuclear-falha", intent="APP_OPEN", alvo="editor",
-                status="falha_execucao", executou=False, confirmado=False, origem="executor")]
+                status="falha_execucao", executou=False, confirmado=False, origem="executor",
+                detalhe="Não consegui abrir o editor.")]
     def modelo(mensagens, **_):
         entrada = json.loads(mensagens[1]["content"])
         chamadas.append(entrada)
@@ -271,10 +323,14 @@ def test_lote_cotidiano_revalida_escolha_e_nao_apaga_pendencias_alheias(mudanca)
     assert lote.resultados == itens
     assert estado.snapshot()["continuidades"] == pendencias_antes
     assert len(publicados) == (1 if mudanca == "nenhuma" else 0)
+    assert len(entregas) == len(publicados)
     if publicados:
         assert publicados[0].startswith("Abri a calculadora. Não consegui abrir o editor.")
         assert publicados[0].count("Aviso independente imutável.") == 1
         assert "novo pedido direto" in publicados[0]
+        assert entregas[0]["fala"] == publicados[0]
+        assert entregas[0]["canal_entrega"] == "texto_publicado"
+        assert entregas[0]["resultados"] == tuple(itens)
     assert lote.resposta_publicada is (mudanca == "nenhuma")
 
 

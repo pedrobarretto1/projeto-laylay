@@ -39,9 +39,11 @@ def _contradicoes_capacidade(
     fonte = fonte_capacidades_vigente(contrato,texto_usuario,turno_id)
     if not explicativa and fonte is None:
         return []
-    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_delimitada
-    if (criacao_ficcional_vigente({'id':turno_id,'texto_usuario':texto_usuario,'contrato_fala':contrato})
-            is not None and fala_ficcional_delimitada(fala)):
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
+    criacao = criacao_ficcional_vigente({
+        'id': turno_id, 'texto_usuario': texto_usuario, 'contrato_fala': contrato,
+    })
+    if criacao is not None and fala_ficcional_conferida(fala, criacao=criacao):
         return []
     dados = fonte.dados.como_dict() if fonte is not None and not explicativa else {}
     predicados = dados.get('predicados',contrato.get('predicados_capacidade') or ())
@@ -526,7 +528,9 @@ def _relato_informativo_sem_ancora(
     É uma prova limitada: falta de termos em comum pede reparo, mas presença
     deles não atesta que a resposta compreendeu o relato.
     """
-    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    from mente_laylay.cognicao.referencias_linguagem import (
+        PerspectivaEnunciador, pedido_repeticao_literal_da_fala,
+    )
     perspectiva = contrato.get('perspectiva_enunciador')
     fonte_atual = bool(type(perspectiva) is PerspectivaEnunciador
         and perspectiva.vigente(usuario, turno_id)
@@ -537,6 +541,10 @@ def _relato_informativo_sem_ancora(
         and roteiro.get("estrategia") == "resposta_direta"
         and (roteiro.get("ancora_literal") == usuario or fonte_atual)
         and "?" not in usuario
+        # A âncora de uma reprodução é a fonte anterior, não as palavras
+        # da diretiva. Mesma distinção usada por _contrato_relato_atual;
+        # esta guarda lexical não certifica a fidelidade nem o efeito citado.
+        and not pedido_repeticao_literal_da_fala(usuario)
     ):
         return False
     ancora = _termos_ancora(usuario) - _MARCADORES_DISCURSIVOS_RELATO
@@ -587,9 +595,11 @@ def _reinicio_social_sem_ato_atual(
 def _indice_reconhecimento_estado(texto_usuario: str, resposta: str) -> int:
     estado = _ESTADO_USUARIO.search(texto_usuario)
     resposta_norm = _normalizar(resposta)
-    if not estado:
+    from mente_laylay.cognicao.referencias_linguagem import declaracao_pessoal_de_estado
+    declarado = declaracao_pessoal_de_estado(texto_usuario)
+    if not estado and not declarado:
         return -1
-    valor = _normalizar(estado.group("estado"))
+    valor = _normalizar(estado.group("estado") if estado else declarado)
     raiz = valor[:5] if len(valor) > 5 else valor
     if valor == "bem":
         achado = _ESTADO_POSITIVO.search(resposta)
@@ -868,7 +878,8 @@ def validar_aderencia_contrato_fala(
                 "estrategia": "presenca_conversacional", "nucleo_atendido": aceita,
                 "contrato_reparo": {"realizacoes_permitidas": list(presenca), "autoriza_execucao": False},
                 "autoriza_execucao": False}
-    if {"evidencia_fala_historica", "explicacao_ocorrencia", "explicacoes_historicas_por_ato", "revisao_alegacao"}.intersection(contrato):
+    if {"evidencia_fala_historica", "explicacao_ocorrencia", "explicacoes_historicas_por_ato",
+            "revisao_alegacao", "retomada_criacao"}.intersection(contrato):
         from mente_laylay.cognicao.explicacao_fala_historica import avaliar_fala_historica
         # Esta API verifica comunicação, sem poder validar execução. O guardião
         # também confere o plano concreto antes da publicação.

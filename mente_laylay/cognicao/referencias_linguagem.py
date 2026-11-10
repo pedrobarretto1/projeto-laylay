@@ -25,6 +25,52 @@ def contem_moldura_narrativa(texto: str) -> bool:
     return bool(_MOLDURA_NARRATIVA.search(str(texto or '')))
 
 
+def contem_agradecimento_autoral(texto: str) -> bool:
+    """Gratidão enunciada não é particípio de obrigação nem conteúdo citado.
+
+    A leitura é compartilhada pelos consumidores afetivos e comunicativos;
+    não conclui que houve ajuda, execução ou resultado anterior.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    base = unicodedata.normalize('NFC', texto_fora_de_citacoes(texto)).casefold()
+    for m in re.finditer(r'\b(?:obrigad[oa]?|brigad[oa]?|valeu|valew|vlw)\b', base):
+        if 'brigad' in m[0]:
+            antes = re.split(r'[.!?;,]', base[:m.start()])[-1]
+            if re.search(r'\b(?:sou|somos|fui|foi|era|eram|serei|ser|sendo|estou|estava|sinto(?:-me)?)'
+                         r'\s+(?:(?:muito|mesmo)\s+)?$', antes):
+                continue
+            complemento = re.match(r'\s+a\s+(.+)', base[m.end():])
+            if complemento:
+                dever = False
+                for palavra in re.findall(r'[^\W\d_]+', complemento[1])[:3]:
+                    if palavra in {'me','te','se','nos','vos'}:
+                        continue
+                    tipo = consultar_morfologia(palavra) or 0
+                    if tipo&32 and re.fullmatch(r'[^\W\d_]*(?:ar|er|ir|or|ôr)', palavra):
+                        dever = True
+                        break
+                    if not tipo&64:
+                        break
+                if dever:
+                    continue
+        return True
+    return False
+
+
+def agradecimento_sem_outro_conteudo(texto: str) -> bool:
+    """A gratidão integral permite fechar; a presença do ato não fecha outros."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    if not contem_agradecimento_autoral(texto):
+        return False
+    base=normalizar_texto_basico(texto)
+    # Uma coordenação pode introduzir outro predicado. Sem prova de escopo
+    # nominal integral, não impor encerramento; a gratidão continua reconhecida.
+    if re.search(r'\b(?:e|mas|porem|ou)\b',normalizar_texto_basico(texto_fora_de_citacoes(texto))):
+        return False
+    return bool(re.fullmatch(r'(?:muito\s+)?(?:obrigad[oa]?|brigad[oa]?|valeu|valew|vlw)'
+        r'(?:[, ]+(?:lay|laylay))?(?:\s+(?:por|pel[oa]s?)\s+[^?!;.,]+)?[.! ]*',base))
+
+
 def objeto_retificacao_assunto(texto: str) -> str | None:
     """Retificação nominal do próprio falante, sem reinterpretar o alvo como ação."""
     bruto = str(texto or '').strip()
@@ -221,9 +267,83 @@ def intervalos_citados(texto: str) -> tuple[tuple[int, int], ...]:
     return tuple(m.span() for m in _PADRAO_TRECHO_CITADO.finditer(str(texto or '')))
 
 
+def contem_citacao_incompleta_na_autoria(texto: str) -> bool:
+    """Diagnostica um delimitador de fala sem reinterpretar seu conteúdo."""
+    from mente_laylay.arquivos.nome_natural import aspas_globalmente_coerentes
+
+    # A projeção é só para diagnóstico. Apóstrofos internos e marcas de
+    # unidade coladas ao número não abrem citação discursiva.
+    delimitadores = re.sub(r"""(?<![\w"'])\d+'\d+"(?!\w)|(?<=\w)'(?=\w)""", " ", texto)
+    return bool(re.search(r"(?<!\w)['\"“](?=\w)", delimitadores)
+                and not aspas_globalmente_coerentes(delimitadores))
+
+
 def texto_fora_de_citacoes(texto: str) -> str:
     """Projeção para ler o ato externo; conteúdo citado continua sendo dado."""
     return _PADRAO_TRECHO_CITADO.sub(' [citacao] ', str(texto or ''))
+
+
+def enunciados_discursivos(
+    texto: str, *, intervalos_protegidos: tuple[tuple[int, int], ...] | None = None,
+    separar_ponto_e_virgula: bool = True,
+) -> tuple[str, ...]:
+    """Fronteiras fortes literais fora de aspas; não interpreta atos/intents.
+
+    Um segmento do turno pode agrupar várias frases. A interrogação de uma
+    delas não muda o valor enunciativo das demais. Preserva o conteúdo citado.
+    O owner pode fornecer os intervalos que constituem uma unidade de sua
+    análise. Isso delimita texto, sem conferir fonte, verdade ou autoridade.
+    """
+    bruto = str(texto or '')
+    citados = intervalos_citados(bruto) if intervalos_protegidos is None else intervalos_protegidos
+    if any(not (0 <= a < b <= len(bruto)) for a, b in citados):
+        raise ValueError('Intervalo protegido fora do texto analisado')
+    inicio = 0
+    trechos = []
+    pontuacao = r'[.!?;]+' if separar_ponto_e_virgula else r'[.!?]+'
+    for m in re.finditer(pontuacao + r'(?=\s|$)', bruto):
+        if any(a <= m.start() < b for a,b in citados):
+            continue
+        if trecho := bruto[inicio:m.end()].strip():
+            trechos.append(trecho)
+        inicio = m.end()
+    if trecho := bruto[inicio:].strip():
+        trechos.append(trecho)
+    return tuple(trechos)
+
+
+def declaracao_pessoal_de_estado(texto: str) -> str:
+    """Complemento de predicado pessoal explícito, sem inferir um sentimento.
+
+    Complementa estar+adjetivo dos leitores sociais; função afetiva, menção
+    de terceira pessoa, citação e hipótese não fornecem essa declaração.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    for frase in enunciados_discursivos(texto_fora_de_citacoes(texto)):
+        base=normalizar_texto_basico(frase).strip(' .!?;')
+        m=re.match(r'^(?:eu\s+)?(?:me\s+sinto|sinto-me)\s+(?P<estado>[^?!;]+)$',base)
+        if not m:
+            m=re.match(r'^(?:eu\s+)?(?:estou|to)\s+com\s+'
+                r'(?P<estado>medo|raiva|ansiedade|sono|fome)\b[^?!;]*$',base)
+        if m:
+            return m['estado'].strip()
+    return ''
+
+
+def texto_de_reproducao_solicitada(texto: str) -> str:
+    """Objeto literal de reprodução no canal, sem autorizar efeito externo."""
+    m=re.fullmatch(r'(?:(?:voce|voc[eê]|tu)\s+)?'
+        r'(?:repita|repete|copie|copia|reproduza|reproduz)\s+'
+        r'(?:(?:exatamente|literalmente)\s+)?(?:(?:a|o)\s+)?'
+        r'(?:(?:este|esta|esse|essa|minha|meu|seguinte)\s+){0,2}'
+        r'(?:texto|frase|trecho|mensagem)(?:\s+sem\s+alterar\s+(?:nenhuma|qualquer)\s+palavra)?'
+        r'\s*:\s*(?P<objeto>[\s\S]+)',str(texto or '').strip(),re.I)
+    if not m:
+        return ''
+    objeto=m['objeto'].strip()
+    if intervalos_citados(objeto)==((0,len(objeto)),):
+        objeto=objeto[1:-1]
+    return objeto
 
 
 def pedido_recapitulacao_dialogo(texto: str) -> bool:
@@ -276,6 +396,35 @@ def pedido_retomada_fala_assistente(texto: str) -> bool:
 def _abertura_consulta_fala_usuario(texto: str) -> str:
     """Mesma abertura discursiva no detector e na leitura dos complementos."""
     return re.sub(r'^(?:e|ent[aã]o)\s+', '', texto, flags=re.I)
+
+
+def complemento_recordacao_dialogo(texto: str) -> str:
+    """Pergunta direta à memória do destinatário, sem escolher fonte ou autor.
+
+    A matriz interrogativa deve ser o próprio ato de lembrar/recordar.
+    Menção citada, terceiro, hipótese e ordem de lembrar não são esta consulta.
+    O complemento pode ser nominal ou interrogativo indireto. Apenas abre
+    busca no diálogo; não comprova a lembrança nem autoriza seu conteúdo.
+    """
+    base = _abertura_consulta_fala_usuario(texto_fora_de_citacoes(texto)).strip()
+    # O enunciador pode anunciar a própria intervenção antes de fazê-la.
+    # Não extrair pergunta de relato de terceiro, condição ou citação.
+    abertura = re.fullmatch(r'(?:eu\s+)?vou\s+(?P<verbo>[^\W\d_]+)\s*:\s*(?P<consulta>.+)', base, re.I)
+    if abertura:
+        from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+        if (consultar_morfologia(abertura['verbo']) or 0) & 32:
+            base = abertura['consulta']
+    consulta = re.fullmatch(
+        r"(?:(?:voc[eê]\s+)?(?:se\s+)?(?:lembra|recorda)|"
+        r"tu\s+(?:te\s+)?(?:lembras|recordas))\s+(?P<complemento>[^.!?;]+)\?",
+        base, re.I,
+    )
+    return consulta['complemento'] if consulta else ''
+
+
+def pedido_recordacao_dialogo(texto: str) -> bool:
+    """Consulta canônica à memória, sem selecionar fonte nem conferir apoio."""
+    return bool(complemento_recordacao_dialogo(texto))
 
 
 def pedido_consulta_fala_usuario(texto: str) -> bool:
@@ -575,6 +724,105 @@ def referencia_explicacao_historica(texto: str) -> str:
     return referencia_explicacao_propria(texto)
 
 
+def conteudo_referido_fala_propria(texto: str) -> str | None:
+    """Predicado mencionado sob fala retrospectiva própria, não sua verdade.
+
+    None não declarou conteúdo indireto; vazio declarou referência fora deste
+    recorte. O owner não pode substituir uma referência explícita sem fonte
+    pela fala mais recente. Só a flexão pessoal já canônica é projetada; todo
+    complemento declarado, negação e modalidade permanecem literais.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.identidade_conversacional import flexao_primeira_pessoa_assistente
+
+    verbos_fala = r'disse|falou|afirmou|respondeu|explicou'
+    externo = normalizar_texto_basico(texto_fora_de_citacoes(texto))
+    if not re.search(rf'\b(?:{verbos_fala})\s+que\b', externo):
+        return None
+    unidades = enunciados_discursivos(texto)
+    perguntas = [u for u in unidades if '?' in u]
+    if len(perguntas) != 1:
+        return ''
+    pergunta, = perguntas
+    # O literal do ato pode conservar comentários após a interrogação. Eles
+    # não fornecem outra fonte nem mudam o agente da consulta. Uma segunda
+    # referência explícita exige resolução própria, não descarte silencioso.
+    if any(re.search(rf'\b(?:{verbos_fala})\s+que\b',
+                     normalizar_texto_basico(texto_fora_de_citacoes(u)))
+           for u in unidades if u != pergunta):
+        return ''
+    if referencia_explicacao_historica(pergunta) != 'fala' or intervalos_citados(pergunta):
+        return ''
+    base = normalizar_texto_basico(pergunta).strip(' .!?;')
+    leitura = re.fullmatch(
+        r'(?:(?:agora\s+)?(?:me\s+)?(?:conta|conte|diga|diz|explica|explique)\s*[:,]?\s*)?'
+        rf'por\s+que\s+(?:voce|tu)\s+(?:{verbos_fala})\s+que\s+'
+        r'(?:(?:voce|tu)\s+)?(?P<negacao>nao\s+)?(?P<verbo>[a-z]+)\s+'
+        r'(?P<complemento>[a-z0-9]+(?:[ -][a-z0-9]+)*)', base)
+    if leitura is None:
+        return ''
+    primeira = flexao_primeira_pessoa_assistente(leitura['verbo'])
+    if primeira is None:
+        return ''
+    return (leitura['negacao'] or '') + primeira + ' ' + leitura['complemento']
+
+
+def fala_contem_trecho_pessoal_referido(fala: str, predicado: str) -> bool:
+    """Localiza forma pessoal explícita conservando toda a fonte entregue.
+
+    Não resolve sinonímia ou equivalência entre um resumo e a proposição
+    completa. A omissão de uma restrição na consulta nunca a remove da fonte.
+    Não confere que o trecho seja uma asserção própria: uso como título ou
+    menção também pode conter a forma pessoal. Consumidores recebem somente
+    referência textual. Citação explícita, pergunta, hipótese e subordinação
+    não conferida ficam fora deste recorte conservador.
+    """
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.modalidade_turno import analisar_protecao_operacional
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    from mente_laylay.cognicao.normalizacao_linguagem import TIPOS_REFERENCIA_TEXTUAL
+
+    if not predicado:
+        return False
+    for enunciado in enunciados_discursivos(fala):
+        if '?' in enunciado or intervalos_citados(enunciado) or moldura_narrativa_inicial(enunciado):
+            continue
+        base = normalizar_texto_basico(enunciado).strip(' .!?;')
+        protecao = analisar_protecao_operacional(enunciado, normalizar_texto=normalizar_texto_basico)
+        if (protecao.get('natureza_acao') in {'hipotetica','condicao_nao_verificada'}
+            or re.search(r'\b(?:se|caso|quando|talvez|hipoteticamente|suponha|imagine)\b',base)):
+            continue
+        # Uma oração subordinada pode mudar agente, certeza ou escopo de
+        # negação. Só o relativo literal "o/a que" fica neste recorte; não
+        # recortar "acho que...", "não é verdade que..." ou "disse que...".
+        if any(not re.search(r'\b(?:o|a|os|as)\s+$',base[:m.start()])
+               for m in re.finditer(r'\bque\b',base)):
+            continue
+        partes = [p.strip() for p in base.split(',')]
+        for indice, parte in enumerate(partes):
+            if not re.match(rf'^(?:eu\s+)?{re.escape(predicado)}(?=$|\s|[.!;,])',parte):
+                continue
+            if indice == 0:
+                return True
+            # Vírgula não localiza sozinha a forma pessoal. A continuação exige
+            # um sujeito eu explícito na oração imediatamente anterior. Não
+            # atravessar um prefácio ou pergunta indireta não conferidos.
+            anterior = re.fullmatch(r'eu\s+(?:(?:so|apenas|somente)\s+)?'
+                r'(?P<verbo>[a-z]+)\s+(?P<complemento>.+)',partes[indice-1])
+            if (anterior is None or not (consultar_morfologia(anterior['verbo']) or 0)&32
+                or set(re.findall(r'[a-z]+',anterior['complemento'])) & TIPOS_REFERENCIA_TEXTUAL):
+                continue
+            # Antes daquela oração, só interjeições unitárias ou a cópula
+            # coloquial isolada conservam este recorte; demais adjuntos não
+            # têm escopo demonstrado aqui. Não inferir sentido pelo tópico.
+            prefixos = [p.strip() for p in enunciado.split(',')[:indice-1]]
+            if all(re.fullmatch(r'[^\W\d_]+',p)
+                   and ((consultar_morfologia(p) or 0)&128 or normalizar_texto_basico(p)=='ta')
+                   for p in prefixos):
+                return True
+    return False
+
+
 def pergunta_confirmatoria_eliptica(texto: str) -> bool:
     """Lê a pergunta dependente de uma proposição, sem dar consentimento.
 
@@ -586,8 +834,15 @@ def pergunta_confirmatoria_eliptica(texto: str) -> bool:
         return False
     base = normalizar_texto_basico(texto).strip(' ?!.')
     avaliacao = r'(?:cert[oa]|corret[oa]|verdade)'
+    negativa = re.fullmatch(r'nao\s+(?P<verbo>[^\W\d_]+)', base)
+    if negativa:
+        from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+        if (consultar_morfologia(negativa['verbo']) or 0) & 32:
+            return True  # Predicado finito sem complemento retoma a proposição.
     return bool(re.fullmatch(
-        rf'(?:ne|confere|procede|{avaliacao}|(?:nao\s+)?e'
+        rf'(?:ne|confere|procede|ou\s+nao|{avaliacao}|(?:nao\s+)?(?:e|sera|seria)'
+        rf'(?:\s+(?:mesmo|isso(?:\s+mesmo)?|{avaliacao}))?|'
+        rf'(?:voce\s+)?(?:acha|pensa|concorda)'
         rf'(?:\s+(?:isso(?:\s+mesmo)?|{avaliacao}))?)', base))
 
 

@@ -53,16 +53,20 @@ function animateDesktopMotion(location) {
   if(!island)return;
   const expanded=state.desktopState==='expanded';
   if(expanded&&oldState!=='expanded') {
-    // Motion compositor-friendly: a WebView é redimensionada pelo Qt antes
-    // do efeito. Evitar animar o scroll container ou vários cartões grandes.
+    // A entrada começa no destino confirmado pelo Qt. Só os elementos leves
+    // ganham escala, para o conteúdo não deslocar a área rolável ou o foco.
     const small=island.querySelector(
       state.desktopView==='page'?'.desktop-page .context-bar':'.desktop-overview .desktop-presence-copy');
     animateSafe(small,
-      [{opacity:.45,transform:'translateY(9px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:215,easing:'cubic-bezier(.2,.75,.25,1)'});
+      [
+        {opacity:0,transform:'translateY(8px) scale(.91,.94)',transformOrigin:'50% 0'},
+        {opacity:.94,transform:'scale(1.012)',transformOrigin:'50% 0',offset:.75},
+        {opacity:1,transform:'none',transformOrigin:'50% 0'},
+      ],
+      {duration:310,easing:'cubic-bezier(.2,.78,.25,1)'});
     animateSafe(island.querySelector('.desktop-wordmark'),
-      [{opacity:.55,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:180,delay:20,easing:'cubic-bezier(.2,.75,.25,1)'});
+      [{opacity:.3,transform:'translateY(5px) scale(.96)'},{opacity:1,transform:'none'}],
+      {duration:255,easing:'cubic-bezier(.2,.78,.25,1)'});
     motionRunCount++;return;
   }
   if(!expanded&&oldState==='expanded') {
@@ -348,12 +352,12 @@ function desktop() {
   const liveActivity=['idle','speaking','thinking','listening','executing','reconnecting'].includes(state.activity)?state.activity:'idle';
   const indicator=connectionStatus();
   return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="'+state.desktopState+'" data-desktop-material="'+state.desktopMaterial+'" data-activity="'+liveActivity+'" data-desktop-view="'+(pageView?'page':'overview')+'">'+
-    '<button class="desktop-compact" data-desktop-drag title="Arraste para mover. Clique para expandir." data-desktop="expandir" aria-label="Expandir Laylay · '+escapeHTML(indicator.label)+'"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small title="'+escapeHTML(indicator.detail)+'">'+escapeHTML(indicator.label)+'</small></span><span class="desktop-signal '+(indicator.kind==='online'?'online':indicator.kind)+'" aria-hidden="true"></span><span class="desktop-expand-icon">'+icon('chevron')+'</span></button>'+
+    '<button class="desktop-compact" data-desktop-drag title="Passe o mouse para ver o resumo. Clique para abrir ou arraste para mover." data-desktop="expandir" aria-label="Expandir Laylay · '+escapeHTML(indicator.label)+'"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small title="'+escapeHTML(indicator.detail)+'">'+escapeHTML(indicator.label)+'</small></span><span class="desktop-signal '+(indicator.kind==='online'?'online':indicator.kind)+'" aria-hidden="true"></span><span class="desktop-expand-icon">'+icon('chevron')+'</span></button>'+
     '<div class="desktop-expanded"><header class="desktop-toolbar window-head" data-desktop-drag title="Arraste esta área para mover a Laylay."><span class="desktop-wordmark wordmark">laylay<span>por perto</span></span><div class="desktop-toolbar-actions"><button class="desktop-overview-button icon-btn '+(!pageView?'active':'')+'" data-desktop="resumo" aria-label="Visão rápida" title="Visão rápida">'+icon('island')+'</button><span class="desktop-divider"></span>'+voiceSwitch()+'<button class="icon-btn" data-desktop="recolher" aria-label="Recolher Laylay" title="Recolher · Esc">'+icon('minus')+'</button></div></header>'+
     '<div class="desktop-window-body window-body"><nav class="desktop-tabs" aria-label="Abas da Laylay"><div class="nav-caption">SEU ESPAÇO</div>'+tabs+'<div class="nav-bottom">'+status()+'</div></nav>'+
     '<div class="desktop-overview"><div class="desktop-content"><section class="desktop-presence"><div class="desktop-portrait">'+avatar()+'</div><div class="desktop-presence-copy"><strong>Estou por aqui.</strong>'+status()+'</div></section><section class="desktop-context" aria-label="Sua trilha"><div class="desktop-section-label">SUA TRILHA<button data-page="music" aria-label="Ver biblioteca">'+icon('arrow')+'</button></div>'+musicCard(true)+'</section></div>'+
     '<div class="desktop-message" role="status"><span>'+icon(pending?'clock':'chat')+'</span><p>'+escapeHTML(pending?'Aguardando a Laylay…':recent?.text||'Uma conversa, uma ideia ou só companhia.')+'</p><button data-page="chat" aria-label="Ver conversa completa">'+icon('arrow')+'</button></div>'+
-    '<div class="desktop-composer">'+(!pageView?compose():'')+'</div><footer class="desktop-foot"><span>'+escapeHTML(state.connected?'Ponte conectada':'Aguardando ponte')+'</span><span title="Ao mudar de aplicativo, Laylay recolhe, exceto durante a fala ou transmissão ativa. Esc recolhe manualmente.">Recolhe ao mudar de app</span></footer></div>'+
+    '<div class="desktop-composer">'+(!pageView?compose():'')+'</div><footer class="desktop-foot"><span>'+escapeHTML(state.connected?'Ponte conectada':'Aguardando ponte')+'</span><span>Esc recolhe</span></footer></div>'+
     '<div class="desktop-page main-column"><div class="context-bar"><span>Laylay <b>›</b> '+escapeHTML(pageLabel())+'</span><span class="context-state">'+status()+'</span></div><details class="desktop-conversations" '+(state.page==='chat'?'':'hidden')+'><summary>'+icon('chat')+' Suas conversas</summary>'+conversationList()+'</details><div class="desktop-page-content page" id="page-content" data-page="'+state.page+'" data-render-key="desktop-page:'+state.page+'">'+content+'</div><footer class="window-foot"><span>Seu espaço, no seu tempo.</span><span>'+escapeHTML(state.connected?'Conectada à Laylay':'Aguardando conexão')+'</span></footer></div></div></div></section>';
 }
 paths.pin='<path d="m9 3 6 0-1 5 4 4v2H6v-2l4-4-1-5ZM12 14v7"/>';
@@ -390,7 +394,9 @@ function releaseDesktopDrag(event){
 }
 function desktopEditing(){
   if(state.mode!=='desktop'||!bridge||typeof bridge.edicao_desktop!=='function')return;
-  bridge.edicao_desktop(Boolean(state.draft||composing||document.activeElement?.matches('input,textarea,select')||document.querySelector('dialog[open]')));
+  bridge.edicao_desktop(state.desktopState==='expanded'&&Boolean(
+    composing||document.activeElement?.matches('input,textarea,select')||document.querySelector('dialog[open]')
+  ));
 }
 function localDesktopActivity(event){
   if(state.mode==='desktop'&&state.desktopState==='expanded'&&event.isTrusted&&bridge&&typeof bridge.atividade_desktop==='function')bridge.atividade_desktop(event.type);

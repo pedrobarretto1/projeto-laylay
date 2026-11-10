@@ -8,7 +8,9 @@ from typing import Any, Dict
 
 from mente_laylay.memoria_mental.registro_semantico import resolver_referencia_pontuada
 from mente_laylay.cognicao.evidencia_operacional import detectar_consulta_lista_iot
-from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
+from mente_laylay.cognicao.fundamentacao_factual import (
+    alvo_nomeacao_autoral, classificar_atualidade_factual, separar_descricao_de_nomeacao,
+)
 from mente_laylay.cognicao.referencias_linguagem import intervalos_citados
 from mente_laylay.cognicao.gramatica_musical import pedido_reproducao_referente
 from mente_laylay.cognicao.gramatica_operacional import tipo_recurso_pedido_direto, candidato_respeita_tipo_recurso
@@ -88,6 +90,17 @@ def _extrair_mencoes_categorizadas(texto: str) -> list[dict]:
         if not titulo_citado and indice + 1 < len(marcas):
             trecho = re.sub(r"\s+(?:(?:e|ou)\s+)?(?:o|a|um|uma)?\s*$", "", trecho).strip()
         designacao = bool(re.search(r"\bchamad[oa]\s*$", marca.group(0), re.IGNORECASE))
+        if not titulo_citado and not designacao:
+            anterior = bruto[:marca.start()]
+            if re.match(r"^(?:desse|dessa|deste|desta|daquel[ea])\b", trecho, re.IGNORECASE):
+                # O complemento aponta para outro objeto, sem dar nome à categoria.
+                continue
+            if re.search(r"\b(?:cada|tod[oa])\s*$", anterior, re.IGNORECASE):
+                from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+                primeira = re.match(r"[^\W\d_]+", trecho)
+                if primeira and (consultar_morfologia(primeira[0]) or 0) & 256:
+                    # Nome comum quantificado seguido de predicado finito.
+                    continue
         if not titulo_citado and not designacao and (
             re.search(r"\b(?:qual|quais)\s*$", bruto[:marca.start()], re.IGNORECASE)
             or re.match(r"^(?:que|cujo|cuja|cujos|cujas|onde)\b", trecho, re.IGNORECASE)
@@ -113,6 +126,7 @@ def extrair_entidade_explicita(texto: str) -> dict:
     palavras são tratadas como nome próprio provável.
     """
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
+    _, bruto = separar_descricao_de_nomeacao(bruto)
     if not bruto:
         return {}
     mencoes = _extrair_mencoes_categorizadas(bruto)
@@ -356,9 +370,11 @@ def construir_retrato_turno(
             dados={"exe": exe, "titulo": titulo, "assunto": percepcao.get("assunto")},
         )
 
-    explicitas = _extrair_mencoes_categorizadas(texto)
-    explicita = (explicitas[0] if len(explicitas) == 1 else {}) if explicitas else extrair_entidade_explicita(texto)
-    if not explicita and not explicitas:
+    _, texto_referencias = separar_descricao_de_nomeacao(texto)
+    alvo_autoral = alvo_nomeacao_autoral(texto)
+    explicitas = _extrair_mencoes_categorizadas(texto_referencias)
+    explicita = (explicitas[0] if len(explicitas) == 1 else {}) if explicitas else extrair_entidade_explicita(texto_referencias)
+    if not alvo_autoral and not explicita and not explicitas:
         explicita = _entidade_curta_ja_conhecida(
             texto,
             entidades_recentes=recentes,
@@ -410,17 +426,22 @@ def construir_retrato_turno(
     referencia = ""
     referencia_resolvida = {}
     referencia_candidatos = []
-    if re.search(r"\b(?:esse|este)\s+jogo\b|\bessa\s+partida\b", t):
+    t_referencia = texto_referencias.casefold()
+    if alvo_autoral:
+        # O alvo é uma descrição na entrada. Ele ainda não possui nome para
+        # resolução operacional nem herda o nome de outra entidade recente.
+        pass
+    elif re.search(r"\b(?:esse|este)\s+jogo\b|\bessa\s+partida\b", t_referencia):
         referencia = "jogo"
-    elif re.search(r"\b(?:essa|esta)\s+(?:musica|música|faixa)\b", t):
+    elif re.search(r"\b(?:essa|esta)\s+(?:musica|música|faixa)\b", t_referencia):
         referencia = "musica" if "musica" in recentes else "playlist"
-    elif re.search(r"\b(?:essa|esta)\s+playlist\b", t):
+    elif re.search(r"\b(?:essa|esta)\s+playlist\b", t_referencia):
         referencia = "playlist"
     elif explicita:
         referencia = str(explicita.get("tipo") or "referencia_nomeada")
-    elif re.search(r"\b(?:ela|ele|dele|dela|isso|essa|esse)\b", t):
+    elif re.search(r"\b(?:ela|ele|dele|dela|isso|essa|esse)\b", t_referencia):
         resolucao = resolver_referencia_pontuada(
-            texto,
+            texto_referencias,
             entidades_recentes=recentes,
             registro=estado.get("registro_semantico"),
             operacao=operacao,
@@ -448,6 +469,8 @@ def construir_retrato_turno(
         "atualidade_factual": classificar_atualidade_factual(texto, turno=turno),
         "ts": instante,
     }
+    if alvo_autoral:
+        snapshot['alvo_nomeacao_autoral'] = alvo_autoral
     return snapshot, recentes
 
 

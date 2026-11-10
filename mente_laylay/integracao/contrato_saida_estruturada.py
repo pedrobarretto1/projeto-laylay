@@ -7,6 +7,8 @@ import re
 from dataclasses import InitVar, dataclass, field
 from typing import Any, Callable, Mapping
 
+CONTRATO_SAIDA_CONFIRMACAO_COMPOSTA = "confirmacao_composta_v1"
+
 
 def _objeto_sem_duplicatas(pares: list[tuple[str, Any]]) -> dict[str, Any]:
     objeto: dict[str, Any] = {}

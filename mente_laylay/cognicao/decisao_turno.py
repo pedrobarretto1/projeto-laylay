@@ -17,6 +17,7 @@ from mente_laylay.especialistas.capacidades import intents_registradas
 from mente_laylay.cognicao.escopo_autorizacao import (
     AutorizacaoAto, construir_autorizacoes_por_ato, exige_escopo_por_ato,
     vincular_proposta_ao_ato,
+    vincular_proposta_ao_escopo,
     coletar_atos_aguardando_materializacao,
     AtoAguardandoMaterializacao,
     _identidade_operacional,
@@ -170,9 +171,14 @@ def _revisao_bloqueada_coerente(
         or texto_retrato != original):
         return False
     fonte_revisao = revisao.get("texto_original")
+    fonte_integral = plano.get("texto_usuario")
+    # O resolver compacta a entrada antes de recortá-la. Turno/retrato já
+    # recortados podem perder o alvo inteiro em uma sequência de espaços;
+    # a derivação precisa partir da fonte integral preservada pelo plano.
     if (not isinstance(fonte_revisao, str)
-        or re.sub(r"\s+", " ", original).strip()[:500]
-        != fonte_revisao.strip()[:500]):
+        or not isinstance(fonte_integral, str)
+        or re.sub(r"\s+", " ", fonte_integral).strip()[:500].rstrip()
+        != fonte_revisao.strip()[:500].rstrip()):
         return False
     if revisao.get("resolvida") is False and revisao.get("cancelada") is False:
         return (revisao.get("tipo") == "ambigua"
@@ -184,6 +190,16 @@ def _revisao_bloqueada_coerente(
             and turno.get("modalidade") == "recusa"
             and turno.get("natureza_acao") == "cancelamento_revisao"
             and turno.get("origem_veto_execucao_operacional") == "revisao_cancelada")
+
+
+def _projecao_textual_ocorrencia(valor: Any) -> str:
+    """Compara fonte integral e recorte público sem mudar ao reaplicá-lo.
+
+    Um recorte de 500 caracteres pode terminar em whitespace. Removê-lo
+    depois do corte torna a projeção idempotente, sem normalizar o interior
+    nem certificar sufixos, parâmetros, autorização ou efeito.
+    """
+    return str(valor or "").strip()[:500].rstrip()
 
 
 def motivo_incoerencia_contratos_turno(
@@ -236,17 +252,13 @@ def motivo_incoerencia_contratos_turno(
     ):
         return "contratos incoerentes: texto de turno/plano/retrato malformado"
 
-    def texto_canonico(valor: Any) -> str:
-        # Plano e retrato publicam somente os primeiros 500 caracteres.
-        return str(valor or "").strip()[:500]
-
-    original_turno = texto_canonico(leitura.get("texto_original") or leitura.get("texto"))
-    original_plano = texto_canonico(planejamento.get("texto_usuario"))
-    texto_retrato = texto_canonico(snapshot.get("texto"))
+    original_turno = _projecao_textual_ocorrencia(leitura.get("texto_original") or leitura.get("texto"))
+    original_plano = _projecao_textual_ocorrencia(planejamento.get("texto_usuario"))
+    texto_retrato = _projecao_textual_ocorrencia(snapshot.get("texto"))
     if moderno and not all((original_turno, original_plano, texto_retrato)):
         return "contratos incoerentes: texto de turno/plano/retrato incompleto"
     originais = (
-        original_turno, original_plano, texto_canonico(leitura.get("texto")),
+        original_turno, original_plano, _projecao_textual_ocorrencia(leitura.get("texto")),
     )
     if len({valor for valor in originais if valor}) > 1:
         return "contratos incoerentes: fala original de turno/plano divergente"
@@ -255,11 +267,11 @@ def motivo_incoerencia_contratos_turno(
         # retrato. Comparar a visão operacional evita reintroduzir o pedido
         # descartado ou bloquear uma revisão legítima.
         operacional_turno = (
-            texto_canonico(leitura["texto_operacional_efetivo"])
+            _projecao_textual_ocorrencia(leitura["texto_operacional_efetivo"])
             if "texto_operacional_efetivo" in leitura else original_turno
         )
         operacional_plano = (
-            texto_canonico(planejamento["texto_operacional_efetivo"])
+            _projecao_textual_ocorrencia(planejamento["texto_operacional_efetivo"])
             if "texto_operacional_efetivo" in planejamento else original_plano
         )
         if not operacional_turno or not operacional_plano:
@@ -331,12 +343,10 @@ def _motivo_divergencia_identidade_ocorrencia(
     # A fonte conserva a fala original completa. Os produtores públicos
     # limitam seus textos a 500 caracteres; a revisão fica somente no retrato.
     # Esse vínculo não certifica sufixos nem parâmetros fora dessa projeção.
-    def projecao(valor: Any) -> str:
-        return str(valor or "").strip()[:500].rstrip()
-
-    original = projecao(leitura.get("texto_original") or leitura.get("texto"))
-    texto_plano = projecao(planejamento.get("texto_usuario"))
-    if not original or not texto_plano or projecao(texto_usuario) != original or original != texto_plano:
+    original = _projecao_textual_ocorrencia(leitura.get("texto_original") or leitura.get("texto"))
+    texto_plano = _projecao_textual_ocorrencia(planejamento.get("texto_usuario"))
+    if (not original or not texto_plano
+        or _projecao_textual_ocorrencia(texto_usuario) != original or original != texto_plano):
         return f"texto da {origem} diverge da fala original do turno/plano"
     return ""
 
@@ -395,6 +405,7 @@ def filtrar_comandos_pelo_turno(
     aceitos: list[Dict[str, Any]] = []
     rejeitados: list[Dict[str, Any]] = []
     exige_vinculo = exige_escopo_por_ato(leitura)
+    escopos_usados: set[int | tuple[int, int]] = set()
     atos_usados: set[int] = set()
     for comando in candidatos:
         intent = str(comando.get("intent") or comando.get("acao") or "").strip().upper()
@@ -408,11 +419,12 @@ def filtrar_comandos_pelo_turno(
             motivo = _MOTIVO_INTENCAO_INCOMPATIVEL
         else:
             if exige_vinculo or autorizacoes_por_ato:
-                indice_ato = vincular_proposta_ao_ato(comando, leitura, autorizacoes_por_ato, atos_usados)
-                if indice_ato is None:
+                escopo = vincular_proposta_ao_escopo(comando, leitura, autorizacoes_por_ato, escopos_usados)
+                if escopo is None:
                     rejeitados.append({"intent": intent, "motivo": "proposta sem vínculo ao ato autorizado"})
                     continue
-                atos_usados.add(indice_ato)
+                escopos_usados.add(escopo.chave_consumo)
+                atos_usados.add(escopo.indice)
             aceitos.append(comando)
             continue
         rejeitados.append({"intent": intent, "motivo": motivo})
@@ -565,6 +577,7 @@ class ValidadorComandosTurnoRuntime:
             # autorização reutilizável fora deste frame/ato.
             resultado["escopo_operacional_por_ato"] = [
                 {"turno_id": a.turno_id, "indice": a.indice, "texto": a.texto,
+                 "indice_alvo": a.indice_alvo,
                  "pedido": a.pedido.como_dict()} for a in autorizacoes
             ]
         if extracao_original is not _PROPOSTA_NAO_INFORMADA:
@@ -625,6 +638,11 @@ class ValidadorComandosTurnoRuntime:
         if len(turno.get("segmentos") or ()) < 2:
             return None
         autorizacoes = construir_autorizacoes_por_ato(turno, mental, self._resolver_ato)
+        if len({a.indice for a in autorizacoes}) != len(autorizacoes):
+            # O roteiro progressivo atual representa uma etapa por ato. Não
+            # inventar novos atos para encaixar membros nominais nesse DTO;
+            # a lista de comandos já admitidos mantém a rota de execução usual.
+            return None
         etapas, usados = [], set()
         for comando in comandos:
             indice = vincular_proposta_ao_ato(comando, turno, autorizacoes, usados)

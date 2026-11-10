@@ -36,7 +36,7 @@ bool atualizarGiroMedido(uint32_t agora) {
   if(falta<=3) {terminarGiroMedido("ALVO");return true;}
   if(uint32_t(agora-inicioGiro)>=duracaoMotor) {terminarGiroMedido("TEMPO_LIMITE");return true;}
   if(uint32_t(agora-inicioGiro)>900 && progresso<2) {terminarGiroMedido("SEM_ROTACAO");return true;}
-  int pwm=falta<35?max(90,int(pwmGiro*(.4f+.6f*falta/35))):pwmGiro;
+  int pwm=ajustarPwmMotor(falta<35?max(90,int(pwmGiro*(.4f+.6f*falta/35))):pwmGiro);
   pwmEsquerdo=alvoGiro>0?-pwm:pwm;pwmDireito=-pwmEsquerdo;
 #endif
   return false;

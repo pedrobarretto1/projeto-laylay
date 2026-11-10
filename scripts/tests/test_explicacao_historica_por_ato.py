@@ -42,9 +42,15 @@ def test_explicacao_composta_conserva_cobertura_de_cada_ato_canonico(multiplas_i
         assert "mudanca emocional causal" in fala
         # A elipse não possui ator/consulta causal próprios na leitura atual.
         # Não inventar essa interpretação: conservar a parte como não respondida.
-        limite = ("ainda não foi respondida" if c["turno"]["segmentos"][1]["texto"].startswith(("apagou", "qual é"))
-                  else "não prova que a ação não aconteceu")
+        segunda = c["turno"]["segmentos"][1]["texto"]
+        if segunda.startswith("apagou"):
+            limite = "você pode indicar o detalhe que quer esclarecer?"
+        elif segunda.startswith("qual é"):
+            limite = "Ainda falta saber qual é a capital do Brasil."
+        else:
+            limite = "você lembra de quando foi?"
         assert limite in fala
+        assert "ainda não foi respondida" not in fala
         assert c["guarda_final"]["fala"] == fala
         assert not c["preparada"]["comandos"]
 
@@ -53,7 +59,8 @@ def test_ciclo_instalado_publica_uma_conclusao_sem_perder_ato_ou_gerar_efeito(mu
     for t in multiplas_instaladas["turnos_multiplos"]:
         assert len(t["textos"]) == 1, (t["texto"], t["modo"])
         fala = t["textos"][0]
-        assert "mudanca emocional causal" in fala and "não prova que a ação não aconteceu" in fala
+        assert "mudanca emocional causal" in fala
+        assert ("Dá 9." if "Quanto é" in t["texto"] else "você lembra de quando foi?") in fala
         assert fala.count("Sobre ") == 2
         assert not t["executores"] and t["motores_antes"] == t["motores_depois"]
         assert t["plano"]["autoriza_execucao"] is False and not t["plano"]["comandos"]
@@ -69,7 +76,7 @@ def test_modelo_local_real_conclui_ambas_as_partes_com_limites(multiplas_instala
         assert len(g["finais_isolados"]) == 1 and not g["porta_executor"]
         final = g["finais_isolados"][0]
         assert "mudanca emocional causal" in final["fala"]
-        assert "não prova que a ação não aconteceu" in final["fala"]
+        assert "você lembra de quando foi?" in final["fala"]
         assert final["fala"].count("Sobre ") == 2 and not final["comandos"]
 
 
@@ -134,8 +141,8 @@ def test_limite_da_segunda_fonte_nao_apaga_a_primeira_nem_se_torna_sucesso_total
     _, p = consulta(recuperar=recuperar)
     fala = avaliar_fala_historica("Pronto, tudo explicado.", plano=p)["fala"]
     assert "pedido explicito de copia" in fala
-    assert {"ausente": "não prova que a ação não aconteceu", "ambigua": "qual delas",
-            "sem_motivo": "motivo da escolha não foi registrado", "vencida": "evidência histórica válida"}[estado] in fala
+    assert {"ausente": "você lembra de quando foi?", "ambigua": "De qual episódio",
+            "sem_motivo": "motivo da escolha não foi registrado", "vencida": "você lembra de quando foi?"}[estado] in fala
 
 
 @pytest.mark.parametrize("alteracao", ["json", "turno", "texto", "comandos", "autoridade"])
@@ -195,7 +202,55 @@ def test_pergunta_de_outro_tipo_continua_visivel_sem_receber_causa_do_gesto():
     f = p["contrato_fala"]["explicacoes_historicas_por_ato"]
     assert f.partes[1].ocorrencia is None and f.partes[1].fala is None
     resposta = realizacoes_explicacoes_por_ato(f)[0]
-    assert "Qual é a capital do Brasil?" in resposta and "ainda não foi respondida" in resposta
+    assert "Ainda falta saber qual é a capital do Brasil." in resposta
+    assert "ainda não foi respondida" not in resposta
+
+
+@pytest.mark.parametrize("operacao,resultado", [
+    ("6 + 3", "Dá 9."), ("9 dividido por 2", "Dá 4,5."), ("3 / 0", "A divisão por zero não está definida."),
+    ("1 / 3", "Dá 1/3."), ("9007199254740992 + 1", "Dá 9007199254740993."),
+])
+def test_pergunta_independente_tem_resposta_quando_calculo_pode_ser_conferido(operacao, resultado):
+    _, p = consulta(f"Por que você apagou esse arquivo? Quanto é {operacao}?", recuperar=owner_dois_dominios)
+    f = p["contrato_fala"]["explicacoes_historicas_por_ato"]
+    assert f.partes[1].ocorrencia is f.partes[1].fala is None
+    revisao = avaliar_fala_historica("As duas coisas foram causadas pelo servidor.", plano=p)
+    assert "pedido explicito de copia" in revisao["fala"] and resultado in revisao["fala"]
+    assert "servidor" not in revisao["fala"] and "Ainda falta" not in revisao["fala"]
+    assert revisao["problemas"] and not revisao["autoriza_execucao"]
+
+
+def test_pergunta_de_calculo_citada_nao_e_resolvida_como_ato_atual():
+    _, p = consulta('Por que você apagou esse arquivo? O que significa "Quanto é 6 + 3?"?',
+                    recuperar=owner_dois_dominios)
+    resultado = avaliar_fala_historica("9", plano=p)
+    assert "pedido explicito de copia" in resultado["fala"] and "Dá 9." not in resultado["fala"]
+
+
+def test_lacuna_historica_pergunta_pelo_episodio_do_ato_exato():
+    def recuperar(texto, *, turno):
+        return owner_dois_dominios(texto, turno=turno) if "arquivo" in texto else None
+
+    _, p = consulta(recuperar=recuperar)
+    resultado = avaliar_fala_historica("Fiz as duas ações.", plano=p)
+    assert "pedido explicito de copia" in resultado["fala"]
+    assert 'Sobre «Por que você desligou essa tomada?», você lembra de quando foi?' in resultado["fala"]
+    assert "Qual fala ou ação você quer que eu explique" not in resultado["fala"]
+    assert resultado["partes_pendentes"] == [1]
+
+
+def test_esclarecimento_integral_sem_fonte_valida_nao_vira_prova():
+    from mente_laylay.cognicao.explicacao_fala_historica import montar_pacote_explicacao_historica
+
+    _, p = consulta()
+    resultado = avaliar_fala_historica("Fiz as duas ações.", plano=p)
+    assert resultado["partes_pendentes"] == [0, 1] and not resultado["fonte_valida"]
+    confirmacao = avaliar_fala_historica(resultado["fala"], plano=p)
+    assert not confirmacao["problemas"] and confirmacao["cobertura"] == "esclarecimento_historico"
+    pacote = montar_pacote_explicacao_historica(p)
+    pacote.contrato_saida.validar({"fala": resultado["fala"], "comandos": []})
+    with pytest.raises(ValueError):
+        pacote.contrato_saida.validar({"fala": "Fiz as duas ações.", "comandos": []})
 
 
 def test_sem_obrigacao_retrospectiva_nao_cria_julgamento_historico():
@@ -215,7 +270,7 @@ def test_falha_da_segunda_consulta_nao_apaga_fonte_valida_da_primeira(falha):
     _, p = consulta(recuperar=recuperar)
     fala = avaliar_fala_historica("Consegui explicar tudo.", plano=p)["fala"]
     assert "pedido explicito de copia" in fala
-    assert "evidência histórica válida para explicar esta parte" in fala
+    assert 'Sobre «Por que você desligou essa tomada?», você lembra de quando foi?' in fala
 
 
 @pytest.mark.parametrize("alteracao", ["autoridade", "requer_execucao", "comandos"])
