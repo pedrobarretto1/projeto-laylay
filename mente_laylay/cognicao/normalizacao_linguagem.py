@@ -819,6 +819,29 @@ def normalizar_texto_basico(texto: str) -> str:
     return re.sub(r"\s+", " ", sem_acento).strip()
 
 
+def pedido_atual_de_ensino(texto: str) -> bool:
+    """Reconhece a matriz do pedido, sem dar autoridade a marcas de extensão.
+
+    Citação, relato de uma explicação e hipótese não pedem ensino por si.
+    O dimensionador pode permitir uma fala longa sem impor essa finalidade.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
+
+    for parte in enunciados_discursivos(texto_fora_de_citacoes(texto)):
+        base = normalizar_texto_basico(parte)
+        base = re.sub(r'^[^\w]+', '', base)
+        base = re.sub(r'^(?:(?:agora|entao|por favor)[, ]+)+', '', base)
+        if re.match(
+            r'^(?:(?:voce )?(?:pode|poderia|consegue) )?(?:me )?'
+            r'(?:explica|explique|explicar|ensina|ensine|ensinar|detalha|detalhe|detalhar|'
+            r'aprofunde|aprofundar|descreva|descrever)\b', base
+        ) or re.match(r'^(?:eu )?(?:quero|preciso|gostaria de) (?:entender|aprender|saber como)\b', base):
+            return True
+        if parte.rstrip().endswith('?') and re.match(r'^(?:como (?:isso )?funciona|por que isso acontece)\b', base):
+            return True
+    return False
+
+
 def localizar_enunciacao_avaliativa(texto: str) -> re.Match[str] | None:
     """Confere perspectiva/juízo declarados, não conteúdo ou pertinência.
 

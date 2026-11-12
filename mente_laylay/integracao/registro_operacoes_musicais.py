@@ -49,6 +49,7 @@ _DIAGNOSTICO_PERMITIDO = {
 }
 _ESTADO_PERMITIDO = {
     "playlist_ativa", "indice", "modo_aleatorio", "status_avanco", "tab_id",
+    "entrega_reproducao",
 }
 
 

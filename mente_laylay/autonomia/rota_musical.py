@@ -7,6 +7,7 @@ from typing import Any, Dict
 from urllib.parse import urlparse
 
 from mente_laylay.percepcao.modo_jogo import pedido_foco_explicito
+from mente_laylay.integracao.entrega_reproducao import preservar_entrega_reproducao
 
 
 @dataclass(slots=True)
@@ -22,26 +23,7 @@ class RotaMusical:
     def _preservar_entrega_video(
         retorno: dict[str, Any], url: str,
     ) -> dict[str, Any]:
-        """Separa navegação confirmada de reprodução confirmada.
-
-        ``autoplay_blocked`` é emitido pela extensão somente depois que a aba
-        terminou de abrir o vídeo e ela tentou iniciar o player. Logo, existe
-        execução parcial observável mesmo sem confirmação de áudio.
-        """
-        resultado = dict(retorno or {})
-        status = str(resultado.get("status") or "").strip()
-        if status == "autoplay_blocked":
-            resultado["ok"] = True
-            # A navegação foi observada, mas o estado final do áudio não.
-            # ``False`` significaria falha total para o contrato da mente;
-            # ``None`` conserva corretamente uma execução parcial.
-            resultado["confirmado"] = None
-            resultado["status"] = "video_aberto_sem_confirmacao"
-            resultado.setdefault(
-                "message", "O vídeo abriu, mas o player não confirmou o áudio",
-            )
-        resultado.setdefault("url", url)
-        return resultado
+        return preservar_entrega_reproducao(retorno, url)
 
     def abrir_detalhado(self, url: str, *, query: str = "") -> dict[str, Any]:
         """Executa a rota preservando confirmação e evidência do navegador."""

@@ -1163,9 +1163,9 @@ def construir_contrato_semantico_fala(
     evento = dict(planejamento.get("evento_emocional_causal") or {})
     if evento:
         resultado["evento_emocional_causal"] = evento
-    from mente_laylay.cognicao.recordacao_atributo import RecordacaoAtributo
+    from mente_laylay.cognicao.recordacao_atributo import RecordacaoAtributo, RecordacaoNomeacao
     recordacao = planejamento.get('recordacao_atributo')
-    if (type(recordacao) is RecordacaoAtributo and recordacao.texto_usuario == texto
+    if (type(recordacao) in (RecordacaoAtributo, RecordacaoNomeacao) and recordacao.texto_usuario == texto
             and recordacao.turno_id == str(resultado['turno_id'])):
         resultado['recordacao_atributo'] = recordacao
     from mente_laylay.cognicao.retomada_criacao import construir_retomada_criacao
@@ -1301,6 +1301,11 @@ def construir_contrato_semantico_fala(
     if formato_breve is not None:
         resultado['formato_breve'] = formato_breve
         resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], formato_breve.instrucao()]
+    from mente_laylay.cognicao.quantidade_perguntas import construir_pergunta_solicitada
+    pergunta = construir_pergunta_solicitada(texto, plano=planejamento)
+    if pergunta is not None:
+        resultado['pergunta_solicitada'] = pergunta
+        resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], pergunta.instrucao()]
     return resultado
 
 

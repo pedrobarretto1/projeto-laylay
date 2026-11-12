@@ -67,7 +67,7 @@ from cliente.terminal_2.volume_mestre_windows import (
     DefinidorVolumeMestreWindows,
 )
 from cliente.terminal_2.desenvolvedor import PaginaDesenvolvedor
-from cliente.terminal_2.mascote_v1 import MascoteLaylay
+from cliente.terminal_2.mascote_v1 import MascoteLaylay, caminho_avatar_emocao
 from cliente.terminal_2.apresentacao_v1 import ApresentacaoLaylayV1
 from cliente.terminal_2.theme.v1 import qss_interface_v1, qss_pagina_v1
 from cliente.terminal_2.theme import (
@@ -169,18 +169,7 @@ class AroPresenca(QWidget):
         self.atualizar("idle", "calma")
 
     def _avatar_path(self, emocao: str) -> Path:
-        mapa = {
-            "calma": ("calma", "laylay_calma_512_transparente_real_corrigida.png"),
-            "feliz": ("feliz", "laylay_feliz_boca_fechada_512_RGBA.png"),
-            "animada": ("animada", "laylay_animada_512_transparente_real.png"),
-            "irritada": ("brava", "laylay_brava_512_transparente_real.png"),
-            "brava": ("brava", "laylay_brava_512_transparente_real.png"),
-            "triste": ("triste", "laylay_triste_512_transparente_real.png"),
-            "surpresa": ("surpresa", "laylay_surpresa_512_transparente_real.png"),
-            "envergonhada": ("envergonhada", "laylay_envergonhada_512_transparente.png"),
-        }
-        pasta, nome = mapa.get(emocao, mapa["calma"])
-        return self.raiz / "avatar" / pasta / nome
+        return caminho_avatar_emocao(self.raiz, emocao)
 
     def atualizar(self, atividade: str, emocao: str) -> None:
         cores_emocao = {

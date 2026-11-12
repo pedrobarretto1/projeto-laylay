@@ -22,7 +22,8 @@ QUANTIDADE_EXTENSAO = (
 _PEDIDO = re.compile(
     r'(?:(?:agora|por favor)[, ]+)*(?:(?:voc[eê] )?(?:pode|poderia|consegue) (?:me )?)?'
     r'(?:responda|responde|responder) '
-    rf'(?:(?:em|com) (?P<quantidade>{QUANTIDADE_EXTENSAO})|(?P<contraida>numa?)) '
+    r'(?:(?:s[oó]|apenas|somente) )?'
+    rf'(?:(?:(?:em|com) )?(?:[oa]s? )?(?P<quantidade>{QUANTIDADE_EXTENSAO})|(?P<contraida>numa?)) '
     r'(?P<nominal>[^.!?;,:]+)[.!?]*'
 )
 
@@ -65,6 +66,21 @@ def qualificar_intencao_por_capacidades(texto: str) -> QualificacaoIntencao | No
     pedido = _PEDIDO.fullmatch(literal)
     if pedido is None:
         return None
+    # Uma coordenação de entregas preserva o mesmo canal somente quando
+    # cada membro inteiro satisfaz seu próprio contrato do catálogo.
+    membros = re.split(rf'\s+e\s+(?=(?:[oa]\s+|{QUANTIDADE_EXTENSAO}\s+))', pedido['nominal'])
+    if len(membros) > 1:
+        quantidade = pedido['quantidade'] or pedido['contraida'][1:]
+        membros[0] = quantidade + ' ' + membros[0]
+        qualificacoes = []
+        for membro in membros:
+            membro = re.sub(r'^o\s+', 'um ', membro)
+            membro = re.sub(r'^a\s+', 'uma ', membro)
+            q = qualificar_intencao_por_capacidades('Responda com ' + membro)
+            if q is None:
+                return None
+            qualificacoes.extend(q.candidatos)
+        return QualificacaoIntencao(texto, tuple(qualificacoes))
     palavras = pedido['nominal'].split()
     # Coordenação só entre adjetivos da mesma unidade; jamais entre ordens.
     if any(p == 'e' and (i == 0 or i == len(palavras)-1 or

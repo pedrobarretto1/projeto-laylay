@@ -15,18 +15,23 @@ import os
 from pathlib import Path
 import re
 from typing import Any, TYPE_CHECKING
+from urllib.parse import quote
 import uuid
 
-from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPoint, QPointF, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent
+from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPointF, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent
 from PySide6.QtGui import QImage, QColor, QCursor, QPainterPath, QRegion, QIcon, QPixmap, QPainter, QAction, QGuiApplication
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings, QWebEngineUrlRequestInterceptor, QWebEngineUrlRequestInfo, QWebEngineUrlScheme, QWebEngineUrlSchemeHandler, QWebEngineUrlRequestJob
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QDialog, QFileDialog, QMainWindow, QSystemTrayIcon, QMenu, QApplication, QScrollArea, QWidget, QLabel, QPushButton
 
-from cliente.terminal_2.apresentacao_desktop import geometria_desktop, permitir_ativacao_desktop, botao_esquerdo_pressionado
+from cliente.terminal_2.apresentacao_desktop import (
+    TAMANHO_ILHA_COMPACTA,
+    TAMANHO_ILHA_RECOLHIDA,
+    geometria_desktop,
+    permitir_ativacao_desktop,
+)
 from cliente.terminal_2.material_windows import aplicar_material_windows, restaurar_material_windows
-
 from mente_laylay.integracao.desktop_bridge import (
     ErroProtocoloDesktop, TIPOS_BACKEND, validar_mensagem_cliente,
 )
@@ -44,6 +49,58 @@ _ESQUEMA_CAPA = b"laylay-playlist-artwork"
 # Chromium normaliza o host com caminho raiz; ambas as formas são o mesmo
 # token fechado. Caminhos adicionais, query e fragmento continuam recusados.
 _TOKEN_CAPA = re.compile(r"laylay-playlist-artwork://([a-f0-9]{24}\.png)/?")
+_PERFIL_ILHA_DESKTOP = (
+    ("M", 2, 0),
+    ("L", 270, 0),
+    ("C", 272, 0, 258, 8, 258, 16),
+    ("L", 258, 29),
+    ("C", 258, 33, 255, 36, 251, 36),
+    ("L", 21, 36),
+    ("C", 17, 36, 14, 33, 14, 29),
+    ("L", 14, 16),
+    ("C", 14, 8, 0, 0, 2, 0),
+    ("Z",),
+)
+TEMPO_RECOLHIMENTO_ILHA_MS = 5000
+
+
+def _caminho_perfil_ilha_desktop(largura: float, altura: float) -> QPainterPath:
+    escala_x, escala_y = largura / 272, altura / 36
+    forma = QPainterPath()
+    for comando in _PERFIL_ILHA_DESKTOP:
+        tipo, *pontos = comando
+        coordenadas = [
+            (pontos[indice] * escala_x, pontos[indice + 1] * escala_y)
+            for indice in range(0, len(pontos), 2)
+        ]
+        if tipo == "M":
+            forma.moveTo(*coordenadas[0])
+        elif tipo == "L":
+            forma.lineTo(*coordenadas[0])
+        elif tipo == "C":
+            forma.cubicTo(*coordenadas[0], *coordenadas[1], *coordenadas[2])
+        else:
+            forma.closeSubpath()
+    return forma
+
+
+def _mascara_css_ilha_desktop() -> str:
+    comandos = []
+    for tipo, *pontos in _PERFIL_ILHA_DESKTOP:
+        if tipo == "Z":
+            comandos.append("Z")
+        else:
+            comandos.append(tipo + " " + " ".join(
+                f"{pontos[indice]} {pontos[indice + 1]}"
+                for indice in range(0, len(pontos), 2)
+            ))
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 272 36' "
+        "preserveAspectRatio='none'><path fill='white' d='"
+        + " ".join(comandos)
+        + "'/></svg>"
+    )
+    return "data:image/svg+xml," + quote(svg, safe=":/;,+")
 
 
 def _preferencia_inicio(valor: Any) -> dict:
@@ -208,6 +265,10 @@ class PonteInterfaceWebV1(QObject):
     def _registrar_envio(self, mensagem: dict) -> None:
         self._ultimo_envio = str(mensagem.get("id") or "")
 
+    @Slot(bool)
+    def movimento_reduzido_sistema(self, reduzir: bool) -> None:
+        self.janela.definir_movimento_reduzido_sistema(reduzir)
+
     def _emitir(self, mensagem: dict) -> None:
         self.evento.emit(json.dumps(_publico(mensagem), ensure_ascii=False, allow_nan=False))
 
@@ -362,30 +423,19 @@ class PonteInterfaceWebV1(QObject):
     def transicao_pronta(self, sequencia: int, largura: int, altura: int) -> None:
         self.janela.confirmar_transicao_desktop(sequencia, largura, altura)
 
+    @Slot(int)
+    def preparacao_transicao_pronta(self, sequencia: int) -> None:
+        self.janela.iniciar_transicao_desktop(sequencia)
+
     @Slot()
     def arrastar(self) -> None:
         """Gesto de janela, solicitado pela área livre do cabeçalho compacto."""
         if self.janela.modo_apresentacao == 'desktop':
-            self.arrastar_desktop()
             return
         if self.janela.modo_apresentacao != "full":
             handle = self.janela.windowHandle()
             if handle is not None:
                 handle.startSystemMove()
-
-    @Slot()
-    @Slot(int, int)
-    def arrastar_desktop(self, deslocamento_x: int = 0, deslocamento_y: int = 0) -> None:
-        if not botao_esquerdo_pressionado():
-            return
-        self.janela.iniciar_arrasto_desktop()
-        if self.janela._arrastando_desktop:
-            self.janela._arrasto_cursor_origem -= QPoint(deslocamento_x, deslocamento_y)
-            self.janela.atualizar_arrasto_desktop()
-
-    @Slot()
-    def finalizar_arrasto_desktop(self) -> None:
-        self.janela.finalizar_arrasto_desktop()
 
     def _erro(self, tipo: str, mensagem: str) -> str:
         self.publicar({"type": "erro_interface", "tipo": tipo, "message": mensagem}, guardar=False)
@@ -547,6 +597,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.controlador.hide()
         self.preferencias = self.controlador.preferencias
         self.diretorio_web = (diretorio_web or Path(__file__).with_name("web_v1")).resolve()
+        self._desktop_renderer_preparacao_disponivel = (self.diretorio_web / "interface.js").is_file()
         self._streaming_dialogo: QDialog | None = None
         self._streaming_pagina = None
         self._streaming_host: QScrollArea | None = None
@@ -555,25 +606,14 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._pagina_web_ativa = 'home'
         self._fechada = False
         self.modo_apresentacao = "full"
-        self._registro_posicao_desktop = self._ler_posicao_desktop()
-        self._ancora_desktop: QPoint | None = None
-        self._arrastando_desktop = False
-        self._arrasto_cursor_origem = QPoint()
-        self._arrasto_geometria_origem = QRect()
-        self._arrasto_mudou = False
-        self._arrasto_tela: dict | None = None
-        self._arrasto_timer = QTimer(self)
-        self._arrasto_timer.setInterval(16)
-        self._arrasto_timer.setTimerType(Qt.PreciseTimer)
-        self._arrasto_timer.timeout.connect(self.atualizar_arrasto_desktop)
         self._geometria_completa = QRect(100, 100, 1440, 900)
         self._estado_completo = Qt.WindowNoState
         self._flags_completa = self.windowFlags()
         self.estado_desktop = 'compact'
+        self._desktop_recolhida = False
         self.desktop_pagina: str | None = None
         self.desktop_fixado = False
         self._desktop_transitorio = False
-        self._desktop_resumo_por_hover = False
         self._desktop_edicao = False
         self._desktop_compondo = False
         self._desktop_adiamentos = 0
@@ -590,8 +630,10 @@ class JanelaInterfaceWebV1(QMainWindow):
         # A cobertura já esconde a WebView no resize; não gastar pintura de
         # Chromium em cada tamanho intermediário da janela.
         self._web_pintura_congelada = False
+        self._movimento_reduzido_sistema = False
         self._entrada_pendente = False
         self._entrada_exibida = False
+        self._erro_entrada_oculto_por_recolhimento = False
         self._desktop_entrada_ativa = False
         self._entrada_visual_timer = QTimer(self)
         self._entrada_visual_timer.setSingleShot(True)
@@ -619,13 +661,13 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._recolher_desktop_timer.setSingleShot(True)
         self._recolher_desktop_timer.setInterval(750)
         self._recolher_desktop_timer.timeout.connect(self._recolher_desktop_transitorio)
-        self._abrir_desktop_timer = QTimer(self)
-        self._abrir_desktop_timer.setSingleShot(True)
-        self._abrir_desktop_timer.setInterval(200)
-        self._abrir_desktop_timer.timeout.connect(self._expandir_desktop_por_hover)
         self._cursor_desktop_timer = QTimer(self)
         self._cursor_desktop_timer.setInterval(40)
         self._cursor_desktop_timer.timeout.connect(self._observar_cursor_desktop)
+        self._recolher_ilha_timer = QTimer(self)
+        self._recolher_ilha_timer.setSingleShot(True)
+        self._recolher_ilha_timer.setInterval(TEMPO_RECOLHIMENTO_ILHA_MS)
+        self._recolher_ilha_timer.timeout.connect(self._recolher_ilha_por_inatividade)
         self._tray = None
         self._material_desktop = 'fallback'
         # A ilha compacta precisa de transparência; o painel expandido, não.
@@ -683,58 +725,12 @@ class JanelaInterfaceWebV1(QMainWindow):
     def _carregando(self) -> None:
         self.ponte_web._pronta = False
 
-    def _ler_posicao_desktop(self) -> dict | None:
-        try:
-            registro = json.loads(str(self.preferencias.value('v1/desktop_posicao', '') or ''))
-            if not isinstance(registro, dict) or type(registro.get('version')) is not int or registro.get('version') != 1:
-                return None
-            tela, offsets = registro['screen'], registro['offsets']
-            if not isinstance(tela, dict) or any(not isinstance(tela.get(k), str) or len(tela[k]) > 256 for k in ('name', 'manufacturer', 'model', 'serial')):
-                return None
-            valores = [offsets[k] for k in ('center_x', 'top_y')]
-            if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or abs(v) > 1_000_000 for v in valores):
-                return None
-            return registro
-        except (ValueError, TypeError, KeyError, OverflowError):
-            return None
-
-    @staticmethod
-    def _identidade_tela(tela) -> dict:
-        return {'name': tela.name(), 'manufacturer': tela.manufacturer(), 'model': tela.model(), 'serial': tela.serialNumber()}
-
     def _resolver_tela_desktop(self):
         telas = list(QGuiApplication.screens())
         if not telas:
             return None
-        identidade = self._arrasto_tela if self._arrastando_desktop else (self._registro_posicao_desktop or {}).get('screen')
-        if identidade:
-            def pontuar(tela):
-                atual = self._identidade_tela(tela)
-                return sum(peso for chave, peso in [('serial', 8), ('name', 4), ('manufacturer', 1), ('model', 1)] if identidade.get(chave) and atual.get(chave) == identidade[chave])
-            escolhida = max(telas, key=pontuar)
-            if pontuar(escolhida):
-                return escolhida
         primaria = QGuiApplication.primaryScreen()
         return primaria if primaria in telas else telas[0]
-
-    @property
-    def ancora_desktop(self) -> QPoint:
-        if self._ancora_desktop is not None:
-            return QPoint(self._ancora_desktop)
-        tela = self._resolver_tela_desktop()
-        area = tela.availableGeometry() if tela is not None else QRect(0, 0, 800, 600)
-        if self._registro_posicao_desktop:
-            offsets = self._registro_posicao_desktop['offsets']
-            return QPoint(area.left() + round(offsets['center_x']), area.top() + round(offsets['top_y']))
-        compacta = geometria_desktop(area)
-        return QPoint(compacta.center().x(), compacta.top())
-
-    @ancora_desktop.setter
-    def ancora_desktop(self, ponto: QPoint) -> None:
-        self._ancora_desktop = QPoint(ponto)
-
-    def _ancora_para_geometria(self) -> QPoint | None:
-        return self.ancora_desktop if self._ancora_desktop is not None or self._registro_posicao_desktop is not None else None
 
     def iniciar_apresentacao(self) -> None:
         """Entrada única: nenhuma moldura antiga fica visível antes do renderer."""
@@ -794,6 +790,24 @@ class JanelaInterfaceWebV1(QMainWindow):
                 "sidebar": bool(self.preferencias.value("sidebar_expandida", True, type=bool)),
                 "home": home}
 
+    def _movimento_reduzido(self) -> bool:
+        return self._movimento_reduzido_sistema or self.preferencias_publicas()['reduced']
+
+    def _concluir_animacao_desktop(self) -> None:
+        if self._animacao_desktop.state() == QPropertyAnimation.Running:
+            self._animacao_desktop.stop()
+            self.setGeometry(self._desktop_destino)
+            self._geometria_desktop_concluida()
+
+    def definir_movimento_reduzido_sistema(self, reduzir: bool) -> None:
+        self._movimento_reduzido_sistema = bool(reduzir)
+        if not self._movimento_reduzido():
+            return
+        self._concluir_animacao_desktop()
+        if self._animacao_entrada.state() == QPropertyAnimation.Running:
+            self._animacao_entrada.stop()
+            self.setWindowOpacity(1)
+
     def definir_preferencia(self, nome: str, valor: Any) -> None:
         if nome == 'inicio_inteligente':
             inicio = _preferencia_inicio(valor)
@@ -812,6 +826,8 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.preferencias.sync()
         self.ponte_web.publicar({"type": "preferencias_ui", **self.preferencias_publicas()})
         if nome == 'reduzir_movimento' and self.modo_apresentacao == 'desktop':
+            if self._movimento_reduzido():
+                self._concluir_animacao_desktop()
             self._animar_geometria_desktop()
 
     def publicar_avatar(self) -> None:
@@ -830,7 +846,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.ponte_web.publicar({"type": "avatar_ui", "data_url": "data:image/png;base64," + bytes(dados.toBase64()).decode("ascii")})
 
     def _pagina_apresentada_desktop(self) -> str | None:
-        return None if self._desktop_resumo_por_hover else self.desktop_pagina
+        return self.desktop_pagina
 
     def apresentacao_publica(self) -> dict:
         pagina = self._pagina_apresentada_desktop()
@@ -842,7 +858,9 @@ class JanelaInterfaceWebV1(QMainWindow):
             "available_width": disponivel.width(),
             "available_height": disponivel.height(),
             "desktop_state": self.estado_desktop,
+            "desktop_docked": self._desktop_recolhida if self.modo_apresentacao == "desktop" else False,
             "desktop_material": self._material_desktop if self.modo_apresentacao == "desktop" else "fallback",
+            "desktop_mask": _mascara_css_ilha_desktop() if self.modo_apresentacao == "desktop" else "",
             "desktop_entry": self._desktop_entrada_ativa,
             "desktop_pinned": self.desktop_fixado,
             "desktop_page": pagina,
@@ -853,7 +871,6 @@ class JanelaInterfaceWebV1(QMainWindow):
             "desktop_target_height": self._desktop_destino.height() or self.height(),
             "streaming_open": self._streaming_aberto,
             "streaming_expanded": self._streaming_ampliado,
-            "desktop_position_saved": self._registro_posicao_desktop is not None,
             "visible": self.isVisible(),
         }
 
@@ -887,7 +904,6 @@ class JanelaInterfaceWebV1(QMainWindow):
         self.parar_streaming()
         self._animacao_desktop.stop()
         self._retomar_pintura_web_desktop()
-        self._cancelar_arrasto_desktop()
         self._inatividade_desktop_timer.stop()
         self._remover_cobertura_transicao()
         self._desktop_fase = 'idle'
@@ -896,9 +912,10 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._entrada_pendente = False
             self._prazo_entrada.stop()
             self.setWindowOpacity(1)
+            self._restaurar_erro_entrada()
         self._cursor_desktop_timer.stop()
         self._recolher_desktop_timer.stop()
-        self._abrir_desktop_timer.stop()
+        self._recolher_ilha_timer.stop()
         self.clearMask()
         # Restaurar o canvas transparente ao voltar para a ilha compacta,
         # tela cheia ou outras apresentações.
@@ -924,12 +941,12 @@ class JanelaInterfaceWebV1(QMainWindow):
             if tela is not None:
                 self._observar_tela_desktop(tela)
             self.estado_desktop = 'compact'
+            self._desktop_recolhida = False
             self.desktop_fixado = False
             self._desktop_transitorio = False
-            self._desktop_resumo_por_hover = False
             self._desktop_dentro = False
             self._ultimo_cursor_global = None
-            desejada = geometria_desktop(disponivel, ancora=self._ancora_para_geometria())
+            desejada = geometria_desktop(disponivel)
         else:
             self.setMinimumSize(240, 70) if modo == "island" else self.setMinimumSize(320, 420)
             largura, altura = (330, 86) if modo == "island" else (425, 720)
@@ -950,6 +967,8 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._cursor_desktop_timer.start()
             self._garantir_tray()
         self.ponte_web.publicar(self.apresentacao_publica())
+        if modo == 'desktop' and self.estado_desktop == 'compact':
+            self._reiniciar_recolhimento_ilha()
 
     def _garantir_tray(self) -> None:
         if self._tray is not None or not QSystemTrayIcon.isSystemTrayAvailable():
@@ -982,6 +1001,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             return
         self._telas_observadas.add(identidade)
         tela.availableGeometryChanged.connect(lambda _area: self._reancorar_desktop())
+        tela.geometryChanged.connect(lambda _area: self._reancorar_desktop())
         tela.logicalDotsPerInchChanged.connect(lambda _dpi: self._reancorar_desktop())
         tela.destroyed.connect(lambda _obj: self._telas_observadas.discard(identidade))
 
@@ -992,8 +1012,6 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def _reancorar_desktop(self) -> None:
         if self.modo_apresentacao == 'desktop' and not self._fechada:
-            if self._arrastando_desktop:
-                return
             self._animar_geometria_desktop()
 
     def _mostrar_desktop(self) -> None:
@@ -1016,7 +1034,6 @@ class JanelaInterfaceWebV1(QMainWindow):
             return
         if normalizada != 'streaming':
             self.parar_streaming()
-        self._desktop_resumo_por_hover = False
         self.desktop_pagina = normalizada
         self._pagina_web_ativa = normalizada
         self.expandir_desktop(fixar=True)
@@ -1027,98 +1044,13 @@ class JanelaInterfaceWebV1(QMainWindow):
             self.raise_()
             self.activateWindow()
 
-    def iniciar_arrasto_desktop(self) -> None:
-        if self._fechada or self.modo_apresentacao != 'desktop' or self._arrastando_desktop:
-            return
-        self._abrir_desktop_timer.stop()
-        self._recolher_desktop_timer.stop()
-        self._animacao_desktop.stop()
-        self._retomar_pintura_web_desktop()
-        self._desktop_sequencia += 1
-        self._desktop_destino = QRect(self.geometry())
-        self._desktop_fase = 'committing'
-        self._inatividade_desktop_timer.stop()
-        self._arrastando_desktop = True
-        self._arrasto_cursor_origem = QCursor.pos()
-        self._arrasto_geometria_origem = QRect(self.geometry())
-        self._arrasto_ancora_anterior = QPoint(self._ancora_desktop) if self._ancora_desktop is not None else None
-        tela = QGuiApplication.screenAt(self._arrasto_cursor_origem) or self._resolver_tela_desktop()
-        self._arrasto_tela = self._identidade_tela(tela) if tela is not None else None
-        self._arrasto_mudou = False
-        self._arrasto_timer.start()
-        self.ponte_web.publicar({'type': 'arrasto_desktop', 'active': True}, guardar=False)
-        self.ponte_web.publicar(self.apresentacao_publica())
-
-    def _aplicar_deslocamento_arrasto(self) -> None:
-        if not self._arrastando_desktop:
-            return
-        cursor = QCursor.pos()
-        delta = cursor - self._arrasto_cursor_origem
-        if not self._arrasto_mudou and delta.manhattanLength() < 6:
-            return
-        tela = QGuiApplication.screenAt(cursor) or self._resolver_tela_desktop()
-        if tela is None:
-            return
-        self._arrasto_tela = self._identidade_tela(tela)
-        area = tela.availableGeometry()
-        desejada = self._arrasto_geometria_origem.translated(delta)
-        largura, altura = min(desejada.width(), area.width()), min(desejada.height(), area.height())
-        x = min(max(desejada.x(), area.left()), area.right() - largura + 1)
-        y = min(max(desejada.y(), area.top()), area.bottom() - altura + 1)
-        limitada = QRect(x, y, largura, altura)
-        if limitada != self._arrasto_geometria_origem:
-            self._arrasto_mudou = True
-        self._ancora_desktop = QPoint(limitada.center().x(), limitada.top())
-        if limitada.size() != self.size():
-            self._cobrir_transicao()
-        self.setGeometry(limitada)
-        self._desktop_destino = QRect(limitada)
-
-    def atualizar_arrasto_desktop(self) -> None:
-        if not self._arrastando_desktop:
-            return
-        # O último deslocamento pertence ao gesto mesmo se a soltura aconteceu
-        # fora da janela entre dois ticks. Primeiro aplicar; depois concluir.
-        self._aplicar_deslocamento_arrasto()
-        if not botao_esquerdo_pressionado():
-            self.finalizar_arrasto_desktop()
-
-    def finalizar_arrasto_desktop(self) -> None:
-        if not self._arrastando_desktop:
-            return
-        self._aplicar_deslocamento_arrasto()
-        tela = self._resolver_tela_desktop()
-        if self._arrasto_mudou and tela is not None:
-            area = tela.availableGeometry()
-            ancora = QPoint(self.geometry().center().x(), self.geometry().top())
-            registro = {'version': 1, 'screen': self._identidade_tela(tela),
-                        'offsets': {'center_x': ancora.x() - area.left(), 'top_y': ancora.y() - area.top()}}
-            self.preferencias.setValue('v1/desktop_posicao', json.dumps(registro, ensure_ascii=False, separators=(',', ':')))
-            self.preferencias.sync()
-            self._registro_posicao_desktop = registro
-            self._ancora_desktop = None
-        else:
-            self._ancora_desktop = self._arrasto_ancora_anterior
-        self._arrasto_timer.stop()
-        self._arrastando_desktop = False
-        self._arrasto_tela = None
-        self.ponte_web.publicar({'type': 'arrasto_desktop', 'active': False}, guardar=False)
-        self.registrar_atividade_desktop()
-        self._animar_geometria_desktop()
-
-    def _cancelar_arrasto_desktop(self) -> None:
-        self._arrasto_timer.stop()
-        if self._arrastando_desktop:
-            self._ancora_desktop = self._arrasto_ancora_anterior
-            self._arrastando_desktop = False
-            self._arrasto_tela = None
-            self.ponte_web.publicar({'type': 'arrasto_desktop', 'active': False}, guardar=False)
-
     def expandir_desktop(self, fixar: bool = False) -> None:
         if self.modo_apresentacao != 'desktop':
             return
-        self._abrir_desktop_timer.stop()
         self._recolher_desktop_timer.stop()
+        self._recolher_ilha_timer.stop()
+        self._desktop_recolhida = False
+        self._restaurar_erro_entrada()
         self.desktop_fixado = self.desktop_fixado or bool(fixar)
         self._desktop_transitorio = not self.desktop_fixado
         self.estado_desktop = 'expanded'
@@ -1134,14 +1066,13 @@ class JanelaInterfaceWebV1(QMainWindow):
     def recolher_desktop(self) -> None:
         if self.modo_apresentacao != 'desktop':
             return
-        self._cancelar_arrasto_desktop()
         self._recolher_desktop_timer.stop()
-        self._abrir_desktop_timer.stop()
+        self._recolher_ilha_timer.stop()
+        self._desktop_recolhida = False
         # Um fechamento explícito sob o cursor só rearma com nova entrada.
         self._desktop_dentro = self.mask().contains(self.mapFromGlobal(QCursor.pos()))
         self.desktop_fixado = False
         self._desktop_transitorio = False
-        self._desktop_resumo_por_hover = False
         self.estado_desktop = 'compact'
         self._desktop_edicao = False
         self._inatividade_desktop_timer.stop()
@@ -1150,29 +1081,56 @@ class JanelaInterfaceWebV1(QMainWindow):
         permitir_ativacao_desktop(int(self.winId()), False)
         self._animar_geometria_desktop()
 
-    def _expandir_desktop_por_hover(self) -> None:
-        if (self.modo_apresentacao != 'desktop' or not self.isVisible() or self._fechada
-                or self.estado_desktop != 'compact' or self._arrastando_desktop
-                or self._entrada_pendente or self.windowOpacity() <= 0
-                or botao_esquerdo_pressionado()):
+    def _recolher_ilha_por_inatividade(self) -> None:
+        if (self._fechada or self.modo_apresentacao != 'desktop'
+                or self.estado_desktop != 'compact' or self._desktop_recolhida
+                or not self.isVisible()):
             return
-        cursor = QCursor.pos()
-        if not self.mask().contains(self.mapFromGlobal(cursor)):
+        ponto = self.mapFromGlobal(QCursor.pos())
+        if self.rect().contains(ponto) and self.mask().contains(ponto):
+            self._desktop_dentro = True
             return
-        if (QGuiApplication.platformName() == 'windows'
-                and QGuiApplication.topLevelAt(cursor) != self.windowHandle()):
+        self._desktop_dentro = False
+        self._desktop_recolhida = True
+        if self._erro_entrada is not None and self._erro_entrada.isVisible():
+            self._erro_entrada_oculto_por_recolhimento = True
+            self._erro_entrada.hide()
+        self._animar_geometria_desktop()
+
+    def _reiniciar_recolhimento_ilha(self) -> None:
+        self._recolher_ilha_timer.stop()
+        if (self._fechada or self.modo_apresentacao != 'desktop'
+                or self.estado_desktop != 'compact' or self._desktop_recolhida
+                or not self.isVisible()):
             return
-        if self._animacao_desktop.state() == QPropertyAnimation.Running:
-            destino = self._desktop_destino
-            regiao_compacta = self._regiao_desktop(destino.width(), destino.height())
-            if not regiao_compacta.contains(cursor - destino.topLeft()):
-                return
-        self._desktop_resumo_por_hover = True
-        self.expandir_desktop()
+        ponto = self.mapFromGlobal(QCursor.pos())
+        if self.rect().contains(ponto) and self.mask().contains(ponto):
+            self._desktop_dentro = True
+            return
+        self._desktop_dentro = False
+        self._recolher_ilha_timer.start(TEMPO_RECOLHIMENTO_ILHA_MS)
+
+    def _mostrar_ilha_no_hover(self) -> None:
+        if (self.modo_apresentacao != 'desktop' or not self._desktop_recolhida
+                or self.estado_desktop != 'compact'):
+            return
+        self._recolher_ilha_timer.stop()
+        self._desktop_recolhida = False
+        self._restaurar_erro_entrada()
+        self._animar_geometria_desktop()
+
+    def _restaurar_erro_entrada(self) -> None:
+        if not self._erro_entrada_oculto_por_recolhimento:
+            return
+        self._erro_entrada_oculto_por_recolhimento = False
+        if self._erro_entrada is not None and not self._fechada:
+            self._erro_entrada.setGeometry(self.rect())
+            self._erro_entrada.show()
+            self._erro_entrada.raise_()
 
     def _recolher_desktop_transitorio(self) -> None:
         if (not self._desktop_transitorio or self.desktop_fixado or self._desktop_dentro
-                or self._desktop_edicao or self._desktop_compondo or self._arrastando_desktop
+                or self._desktop_edicao or self._desktop_compondo
                 or self._fala_em_andamento() or self._streaming_em_transmissao()
                 or QApplication.activeModalWidget() is not None or QApplication.activePopupWidget() is not None):
             return
@@ -1182,7 +1140,7 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def registrar_atividade_desktop(self) -> None:
         """Só gestos humanos locais renovam o único prazo de inatividade."""
-        if self.modo_apresentacao == 'desktop' and self.estado_desktop == 'expanded' and not self._fechada and not self._arrastando_desktop:
+        if self.modo_apresentacao == 'desktop' and self.estado_desktop == 'expanded' and not self._fechada:
             self._desktop_adiamentos = 0
             self._inatividade_desktop_timer.start(20_000)
 
@@ -1200,7 +1158,7 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def _recolher_por_perda_de_foco(self) -> None:
         if (self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded'
-                or self._fechada or self._arrastando_desktop or self._desktop_transitorio
+                or self._fechada or self._desktop_transitorio or self._desktop_fase != 'idle'
                 or not self._foco_desktop_observado):
             return
         if self._desktop_em_foco():
@@ -1228,7 +1186,7 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def _recolher_por_inatividade(self) -> None:
         if (self.modo_apresentacao != 'desktop' or self.estado_desktop != 'expanded'
-                or self._fechada or self._arrastando_desktop or self._desktop_transitorio):
+                or self._fechada or self._desktop_transitorio):
             return
         # A janela em uso permanece aberta: sem recolher no meio da digitação.
         if self._desktop_em_foco():
@@ -1276,8 +1234,10 @@ class JanelaInterfaceWebV1(QMainWindow):
         if tela is None:
             return
         self._observar_tela_desktop(tela)
-        destino = geometria_desktop(tela.availableGeometry(), self.estado_desktop == 'expanded',
-                                    self._pagina_apresentada_desktop(), self._ancora_para_geometria())
+        destino = geometria_desktop(
+            tela.availableGeometry(), self.estado_desktop == 'expanded',
+            self._pagina_apresentada_desktop(), recolhida=self._desktop_recolhida,
+        )
         if self._desktop_destino == destino and self._animacao_desktop.state() == QPropertyAnimation.Running:
             self.ponte_web.publicar(self.apresentacao_publica())
             return
@@ -1287,38 +1247,72 @@ class JanelaInterfaceWebV1(QMainWindow):
                 self._desktop_sequencia += 1
                 self._desktop_fase = 'committing'
             self.ponte_web.publicar(self.apresentacao_publica())
+            if self.estado_desktop == 'compact':
+                self._reiniciar_recolhimento_ilha()
             return
         self._animacao_desktop.stop()
         self._retomar_pintura_web_desktop()
         self._desktop_destino = destino
         self._desktop_sequencia += 1
-        if self.isVisible() and self.ponte_web._pronta:
+        geometria_origem = self.geometry()
+        if (self.isVisible() and self.ponte_web._pronta
+                and self.estado_desktop == 'compact'
+                and (geometria_origem.width() > TAMANHO_ILHA_COMPACTA[0]
+                     or geometria_origem.height() > TAMANHO_ILHA_COMPACTA[1])):
             self._cobrir_transicao()
+        aumentando = destino.width() > geometria_origem.width() or destino.height() > geometria_origem.height()
+        if (aumentando and self.estado_desktop == 'expanded'
+                and self._desktop_renderer_preparacao_disponivel
+                and not self._movimento_reduzido()):
+            self._desktop_fase = 'starting'
+            self.ponte_web.publicar(self.apresentacao_publica())
+            return
         self._desktop_fase = 'resizing'
         self.ponte_web.publicar(self.apresentacao_publica())
-        if self.preferencias_publicas()['reduced']:
+        if self._movimento_reduzido():
             self.setGeometry(destino)
             self._geometria_desktop_concluida()
         else:
-            self._pausar_pintura_web_desktop()
-            expandindo = self.estado_desktop == 'expanded'
+            self._iniciar_animacao_geometria_desktop(destino, geometria_origem)
+
+    def iniciar_transicao_desktop(self, sequencia: int) -> None:
+        if (self._fechada or self.modo_apresentacao != 'desktop'
+                or self.estado_desktop != 'expanded'
+                or self._desktop_fase != 'starting'
+                or sequencia != self._desktop_sequencia):
+            return
+        destino = QRect(self._desktop_destino)
+        geometria_origem = QRect(self.geometry())
+        self._desktop_fase = 'resizing'
+        self.ponte_web.publicar(self.apresentacao_publica())
+        if self._movimento_reduzido():
+            self.setGeometry(destino)
+            self._geometria_desktop_concluida()
+            return
+        self._iniciar_animacao_geometria_desktop(destino, geometria_origem)
+
+    def _iniciar_animacao_geometria_desktop(self, destino: QRect, origem: QRect) -> None:
+        if destino == origem:
+            self._geometria_desktop_concluida()
+            return
+        aumentando = destino.width() > origem.width() or destino.height() > origem.height()
+        if aumentando:
             curva = QEasingCurve(QEasingCurve.BezierSpline)
-            # O conteúdo pode ultrapassar a escala final. O retângulo nativo
-            # fica na área útil para preservar a máscara e o hit test.
-            controle_1, controle_2 = ((.34, 1.), (.5, 1.)) if expandindo else ((.3, 0.), (.15, 1.))
-            curva.addCubicBezierSegment(QPointF(*controle_1), QPointF(*controle_2), QPointF(1., 1.))
-            self._animacao_desktop.setEasingCurve(curva)
-            self._animacao_desktop.setDuration(620 if expandindo else 500)
-            self._animacao_desktop.setStartValue(self.geometry())
-            self._animacao_desktop.setEndValue(destino)
-            self._animacao_desktop.start()
+            # Evita o impulso inicial, mas revela espaço suficiente cedo para o conteúdo acompanhar.
+            curva.addCubicBezierSegment(QPointF(.08, 0), QPointF(.35, 1), QPointF(1, 1))
+        else:
+            curva = QEasingCurve(QEasingCurve.InCubic)
+        self._animacao_desktop.setEasingCurve(curva)
+        self._animacao_desktop.setDuration(480 if self.estado_desktop == 'expanded' else 360)
+        self._animacao_desktop.setStartValue(origem)
+        self._animacao_desktop.setEndValue(destino)
+        self._animacao_desktop.start()
 
     def _cobrir_transicao(self) -> None:
         if self._transicao_cobertura is not None:
             return
-        # A textura WebEngine chega depois da geometria HWND. Congelar o
-        # quadro anterior sobre fundo opaco impede buracos e reflow aparente.
-        # A cobertura também retém cliques até os controles voltarem a aparecer.
+        # Durante o recolhimento, preservar o painel opaco até o WebEngine
+        # confirmar o novo viewport; a expansão revela o conteúdo ao vivo.
         quadro = self.web.grab()
         cobertura = QLabel(self)
         cobertura.setObjectName('desktopTransitionCover')
@@ -1341,7 +1335,11 @@ class JanelaInterfaceWebV1(QMainWindow):
         if self.modo_apresentacao != 'desktop' or self._fechada:
             return
         self._desktop_fase = 'committing'
+        if self.estado_desktop == 'compact':
+            self._atualizar_mascara_desktop()
         self.ponte_web.publicar(self.apresentacao_publica())
+        if self.estado_desktop == 'compact':
+            self._reiniciar_recolhimento_ilha()
 
     def confirmar_transicao_desktop(self, sequencia: int, largura: int, altura: int) -> None:
         if self._fechada or self.modo_apresentacao != 'desktop' or sequencia != self._desktop_sequencia:
@@ -1359,14 +1357,10 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._prazo_entrada.stop()
             self._entrada_pendente = False
             self._entrada_exibida = True
-            if self.preferencias_publicas()['reduced']:
-                self.setWindowOpacity(1)
-            else:
+            self.setWindowOpacity(1)
+            if not self._movimento_reduzido():
                 self._desktop_entrada_ativa = True
                 self._entrada_visual_timer.start()
-                self._animacao_entrada.setStartValue(0)
-                self._animacao_entrada.setEndValue(1)
-                self._animacao_entrada.start()
         self._desktop_fase = 'idle'
         self.ponte_web.publicar(self.apresentacao_publica())
 
@@ -1378,14 +1372,34 @@ class JanelaInterfaceWebV1(QMainWindow):
                 self.ponte_web.publicar(self.apresentacao_publica())
 
     @staticmethod
-    def _regiao_desktop(largura: int, altura: int) -> QRegion:
+    def _regiao_desktop(
+        largura: int,
+        altura: int,
+        compacta: bool = False,
+        recolhida: bool = False,
+    ) -> QRegion:
+        if compacta and recolhida:
+            largura_linha = min(TAMANHO_ILHA_RECOLHIDA[0], largura)
+            altura_linha = min(TAMANHO_ILHA_RECOLHIDA[1], altura)
+            return QRegion((largura - largura_linha) // 2, 0, largura_linha, altura_linha)
+        if compacta:
+            forma = _caminho_perfil_ilha_desktop(largura, altura)
+            return QRegion(forma.toFillPolygon().toPolygon())
+
         forma = QPainterPath()
-        forma.addRoundedRect(0, 0, largura, altura, 24, 24)
-        return QRegion(forma.toFillPolygon().toPolygon())
+        raio = min(24, (altura + 1) // 2)
+        forma.addRoundedRect(0, 0, largura, altura, raio, raio)
+        arredondada = QRegion(forma.toFillPolygon().toPolygon())
+        topo_reto = QRegion(0, 0, largura, min(raio, altura))
+        return arredondada.united(topo_reto)
 
     def _atualizar_mascara_desktop(self) -> None:
         if self.modo_apresentacao == 'desktop':
-            self.setMask(self._regiao_desktop(self.width(), self.height()))
+            self.setMask(self._regiao_desktop(
+                self.width(), self.height(),
+                compacta=self.estado_desktop == 'compact',
+                recolhida=self._desktop_recolhida and self._desktop_fase != 'resizing',
+            ))
 
     def resizeEvent(self, evento) -> None:  # noqa: N802
         super().resizeEvent(evento)
@@ -1405,13 +1419,14 @@ class JanelaInterfaceWebV1(QMainWindow):
             if self._material_desktop == 'fallback':
                 # Sem o backdrop retangular do DWM: Qt/CSS desenha só a cápsula.
                 restaurar_material_windows(int(self.winId()))
+            if self.estado_desktop == 'compact':
+                self._reiniciar_recolhimento_ilha()
 
     def hideEvent(self, evento) -> None:  # noqa: N802
         self._cursor_desktop_timer.stop()
-        self._abrir_desktop_timer.stop()
         self._recolher_desktop_timer.stop()
+        self._recolher_ilha_timer.stop()
         self._inatividade_desktop_timer.stop()
-        self._cancelar_arrasto_desktop()
         super().hideEvent(evento)
 
     def _observar_cursor_desktop(self) -> None:
@@ -1421,24 +1436,29 @@ class JanelaInterfaceWebV1(QMainWindow):
         global_cursor = QCursor.pos()
         ponto = self.mapFromGlobal(global_cursor)
         dentro = self.rect().contains(ponto) and self.mask().contains(ponto)
-        estava_dentro = self._desktop_dentro
+        if self._desktop_recolhida:
+            if dentro:
+                self._desktop_dentro = True
+                self._ultimo_cursor_global = (global_cursor.x(), global_cursor.y())
+                self._ultimo_cursor_desktop = None
+                self._mostrar_ilha_no_hover()
+            return
         self._desktop_dentro = dentro
         cursor_global = (global_cursor.x(), global_cursor.y())
         moveu = cursor_global != self._ultimo_cursor_global
         if self._ultimo_cursor_global is not None and moveu and dentro:
             self.registrar_atividade_desktop()
         self._ultimo_cursor_global = cursor_global
-        if not self._arrastando_desktop:
-            if dentro:
-                self._recolher_desktop_timer.stop()
-                if self.estado_desktop == 'compact' and not estava_dentro and moveu:
-                    self._abrir_desktop_timer.start()
-            else:
-                self._abrir_desktop_timer.stop()
-                if self._desktop_transitorio and not self._recolher_desktop_timer.isActive():
-                    self._recolher_desktop_timer.start()
+        if dentro:
+            self._recolher_desktop_timer.stop()
+            self._recolher_ilha_timer.stop()
+        else:
+            if self._desktop_transitorio and not self._recolher_desktop_timer.isActive():
+                self._recolher_desktop_timer.start()
+            if self.estado_desktop == 'compact' and not self._recolher_ilha_timer.isActive():
+                self._reiniciar_recolhimento_ilha()
         cursor = (ponto.x(), ponto.y(), dentro)
-        if cursor != self._ultimo_cursor_desktop and not self.preferencias_publicas()['reduced']:
+        if cursor != self._ultimo_cursor_desktop and not self._movimento_reduzido():
             self._ultimo_cursor_desktop = cursor
             self.ponte_web.publicar({'type': 'cursor_desktop', 'x': ponto.x(), 'y': ponto.y(), 'inside': dentro, 'visible': True}, guardar=False)
 
@@ -1514,14 +1534,12 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._animacao_desktop.stop()
             self._animacao_entrada.stop()
             self._prazo_entrada.stop()
-            self._arrasto_timer.stop()
             self._remover_cobertura_transicao()
             self._inatividade_desktop_timer.stop()
             self._recolher_foco_timer.stop()
             QApplication.instance().removeEventFilter(self)
             self._cursor_desktop_timer.stop()
             self._recolher_desktop_timer.stop()
-            self._abrir_desktop_timer.stop()
             if self._tray is not None:
                 self._tray.hide()
             if self._streaming_pagina is not None:

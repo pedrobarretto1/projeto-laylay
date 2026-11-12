@@ -12,6 +12,7 @@ from mente_laylay.personalidade.falas_variadas import escolher as escolher_fala_
 
 
 INTENCOES_SISTEMA = frozenset({
+    "PROCESS_RESOURCE_USAGE",
     "SCREEN_CAPTURE", "VISION_QUERY", "GAME_VISION", "NOTIFICATIONS", "LOCK_PC",
 })
 
@@ -253,6 +254,25 @@ def executar_intencao_sistema(
     intent = str(intent or "").upper().strip()
     if intent not in INTENCOES_SISTEMA:
         return ResultadoDespacho.nao_tratado()
+    if intent == 'PROCESS_RESOURCE_USAGE':
+        from mente_laylay.percepcao.consumo_processos import observar_consumo
+        metrica = params.get('metrica')
+        if destino not in {'', 'local', 'pc_a'} or metrica != 'memoria':
+            deps.marcar_resultado('falha_execucao', executou=False, confirmado=False)
+            _falar(ctx, 'Não consegui determinar o recurso local dessa consulta.')
+            return ResultadoDespacho.concluido(False)
+        leitor = ctx.get('psutil')
+        if leitor is None:
+            import psutil
+            leitor = psutil
+        observacao = observar_consumo(leitor, metrica)
+        fala = observacao.fala()
+        deps.marcar_resultado('consulta_parcial' if observacao.parcial else
+                             'consulta_concluida' if observacao.disponivel else 'falha_execucao',
+                             executou=observacao.disponivel, confirmado=observacao.disponivel,
+                             detalhe=fala)
+        _falar(ctx, fala)
+        return ResultadoDespacho.concluido(observacao.disponivel)
     if intent in {"SCREEN_CAPTURE", "VISION_QUERY"}:
         return _capturar_tela(params, destino, ctx, deps)
     if intent == "GAME_VISION":

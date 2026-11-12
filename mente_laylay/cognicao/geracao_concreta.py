@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import re
 from typing import Any, Iterable, Mapping, TYPE_CHECKING
-from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual
+from mente_laylay.cognicao.normalizacao_linguagem import texto_discute_evidencia_textual, pedido_atual_de_ensino
 
 if TYPE_CHECKING:
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
@@ -706,7 +706,7 @@ def construir_roteiro_geracao_concreta(
             "respeitar disponibilidade e limites documentados sem inferir estados atuais",
             "tratar a dúvida com atenção; exemplos didáticos não são ações deste turno",
         )
-    elif classificar_proporcao(bruto) in {"explicativa", "matematica"}:
+    elif classificar_proporcao(bruto) == "matematica" or pedido_atual_de_ensino(bruto):
         estrategia = "explicacao_didatica"
         ancora = bruto
         nucleo = "ensinar a ideia pedida com clareza e chegar à conclusão neste turno"

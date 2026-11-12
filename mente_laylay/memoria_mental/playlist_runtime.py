@@ -6,6 +6,8 @@ callbacks do cerebro principal para continuar conectado a mesma mente.
 
 from __future__ import annotations
 
+from mente_laylay.integracao.entrega_reproducao import preservar_entrega_reproducao
+
 import random
 import re
 import threading
@@ -106,6 +108,7 @@ class PlaylistRuntime:
         self.log(f"[PLAYLIST] {prefixo_log} (Strong Reuse): {info.get('titulo') or url} | Canal: {info.get('canal') or ''}")
         confirmado = None
         status_entrega = ""
+        entrega: dict = {}
         if callable(self.youtube_play):
             try:
                 tab_id = self.playlist_state.get("tab_id")
@@ -117,17 +120,13 @@ class PlaylistRuntime:
                 self.log(f"⚠️ [PLAYLIST:EXECUCAO] falha ao enviar faixa: {type(exc).__name__}: {exc}")
                 return False
             if isinstance(retorno, dict):
-                status_entrega = str(retorno.get("status") or "").strip()
-                confirmado = retorno.get("confirmado")
-                tab = retorno.get("tab")
+                entrega = preservar_entrega_reproducao(retorno, url)
+                status_entrega = str(entrega.get("status_executor") or entrega.get("status") or "").strip()
+                confirmado = entrega.get("confirmado")
+                tab = entrega.get("tab")
                 if isinstance(tab, dict) and isinstance(tab.get("id"), int):
                     self.playlist_state["tab_id"] = tab["id"]
-                # ``autoplay_blocked`` só é devolvido pela extensão depois de
-                # a navegação terminar e o controle ``play`` ser tentado na
-                # página. Portanto a faixa foi entregue à aba, embora o áudio
-                # não tenha sido confirmado. Isso é evidência suficiente para
-                # manter a fila ativa, mas não para afirmar que está tocando.
-                entregue = bool(retorno.get("ok")) or status_entrega == "autoplay_blocked"
+                entregue = bool(entrega.get("ok"))
             else:
                 entregue = retorno is not False
                 confirmado = True if entregue else False
@@ -139,7 +138,8 @@ class PlaylistRuntime:
         self.playlist_state["last_url"] = url
         self.playlist_state["last_delivery_status"] = status_entrega or "enviado"
         self.playlist_state["last_play_confirmed"] = confirmado is True
-        if confirmado is False:
+        self.playlist_state["last_play_result"] = entrega
+        if confirmado is not True:
             self.log(
                 "⚠️ [PLAYLIST:EXECUCAO] faixa aberta; reprodução não confirmada "
                 f"| playlist={self.playlist_state.get('name') or '-'}"

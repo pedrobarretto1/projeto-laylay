@@ -70,6 +70,20 @@ def _declaracoes_da_fonte(texto: str) -> list[str]:
     return declaracoes
 
 
+def _predicados_das_fontes(usuario: str, plano: Mapping[str, Any]) -> set[str]:
+    # Textos idênticos podem aparecer como entrada atual e relato. Aqui a
+    # elegibilidade de cada fonte já foi conferida e só importa o predicado.
+    fontes = {usuario: None}
+    for relato in plano.get('relatos_usuario') or ():
+        if (isinstance(relato, Mapping) and relato.get('autor') == 'usuario'
+            and relato.get('origem') in {'historico_conversa', 'fala_atual'}
+            and relato.get('status') == 'relatado_pelo_usuario'
+            and type(relato.get('texto')) is str):
+            fontes[relato['texto']] = None
+    return {predicado for fonte in fontes for t in _declaracoes_da_fonte(fonte)
+            if (predicado := _predicado(t, origem=True)) is not None}
+
+
 def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
     """Detecta só o recorte declarativo, inclusive pergunta com pressuposto 'né'.
 
@@ -95,15 +109,9 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
         # O owner histórico já substitui o rascunho por citação integral da
         # fonte. Não consumir outra autoria antes dessa realização conferida.
         return None
-    textos = _declaracoes_da_fonte(usuario)
-    for relato in plano.get('relatos_usuario') or ():
-        if (isinstance(relato, Mapping) and relato.get('autor') == 'usuario'
-            and relato.get('origem') in {'historico_conversa', 'fala_atual'}
-            and relato.get('status') == 'relatado_pelo_usuario'
-            and type(relato.get('texto')) is str):
-            textos.extend(_declaracoes_da_fonte(relato['texto']))
-    predicados = {_predicado(t, origem=True) for t in textos}
-    predicados.discard(None)
+    # Só uma atribuição candidata exige a releitura do histórico. A busca
+    # continua restrita a esta revisão e lê as fontes vigentes do plano.
+    predicados: set[str] | None = None
     sem_apoio = []
     for frase in re.split(r'(?<=[.!?])\s+', str(fala or '')):
         externa = texto_fora_de_citacoes(frase)
@@ -157,6 +165,8 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
                 or impessoal
                 or (atividade_como_sujeito and not outra_atribuicao)):
                 continue
+        if predicados is None:
+            predicados = _predicados_das_fontes(usuario, plano)
         predicado = _predicado(trecho, origem=False)
         if predicado not in predicados:
             sem_apoio.append(frase)

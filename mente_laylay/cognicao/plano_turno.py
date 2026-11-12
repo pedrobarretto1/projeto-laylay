@@ -33,6 +33,7 @@ from mente_laylay.cognicao.contratos_turno import PlanoTurnoDict
 from mente_laylay.cognicao.estado_tecnico_llm import eh_estado_tecnico_llm
 from mente_laylay.cognicao.modalidade_turno import turno_tem_veto_execucao
 from mente_laylay.cognicao.contrato_fala import atualizar_contrato_fala_com_resultados
+from mente_laylay.cognicao.quantidade_perguntas import DESCUMPRIDA, pergunta_solicitada_vigente
 from mente_laylay.autonomia.roteador_deterministico import texto_pede_clima_atual
 from mente_laylay.percepcao.ritmo_circadiano import (
     detectar_consulta_horario,
@@ -397,6 +398,19 @@ def verificar_fala_turno(
     candidata = revisao.fala_realizada if revisao is not None and revisao.aplicar_limite else fala
     resultado = _verificar_fala_turno_base(candidata, plano=plano, periodo=periodo,
         ultima_resposta=ultima_resposta, origem=origem)
+    pergunta = pergunta_solicitada_vigente(plano or {})
+    if (pergunta is not None and resultado.get("problemas") == [DESCUMPRIDA]
+            and (revisao is None or not revisao.aplicar_limite)):
+        recorte = pergunta.recorte(fala)
+        if recorte:
+            revisao_recorte = revisar_suporte_autoria(recorte, plano=dict(plano or {}))
+            if revisao_recorte is None or not revisao_recorte.aplicar_limite:
+                conferida = _verificar_fala_turno_base(recorte, plano=plano, periodo=periodo,
+                    ultima_resposta=ultima_resposta, origem=origem)
+                if conferida.get("aceita") and pergunta.aceita(conferida.get("fala") or ""):
+                    resultado, revisao = conferida, revisao_recorte
+                    resultado["acao"] = "ajustada"
+                    resultado["problemas"].append("pergunta_excedente_removida")
     if revisao is not None:
         resultado["revisao_suporte_autoria"] = revisao.como_dict()
         if revisao.aplicar_limite:

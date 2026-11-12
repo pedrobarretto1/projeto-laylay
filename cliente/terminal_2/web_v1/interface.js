@@ -11,8 +11,9 @@ const state = {
   emotion:'calma',emotionLevel:1,interactionMode:'chat',voiceAvailable:false,microphoneLevel:0,messages:[],
   draft:'',dashboard:{},settings:{},conversations:{active_id:'',items:[]},events:[],
   preferences:{reduced:false,mascot:true,accent:'violet',sidebar:true,home:{version:1,period_days:30,pinned_ids:[],hidden_ids:[]}},pending:{},
-  actions:{},windowVisible:true,nativeWindow:false,availableWidth:0,availableHeight:0,desktopState:'compact',desktopMaterial:'fallback',desktopPinned:false,desktopView:'overview',desktopPhase:'idle',desktopTransition:0,desktopTargetWidth:0,desktopTargetHeight:0,streamingOpen:false,streamingExpanded:false
+  actions:{},windowVisible:true,nativeWindow:false,availableWidth:0,availableHeight:0,desktopState:'compact',desktopDocked:false,desktopDockMotion:'',desktopMaterial:'fallback',desktopMask:'',desktopPinned:false,desktopView:'overview',desktopPhase:'idle',desktopTransition:0,desktopTargetWidth:0,desktopTargetHeight:0,streamingOpen:false,streamingExpanded:false
 };
+const reducedMotionSystem=window.matchMedia('(prefers-reduced-motion: reduce)');
 const pages = [['home','Início'],['chat','Conversa'],['lamp','Automação'],['music','Música'],
   ['streaming','Streaming'],['memory','Memória'],['system','Sistema'],['dev','DevConsole'],['settings','Configurações']];
 const nativePages={home:'inicio',chat:'conversa',lamp:'automacao',music:'musica',streaming:'streaming',memory:'memoria',system:'sistema',dev:'desenvolvedor',settings:'configuracoes'};
@@ -21,11 +22,11 @@ const subscribers=new Set();
 const eventReplay=[];
 const pendingTimers=new Map();
 let bridge=null,started=false,renderQueued=false,renderFrame=0,resetFields=false,composing=false;
-let confirmation=null,toastTimer=0,previousLocation='';
+let confirmation=null,toastTimer=0,previousLocation='',previousProjection=null;
+let dockMotionAnimation=null,dockMotionElement=null,dockMotionDirection='';
 const locationScroll=new Map();
 const presentationLocation=()=>state.mode+':'+(state.mode==='desktop'?state.desktopView+':':'')+state.page;
-let presentationAckFrame=0,presentationAckKey='',streamingViewportFrame=0,streamingViewportElement=null,streamingViewportObserver=null;
-let desktopDrag=null,suppressDesktopClick=false;
+let presentationAckFrame=0,presentationAckKey='',presentationPrepareFrame=0,presentationPrepareKey='',streamingViewportFrame=0,streamingViewportElement=null,streamingViewportObserver=null;
 // Motion M2: transições discretas, somente após o ACK da geometria do Qt.
 // A referência da página só é atualizada em estado idle, evitando flashes
 // durante resize, conversas em streaming ou mudanças de snapshot.
@@ -33,7 +34,7 @@ let motionLocation='',motionDesktopState='compact';
 let motionRunCount=0;
 function motionAllowed() {
   return !state.preferences.reduced &&
-    !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    !reducedMotionSystem.matches;
 }
 function animateSafe(element,keyframes,options) {
   if(!element||!motionAllowed()||typeof element.animate!=='function')return null;
@@ -41,9 +42,41 @@ function animateSafe(element,keyframes,options) {
   for(const anim of element.getAnimations())if(anim.effect?.target===element)anim.cancel();
   return element.animate(keyframes,{fill:'none',...options});
 }
+function clearDesktopDockMotion() {
+  if(dockMotionAnimation)dockMotionAnimation.cancel();
+  dockMotionAnimation=null;dockMotionElement=null;dockMotionDirection='';
+}
+function animateDesktopDockMotion() {
+  const direction=state.desktopDockMotion;
+  if(state.mode!=='desktop'||state.desktopPhase==='idle'||!direction||!motionAllowed()) {
+    clearDesktopDockMotion();return;
+  }
+  const island=document.querySelector('.desktop-island');
+  const compact=island?.querySelector('.desktop-compact');
+  if(!compact||typeof compact.animate!=='function')return;
+  if(dockMotionElement===compact&&dockMotionAnimation) {
+    if(dockMotionDirection!==direction) {
+      dockMotionAnimation.reverse();
+      dockMotionDirection=direction;
+    }
+    return;
+  }
+  clearDesktopDockMotion();
+  const closing=direction==='closing';
+  dockMotionElement=compact;dockMotionDirection=direction;
+  dockMotionAnimation=compact.animate(
+    closing
+      ?[{opacity:1,transform:'translateY(0) scale(1)'},{opacity:0,transform:'translateY(-4px) scale(.94)'}]
+      :[{opacity:0,transform:'translateY(-4px) scale(.94)'},{opacity:1,transform:'translateY(0) scale(1)'}],
+    {duration:360,easing:closing?'cubic-bezier(.32,0,.67,0)':'cubic-bezier(.33,1,.68,1)',fill:'both'}
+  );
+}
 function animateDesktopMotion(location) {
   if(state.mode!=='desktop') {
     motionLocation='';motionDesktopState='compact';return;
+  }
+  if(state.desktopPhase==='resizing') {
+    return;
   }
   if(state.desktopPhase!=='idle')return;
   const prior=motionLocation,oldState=motionDesktopState;
@@ -53,21 +86,7 @@ function animateDesktopMotion(location) {
   if(!island)return;
   const expanded=state.desktopState==='expanded';
   if(expanded&&oldState!=='expanded') {
-    // A entrada começa no destino confirmado pelo Qt. Só os elementos leves
-    // ganham escala, para o conteúdo não deslocar a área rolável ou o foco.
-    const small=island.querySelector(
-      state.desktopView==='page'?'.desktop-page .context-bar':'.desktop-overview .desktop-presence-copy');
-    animateSafe(small,
-      [
-        {opacity:0,transform:'translateY(8px) scale(.91,.94)',transformOrigin:'50% 0'},
-        {opacity:.94,transform:'scale(1.012)',transformOrigin:'50% 0',offset:.75},
-        {opacity:1,transform:'none',transformOrigin:'50% 0'},
-      ],
-      {duration:310,easing:'cubic-bezier(.2,.78,.25,1)'});
-    animateSafe(island.querySelector('.desktop-wordmark'),
-      [{opacity:.3,transform:'translateY(5px) scale(.96)'},{opacity:1,transform:'none'}],
-      {duration:255,easing:'cubic-bezier(.2,.78,.25,1)'});
-    motionRunCount++;return;
+    return;
   }
   if(!expanded&&oldState==='expanded') {
     animateSafe(island.querySelector('.desktop-compact-copy'),
@@ -191,7 +210,7 @@ function messages() {
   if(!items.length)return '<div class="chat-empty">Seu espaço para uma nova conversa.</div>';
   return items.map(m=>{
     const user=m.role==='user',failed=m.delivery==='failed';
-    const delivery=user&&m.delivery?'<small class="delivery '+(failed?'failed':'')+'">'+escapeHTML({
+    const delivery=user&&m.delivery?'<small class="delivery '+(failed?'failed':'delivery-quiet')+'" role="status" aria-live="polite">'+escapeHTML({
       sending:'Enviando…',pending:'Aguardando recebimento',accepted:'Recebida pela mente · aguardando resposta',
       failed:m.error||'Envio não confirmado',responded:'Resposta recebida'
     }[m.delivery]||m.delivery)+(failed?'<button data-retry="'+escapeHTML(m.id)+'">Tentar novamente</button>':'')+'</small>':'';
@@ -343,6 +362,9 @@ function island() {
 }
 function fieldKey(el,index) {return el.id?'#'+el.id:el.getAttribute('data-field')?'field:'+el.getAttribute('data-field'):el.name?'name:'+el.name:'index:'+index;}
 function desktop() {
+  if(state.desktopDocked&&state.desktopPhase!=='resizing') {
+    return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="compact" data-desktop-docked="true"><button class="desktop-docked-trigger" data-desktop="expandir" aria-label="Expandir Laylay"></button></section>';
+  }
   const recent=activeMessages().filter(m=>m.role==='assistant').at(-1);
   const pending=Object.values(state.pending).some(p=>p.kind==='texto'&&['sending','accepted','received','executing'].includes(p.state));
   const pageView=state.desktopView==='page';
@@ -351,47 +373,18 @@ function desktop() {
   const tabs=pages.map(([id,label])=>'<button data-page="'+id+'" class="'+(pageView&&state.page===id?'active':'')+'" '+(pageView&&state.page===id?'aria-current="page"':'')+'>'+icon(id)+'<span>'+label+'</span></button>').join('');
   const liveActivity=['idle','speaking','thinking','listening','executing','reconnecting'].includes(state.activity)?state.activity:'idle';
   const indicator=connectionStatus();
-  return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="'+state.desktopState+'" data-desktop-material="'+state.desktopMaterial+'" data-activity="'+liveActivity+'" data-desktop-view="'+(pageView?'page':'overview')+'">'+
-    '<button class="desktop-compact" data-desktop-drag title="Passe o mouse para ver o resumo. Clique para abrir ou arraste para mover." data-desktop="expandir" aria-label="Expandir Laylay · '+escapeHTML(indicator.label)+'"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small title="'+escapeHTML(indicator.detail)+'">'+escapeHTML(indicator.label)+'</small></span><span class="desktop-signal '+(indicator.kind==='online'?'online':indicator.kind)+'" aria-hidden="true"></span><span class="desktop-expand-icon">'+icon('chevron')+'</span></button>'+
-    '<div class="desktop-expanded"><header class="desktop-toolbar window-head" data-desktop-drag title="Arraste esta área para mover a Laylay."><span class="desktop-wordmark wordmark">laylay<span>por perto</span></span><div class="desktop-toolbar-actions"><button class="desktop-overview-button icon-btn '+(!pageView?'active':'')+'" data-desktop="resumo" aria-label="Visão rápida" title="Visão rápida">'+icon('island')+'</button><span class="desktop-divider"></span>'+voiceSwitch()+'<button class="icon-btn" data-desktop="recolher" aria-label="Recolher Laylay" title="Recolher · Esc">'+icon('minus')+'</button></div></header>'+
+  const dockMotion=state.desktopDockMotion?' data-dock-motion="'+state.desktopDockMotion+'"':'';
+  return '<section class="desktop-island" aria-label="Laylay no desktop" data-desktop-state="'+state.desktopState+'" data-desktop-docked="false"'+dockMotion+' data-desktop-material="'+state.desktopMaterial+'" data-activity="'+liveActivity+'" data-desktop-view="'+(pageView?'page':'overview')+'">'+
+    '<button class="desktop-compact" title="Clique para abrir Laylay" data-desktop="expandir" aria-label="Expandir Laylay · '+escapeHTML(indicator.label)+'"><span class="desktop-miniature">'+avatar('avatar-mini')+'</span><span class="desktop-compact-copy"><strong>Laylay</strong><small title="'+escapeHTML(indicator.detail)+'">'+escapeHTML(indicator.label)+'</small></span><span class="desktop-signal '+(indicator.kind==='online'?'online':indicator.kind)+'" aria-hidden="true"></span><span class="desktop-expand-icon">'+icon('chevron')+'</span></button>'+
+    '<div class="desktop-expanded"><header class="desktop-toolbar window-head"><span class="desktop-wordmark wordmark">laylay<span>por perto</span></span><div class="desktop-toolbar-actions"><button class="desktop-overview-button icon-btn '+(!pageView?'active':'')+'" data-desktop="resumo" aria-label="Visão rápida" title="Visão rápida">'+icon('island')+'</button><span class="desktop-divider"></span>'+voiceSwitch()+'<button class="icon-btn" data-desktop="recolher" aria-label="Recolher Laylay" title="Recolher · Esc">'+icon('minus')+'</button></div></header>'+
     '<div class="desktop-window-body window-body"><nav class="desktop-tabs" aria-label="Abas da Laylay"><div class="nav-caption">SEU ESPAÇO</div>'+tabs+'<div class="nav-bottom">'+status()+'</div></nav>'+
-    '<div class="desktop-overview"><div class="desktop-content"><section class="desktop-presence"><div class="desktop-portrait">'+avatar()+'</div><div class="desktop-presence-copy"><strong>Estou por aqui.</strong>'+status()+'</div></section><section class="desktop-context" aria-label="Sua trilha"><div class="desktop-section-label">SUA TRILHA<button data-page="music" aria-label="Ver biblioteca">'+icon('arrow')+'</button></div>'+musicCard(true)+'</section></div>'+
+    '<div class="desktop-overview"><div class="desktop-content"><section class="desktop-presence"><div class="desktop-portrait">'+avatar('desktop-avatar')+'</div><div class="desktop-presence-copy"><strong>Estou por aqui.</strong>'+status()+'</div></section><section class="desktop-context" aria-label="Sua trilha"><div class="desktop-section-label">SUA TRILHA<button data-page="music" aria-label="Ver biblioteca">'+icon('arrow')+'</button></div>'+musicCard(true)+'</section></div>'+
     '<div class="desktop-message" role="status"><span>'+icon(pending?'clock':'chat')+'</span><p>'+escapeHTML(pending?'Aguardando a Laylay…':recent?.text||'Uma conversa, uma ideia ou só companhia.')+'</p><button data-page="chat" aria-label="Ver conversa completa">'+icon('arrow')+'</button></div>'+
     '<div class="desktop-composer">'+(!pageView?compose():'')+'</div><footer class="desktop-foot"><span>'+escapeHTML(state.connected?'Ponte conectada':'Aguardando ponte')+'</span><span>Esc recolhe</span></footer></div>'+
     '<div class="desktop-page main-column"><div class="context-bar"><span>Laylay <b>›</b> '+escapeHTML(pageLabel())+'</span><span class="context-state">'+status()+'</span></div><details class="desktop-conversations" '+(state.page==='chat'?'':'hidden')+'><summary>'+icon('chat')+' Suas conversas</summary>'+conversationList()+'</details><div class="desktop-page-content page" id="page-content" data-page="'+state.page+'" data-render-key="desktop-page:'+state.page+'">'+content+'</div><footer class="window-foot"><span>Seu espaço, no seu tempo.</span><span>'+escapeHTML(state.connected?'Conectada à Laylay':'Aguardando conexão')+'</span></footer></div></div></div></section>';
 }
 paths.pin='<path d="m9 3 6 0-1 5 4 4v2H6v-2l4-4-1-5ZM12 14v7"/>';
 function desktopGesture(gesture){if(bridge&&typeof bridge.gesto_desktop==='function')bridge.gesto_desktop(gesture);}
-function finishDesktopDrag(suppress=false){
-  if(suppress)suppressDesktopClick=true;
-  if(desktopDrag){try{desktopDrag.handle.releasePointerCapture(desktopDrag.id);}catch(_error){}}
-  desktopDrag=null;document.body.classList.remove('desktop-dragging');
-}
-function startDesktopDrag(event){
-  if(event.isTrusted)suppressDesktopClick=false;
-  if(state.mode!=='desktop'||event.button!==0||event.pointerType!=='mouse'||!event.isTrusted)return;
-  const handle=event.target.closest('[data-desktop-drag]');
-  if(!handle)return;
-  const control=event.target.closest('button,input,textarea,select,a,summary,[contenteditable=true]');
-  if(control&&control!==handle)return;
-  desktopDrag={id:event.pointerId,handle,x:event.clientX,y:event.clientY,active:false};
-  try{handle.setPointerCapture(event.pointerId);}catch(_error){}
-}
-function moveDesktopDrag(event){
-  if(!desktopDrag||event.pointerId!==desktopDrag.id)return;
-  const dx=event.clientX-desktopDrag.x,dy=event.clientY-desktopDrag.y;
-  if(!desktopDrag.active&&Math.hypot(dx,dy)>=6){
-    desktopDrag.active=true;document.body.classList.add('desktop-dragging');
-    if(bridge&&typeof bridge.arrastar_desktop==='function')bridge.arrastar_desktop(Math.round(dx),Math.round(dy));
-  }
-  if(desktopDrag.active)event.preventDefault();
-}
-function releaseDesktopDrag(event){
-  if(!desktopDrag||event.pointerId!==desktopDrag.id)return;
-  const active=desktopDrag.active;
-  if(active){event.preventDefault();if(bridge&&typeof bridge.finalizar_arrasto_desktop==='function')bridge.finalizar_arrasto_desktop();}
-  finishDesktopDrag(active);
-}
 function desktopEditing(){
   if(state.mode!=='desktop'||!bridge||typeof bridge.edicao_desktop!=='function')return;
   bridge.edicao_desktop(state.desktopState==='expanded'&&Boolean(
@@ -403,7 +396,40 @@ function localDesktopActivity(event){
 }
 function queuePresentationCommit(){
   const active=state.mode==='desktop'&&['committing','starting'].includes(state.desktopPhase);
-  if(!active){if(presentationAckFrame)cancelAnimationFrame(presentationAckFrame);presentationAckFrame=0;presentationAckKey='';return;}
+  if(!active){
+    if(presentationAckFrame)cancelAnimationFrame(presentationAckFrame);
+    if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
+    presentationAckFrame=presentationPrepareFrame=0;
+    presentationAckKey=presentationPrepareKey='';
+    return;
+  }
+  // A entrada compacta confirma o viewport atual; só a expansão precisa
+  // preparar o conteúdo antes de iniciar a animação da geometria nativa.
+  if(state.desktopPhase==='starting'&&state.desktopState==='expanded'){
+    if(presentationAckFrame)cancelAnimationFrame(presentationAckFrame);
+    presentationAckFrame=0;presentationAckKey='';
+    if(!bridge||typeof bridge.preparacao_transicao_pronta!=='function')return;
+    const key=String(state.desktopTransition);
+    if(presentationPrepareKey===key)return;
+    if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
+    presentationPrepareKey=key;
+    presentationPrepareFrame=requestAnimationFrame(()=>{
+      presentationPrepareFrame=requestAnimationFrame(()=>{
+        presentationPrepareFrame=0;
+        const island=document.querySelector('.desktop-island');
+        const expanded=island?.querySelector('.desktop-expanded');
+        if(presentationPrepareKey===key&&state.desktopPhase==='starting'
+          &&island?.dataset.desktopState==='expanded'&&expanded
+          &&getComputedStyle(expanded).display!=='none'){
+          expanded.getBoundingClientRect();
+          bridge.preparacao_transicao_pronta(state.desktopTransition);
+        }
+      });
+    });
+    return;
+  }
+  if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
+  presentationPrepareFrame=0;presentationPrepareKey='';
   if(!bridge||typeof bridge.transicao_pronta!=='function')return;
   const key=state.desktopTransition+':'+state.desktopPhase;
   if(presentationAckKey===key)return;
@@ -525,7 +551,7 @@ function render(options={}) {
   if(options.resetFields)resetFields=true;
   const root=document.getElementById('workspace');
   if(!root)return;
-  const saved=savePresentation(),location=presentationLocation();
+  const location=presentationLocation();
   document.body.classList.toggle('reduced',state.preferences.reduced);
   document.body.classList.toggle('cyan',state.preferences.accent==='cyan');
   document.body.classList.toggle('tp-hide-mascot',!state.preferences.mascot);
@@ -535,15 +561,27 @@ function render(options={}) {
   for(const mode of ['full','quick','island','desktop'])document.body.classList.toggle('mode-'+mode,state.mode===mode);
   document.documentElement.classList.toggle('desktop-transparent',state.mode==='desktop');
   document.body.classList.toggle('desktop-transitioning',state.mode==='desktop'&&state.desktopPhase!=='idle');
+  document.body.classList.toggle('desktop-resizing',state.mode==='desktop'&&state.desktopPhase==='resizing');
+  document.body.classList.toggle('desktop-preparing',state.mode==='desktop'&&state.desktopPhase==='starting');
   document.body.classList.add('refined-ui');
-  document.body.classList.toggle('desktop-entering',state.mode==='desktop'&&state.desktopEntry===true&&!state.preferences.reduced);
-  const template=document.createElement('template');
+  document.body.classList.toggle('desktop-entering',state.mode==='desktop'&&state.desktopEntry===true&&!state.preferences.reduced&&!reducedMotionSystem.matches);
   const projection=state.mode==='full'?fullWithMobileNavigation():state.mode==='quick'?quick():state.mode==='desktop'?desktop():island();
-  template.innerHTML=projection;
-  if(location!==previousLocation&&previousLocation)locationScroll.set(previousLocation,saved.scroll);
-  if(location===previousLocation||(state.mode==='desktop'&&previousLocation.startsWith('desktop:')))reconcileChildren(root,template.content);
-  else root.replaceChildren(template.content);
-  restorePresentation(saved,location===previousLocation);
+  // Sem diferença na projeção não há DOM a reconciliar nem layout a medir;
+  // os sincronizadores de estado nativo continuam executando abaixo.
+  const projectionUnchanged=projection===previousProjection&&location===previousLocation&&!resetFields;
+  const saved=projectionUnchanged?null:savePresentation();
+  if(!projectionUnchanged) {
+    const template=document.createElement('template');
+    template.innerHTML=projection;
+    if(location!==previousLocation&&previousLocation)locationScroll.set(previousLocation,saved.scroll);
+    if(location===previousLocation||(state.mode==='desktop'&&previousLocation.startsWith('desktop:')))reconcileChildren(root,template.content);
+    else root.replaceChildren(template.content);
+    restorePresentation(saved,location===previousLocation);
+    previousProjection=projection;
+  }
+  const desktopIsland=root.querySelector('.desktop-island');
+  if(desktopIsland&&state.desktopMask)desktopIsland.style.setProperty(
+    '--desktop-island-mask-image','url("'+state.desktopMask+'")');
   if(location!==previousLocation) {
     for(const entry of locationScroll.get(location)||[]) {
       const node=entry.key.startsWith('.')?root.querySelector(entry.key):document.getElementById(entry.key);
@@ -555,6 +593,7 @@ function render(options={}) {
   document.title='Laylay · '+(state.mode==='quick'?'Painel rápido':state.mode==='island'?'Ilha':pageLabel());
   if(location!==previousLocation)document.querySelector(state.mode==='desktop'?'.desktop-tabs [aria-current="page"]':'.nav [aria-current="page"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
   previousLocation=location;
+  animateDesktopDockMotion();
   animateDesktopMotion(location);
   avatarMotion.refresh();
   desktopEditing();
@@ -616,6 +655,7 @@ function request(tipo,dados={},callback) {
 function goMode(mode) {
   if(!['full','quick','island','desktop'].includes(mode))return;
   state.mode=mode;
+  if(mode!=='desktop'){state.desktopDocked=false;state.desktopDockMotion='';}
   if(bridge&&typeof bridge.apresentar==='function')bridge.apresentar(mode);
   render();
   if(mode==='quick')scrollChat();
@@ -703,22 +743,22 @@ function receiveEvent(input) {
   const id=String(msg.id||''),type=msg.type;
   // Cursor do SO é uma observação visual local: sem replay, render ou mente.
   if(type==='cursor_desktop'){avatarMotion.desktopPointer(msg);return;}
-  if(type==='arrasto_desktop'){
-    document.body.classList.toggle('desktop-dragging',msg.active===true);
-    if(msg.active===false)finishDesktopDrag(Boolean(desktopDrag?.active));
-    return;
-  }
   let repaint=true;
   if(type==='snapshot')eventReplay.length=0;
   eventReplay.push(msg);if(eventReplay.length>200)eventReplay.shift();
   if(type==='apresentacao') {
+    const dockedBefore=state.desktopDocked;
     if(['full','quick','island','desktop'].includes(msg.mode))state.mode=msg.mode;
     if(['compact','expanded'].includes(msg.desktop_state))state.desktopState=msg.desktop_state;
+    if(typeof msg.desktop_docked==='boolean')state.desktopDocked=msg.desktop_docked;
     if(['acrylic','mica','fallback'].includes(msg.desktop_material))state.desktopMaterial=msg.desktop_material;
+    if(typeof msg.desktop_mask==='string'&&msg.desktop_mask.startsWith('data:image/svg+xml,'))state.desktopMask=msg.desktop_mask;
     if(['overview','page'].includes(msg.desktop_view))state.desktopView=msg.desktop_view;
     if(Object.hasOwn(nativePages,msg.desktop_page))state.page=msg.desktop_page;
     if(typeof msg.desktop_pinned==='boolean')state.desktopPinned=msg.desktop_pinned;
     if(['idle','resizing','committing','starting'].includes(msg.desktop_phase))state.desktopPhase=msg.desktop_phase;
+    if(state.mode!=='desktop'||state.desktopState!=='compact'||state.desktopPhase==='idle')state.desktopDockMotion='';
+    else if(state.desktopDocked!==dockedBefore)state.desktopDockMotion=state.desktopDocked?'closing':'opening';
     if(Number.isFinite(msg.desktop_transition))state.desktopTransition=msg.desktop_transition;
     if(Number.isFinite(msg.desktop_target_width))state.desktopTargetWidth=msg.desktop_target_width;
     if(Number.isFinite(msg.desktop_target_height))state.desktopTargetHeight=msg.desktop_target_height;
@@ -870,11 +910,6 @@ function conversationMenu(id) {
 }
 function start() {
   if(started)return;started=true;
-  document.addEventListener('pointerdown',startDesktopDrag,{capture:true});
-  document.addEventListener('pointermove',moveDesktopDrag,{capture:true,passive:false});
-  document.addEventListener('pointerup',releaseDesktopDrag,{capture:true});
-  document.addEventListener('pointercancel',()=>{if(desktopDrag&&!desktopDrag.active)finishDesktopDrag();},{capture:true});
-  document.addEventListener('click',event=>{if(suppressDesktopClick){suppressDesktopClick=false;event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
   document.addEventListener('submit',event=>{
     if(!event.target.matches('[data-composer]'))return;
     event.preventDefault();sendMessage();
@@ -934,6 +969,7 @@ function start() {
       bridge=channel.objects.laylay;
       if(!bridge){toast('A ponte da interface não foi registrada.');return;}
       bridge.evento.connect(receiveEvent);
+      bridge.movimento_reduzido_sistema?.(reducedMotionSystem.matches);
       bridge.pronto();
     });
   } else toast('A interface oficial precisa da ponte local da Laylay.');
@@ -943,6 +979,7 @@ window.addEventListener('pagehide',()=>{
   for(const timer of pendingTimers.values())clearTimeout(timer);
   pendingTimers.clear();clearTimeout(toastTimer);avatarMotion.stop();
   if(presentationAckFrame)cancelAnimationFrame(presentationAckFrame);
+  if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
   if(streamingViewportFrame)cancelAnimationFrame(streamingViewportFrame);
   streamingViewportObserver?.disconnect();
 },{once:true});
@@ -1043,7 +1080,11 @@ const avatarMotion=(()=>{
  function geometryChanged(){if(pointer){targetsDirty=true;requestTick()}}
  window.addEventListener('resize',geometryChanged,{passive:true});
  document.addEventListener('scroll',geometryChanged,{passive:true,capture:true});
- reducedQuery.addEventListener('change',refresh);
+ reducedQuery.addEventListener('change',()=>{
+  refresh();
+  scheduleRender();
+  bridge?.movimento_reduzido_sistema?.(reducedQuery.matches);
+ });
  function desktopPointer(data){
   if(state.mode!=='desktop'||!Number.isFinite(data.x)||!Number.isFinite(data.y))return;
   if(!canAnimate())return;
@@ -1054,4 +1095,3 @@ const avatarMotion=(()=>{
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
-

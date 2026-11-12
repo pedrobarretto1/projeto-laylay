@@ -14532,3 +14532,18 @@ Owners, cópias, diffs, critérios e transcrições em
 Ocorrência OpenRouter da ponte `or-prova-001`: a expressão impessoal `é só conversar` foi marcada `identidade_negou_capacidades_confirmadas`, repetiu reparo e atingiu `orcamento_bloqueado`. Primeira fronteira RED no predicado de atribuição do validador, não no provedor ou orçamento. Candidato localizado em `validacao_contrato_fala.py` exige modal/flexão pessoal ou sujeito próprio restritivo; preserva autolimitações nominais. Protege os consumidores compartilhados de sistema, música, arquivos e IoT. 305 testes relevantes e 49 da ponte/provedor GREEN. Replay instalado com autoria histórica constante: antes mesma contingência/degradação, depois publicação integral com uma chamada e sem degradação. Prova real OpenRouter também publicou sem degradação, sem voz/efeitos. Nenhum commit/orçamento/modelo/configuração alterado; demais raízes F2 permanecem separadas. Relatório: C:\Users\pbarr\Documents\Codex\2026-10-28\ch\outputs\diagnostico_openrouter\RELATORIO.md.
 
 Validação final F2/convite impessoal: 310 testes GREEN após preservar também autolimitações nominais sem `única` e formas passivas pessoais. Replay final manteve antes degradada=true/reparo bloqueado e candidato sem degradação, uma chamada e publicação literal histórica. Escopo: gramática explícita conferida; não verificador semântico universal.
+
+### UI-ACK-ENTRADA-COMPACTA — confirmação da apresentação correta — 11/11/2026
+
+Na worktree `fff5b04d4cf9e9a21a008dfbc517d7fc839f5794`, a entrada oficial da
+ilha compacta aguardava confirmação com opacidade zero. O renderer compartilhado
+confundia `starting` compacto com preparação de expansão e não enviava ACK.
+RED em teste e Windows nativo; candidato mínimo em `interface.js` reserva a
+preparação para o estado expandido e confirma o viewport na entrada compacta.
+Seis testes focados e diagnóstico nativo GREEN, sem entradas para a mente;
+regressão final da interface: 142 GREEN, incluindo o entrypoint oficial.
+Contrato protege a superfície compartilhada de todas as páginas/habilidades;
+nenhum executor alterado. Pedro confirmou que a janela isolada expandia:
+o desaparecimento na sessão pessoal original ainda exige conferência após
+reabrir `laylay.py`; não declarar identidade causal ou encerramento desse relato.
+Evidências e escopo: `artifacts/interface_v1/clique_20261111/DIAGNOSTICO.md`.

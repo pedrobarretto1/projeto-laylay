@@ -68,7 +68,7 @@ BASE_SYSTEM_PROMPT_COMPACTO = _construir_base_compacta(
     "- Proponha somente ações canônicas compatíveis com a autorização do turno; sem ação, comandos vazios.\n"
     "- Não conclua antes do executor. O código informa sucesso, falha e confirmação reais.\n")
 BASE_SYSTEM_PROMPT_RAPIDO = _construir_base_compacta(
-    "- Use uma ou duas frases, no máximo uma pergunta e nenhuma metáfora desnecessária.\n",
+    "- Siga o pedido. Por padrão, 1–2 frases e até uma pergunta espontânea. Evite metáfora gratuita.\n",
     "- Conversa, relato, pergunta e sugestão não autorizam ação. Retorne comandos vazios.\n")
 
 

@@ -20,7 +20,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     trecho_retificacao_do_enunciador,
 )
 from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
-from mente_laylay.cognicao.retomada_criacao import ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO
+from mente_laylay.cognicao.retomada_criacao import ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO, recorte_nome_publicado
 from mente_laylay.cognicao.proveniencia_informacao import (
     classificar_proveniencia_informacao,
     limitar_proveniencia_invalida,
@@ -238,6 +238,8 @@ def classificar_atualidade_factual(
         "confianca": 0.0,
         "motivos": [],
     }
+    if recorte_nome_publicado(bruto):
+        return {**base, 'classe': 'historica', 'motivos': ['nome_autorado_no_dialogo']}
     if texto_e_metalinguistico(bruto):
         return {**base, "motivos": ["fala_metalinguistica"]}
     segmentos = leitura.get("segmentos")
@@ -291,8 +293,14 @@ def classificar_atualidade_factual(
             atuais = [a for a in avaliacoes if a['depende_atualidade']]
             return min(atuais,key=lambda a:a['validade_sugerida_s']) if atuais else {
                 **base,'confianca':0.85,'motivos':['enunciados_sem_consulta_mutavel']}
-    afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto) or (
-        eh_consulta and re.search(r"\b(?:ps\s*[3456]|playstation\s*[3456]|xbox|switch|pc)\b", bruto, re.I)))
+    # A plataforma é o alvo de uma relação de disponibilidade, não uma
+    # evidência de mutabilidade por aparecer em qualquer pergunta.
+    plataforma = r'(?:ps\s*[3456]|playstation\s*[3456]|xbox|switch|pc)'
+    disponibilidade = bool(eh_consulta and re.search(
+        rf'\b(?:roda|funciona|dispon[ií]vel|disponibilidade|suporta|suporte|compat[ií]vel|lan[cç]ado)'
+        rf'\b[^.!?;]*\b{plataforma}\b|\b{plataforma}\b[^.!?;]*'
+        r'\b(?:suporta|compat[ií]vel|disponibilidade)\b', consulta_externa, re.I))
+    afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto) or disponibilidade)
     if not normalizado or (not eh_consulta and not afirmacao_mutavel):
         return {**base, "classe": "nao_consulta", "motivos": ["fala_nao_consultiva"]}
     if _CONSULTA_PESSOAL_OU_INTERNA.search(bruto) or _RETOMADA_ENUNCIACAO.search(bruto):

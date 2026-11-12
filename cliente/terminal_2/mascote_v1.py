@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 import random
 import time
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt, QTimer
 from PySide6.QtGui import (
@@ -16,6 +17,27 @@ from PySide6.QtGui import (
     QRadialGradient,
 )
 from PySide6.QtWidgets import QWidget
+
+
+def caminho_avatar_emocao(raiz: Path, emocao: str) -> Path:
+    """Resolve o retrato PNG canônico da Laylay para uma emoção."""
+    imagens = {
+        "calma": ("calma", "laylay_calma_512_transparente_real_corrigida.png"),
+        "feliz": ("feliz", "laylay_feliz_boca_fechada_512_RGBA.png"),
+        "animada": ("animada", "laylay_animada_512_transparente_real.png"),
+        "irritada": ("brava", "laylay_brava_512_transparente_real.png"),
+        "brava": ("brava", "laylay_brava_512_transparente_real.png"),
+        "triste": ("triste", "laylay_triste_512_transparente_real.png"),
+        "surpresa": ("surpresa", "laylay_surpresa_512_transparente_real.png"),
+        "envergonhada": ("envergonhada", "laylay_envergonhada_512_transparente.png"),
+    }
+    pasta, nome = imagens.get(str(emocao or "calma").strip().casefold(), imagens["calma"])
+    imagem = raiz / "avatar" / pasta / nome
+    if imagem.is_file():
+        return imagem
+    pasta_calma, nome_calma = imagens["calma"]
+    calma = raiz / "avatar" / pasta_calma / nome_calma
+    return calma if calma.is_file() else imagem
 
 
 class MascoteLaylay(QWidget):

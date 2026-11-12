@@ -1,51 +1,51 @@
 """Política local de geometria e ativação da ilha do desktop.
 
-Adaptação de Coucou Windows 0.5.0: petit/home, ancoragem e janela
+Adaptação de Coucou Windows 0.5.0: petit/home e janela
 não ativável. Copyright (c) 2026 Louis Raillé, MIT; ver licencas/Coucou-MIT.txt.
 Não recebe contexto da mente e não executa comandos operacionais.
 """
 from __future__ import annotations
 
 import sys
-from PySide6.QtCore import QRect, QPoint, Qt
+from PySide6.QtCore import QRect
 
 
 TAMANHOS_PAGINAS_DESKTOP = {
     pagina: (1100, 730)
     for pagina in ('home', 'chat', 'music', 'system', 'settings', 'memory', 'lamp', 'dev', 'streaming')
 }
+TAMANHO_ILHA_COMPACTA = (272, 36)
+TAMANHO_ILHA_RECOLHIDA = (48, 4)
 
 
-def geometria_desktop(disponivel: QRect, expandida: bool = False, pagina: str | None = None, ancora: QPoint | None = None) -> QRect:
-    """Projeta uma âncora lógica sem promover o clamp a posição escolhida.
+def geometria_desktop(
+    disponivel: QRect,
+    expandida: bool = False,
+    pagina: str | None = None,
+    recolhida: bool = False,
+) -> QRect:
+    """Projeta a ilha fixa no centro superior da área utilizável do display.
 
-    O padrão reserva 120 DIP acima da ilha, inclusive no painel ampliado.
-    Uma posição explícita mantém sua identidade; só a superfície é limitada.
+    Compacta e expandida compartilham a mesma ancoragem; recolhida limita a
+    superfície à barra preta de interação.
     """
-    tamanho = TAMANHOS_PAGINAS_DESKTOP.get(pagina, (640, 320)) if expandida else (272, 54)
+    if recolhida:
+        tamanho = TAMANHO_ILHA_RECOLHIDA
+    else:
+        tamanho = TAMANHOS_PAGINAS_DESKTOP.get(pagina, (640, 320)) if expandida else TAMANHO_ILHA_COMPACTA
     largura = min(tamanho[0], max(1, disponivel.width()))
-    folga = min(120, max(0, disponivel.height() - min(54, disponivel.height()))) if ancora is None else 0
-    altura = min(tamanho[1], max(1, disponivel.height() - folga))
-    centro = disponivel.center().x() if ancora is None else ancora.x()
-    topo = disponivel.top() + folga if ancora is None else ancora.y()
+    altura = min(tamanho[1], max(1, disponivel.height()))
+    centro = disponivel.center().x()
+    topo = disponivel.top()
     x = min(max(centro - (largura - 1) // 2, disponivel.left()), disponivel.right() - largura + 1)
     y = min(max(topo, disponivel.top()), disponivel.bottom() - altura + 1)
     return QRect(x, y, largura, altura)
 
 
-def botao_esquerdo_pressionado() -> bool:
-    """Leitura somente durante arrasto local; detecta soltura fora da janela."""
-    if sys.platform == 'win32':
-        import ctypes
-        return bool(ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000)
-    from PySide6.QtGui import QGuiApplication
-    return bool(QGuiApplication.mouseButtons() & Qt.LeftButton)
-
-
 def permitir_ativacao_desktop(hwnd: int, permitir: bool) -> None:
     """Equivalente Qt do WS_EX_NOACTIVATE/WS_EX_TOOLWINDOW do Coucou.
 
-    A flag é alterada no HWND existente, sem recriar a WebView em cada gesto.
+    A flag é alterada no HWND existente, sem recriar a WebView em cada transição.
     """
     if sys.platform != 'win32':
         return

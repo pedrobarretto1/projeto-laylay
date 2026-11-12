@@ -426,6 +426,7 @@ def executar_intencao(resultado: dict, texto_original: str, ctx: Dict[str, Any])
         destino_val,
         ctx,
         DependenciasExecutorPlaylists(
+            id_solicitacao=adaptador_resultado.id_solicitacao,
             marcar_resultado=adaptador_resultado.marcar_resultado,
             falar_por_status=adaptador_resultado.falar_por_status,
             abrir_url_musical=rota_musical.abrir,

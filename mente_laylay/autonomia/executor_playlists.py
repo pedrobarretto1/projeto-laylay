@@ -10,6 +10,8 @@ from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.autonomia.executor_comum import falar_ctx as _falar
 from mente_laylay.integracao.registro_musica import PortaMusicaLeitura
 from mente_laylay.integracao.registro_operacoes_musicais import PortaMusicaOperacoes
+from mente_laylay.integracao.entrega_reproducao import aspectos_entrega_reproducao
+from mente_laylay.memoria_mental.resultado_acao import AspectoResultado
 from mente_laylay.personalidade.falas_variadas import (
     escolher as escolher_fala_variada,
     fala_de_confirmacao,
@@ -31,6 +33,7 @@ class DependenciasExecutorPlaylists:
     contexto_fala: Callable[[], Dict[str, Any]]
     musica_leitura: PortaMusicaLeitura | None = None
     musica_operacoes: PortaMusicaOperacoes | None = None
+    id_solicitacao: str = ""
 
 
 def _get(ctx: Dict[str, Any], nome: str, default: Any = None) -> Any:
@@ -71,6 +74,7 @@ def _marcar_com_alvo(
     *,
     executou: bool | None,
     confirmado: bool | None = None,
+    aspectos: tuple[AspectoResultado, ...] = (),
 ) -> None:
     """Devolve à mente o nome que o executor realmente resolveu."""
     kwargs: Dict[str, Any] = {
@@ -80,6 +84,8 @@ def _marcar_com_alvo(
     }
     if confirmado is not None:
         kwargs["confirmado"] = confirmado
+    if aspectos:
+        kwargs["aspectos"] = aspectos
     try:
         deps.marcar_resultado(status, **kwargs)
     except TypeError:
@@ -557,7 +563,13 @@ def _tocar(
     if sem_confirmacao:
         # A primeira faixa foi entregue e a fila ficou ativa. O estado do
         # áudio é desconhecido, não uma falha nem uma autorização pendente.
-        _marcar_com_alvo(deps, status, nome, executou=True, confirmado=None)
+        _marcar_com_alvo(
+            deps, status, nome, executou=True, confirmado=None,
+            aspectos=aspectos_entrega_reproducao(
+                estado_reproducao.get("entrega_reproducao") or {},
+                deps.id_solicitacao,
+            ),
+        )
     else:
         _marcar_com_alvo(deps, status, nome, executou=True)
     deps.falar_por_status(status, fala_de_confirmacao(

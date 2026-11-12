@@ -28,6 +28,7 @@ from mente_laylay.personalidade.contingencia_natural import fala_contingencia_na
 from mente_laylay.personalidade.autoria_conversacional import criar_fala_autoral
 from mente_laylay.cognicao.contratos_turno import ContratoPropostaPrincipal, ContratoRespostaTurno
 from mente_laylay.cognicao.modelo_corporal import formatar_realidade_corporal
+from mente_laylay.cognicao.quantidade_perguntas import DESCUMPRIDA, pergunta_solicitada_vigente
 from mente_laylay.cognicao.qualidade_comunicacao import (
     avaliar_qualidade_comunicacao,
     contingencia_comunicacao,
@@ -999,6 +1000,21 @@ def preparar_resposta_para_execucao(
                 avaliacao_comunicacao = avaliacao_local
                 comunicacao_autocorrigida = True
                 registrar_log("🧷 [COMUNICAÇÃO] autoria do relato preservada localmente.")
+    if avaliacao_comunicacao.get("problemas_bloqueantes") == [DESCUMPRIDA]:
+        pergunta = pergunta_solicitada_vigente(plano_comunicacao)
+        if pergunta is not None and pergunta.recorte(fala_limpa):
+            from mente_laylay.cognicao.plano_turno import verificar_fala_turno
+
+            plano_revisao = {**plano_comunicacao, "suporte_autoria_proposto": suporte_inicial}
+            if reescrita_aceita and autoria_atual is not None:
+                plano_revisao["autoria_revisada_proposta"] = autoria_atual
+            verificacao = verificar_fala_turno(
+                fala_limpa, plano=plano_revisao, ultima_resposta=ultima_resposta_comunicacao,
+            )
+            if "pergunta_excedente_removida" in verificacao.get("problemas", ()):
+                # A publicação recebe a emissão original e o suporte original.
+                # O juiz final confere novamente o mesmo recorte literal.
+                avaliacao_comunicacao = {**avaliacao_comunicacao, "requer_reparo": False}
     if (avaliacao_comunicacao.get('problemas_bloqueantes') == ['retomada_usuario_sem_nucleo_conferido']
             and not comandos and not falha_tecnica_llm):
         from mente_laylay.cognicao.recordacao_atributo import avaliar_recordacao_atributo

@@ -275,6 +275,10 @@ class MapaRecursosRuntime:
         menção recusada pelo contrato de finalidade e recuperar a falsa leitura.
         Pedidos operacionais fora de leitura mantêm seus roteadores normais.
         """
+        from mente_laylay.percepcao.consumo_processos import resolver_consulta_consumo
+        consumo = resolver_consulta_consumo(texto)
+        if consumo is not None:
+            return consumo
         candidato = self.resolver_consulta(texto)
         if candidato is not None:
             return candidato

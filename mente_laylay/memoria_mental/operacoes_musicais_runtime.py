@@ -364,7 +364,10 @@ class OperacoesMusicaisRuntime:
         return dict(selecionar(nome, indice_faixa) or {})
 
     def estado(self) -> dict[str, Any]:
+        from copy import deepcopy
+
         return {
+            "entrega_reproducao": deepcopy(self.playlist_state.get("last_play_result") or {}),
             "playlist_ativa": str(self.playlist_state.get("name") or "").strip(),
             "indice": max(0, int(self.playlist_state.get("index") or 0)),
             "modo_aleatorio": bool(self.playlist_state.get("shuffle", False)),

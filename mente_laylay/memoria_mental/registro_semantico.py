@@ -148,6 +148,7 @@ def estado_registro_semantico_inicial() -> Dict[str, Any]:
         "declaracoes_suporte_autoria": [],
         "revisao_alegacao_atual": {},
         "falas_observadas": [],
+        "primeira_fala_textual": {},
         "ultima_fala_observada_id": "",
         "entidade_ativa_id": "",
         "foco_contextual_tipado": {},
@@ -181,6 +182,7 @@ def projetar_registro_semantico_persistivel(registro: Mapping[str, Any] | None) 
     from dataclasses import asdict
     from mente_laylay.cognicao.criterio_autoral import CriterioAutoralPublicado
     estado = dict(registro or {})
+    estado.pop('primeira_fala_textual', None)
     if 'falas_observadas' in estado:
         estado['falas_observadas'] = [
             {**f, 'criterio_autoral': asdict(f['criterio_autoral'])}
@@ -226,6 +228,7 @@ def registrar_fala_observada(
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     historico = [EstadoCompartilhadoRuntime._copiar_valor(dict(item)) for item in estado["falas_observadas"]
                  if isinstance(item, Mapping)]
+    tinha_texto = any('texto_publicado' in (item.get('canais') or ()) for item in historico)
     anteriores = [item for item in historico if item.get("id") == ocorrencia_id]
     if len(anteriores) > 1:
         raise ValueError("Identidade de fala duplicada no registro.")
@@ -251,6 +254,12 @@ def registrar_fala_observada(
         atual = next((i for i in historico if i.get('id') == estado['ultima_fala_observada_id']), {})
         if ordem > (atual.get('ordem_emissao') or 0):
             estado['ultima_fala_observada_id'] = ocorrencia_id
+    if canal == 'texto_publicado':
+        primeira = estado.get('primeira_fala_textual') or {}
+        ordem = historico[-1]['ordem_emissao'] if anterior is None else anterior.get('ordem_emissao')
+        ordem_primeira = primeira.get('ordem') if isinstance(primeira, Mapping) else None
+        if type(ordem) is int and (not tinha_texto or (type(ordem_primeira) is int and ordem < ordem_primeira)):
+            estado['primeira_fala_textual'] = {'id': ocorrencia_id, 'ordem': ordem}
     historico.sort(key=lambda item: item.get('ordem_emissao') or 0)
     estado["falas_observadas"] = historico[-24:]
     for resultado in resultados:
@@ -283,6 +292,16 @@ def selecionar_fala_observada(
         return {}
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     return EstadoCompartilhadoRuntime._copiar_valor(dict(fala))
+
+
+def selecionar_primeira_fala_textual(registro: Mapping[str, Any], *, agora: float | None = None) -> Dict[str, Any]:
+    """Resolve a primeira publicação registrada, mesmo se a janela já perdeu seu início."""
+    primeira = registro.get('primeira_fala_textual')
+    if not isinstance(primeira, Mapping) or not isinstance(primeira.get('id'), str):
+        return {}
+    fala = selecionar_fala_observada(registro, ocorrencia_id=primeira['id'], agora=agora)
+    return (fala if fala.get('ordem_emissao') == primeira.get('ordem')
+            and 'texto_publicado' in (fala.get('canais') or ()) else {})
 
 
 def construir_referencia_fala_consulta(
@@ -1449,6 +1468,7 @@ def renovar_registro_semantico_sessao(
         revisao_alegacao_atual={},
         declaracoes_suporte_autoria=[],
         falas_observadas=[],
+        primeira_fala_textual={},
         ultima_fala_observada_id="",
         assunto_ativo_id="",
         ultima_renovacao_motivo=str(motivo or "nova_sessao")[:80],

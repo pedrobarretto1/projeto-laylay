@@ -486,6 +486,23 @@ def _encontrar_posicao(resposta: str, referente: str) -> re.Match[str] | None:
     return None
 
 
+def _adota_proposicao_perguntada(usuario: str, primeira: str) -> bool:
+    """Conferência do ato de assentir, não da verdade da proposição.
+
+    Só a declaração direta da mesma proposição responde à consulta de opinião.
+    Evidência factual e critério continuam sendo conferidos pelos seus owners.
+    """
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
+    consultas = []
+    for parte in enunciados_discursivos(texto_fora_de_citacoes(usuario)):
+        m = re.fullmatch(r'\s*(?:voc[eê]|tu) (?:acha|achas|considera|consideras) que (.+)\?\s*', parte, re.I)
+        if m:
+            consultas.append(m[1].strip())
+    if len(consultas) != 1 or '?' in primeira:
+        return False
+    return bool(re.match(r'^\s*' + re.escape(consultas[0]) + r'(?=\W|$)', primeira, re.I))
+
+
 def _opcao_escolhida(resposta: str, referente: str) -> str:
     """Lê somente uma escolha explícita entre as opções do referente."""
     base = _normalizar(resposta)
@@ -531,6 +548,7 @@ def _relato_informativo_sem_ancora(
     from mente_laylay.cognicao.referencias_linguagem import (
         PerspectivaEnunciador, pedido_repeticao_literal_da_fala,
     )
+    from mente_laylay.cognicao.quantidade_perguntas import pedido_integral_de_pergunta
     perspectiva = contrato.get('perspectiva_enunciador')
     fonte_atual = bool(type(perspectiva) is PerspectivaEnunciador
         and perspectiva.vigente(usuario, turno_id)
@@ -545,6 +563,7 @@ def _relato_informativo_sem_ancora(
         # da diretiva. Mesma distinção usada por _contrato_relato_atual;
         # esta guarda lexical não certifica a fidelidade nem o efeito citado.
         and not pedido_repeticao_literal_da_fala(usuario)
+        and not pedido_integral_de_pergunta(usuario, contrato=contrato, turno_id=turno_id)
     ):
         return False
     ancora = _termos_ancora(usuario) - _MARCADORES_DISCURSIVOS_RELATO
@@ -557,6 +576,7 @@ def _contrato_relato_atual(
     usuario: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any], *, turno_id: Any,
 ) -> bool:
     from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
+    from mente_laylay.cognicao.quantidade_perguntas import pedido_integral_de_pergunta
     return bool(
         turno_id and str(contrato.get("turno_id")) == str(turno_id)
         and contrato.get("origem") == "mente_unica"
@@ -566,6 +586,7 @@ def _contrato_relato_atual(
         and roteiro.get("estrategia") == "resposta_direta"
         and roteiro.get("ancora_literal") == usuario
         and not pedido_repeticao_literal_da_fala(usuario)
+        and not pedido_integral_de_pergunta(usuario, contrato=contrato, turno_id=turno_id)
     )
 
 
@@ -1097,11 +1118,12 @@ def validar_aderencia_contrato_fala(
                 problemas.append("saudacao_inventou_vocativo")
 
     if estrategia in {"opiniao_com_criterio", "resposta_multiacto"} and "opiniao" in atos:
-        posicao = _encontrar_posicao(resposta, referente)
+        posicao_proposicional = _adota_proposicao_perguntada(usuario, primeira)
+        posicao = posicao_proposicional or _encontrar_posicao(resposta, referente)
         if not posicao:
             problemas.append("ato_opiniao_nao_respondido")
         elif estrategia == "opiniao_com_criterio" and not (
-            _POSICAO.search(primeira) or localizar_enunciacao_avaliativa(primeira)
+            posicao_proposicional or _POSICAO.search(primeira) or localizar_enunciacao_avaliativa(primeira)
         ):
             problemas.append("opiniao_nao_veio_na_primeira_frase")
         if posicao and not _tem_criterio_concreto(resposta, referente=referente):

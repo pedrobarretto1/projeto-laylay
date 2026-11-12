@@ -224,6 +224,57 @@ def test_ticks_preservam_identidade_feed_compositor_mascote_e_animacao(conversa_
     assert "Ponte conectada" in observado["status"], "A ponte conectada não prova que o modelo está pronto."
 
 
+def test_render_identico_nao_reinterpreta_historico_estavel(conversa_web):
+    _janela, _ponte, _entradas, js, aguardar = conversa_web
+    mensagens = [
+        {"id": f"estavel-{i}", "role": "assistant", "text": f"Trecho persistente {i} " * 8}
+        for i in range(120)
+    ]
+    js("LaylayInterface.receiveEvent(" + json.dumps({
+        "type": "snapshot", "messages": mensagens, "state": {"activity": "idle"}
+    }) + ")")
+    aguardar(lambda: js("document.querySelectorAll('.message').length===120"))
+    js("""(() => {
+      const prototype=Object.getPrototypeOf(document.createElement('template'));
+      const owner=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML')?Element.prototype:prototype;
+      const descriptor=Object.getOwnPropertyDescriptor(owner,'innerHTML');
+      window.templateParses=0;
+      Object.defineProperty(owner,'innerHTML',{...descriptor,set(value){
+        if(this instanceof HTMLTemplateElement)window.templateParses++;
+        descriptor.set.call(this,value);
+      }});
+      const isEqualNode=Node.prototype.isEqualNode;
+      window.reconciliationChecks=0;
+      Node.prototype.isEqualNode=function(other){
+        window.reconciliationChecks++;
+        return isEqualNode.call(this,other);
+      };
+      window.renderNodes={feed:document.getElementById('chat-history'),first:document.querySelector('.message')};
+      LaylayInterface.render();
+      window.initialTemplateParses=templateParses;
+      window.initialReconciliationChecks=reconciliationChecks;
+    })()""")
+    js("for(let i=0;i<8;i++)LaylayInterface.render()")
+    js("LaylayInterface.state.preferences.reduced=true;LaylayInterface.render()")
+    reduced = js("document.body.classList.contains('reduced')")
+    js("LaylayInterface.state.preferences.reduced=false;LaylayInterface.render()")
+
+    resultado = json.loads(js("""JSON.stringify({
+      parses:templateParses-initialTemplateParses,
+      comparisons:reconciliationChecks-initialReconciliationChecks,
+      sameFeed:renderNodes.feed===document.getElementById('chat-history'),
+      sameFirst:renderNodes.first===document.querySelector('.message'),
+      messageCount:document.querySelectorAll('.message').length,
+      firstText:document.querySelector('.message').textContent.includes('Trecho persistente 0'),
+      reducedClassRemoved:!document.body.classList.contains('reduced')
+    })"""))
+    assert resultado["parses"] == 0, "Projeção idêntica voltou a parsear todo o histórico."
+    assert resultado["comparisons"] == 0, "Projeção idêntica percorreu os nós existentes."
+    assert resultado["sameFeed"] and resultado["sameFirst"], resultado
+    assert resultado["messageCount"] == 120 and resultado["firstText"], resultado
+    assert reduced and resultado["reducedClassRemoved"], resultado
+
+
 def test_snapshot_preserva_entrega_falha_resposta_e_retry(conversa_web):
     _janela, _ponte, _entradas, js, aguardar = conversa_web
     mensagens = [{"id": "falhou", "role": "user", "text": "Entrada recusada", "status": "failed"},
@@ -235,6 +286,79 @@ def test_snapshot_preserva_entrega_falha_resposta_e_retry(conversa_web):
     assert js("LaylayInterface.state.messages.find(m=>m.id==='falhou').delivery") == "failed"
     assert js("!!document.querySelector('[data-retry=falhou]')")
     assert js("LaylayInterface.state.messages.find(m=>m.id==='respondeu'&&m.role==='user').delivery") == "responded"
+
+
+def test_bolhas_do_usuario_adaptam_largura_e_ocultam_entregas_sem_perder_acessibilidade(conversa_web):
+    janela, _ponte, _entradas, js, aguardar = conversa_web
+    janela.resize(375, 620)
+    aguardar(lambda: js("window.innerWidth<=375"))
+    mensagens = [
+        {"id": "curta", "role": "user", "text": "Oi", "status": "accepted"},
+        {"id": "longa", "role": "user", "text": "mensagemsemquebranenhuma" * 50, "status": "responded"},
+        {"id": "falha-visivel", "role": "user", "text": "Não foi enviado", "status": "failed",
+         "error": "Conexão indisponível"},
+    ]
+    js("LaylayInterface.receiveEvent(" + json.dumps({
+        "type": "snapshot", "messages": mensagens, "state": {"activity": "idle"}
+    }) + ")")
+    aguardar(lambda: js("document.querySelectorAll('.message.user').length===3"))
+
+    resultado = json.loads(js("""(() => {
+      const measure=id=>{
+        const message=document.querySelector('[data-message-id="'+id+'"]');
+        const bubble=message.querySelector('.bubble');
+        const profile=message.querySelector('.profile');
+        const status=message.querySelector('.delivery');
+        const style=status&&getComputedStyle(status);
+        const rect=element=>element.getBoundingClientRect();
+        return {
+          width:rect(bubble).width,
+          height:rect(bubble).height,
+          messageWidth:rect(message).width,
+          profileWidth:rect(profile).width,
+          gap:parseFloat(getComputedStyle(message).columnGap)||0,
+          statusQuiet:!!status&&style.position==='absolute'&&style.clipPath!=='none'&&status.getAttribute('aria-live')==='polite',
+          failedVisible:!!status&&style.display!=='none'&&style.visibility!=='hidden'&&rect(status).height>0,
+          retryVisible:!!message.querySelector('[data-retry]')&&rect(message.querySelector('[data-retry]')).width>0,
+          author:bubble.querySelector('.author').textContent,
+          textOverflow:bubble.scrollWidth>bubble.clientWidth+1,
+          profileVisible:!!profile&&getComputedStyle(profile).display!=='none'
+        };
+      };
+      return JSON.stringify({short:measure('curta'),long:measure('longa'),failed:measure('falha-visivel')});
+    })()"""))
+
+    assert 110 <= resultado["short"]["width"] <= 180, resultado
+    assert resultado["short"]["height"] <= 62, resultado
+    assert resultado["short"]["width"] < resultado["long"]["width"] <= 520, resultado
+    assert resultado["long"]["textOverflow"] is False, resultado
+    assert resultado["short"]["statusQuiet"] and resultado["long"]["statusQuiet"], resultado
+    assert resultado["short"]["author"] == "Você", resultado
+    assert resultado["short"]["profileVisible"] and resultado["long"]["profileVisible"], resultado
+    assert resultado["failed"]["failedVisible"] and resultado["failed"]["retryVisible"], resultado
+
+    js("""(() => {
+      const feed=document.getElementById('chat-history');
+      feed.style.width='280px';feed.style.maxWidth='280px';feed.style.flex='0 0 280px';
+    })()""")
+    narrow = json.loads(js("""(() => {
+      const message=document.querySelector('[data-message-id="longa"]');
+      const bubble=message.querySelector('.bubble');
+      const profile=message.querySelector('.profile');
+      const gap=parseFloat(getComputedStyle(message).columnGap)||0;
+      return JSON.stringify({
+        feedWidth:document.getElementById('chat-history').clientWidth,
+        messageWidth:message.clientWidth,
+        bubbleWidth:bubble.clientWidth,
+        available:message.clientWidth-profile.getBoundingClientRect().width-gap,
+        overflow:bubble.scrollWidth>bubble.clientWidth+1
+      });
+    })()"""))
+    assert narrow["feedWidth"] <= 280 and narrow["messageWidth"] <= narrow["feedWidth"], narrow
+    assert narrow["bubbleWidth"] <= narrow["available"] + 1 and not narrow["overflow"], narrow
+
+    js("LaylayInterface.state.userAvatar='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';LaylayInterface.render()")
+    assert js("!!document.querySelector('[data-message-id=curta] .profile img')")
 
 
 def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conversa_web):
@@ -251,7 +375,8 @@ def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conver
     js("window.enviada=document.querySelector('.message.user');LaylayInterface.receiveEvent({type:'input_ack',id:'novo',accepted:true})")
     # O QWebEngine atualiza assincronamente: 40 ms fixos falham sob carga
     # mesmo com entrega correta. Esperar o efeito observado sem relaxar o assert.
-    aguardar(lambda: js("enviada===document.querySelector('.message.user')&&enviada.textContent.includes('Recebida pela mente')"))
+    aguardar(lambda: js("enviada===document.querySelector('.message.user')&&LaylayInterface.state.messages.find(m=>m.id==='novo').delivery==='accepted'&&enviada.querySelector('.delivery.delivery-quiet')&&getComputedStyle(enviada.querySelector('.delivery')).clipPath!=='none'"))
+    assert js("enviada.querySelector('.bubble .author').textContent==='Você'&&enviada.querySelector('.delivery').getAttribute('aria-live')==='polite'")
     js("LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho'})")
     aguardar(lambda: js("document.querySelectorAll('.message').length===16"))
     js("window.resposta=document.querySelector('.message:last-child');LaylayInterface.receiveEvent({type:'assistant_message',id:'novo',text:'Primeiro trecho atualizado'})")
@@ -259,7 +384,9 @@ def test_receipts_append_e_stream_preservam_mensagens_anteriores_e_scroll(conver
     assert js("primeira===document.querySelector('.message')&&enviada===document.querySelector('.message.user')")
     assert js("resposta===document.querySelector('.message:last-child')&&resposta.textContent.includes('atualizado')")
     assert js("feed.scrollTop===posicao")
-    assert js("enviada.textContent.includes('Resposta recebida')")
+    aguardar(lambda: js("LaylayInterface.state.messages.find(m=>m.id==='novo'&&m.role==='user').delivery==='responded'"))
+    assert js("enviada===document.querySelector('.message.user')&&enviada.querySelector('.delivery.delivery-quiet')&&getComputedStyle(enviada.querySelector('.delivery')).clipPath!=='none'")
+    assert js("enviada.querySelector('.delivery').getAttribute('aria-live')==='polite'&&getComputedStyle(enviada.querySelector('.delivery')).clipPath!=='none'")
     assert js("resposta.getAnimations().length") == 0
     # IDs iguais em outra conversa não reutilizam a bolha da conversa anterior.
     outra = {"type": "conversations_state", "success": True, "action": "select", "conversations": {"active_id": "22222222222222222222222222222222", "items": [], "messages": [{"id": "novo", "role": "assistant", "content": "Outra conversa"}]}}

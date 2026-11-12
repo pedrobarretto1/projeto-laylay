@@ -18,6 +18,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     trecho_retificacao_do_enunciador,
 )
 from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia, grupo_nominal_de_papel
+from mente_laylay.cognicao.recordacao_nomeacao import RecordacaoNomeacao, construir_recordacao_nomeacao
 
 _PALAVRA = r'[^\W\d_]+'
 _COPULA = r'(?:era|eram|é|são|estava|estavam|está|estão)'
@@ -197,11 +198,14 @@ class RecordacaoAtributo:
 
 
 def construir_recordacao_atributo(texto: str, *, plano: Mapping[str, Any],
-                                  mente: Mapping[str, Any]) -> RecordacaoAtributo | None:
+                                  mente: Mapping[str, Any]) -> RecordacaoAtributo | RecordacaoNomeacao | None:
     if (not plano.get('id') or plano.get('texto_usuario') != texto
             or plano.get('autoriza_execucao') is not False or plano.get('requer_execucao')
             or plano.get('comandos') or plano.get('texto_operacional')):
         return None
+    nomeacao = construir_recordacao_nomeacao(texto, plano=plano, mente=mente)
+    if nomeacao is not None:
+        return nomeacao
     consulta = _consulta(texto)
     if consulta is None:
         return None
@@ -255,7 +259,7 @@ def construir_recordacao_atributo(texto: str, *, plano: Mapping[str, Any],
 def avaliar_recordacao_atributo(fala: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
     contrato = plano.get('contrato_fala') or {}
     fonte = contrato.get('recordacao_atributo')
-    if (type(fonte) is not RecordacaoAtributo or fonte.turno_id != str(plano.get('id'))
+    if (type(fonte) not in (RecordacaoAtributo, RecordacaoNomeacao) or fonte.turno_id != str(plano.get('id'))
             or fonte.texto_usuario != plano.get('texto_usuario')
             or str(contrato.get('turno_id')) != fonte.turno_id or contrato.get('origem') != 'mente_unica'
             or contrato.get('autoriza_execucao') is not False or plano.get('autoriza_execucao') is not False

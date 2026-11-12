@@ -20,6 +20,7 @@ from mente_laylay.cognicao.estado_tecnico_llm import categoria_estado_tecnico_ll
 from mente_laylay.cognicao.continuidade_resposta import projetar_contrato_reparo_conversacional
 from mente_laylay.personalidade.antirrepeticao import repeticao_estrutural
 from mente_laylay.personalidade.prompt_voz_unica import IDENTIDADE_VOZ_LAYLAY
+from mente_laylay.personalidade.perfil_amizade import TOM_AMIZADE_DESCONTRAIDA
 from mente_laylay.personalidade.guarda_ataque_pessoal import contem_ataque_pessoal
 from mente_laylay.cognicao.guardiao_alegacoes import fala_nega_capacidade_emocional
 
@@ -107,15 +108,16 @@ def criar_fala_autoral(
         "falas_recentes_que_nao_devem_ser_repetidas": recentes,
     }
     sistema = (
-        f"{IDENTIDADE_VOZ_LAYLAY} "
+        f"{IDENTIDADE_VOZ_LAYLAY} {TOM_AMIZADE_DESCONTRAIDA} "
         "Escreva a fala final da Laylay para a mensagem atual. O Python forneceu apenas "
         "o sentido mínimo e os limites; não copie o texto mínimo como um molde e não fale "
         "sobre sistema, verificador, rascunho, resposta, erro interno ou tentativa de reparo. "
         "Responda como amiga presente, natural, clara e com deboche leve quando combinar. "
         "Não seja poética sem necessidade. Preserve fatos, foco, relações e negações; não "
         "invente memória, corpo, ambiente ou experiência pessoal. Não execute, prometa ou "
-        "sugira comandos. Não reutilize frases, aberturas ou tiradas da lista recente. Uma "
-        "ou duas frases bastam e no máximo uma pergunta é permitida. Retorne somente a fala "
+        "sugira comandos. Não reutilize frases, aberturas ou tiradas da lista recente. "
+        "Siga a quantidade indicada no contrato_de_reparo. Sem quantidade pedida, prefira "
+        "uma ou duas frases e no máximo uma pergunta espontânea. Retorne somente a fala "
         "final, sem JSON, rótulos ou comentários de bastidor."
     )
     try:

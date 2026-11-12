@@ -40,6 +40,7 @@ from mente_laylay.cognicao.guardiao_alegacoes import detectar_resultados_operaci
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.cognicao.continuidade_resposta import projetar_contrato_reparo_conversacional
+from mente_laylay.cognicao.quantidade_perguntas import DESCUMPRIDA, DESTINATARIO_DIVERGENTE, pergunta_solicitada_vigente
 from mente_laylay.cognicao.formato_breve import DESCUMPRIDO as FORMATO_BREVE_DESCUMPRIDO, formato_breve_vigente
 
 
@@ -368,6 +369,8 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "nomeacao_sem_delimitacao",
     "metodo_de_inspecao_fora_do_limite",
     FORMATO_BREVE_DESCUMPRIDO,
+    DESCUMPRIDA,
+    DESTINATARIO_DIVERGENTE,
     "proximo_acontecimento_fora_do_recorte",
     "falha_operacional_sem_evidencia",
     "resultado_operacional_sem_evidencia",
@@ -494,6 +497,9 @@ def avaliar_qualidade_comunicacao(
     formato_breve = formato_breve_vigente(plano_atual)
     if formato_breve is not None and not formato_breve.aceita(resposta, ultima_resposta=resposta_anterior):
         problemas.append(FORMATO_BREVE_DESCUMPRIDO)
+    pergunta = pergunta_solicitada_vigente(plano_atual)
+    if pergunta is not None and not pergunta.aceita(resposta):
+        problemas.append(pergunta.problema(resposta))
     from mente_laylay.cognicao.fundamentacao_factual import nomeacao_exige_reparo
     if nomeacao_exige_reparo(resposta, texto_usuario=texto_usuario,
                             contexto_obra=plano_atual.get('dominio') == 'musica'):
@@ -808,7 +814,7 @@ def avaliar_qualidade_comunicacao(
         ):
             problemas.append("explicacao_permaneceu_nebulosa")
 
-        if resposta.count("?") > 1:
+        if pergunta is None and resposta.count("?") > 1:
             problemas.append("perguntas_em_excesso")
 
         if _NARRACAO_MECANICA.search(resposta) and not _CONTEXTO_TECNICO_USUARIO.search(usuario):
@@ -857,6 +863,8 @@ def avaliar_qualidade_comunicacao(
         contrato_reparo["limite_metodo_inspecao"] = metodo.instrucao()
     if formato_breve is not None:
         contrato_reparo['limite_formato_breve'] = formato_breve.instrucao()
+    if pergunta is not None:
+        contrato_reparo['limite_perguntas'] = pergunta.instrucao()
     if retomada_usuario is not None and not retomada_usuario['admissivel']:
         contrato_reparo['retomada_usuario'] = {
             'nucleo': 'atribuir ao usuário somente relato apoiado no histórico; primeira pessoa nas fontes pertence a ele',
@@ -1126,7 +1134,7 @@ def montar_mensagens_reparo_comunicacao(
         "Nomeie os assuntos em vez de usar referentes soltos como 'o outro'. Se a mensagem "
         "pedir esclarecimento, diga primeiro em linguagem direta o que a fala anterior quis "
         "dizer; não tente explicar uma metáfora com outra. Não narre o ato de responder, não "
-        "fale do terminal sem ter sido perguntada e faça no máximo uma pergunta. Evite poesia "
+        "fale do terminal sem ter sido perguntada. Sem quantidade solicitada, faça no máximo uma pergunta espontânea. Evite poesia "
         "decorativa fora de pedidos criativos. Ao receber uma relação pessoal, apenas "
         "reconheça o nome e a relação: não sexualize, não faça insinuação e não abra uma "
         "pergunta nova. A resposta deve continuar clara "
@@ -1271,6 +1279,8 @@ def montar_mensagens_reparo_comunicacao(
     if 'metodo_de_inspecao_fora_do_limite' in bloqueios and limite_metodo:
         payload.pop('rascunho_rejeitado', None)
         instrucao += " " + limite_metodo
+    if reparo.get('limite_perguntas'):
+        instrucao += ' ' + reparo['limite_perguntas']
     if reparo.get('limite_formato_breve'):
         instrucao += ' ' + reparo['limite_formato_breve']
     if 'proximo_acontecimento_fora_do_recorte' in bloqueios:

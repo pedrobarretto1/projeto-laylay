@@ -14,6 +14,7 @@ _INTENTS_POR_DOMINIO = {
         "TOCAR_PLAYLIST_SHUFFLE", "STOP_PLAYLIST_CONTEXT",
     },
     "sistema": {
+        "PROCESS_RESOURCE_USAGE",
         "CANCELAR_ACAO", "CLOSE_APP", "APP_OPEN", "VOLUME", "LIST_WINDOWS",
         "MAXIMIZE_WINDOW", "LOCK_PC", "ORGANIZAR_DESKTOP",
         "FECHAR_PROGRAMA",
@@ -66,6 +67,7 @@ _CONFIRMACAO_OBRIGATORIA = {
 # O conjunto é usado pelo árbitro; ele não substitui a validação de alvo feita
 # pelo mapa de recursos e pelos executores.
 INTENTS_SOMENTE_LEITURA = frozenset({
+    "PROCESS_RESOURCE_USAGE",
     "PLAYLIST_LIST", "LAYLAY_PLAYLIST_LIST", "LISTAR_PLAYLISTS", "MUSIC_STATUS",
     "LISTAR_AGENDAMENTOS", "EMAIL_READ", "EMAIL_SYNC", "EMAIL_DRAFT_READ", "NOTIFICATIONS",
     "IOT_STATUS", "IOT_LIST", "WEATHER", "RESUMIR_PAGINA",
@@ -83,6 +85,7 @@ INTENTS_SOMENTE_LEITURA = frozenset({
 # ``variavel`` significa que há rotas confirmáveis e rotas apenas enviadas; o
 # ResultadoAcao decide por chamada, sem promover ``executou=True`` a sucesso.
 _CONFIRMACAO_POR_INTENT = {
+    "PROCESS_RESOURCE_USAGE": ("retorno_dados", "amostra local dos processos por recurso; leitura parcial não comprova todos os processos nem causa da lentidão"),
     # Música
     "PLAYLIST_CREATE": ("persistencia_local", "a playlist vazia reaparece no armazenamento local"),
     "PLAYLIST_ADD": ("persistencia_local", "a faixa reaparece no armazenamento da playlist"),
@@ -243,6 +246,7 @@ _CONTRATO_POR_DOMINIO = {
     },
     "sistema": {
         "invocacao_natural": ("abre o Opera", "maximiza a janela", "organiza a área de trabalho"),
+        "consulta_consumo": "Pode consultar quem está usando RAM no PC local. Retorna nomes, PIDs e percentuais observados, com limite de amostra parcial. Não encerra processos e não mede internet; consumo não prova causa de lentidão. Consulta detalhada de CPU exige amostragem temporal e ainda não está coberta por esta operação.",
         "proprietario": "mente_laylay.autonomia.executor_sistema",
         "dependencias": ("sistema operacional", "resolvedor de janelas"),
         "limites_contextuais": (
@@ -354,6 +358,18 @@ _CONTRATO_POR_DOMINIO = {
             "resultado": "autoria_conversacional",
             "canal": "conversa_atual",
             "unidades": ("frase", "frases", "palavra", "palavras", "parágrafo", "parágrafos", "linha", "linhas"),
+            "exige_destino_externo": False,
+            "autoriza_execucao": False,
+            "comprova_efeito": False,
+        }, {
+            "id": "conversa.conteudo_resposta",
+            "resultado": "autoria_conversacional",
+            "canal": "conversa_atual",
+            # Conteúdo da entrega, não formato nem identificação de um alvo
+            # externo. A fidelidade ainda pertence à revisão e às fontes.
+            "unidades": ("nome", "nomes", "título", "títulos", "apelido", "apelidos",
+                         "número", "números", "valor", "valores", "opção", "opções",
+                         "motivo", "motivos", "justificativa", "justificativas"),
             "exige_destino_externo": False,
             "autoriza_execucao": False,
             "comprova_efeito": False,

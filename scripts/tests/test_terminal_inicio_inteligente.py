@@ -18,15 +18,15 @@ def test_primeiro_clique_da_ilha_abre_inicio_na_mesma_janela(interface_web):
     assert enviadas == []
 
 
-def test_geometria_oficial_reproduz_proporcoes_da_previa_sem_invadir_topo():
+def test_geometria_oficial_reproduz_proporcoes_da_previa_ancorada_ao_topo():
     from PySide6.QtCore import QRect
     from cliente.terminal_2.apresentacao_desktop import geometria_desktop
     area = QRect(0, 0, 1440, 960)
     compacta = geometria_desktop(area)
-    assert (compacta.width(), compacta.height(), compacta.top()) == (272, 54, 120)
+    assert (compacta.width(), compacta.height(), compacta.top()) == (272, 36, 0)
     for pagina in ('home','chat','lamp','music','streaming','memory','system','dev','settings'):
         ret = geometria_desktop(area, True, pagina)
-        assert (ret.width(), ret.height(), ret.top()) == (1100, 730, 120)
+        assert (ret.width(), ret.height(), ret.top()) == (1100, 730, 0)
 
 
 def test_preferencia_do_inicio_persiste_sem_enviar_operacao_para_mente(interface_web):
