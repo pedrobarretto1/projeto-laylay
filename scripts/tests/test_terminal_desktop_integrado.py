@@ -891,9 +891,10 @@ def test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino(interf
     janela.expandir_desktop()
     animacao = janela._animacao_desktop
     assert animacao.state() == QAbstractAnimation.Running
-    assert animacao.duration() == 480
+    assert animacao.duration() == 800
     assert animacao.easingCurve().type() == QEasingCurve.BezierSpline
-    assert 0 < animacao.easingCurve().valueForProgress(.1) < .2
+    assert .045 <= animacao.easingCurve().valueForProgress(.1) <= .055
+    assert .48 <= animacao.easingCurve().valueForProgress(.5) <= .52
     duracao_abertura = animacao.duration()
     area = janela.screen().availableGeometry()
     for percentual in (10, 35, 60, 90):
@@ -915,6 +916,64 @@ def test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino(interf
     assert animacao.state() == QAbstractAnimation.Stopped
     assert janela.geometry() == geometria_desktop(janela.screen().availableGeometry(), expandida=True)
     assert enviadas == []
+
+
+def test_animacao_geometria_desktop_mantem_progresso_suave_sem_limitar_quadros(interface_web):
+    from PySide6.QtCore import QAbstractAnimation, QEasingCurve, QPropertyAnimation, QPointF, QRect
+
+    app, _worker, janela, _enviadas, _eventos = interface_web
+    janela.show()
+    app.processEvents()
+    animacao = janela._animacao_desktop
+    assert type(animacao) is QPropertyAnimation
+    animacao.stop()
+    inicio = QRect(janela.x(), janela.y(), 272, 36)
+    destino = QRect(inicio.x(), inicio.y(), 1100, 730)
+    janela.setGeometry(inicio)
+    curva = QEasingCurve(QEasingCurve.BezierSpline)
+    curva.addCubicBezierSegment(QPointF(.2, 0), QPointF(.8, 1), QPointF(1, 1))
+    animacao.setDuration(800)
+    animacao.setEasingCurve(curva)
+    animacao.setStartValue(inicio)
+    animacao.setEndValue(destino)
+    animacao.start()
+    amostras = []
+    anterior = QRect(inicio)
+    for tempo in (*range(16, animacao.duration(), 16), animacao.duration()):
+        animacao.setCurrentTime(tempo)
+        atual = QRect(janela.geometry())
+        deslocamento = (atual.width() - anterior.width(), atual.height() - anterior.height())
+        assert all(delta >= 0 for delta in deslocamento), {
+            'time_ms': tempo, 'previous': anterior.getRect(), 'current': atual.getRect(),
+        }
+        amostras.append((tempo, deslocamento, atual))
+        anterior = atual
+
+    assert animacao.duration() == 800
+    assert max(delta[0] for _, delta, _ in amostras) <= 24, {
+        'largest_width_step_per_16ms': max(delta[0] for _, delta, _ in amostras),
+    }
+    assert max(delta[1] for _, delta, _ in amostras) <= 20, {
+        'largest_height_step_per_16ms': max(delta[1] for _, delta, _ in amostras),
+    }
+    assert all(
+        amostras[i][2].size() != amostras[i - 1][2].size()
+        for i in range(16, 21)
+    ), 'A animação deve atualizar em amostras consecutivas de 16 ms, sem gate de FPS'
+    animacao.setCurrentTime(250)
+    assert janela.height() >= 220, {
+        'time_ms': 250, 'height': janela.height(), 'required_content_height': 220,
+    }
+    animacao.setCurrentTime(animacao.duration())
+    assert janela.geometry() == destino
+
+    animacao.setDirection(QAbstractAnimation.Backward)
+    animacao.setCurrentTime(animacao.duration() - 10)
+    app.processEvents()
+    animacao.setCurrentTime(0)
+    app.processEvents()
+    assert janela.geometry() == inicio
+    animacao.stop()
 
 
 def test_shell_desktop_integrado_mantem_notch_superficies_e_controles(conversa_web):
@@ -1822,7 +1881,7 @@ def test_expansao_preserva_ilha_ate_viewport_util_e_confirma_ack(conversa_web, m
     assert entradas == []
 
 
-def test_expansao_tem_aceleracao_progressiva_e_aguarda_ack_do_viewport(conversa_web, monkeypatch):
+def test_expansao_tem_progressao_suave_e_aguarda_ack_do_viewport(conversa_web, monkeypatch):
     from PySide6.QtCore import QAbstractAnimation
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
@@ -1836,54 +1895,59 @@ def test_expansao_tem_aceleracao_progressiva_e_aguarda_ack_do_viewport(conversa_
     aguardar(lambda: janela._desktop_fase == 'resizing')
     assert janela._animacao_desktop.state() == QAbstractAnimation.Running
     duracao = janela._animacao_desktop.duration()
+    assert duracao == 800
     janela._animacao_desktop.pause()
-    janela._animacao_desktop.setCurrentTime(duracao // 10)
-    QTest.qWait(20)
-    aguardar(lambda: js(
-        f"innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
-    fracao_inicio = (
-        (janela.width() - origem.width()) / (janela._desktop_destino.width() - origem.width()),
-        (janela.height() - origem.height()) / (janela._desktop_destino.height() - origem.height()),
+    amostras_esperadas = (
+        (10, .049), (25, .197), (36, .327), (40, .376), (50, .50),
+        (60, .624), (64, .673), (75, .803), (90, .951),
     )
-    assert all(.13 <= fracao <= .19 for fracao in fracao_inicio), {
-        'duration_ms': duracao, 'time_ms': duracao // 10, 'fraction': fracao_inicio,
-    }
+    progresso = []
+    geometrias = []
+    for percentual, esperado in amostras_esperadas:
+        tempo = duracao * percentual // 100
+        janela._animacao_desktop.setCurrentTime(tempo)
+        QTest.qWait(20)
+        QApplication.instance().processEvents()
+        aguardar(lambda: js(
+            f"innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
+        medida = json.loads(js("""JSON.stringify({
+          viewport:[innerWidth,innerHeight],
+          island:[document.querySelector('.desktop-island').getBoundingClientRect().width,
+            document.querySelector('.desktop-island').getBoundingClientRect().height],
+          phase:LaylayInterface.state.desktopPhase
+        })"""))
+        assert medida['phase'] == 'resizing'
+        assert medida['viewport'] == [janela.web.width(), janela.web.height()], medida
+        assert medida['island'] == medida['viewport'], medida
+        fracao = (
+            (janela.width() - origem.width()) / (janela._desktop_destino.width() - origem.width()),
+            (janela.height() - origem.height()) / (janela._desktop_destino.height() - origem.height()),
+        )
+        progresso.append(fracao)
+        geometrias.append((janela.width(), janela.height()))
+        assert all(abs(valor - esperado) <= .025 for valor in fracao), {
+            'duration_ms': duracao, 'time_ms': tempo, 'expected': esperado,
+            'fraction': fracao,
+        }
 
-    janela._animacao_desktop.setCurrentTime(duracao // 4)
-    QTest.qWait(20)
-    QApplication.instance().processEvents()
-    aguardar(lambda: js(
-        f"innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
-    fracao_largura = (janela.width() - origem.width()) / (
-        janela._desktop_destino.width() - origem.width())
-    fracao_altura = (janela.height() - origem.height()) / (
-        janela._desktop_destino.height() - origem.height())
-    meio = json.loads(js("""JSON.stringify({
-      viewport:[innerWidth,innerHeight],
-      island:[document.querySelector('.desktop-island').getBoundingClientRect().width,
-        document.querySelector('.desktop-island').getBoundingClientRect().height],
-      phase:LaylayInterface.state.desktopPhase
-    })"""))
-    assert meio['phase'] == 'resizing'
-    assert meio['viewport'] == [janela.web.width(), janela.web.height()], meio
-    assert meio['island'] == meio['viewport'], meio
-    assert .40 <= fracao_largura <= .48 and .40 <= fracao_altura <= .48, {
-        'duration_ms': duracao, 'time_ms': duracao // 4,
-        'fraction': [fracao_largura, fracao_altura],
-    }
-
-    janela._animacao_desktop.setCurrentTime(3 * duracao // 4)
-    QTest.qWait(20)
-    aguardar(lambda: js(
-        f"innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
-    fracao_tres_quartos = (
-        (janela.width() - origem.width()) / (janela._desktop_destino.width() - origem.width()),
-        (janela.height() - origem.height()) / (janela._desktop_destino.height() - origem.height()),
+    assert all(
+        all(anterior[dimensao] <= atual[dimensao] for dimensao in range(2))
+        for anterior, atual in zip(progresso, progresso[1:])
+    ), {'samples': progresso}
+    assert all(
+        all(abs(progresso[i][dimensao] + progresso[-1-i][dimensao] - 1) <= .025
+            for dimensao in range(2))
+        for i in range(len(progresso) // 2)
+    ), {'samples': progresso}
+    altura_esperada_aos_40 = origem.height() + .33 * (
+        janela._desktop_destino.height() - origem.height()
     )
-    assert all(.92 <= fracao <= .98 for fracao in fracao_tres_quartos), {
-        'duration_ms': duracao, 'time_ms': 3 * duracao // 4,
-        'fraction': fracao_tres_quartos,
-    }
+    if altura_esperada_aos_40 >= 220:
+        assert geometrias[3][1] >= 220, {
+            'sample_percent': 40,
+            'height': geometrias[3][1],
+            'destination_height': janela._desktop_destino.height(),
+        }
 
     janela._animacao_desktop.resume()
     aguardar(lambda: janela._desktop_fase == 'idle')

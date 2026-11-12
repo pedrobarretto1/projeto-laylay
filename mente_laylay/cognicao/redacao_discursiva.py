@@ -95,6 +95,9 @@ def conferir_redacao_nao_assertiva(texto: str, *, plano: Mapping[str, Any]) -> d
     operação executada ou oração extra recebe suporte por usar 'eu diria'.
     Outras formulações permanecem na revisão normal, com suas fontes.
     """
+    pergunta = conferir_pergunta_de_escolha(texto, plano=plano)
+    if pergunta is not None:
+        return pergunta
     f = redacao_discursiva_vigente(plano)
     if f is None:
         return None
@@ -118,3 +121,24 @@ def conferir_redacao_nao_assertiva(texto: str, *, plano: Mapping[str, Any]) -> d
         'realizacao':{'texto':texto,'escopo':'proposta_de_verificacao'},
         'estado_real_verificado':False,'semantica_verificada':False,'prova_implicacao':False,
         'pode_confirmar_fato_externo':False,'autoriza_execucao':False}
+
+
+def conferir_pergunta_de_escolha(texto: str, *, plano: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Confere escolha hipotética sem qualificador factual ou oração acrescentada."""
+    from mente_laylay.cognicao.quantidade_perguntas import pergunta_solicitada_vigente
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+    from mente_laylay.cognicao.contrato_fala import explicacao_exige_apoio_individual
+    pedido = pergunta_solicitada_vigente(plano)
+    if (pedido is None or not pedido.aceita(texto) or explicacao_exige_apoio_individual(plano)
+            or plano.get('natureza_entrada') == 'evento'):
+        return None
+    forma = re.fullmatch(
+        r'(?:[\w]+(?: [\w]+)?,\s*)?(?:[Qq]ual|[Qq]ue) (?P<objeto>[^\W\d_]+) '
+        r'(?:você|voce|tu) (?:escolheria|preferiria|proporia|mudaria)\?', texto)
+    if forma is None or not grupo_nominal_de_papel(forma['objeto']):
+        return None
+    return {'tipo_ato': 'pergunta_de_escolha', 'ato_conferido': True,
+        'fonte': {'tipo': 'utterance_atual', 'texto': pedido.texto_usuario, 'turno_id': pedido.turno_id},
+        'realizacao': {'texto': texto, 'escopo': 'escolha_hipotetica_sem_afirmacao'},
+        'estado_real_verificado': False, 'semantica_verificada': False, 'prova_implicacao': False,
+        'pode_confirmar_fato_externo': False, 'autoriza_execucao': False}

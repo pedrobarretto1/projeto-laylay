@@ -33,11 +33,12 @@ _DIRETO = (
     rf'(?:(?P<singular>uma|1)\s+(?:unica\s+)?pergunta|(?P<plural>{_QUANTIDADE_PLURAL})\s+perguntas'
     rf'|{_LIMITE_SUPERIOR}|{_LIMITE_INFERIOR})\b'
 )
-_PREAMBULO = r'(?:(?:agora|entao|depois|em seguida|por favor|para encerrar)(?:,\s*|\s+))*'
+_FECHO = r'para (?:encerrar|fechar|concluir)(?: (?:nosso|nossa|este|esta|o|a) [\w ]{1,60})?,\s*'
+_PREAMBULO = rf'(?:(?:agora|entao|depois|em seguida|por favor|para encerrar)(?:,\s*|\s+)|{_FECHO})*'
 _PEDIDO = re.compile(
     rf'(?:^|[.!?;]\s*|\be\s+)(?:e\s+)?{_PREAMBULO}(?:{_DIRETO}'
     rf'|(?:(?:qual|que)\s+pergunta|(?:quais|que)\s+(?P<proposta>{_QUANTIDADE_PLURAL})\s+perguntas)'
-    r'\s+(?:(?:voce|tu)\s+)?(?:faria|farias|formularia|proporia)\b)'
+    r'\s+(?:(?:voce|tu)\s+)?(?:faria|farias|formularia|proporia|gostaria de (?:fazer|formular|propor))\b)'
 )
 _COMPLEMENTO = (
     r'(?:\s+(?:so|inesperada|engracada|curta|simples|criativa|diferente))?'

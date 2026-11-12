@@ -1298,12 +1298,11 @@ class JanelaInterfaceWebV1(QMainWindow):
         aumentando = destino.width() > origem.width() or destino.height() > origem.height()
         if aumentando:
             curva = QEasingCurve(QEasingCurve.BezierSpline)
-            # Evita o impulso inicial, mas revela espaço suficiente cedo para o conteúdo acompanhar.
-            curva.addCubicBezierSegment(QPointF(.08, 0), QPointF(.35, 1), QPointF(1, 1))
+            curva.addCubicBezierSegment(QPointF(.2, 0), QPointF(.8, 1), QPointF(1, 1))
         else:
             curva = QEasingCurve(QEasingCurve.InCubic)
         self._animacao_desktop.setEasingCurve(curva)
-        self._animacao_desktop.setDuration(480 if self.estado_desktop == 'expanded' else 360)
+        self._animacao_desktop.setDuration(800 if self.estado_desktop == 'expanded' else 360)
         self._animacao_desktop.setStartValue(origem)
         self._animacao_desktop.setEndValue(destino)
         self._animacao_desktop.start()

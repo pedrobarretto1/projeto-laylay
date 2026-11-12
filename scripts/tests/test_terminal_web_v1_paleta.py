@@ -112,3 +112,27 @@ def test_acabamento_plum_cobre_todas_as_paginas_sem_remover_estrutura(
     assert estilo["page"] and estilo["structure"], estilo
     assert "radial-gradient" in estilo["background"], estilo
     assert estilo["accent"], estilo
+
+
+def test_vista_vazia_expandida_usa_molduras_continuas(conversa_web):
+    janela, _ponte, _entradas, js, aguardar = conversa_web
+    js("LaylayInterface.goPage('home')")
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: js("LaylayInterface.state.mode==='desktop'"))
+    aguardar(lambda: janela._desktop_fase == 'idle')
+    janela.expandir_desktop(fixar=True)
+    aguardar(lambda: janela._desktop_fase == 'idle')
+    aguardar(lambda: js("!!document.querySelector('.home-inteligente .empty')"))
+
+    molduras = json.loads(js("""JSON.stringify(
+      ['.home-inteligente .empty','.home-inteligente .pinned-empty'].map(seletor=>{
+        const elemento=document.querySelector(seletor);
+        if(!elemento)return null;
+        const estilo=getComputedStyle(elemento);
+        return {seletor,borderStyle:estilo.borderTopStyle,
+          borderColor:estilo.borderTopColor,background:estilo.backgroundColor};
+      }).filter(Boolean)
+    )"""))
+    assert molduras, molduras
+    assert all(item["borderStyle"] == "solid" for item in molduras), molduras
+    assert all(item["borderColor"] == "rgb(57, 48, 68)" for item in molduras), molduras

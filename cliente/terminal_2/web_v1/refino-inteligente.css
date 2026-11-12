@@ -566,6 +566,11 @@ body.refined-ui .tp-terminal-title .terminal-dots i:nth-child(3){background:#5e9
 }
 .home-inteligente .pinned-empty svg{width:18px;height:18px;flex:none;}
 .home-inteligente .pinned-empty p{font-size:11px;line-height:1.6;color:#a4a6b7;}
+.home-inteligente .empty,
+.home-inteligente .pinned-empty{
+  border-style:solid;
+  border-color:#393044;
+}
 @media(max-width:520px) {
   .home-inteligente .pinned-mini-card {padding:10px;}
   .home-inteligente .pinned-mini-card .pinned-card-copy strong {font-size:12px;}
