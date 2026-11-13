@@ -9,6 +9,8 @@ import unicodedata
 
 _MOLDURA_NARRATIVA = re.compile(
     r'\b(?:na|nesta|nessa)\s+(?:(?:minha|nossa)\s+)?(?:hist[oó]ria|fic[cç][aã]o)\s*[:,]\s*(?=\S)', re.I)
+_MOLDURA_NARRATIVA_POSPOSTA = re.compile(
+    r'\s+(?:na|nesta|nessa)\s+(?:(?:minha|nossa)\s+)?(?:hist[oó]ria|fic[cç][aã]o)\s*[.!?;]*$', re.I)
 
 
 def moldura_narrativa_inicial(texto: str) -> bool:
@@ -20,9 +22,42 @@ def moldura_narrativa_inicial(texto: str) -> bool:
     return bool(_MOLDURA_NARRATIVA.match(str(texto or '').lstrip()))
 
 
+def delimita_imaginacao_sem_efeito(enunciado: str) -> bool:
+    """Declaração integral de imaginação contraposta à ausência de efeito.
+
+    Não basta encontrar uma negação ou a palavra real. O sujeito atual afirma
+    a criação e nega o predicado contrastado; perguntas e relatos não fixam
+    esse enquadramento. O chamador conserva a revisão dos demais enunciados.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    leitura = re.fullmatch(
+        r'(?:n[oó]s\s+|eu\s+)?(?:estamos|estou)\s+'
+        r'(?:imaginando|inventando|criando)\s*,\s*n[aã]o\s+'
+        r'(?P<predicado>[^\W\d_]+(?:ando|endo|indo))\s+nada\s+real[.!]*',
+        str(enunciado or '').strip(), re.I)
+    return bool(leitura and (consultar_morfologia(leitura['predicado'].casefold()) or 0) & 32)
+
+
 def contem_moldura_narrativa(texto: str) -> bool:
     """Mesma moldura no pedido; não decide o alcance de outro ato independente."""
-    return bool(_MOLDURA_NARRATIVA.search(str(texto or '')))
+    externo = texto_fora_de_citacoes(texto)
+    if _MOLDURA_NARRATIVA.search(externo):
+        return True
+    for enunciado in enunciados_discursivos(externo):
+        if delimita_imaginacao_sem_efeito(enunciado):
+            return True
+        moldura = _MOLDURA_NARRATIVA_POSPOSTA.search(enunciado)
+        if moldura is None:
+            continue
+        predicado = enunciado[:moldura.start()].strip()
+        # A posição do adjunto não muda a finalidade da oração. Um operador
+        # que nega ou questiona o próprio enquadramento não fixa essa finalidade.
+        if (predicado and not re.search(
+            r'\b(?:n[aã]o|nunca|jamais|nem|s[oó]|somente|apenas|talvez|ou)\s*$', predicado, re.I)
+            and not re.match(r'^(?:se|caso)\b', predicado, re.I)):
+            return True
+    return False
 
 
 def contem_agradecimento_autoral(texto: str) -> bool:

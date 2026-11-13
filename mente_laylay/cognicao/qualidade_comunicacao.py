@@ -369,6 +369,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "nomeacao_sem_delimitacao",
     "metodo_de_inspecao_fora_do_limite",
     FORMATO_BREVE_DESCUMPRIDO,
+    'retificacao_redacao_descumprida',
     DESCUMPRIDA,
     DESTINATARIO_DIVERGENTE,
     "proximo_acontecimento_fora_do_recorte",
@@ -495,6 +496,10 @@ def avaliar_qualidade_comunicacao(
     if metodo is not None and metodo_inspecao_incompativel(resposta, metodo=metodo):
         problemas.append("metodo_de_inspecao_fora_do_limite")
     formato_breve = formato_breve_vigente(plano_atual)
+    from mente_laylay.cognicao.redacao_discursiva import retificacao_redacao_vigente
+    retificacao_redacao = retificacao_redacao_vigente(plano_atual)
+    if retificacao_redacao is not None and not retificacao_redacao.aceita(fala):
+        problemas.append('retificacao_redacao_descumprida')
     if formato_breve is not None and not formato_breve.aceita(resposta, ultima_resposta=resposta_anterior):
         problemas.append(FORMATO_BREVE_DESCUMPRIDO)
     pergunta = pergunta_solicitada_vigente(plano_atual)
@@ -859,6 +864,8 @@ def avaliar_qualidade_comunicacao(
         resposta, plano={**plano_atual, "texto_usuario": usuario},
     ))
     contrato_reparo = dict(aderencia_contrato.get("contrato_reparo") or {})
+    if retificacao_redacao is not None:
+        contrato_reparo['retificacao_redacao'] = retificacao_redacao.instrucao()
     if metodo is not None and "metodo_de_inspecao_fora_do_limite" in problemas:
         contrato_reparo["limite_metodo_inspecao"] = metodo.instrucao()
     if formato_breve is not None:
@@ -1283,6 +1290,8 @@ def montar_mensagens_reparo_comunicacao(
         instrucao += ' ' + reparo['limite_perguntas']
     if reparo.get('limite_formato_breve'):
         instrucao += ' ' + reparo['limite_formato_breve']
+    if reparo.get('retificacao_redacao'):
+        instrucao += ' ' + reparo['retificacao_redacao']
     if 'proximo_acontecimento_fora_do_recorte' in bloqueios:
         payload.pop('rascunho_rejeitado', None)
         instrucao += (" Retome a premissa atual com um único acontecimento novo, "

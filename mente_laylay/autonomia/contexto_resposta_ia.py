@@ -159,6 +159,18 @@ def negociar_autoria_com_fontes(
         f["url"] for f in _selecionar_fontes_fundamentacao(fundamentacao)
         if type(f.get("url")) is str and 0 < len(f["url"]) <= 200
         and f["url"] == f["url"].strip() and f["url"].isprintable())) if exposta else ()
+    from mente_laylay.cognicao.documentacao_local_turno import documentacao_local_vigente, formatar_documentacao_local
+    local = documentacao_local_vigente(plano_autoria or {})
+    if local is not None and not pacote.contexto_fechado:
+        bloco_local = formatar_documentacao_local(local)
+        if not any(m.get('role') == 'system' and bloco_local in str(m.get('content') or '')
+                   for m in pacote.mensagens):
+            mensagens = [dict(m) for m in pacote.mensagens]
+            indice = next((i for i in range(len(mensagens) - 1, -1, -1)
+                           if mensagens[i].get('role') == 'user'), len(mensagens))
+            mensagens.insert(indice, {'role': 'system', 'content': bloco_local})
+            pacote = replace(pacote, mensagens=tuple(mensagens))
+        referencias = tuple(dict.fromkeys((*referencias, *(d.identidade for d in local.documentos))))
     pacote = exigir_suporte_no_pacote_autoral(pacote, referencias_disponiveis=referencias)
     if plano_autoria:
         from mente_laylay.cognicao.suporte_autoria import vincular_atos_no_pacote_autoral

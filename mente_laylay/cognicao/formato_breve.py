@@ -26,8 +26,13 @@ class FormatoBreve:
     texto_usuario: str
     unidade: str
     evita_repeticao: bool
+    conteudo_anteposto: str = ''
 
     def instrucao(self) -> str:
+        if self.conteudo_anteposto:
+            return (f'Entregue o conteúdo solicitado ({self.conteudo_anteposto}) e exatamente uma frase de motivo. '
+                    'Pode reunir ambos numa frase; se separar, a primeira parte deve conter '
+                    'somente a escolha/nome, sem justificativa. Não acrescente outra frase ao motivo.')
         instrucoes = f'Entregue exatamente uma {self.unidade}, sem preâmbulo nem complemento.'
         return instrucoes + (' Não repita a mensagem anterior.' if self.evita_repeticao else '')
 
@@ -39,6 +44,8 @@ class FormatoBreve:
         if self.unidade == 'frase':
             projecao = _FIM_CITADO.sub(r'\1', resposta)
             partes = enunciados_discursivos(projecao, intervalos_protegidos=(), separar_ponto_e_virgula=False)
+            if self.conteudo_anteposto and len(partes) == 2:
+                return _conteudo_sem_justificativa(partes[0])
             return len(partes) == 1 and bool(re.search(r'[^\W_]', resposta))
         citacoes = intervalos_citados(resposta)
         if citacoes == ((0, len(resposta)),):
@@ -65,11 +72,38 @@ def construir_formato_breve(texto: str, *, plano: Mapping[str, Any]) -> FormatoB
                         if (q := qualificar_intencao_por_capacidades(parte)) is not None]
         if len(qualificacoes) != 1:
             return None
-        candidato = qualificacoes[0].candidatos[0]
+        candidatos = qualificacoes[0].candidatos
+        if len(candidatos) == 2:
+            conteudo, formato = candidatos
+            if (conteudo.capacidade == 'conversa.conteudo_resposta'
+                    and conteudo.quantidade in {'um', 'uma', '1'}
+                    and formato.capacidade == 'conversa.formato_resposta'
+                    and formato.quantidade in {'uma', '1'} and formato.unidade == 'frase'
+                    and formato.conteudo in {'motivo', 'justificativa'}):
+                return FormatoBreve(str(plano['id']), texto, 'frase', False, conteudo.unidade)
+            return None
+        if len(candidatos) != 1:
+            return None
+        candidato = candidatos[0]
         if candidato.quantidade not in {'uma', '1'} or candidato.unidade not in {'frase', 'palavra'}:
             return None
         return FormatoBreve(str(plano['id']), texto, candidato.unidade, False)
     return FormatoBreve(str(plano['id']), texto, pedido['unidade'], 'sem repetir' in ultimo)
+
+
+def _conteudo_sem_justificativa(texto: str) -> bool:
+    """Primeira parte nominal, com ato de escolha e infinitivo opcionais.
+
+    Não confere a pertinência da escolha; apenas impede que uma justificativa
+    já iniciada ganhe mais uma frase por ser contada como nome da escolha.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel, consultar_morfologia
+    corpo = re.sub(r'^(?:eu\s+)?(?:escolho|escolheria|prefiro|preferiria)\s+', '', texto.strip(), flags=re.I)
+    corpo = corpo.rstrip(' .!')
+    palavras = corpo.split()
+    if palavras and re.fullmatch(r'[^\W\d_]+(?:ar|er|ir)', palavras[0]) and (consultar_morfologia(palavras[0]) or 0) & 32:
+        corpo = ' '.join(palavras[1:])
+    return grupo_nominal_de_papel(corpo)
 
 
 def formato_breve_vigente(plano: Mapping[str, Any]) -> FormatoBreve | None:

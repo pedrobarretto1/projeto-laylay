@@ -489,6 +489,56 @@ def _resultados_perifrasticos(texto: str) -> list[_ResultadoNarrado]:
     return resultados
 
 
+def _resultado_em_analogia_generica(texto: str, predicado: re.Match[str]) -> bool:
+    """Confere escopo comparativo, nunca a verdade da explicação ou um efeito.
+
+    Uma relativa passiva de objeto indefinido pode definir o exemplo da
+    comparação. O recorte exige moldura copulativa, processo no infinitivo
+    (opcional) e grupo nominal sem referência pessoal. Não cobre relato
+    causal com 'como', alvo identificado, agente, tempo ou complemento de
+    execução. O escopo termina no predicado: nenhuma oração vizinha herda
+    essa modalidade. Formas fora deste recorte continuam sob revisão.
+    """
+    if not re.fullmatch(r'(?:n[aã]o\s+)?foi\s+[^\W\d_]+', predicado[0], re.I):
+        return False
+    moldura = re.search(
+        r'\b(?:é|seria)\s+como\s+'
+        r'(?P<processo>(?:[^\W\d_]+r\s+){0,3})'
+        r'(?P<objeto>uma?\s+[^\W\d_]+(?:\s+[^\W\d_]+){0,5})'
+        r'\s+que\s+(?:j[aá]\s+)?$', texto[:predicado.start()], re.I,
+    )
+    if moldura is None:
+        return False
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia, grupo_nominal_de_papel
+    cauda = texto[predicado.end():]
+    if not re.match(r'\s*(?:$|[.!?;])', cauda):
+        fronteira = re.match(
+            r'\s*(?:[,—–:]\s*(?:(?:e|mas|por[eé]m|contudo|entretanto)\s+)?|'
+            r'(?:e|mas|por[eé]m|contudo|entretanto)\s+)', cauda, re.I)
+        if fronteira is None or not _continuacao_com_predicado_proprio(cauda[fronteira.end():]):
+            return False
+    return (grupo_nominal_de_papel(moldura['objeto'])
+            and all((consultar_morfologia(p) or 0) & 32
+                    for p in moldura['processo'].split()))
+
+
+def _continuacao_com_predicado_proprio(texto: str) -> bool:
+    """Não empresta o predicado comparativo a um complemento elíptico real."""
+    from mente_laylay.cognicao.morfologia_oracao import (
+        consultar_morfologia, grupo_nominal_de_papel,
+    )
+    oracao = re.split(r'[.!?,;:—–]', texto, maxsplit=1)[0].strip()
+    # Relativa livre simples como sujeito: 'o que aconteceu' ocupa o papel
+    # nominal de 'isso'. Os dois verbos precisam de evidência morfológica.
+    relativa = re.fullmatch(r'o\s+que\s+([^\W\d_]+)\s+(.+)', oracao, re.I)
+    if relativa and (consultar_morfologia(relativa[1]) or 0) & 256:
+        oracao = 'isso ' + relativa[2]
+    return any((consultar_morfologia(m[0]) or 0) & 256
+               and grupo_nominal_de_papel(oracao[:m.start()].strip())
+               for m in re.finditer(r'\b[^\W\d_]+', oracao))
+
+
+
 def _resultados_narrados(texto: str) -> list[_ResultadoNarrado]:
     """Representação única consumida pela revisão e pela guarda de entrega."""
     perifrases = _resultados_perifrasticos(texto)
@@ -507,7 +557,8 @@ def _resultados_narrados(texto: str) -> list[_ResultadoNarrado]:
 
     resultados = [_ResultadoNarrado(m.start(), m.end(),
         'falha' if m.group('falha') is not None else 'estado' if m.group('estado') is not None else 'sucesso',
-        m.start()) for m in _RESULTADO_NARRADO.finditer(texto)
+        m.start(), externo=not _resultado_em_analogia_generica(texto, m))
+        for m in _RESULTADO_NARRADO.finditer(texto)
         if not any(p.inicio <= m.start() and m.end() <= p.fim for p in perifrases)
         and not estado_discursivo(m) and not _relativa_de_contato(texto, m)
         and not _nega_efeito_do_ato_discursivo(texto, m)]
@@ -543,6 +594,11 @@ def detectar_resultados_operacionais_sem_evidencia(
     if not _resultados_narrados(str(fala or "")):
         return []
     contrato = dict(plano or {})
+    from mente_laylay.cognicao.documentacao_local_turno import fala_documental_integral
+    if fala_documental_integral(str(fala), contrato):
+        # Documentação integral conferida descreve limites, não um receipt.
+        # Acréscimos continuam sujeitos a receipt; fontes vão à revisão factual.
+        return []
     from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
     criacao = criacao_ficcional_vigente(contrato)
     if criacao is not None and fala_ficcional_conferida(str(fala), criacao=criacao):
@@ -591,6 +647,8 @@ def detectar_resultados_operacionais_sem_evidencia(
         )
         ocorrencias = _resultados_narrados(frase)
         for ocorrencia in ocorrencias:
+            if not ocorrencia.externo:
+                continue
             # O objeto pode coordenar nomes, mas não pode emprestar o pedido
             # anterior a outra alegação de estado/sucesso/falha independente.
             inicio_escopo = ocorrencia.inicio_escopo
@@ -635,6 +693,11 @@ def validar_alegacoes_da_fala(
     if historica is not None:
         return historica
     frases = [parte.strip() for parte in re.split(r"(?<=[.!?])\s+", original) if parte.strip()]
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_em_bloco
+    if criacao_ficcional_vigente(contrato) is not None and fala_ficcional_em_bloco(original):
+        # O bloco integral é a unidade conferível. Cortá-lo inventaria um
+        # fechamento ausente e perderia o escopo da segunda oração.
+        frases = [original]
     comandos_normalizados = _comandos_normalizados(contrato)
     confirmados = [item for item in comandos_normalizados if item.get("confirmado") is True]
     # Uma observação idempotente comprova estado, mesmo com executou=False.

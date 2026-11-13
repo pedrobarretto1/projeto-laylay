@@ -36,9 +36,10 @@ _DIRETO = (
 _FECHO = r'para (?:encerrar|fechar|concluir)(?: (?:nosso|nossa|este|esta|o|a) [\w ]{1,60})?,\s*'
 _PREAMBULO = rf'(?:(?:agora|entao|depois|em seguida|por favor|para encerrar)(?:,\s*|\s+)|{_FECHO})*'
 _PEDIDO = re.compile(
-    rf'(?:^|[.!?;]\s*|\be\s+)(?:e\s+)?{_PREAMBULO}(?:{_DIRETO}'
+    rf'(?:^|[.!?;]\s*|(?P<apos_fecho>:)\s*|\be\s+)(?:e\s+)?{_PREAMBULO}(?:{_DIRETO}'
     rf'|(?:(?:qual|que)\s+pergunta|(?:quais|que)\s+(?P<proposta>{_QUANTIDADE_PLURAL})\s+perguntas)'
-    r'\s+(?:(?:voce|tu)\s+)?(?:faria|farias|formularia|proporia|gostaria de (?:fazer|formular|propor))\b)'
+    r'\s+(?P<modificadores>(?:[a-z]+\s+){0,5}?)(?:(?:voce|tu)\s+)?'
+    r'(?:faria|farias|formularia|proporia|gostaria de (?:fazer|formular|propor))\b)'
 )
 _COMPLEMENTO = (
     r'(?:\s+(?:so|inesperada|engracada|curta|simples|criativa|diferente))?'
@@ -252,6 +253,20 @@ def construir_pergunta_solicitada(texto: str, *, plano: Mapping[str, Any]) -> Pe
         if len(pedidos) != 1 or _ADICAO_PEDIDA.search(base, pedidos[0].end()):
             return None
         pedido = pedidos[0]
+        if pedido['apos_fecho']:
+            # Dois-pontos só introduzem este pedido quando pertencem a uma
+            # intenção atual de encerrar; relato de terceiro não é solicitação.
+            prefixo = base[:pedido.start()]
+            fecho = re.search(r'\b(?:quero|gostaria de)\s+(?:fechar|encerrar|concluir)\b[^.!?;:]*$', prefixo)
+            if fecho is None or re.search(r'\b(?:nao|nunca|jamais)\s*$', prefixo[:fecho.start()]):
+                return None
+        modificadores = (pedido['modificadores'] or '').split()
+        if modificadores:
+            from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+            if (modificadores[0] == 'e' or modificadores[-1] == 'e'
+                    or any(p != 'e' and not (consultar_morfologia(p) or 0) & 2 for p in modificadores)
+                    or any(a == b == 'e' for a, b in zip(modificadores, modificadores[1:]))):
+                return None
         expressao = pedido['singular'] or pedido['plural'] or pedido['proposta'] or 'uma'
         integral = bool(_PEDIDO_INTEGRAL.fullmatch(base))
     maximo = _QUANTIDADES.get(pedido['maximo'] or '')

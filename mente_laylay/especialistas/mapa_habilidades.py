@@ -768,6 +768,9 @@ class MapaHabilidadesRuntime:
         fonte = (FonteCapacidadesTurno(str(turno['id']), str(texto), SnapshotComandoIA({
             'dominios_disponiveis':dominios_plenos,'predicados':predicados_json,
             'objetos_genericos':objetos_genericos})) if turno and turno.get('id') and predicados else None)
+        from mente_laylay.cognicao.documentacao_local_turno import selecionar_documentacao_local
+        documentacao_local = selecionar_documentacao_local(str(texto),
+            turno_id=dict(turno or {}).get('id'), dominios_registrados=tuple(dominios))
         return {
             "fonte": "catalogo_vivo",
             "dominios_confirmados": list(disponiveis),
@@ -784,6 +787,7 @@ class MapaHabilidadesRuntime:
             # Não amplia o prompt nem relê disponibilidade durante o reparo.
             "predicados_capacidade": predicados,
             "fonte_capacidades_turno": fonte,
+            "documentacao_local_turno": documentacao_local,
             "autoriza_execucao": False,
         }
 

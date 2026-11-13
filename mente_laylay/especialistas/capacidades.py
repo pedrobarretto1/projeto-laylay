@@ -340,6 +340,14 @@ _CONTRATO_POR_DOMINIO = {
         "proprietario": "mente_laylay.memoria_mental.aprendizado_runtime",
         "dependencias": ("memória de aprendizado com proveniência",),
         "limites": "não promove inferência isolada a fato confirmado",
+        "documentacao_explicativa": {
+            "proprietario": "mente_laylay.memoria_mental.conversas_runtime",
+            "assuntos": (("conversa", "contexto", "sessao"), ("lembrar", "memoria", "lembranca")),
+            "trechos": (
+                "Posso retomar as mensagens que estão disponíveis no contexto desta conversa.",
+                "Para retomar uma conversa antiga, preciso de seu conteúdo em um registro acessível; não encontrá-la no contexto não prova que ela foi apagada.",
+            ),
+        },
     },
     "cooperacao": {
         "invocacao_natural": ("faz estas etapas juntas", "salva o que eu copiei em um arquivo chamado estudo"),
@@ -369,7 +377,7 @@ _CONTRATO_POR_DOMINIO = {
             # externo. A fidelidade ainda pertence à revisão e às fontes.
             "unidades": ("nome", "nomes", "título", "títulos", "apelido", "apelidos",
                          "número", "números", "valor", "valores", "opção", "opções",
-                         "motivo", "motivos", "justificativa", "justificativas"),
+                         "motivo", "motivos", "justificativa", "justificativas", "escolha", "escolhas"),
             "exige_destino_externo": False,
             "autoriza_execucao": False,
             "comprova_efeito": False,
@@ -485,6 +493,15 @@ def contratos_qualificacao_intencao(dominio: str) -> tuple[dict[str, Any], ...]:
     return tuple({**item, "dominio": dominio,
                   "proprietario": _CONTRATO_POR_DOMINIO[dominio]["proprietario"]}
                  for item in _CONTRATO_POR_DOMINIO.get(dominio, {}).get("qualificacao_intencao", ()))
+
+
+def documentos_explicativos_locais() -> tuple[dict[str, Any], ...]:
+    """Documentação de contrato, não snapshot de dados nem observação de efeitos."""
+    return tuple({"dominio": dominio, "proprietario": documento.get("proprietario", contrato["proprietario"]),
+                  "assuntos": documento["assuntos"], "texto": trecho}
+                 for dominio, contrato in _CONTRATO_POR_DOMINIO.items()
+                 if (documento := contrato.get("documentacao_explicativa"))
+                 for trecho in documento["trechos"])
 
 
 def consultar_capacidade(

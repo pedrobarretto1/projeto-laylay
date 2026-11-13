@@ -1,0 +1,290 @@
+/* animacao-ilha.css — v4
+   Estratégia revisada: usa CSS animations em vez de transitions para o conteúdo.
+   Motivo: animateSafe() chama getAnimations() e cancela transitions CSS.
+   Animations CSS também são canceladas pelo JS, MAS o JS só roda quando
+   desktopPhase='idle' — e nossas animations ficam em classes que só existem
+   quando o estado já está resolvido. Usamos o véu (::before) para esconder
+   o resize nativo do Qt, e CSS animations curtas para o conteúdo aparecer.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KEYFRAMES — entrada suave do conteúdo
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@keyframes ilha-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes ilha-slide-up {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ilha-slide-down {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ilha-compact-in {
+  from { opacity: 0; transform: translateY(-3px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes mascot-float-desktop {
+  0%   { transform: translateY(0)    rotate(-0.3deg); }
+  28%  { transform: translateY(-4px) rotate(-1deg); }
+  55%  { transform: translateY(-5px) rotate(0deg); }
+  78%  { transform: translateY(-2px) rotate(0.7deg); }
+  100% { transform: translateY(0)    rotate(-0.3deg); }
+}
+
+@keyframes ilha-presenca-aurora {
+  0%   { opacity: 0; }
+  40%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VÉUL — cobre o resize nativo do Qt (snap instantâneo)
+   ::before da ilha: opaco durante transitioning, dissolve quando idle.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.desktop-island::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  background: #0b0d12;
+  pointer-events: none;
+  border-radius: inherit;
+  /* idle: véu transparente, sem transição (já saiu) */
+  opacity: 0;
+}
+
+/* Transitioning: véu opaco instantâneo */
+body.desktop-transitioning .desktop-island::before {
+  opacity: 1;
+  animation: none !important;
+}
+
+/* Quando idle chega: véu dissolve com animation (não transition, não cancelável pelo JS) */
+body:not(.desktop-transitioning) .desktop-island::before {
+  animation: ilha-fade-in 180ms cubic-bezier(0.25, 0.8, 0.25, 1) reverse both;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CONTEÚDO EXPANDIDO — anima quando island está expanded e idle
+   Trigger: data-desktop-state=expanded + NOT desktop-transitioning.
+   Como o JS (reconcileChildren) não recria os elementos, o truque é usar
+   animation-play-state: paused/running controlado pela classe do body.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Configuração base das animações — pausadas por padrão */
+.desktop-island[data-desktop-state=expanded] .desktop-toolbar {
+  animation: ilha-slide-down 150ms cubic-bezier(0.22, 0.85, 0.2, 1) both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-tabs {
+  animation: ilha-slide-down 150ms cubic-bezier(0.22, 0.85, 0.2, 1) 20ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-overview {
+  animation: ilha-slide-up 160ms cubic-bezier(0.22, 0.85, 0.2, 1) 30ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-message {
+  animation: ilha-slide-up 140ms cubic-bezier(0.2, 0.78, 0.2, 1) 50ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-composer {
+  animation: ilha-slide-up 140ms cubic-bezier(0.2, 0.78, 0.2, 1) 60ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-foot {
+  animation: ilha-fade-in 120ms ease-out 70ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-page-content {
+  animation: ilha-slide-up 160ms cubic-bezier(0.22, 0.85, 0.2, 1) 20ms both;
+  animation-play-state: paused;
+}
+.desktop-island[data-desktop-state=expanded] .desktop-expanded {
+  animation: ilha-fade-in 140ms ease-out both;
+  animation-play-state: paused;
+}
+
+/* Quando idle (não transitioning): RODAR as animações */
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-toolbar,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-tabs,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-overview,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-message,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-composer,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-foot,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-page-content,
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=expanded] .desktop-expanded {
+  animation-play-state: running;
+}
+
+/* Durante transitioning: elementos invisíveis (paused no frame 0 = opacity:0) */
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-toolbar,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-tabs,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-overview,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-message,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-composer,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-foot,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-page-content,
+body.desktop-transitioning
+.desktop-island[data-desktop-state=expanded] .desktop-expanded {
+  animation-play-state: paused;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BARRA COMPACTA — anima quando island está compact e idle
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.desktop-island[data-desktop-state=compact] .desktop-compact {
+  animation: ilha-compact-in 180ms cubic-bezier(0.33, 1, 0.68, 1) both;
+  animation-play-state: paused;
+}
+
+body:not(.desktop-transitioning)
+.desktop-island[data-desktop-state=compact] .desktop-compact {
+  animation-play-state: running;
+}
+
+body.desktop-transitioning
+.desktop-island[data-desktop-state=compact] .desktop-compact {
+  animation-play-state: paused;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BORDER-RADIUS E SOMBRA — suaviza a geometria da ilha
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.desktop-island {
+  transition:
+    border-radius 260ms cubic-bezier(0.22, 0.85, 0.2, 1),
+    box-shadow   260ms cubic-bezier(0.22, 0.85, 0.2, 1);
+}
+body.desktop-transitioning .desktop-island {
+  transition: none !important;
+}
+
+.desktop-island[data-desktop-state=compact] {
+  transition: box-shadow 200ms ease-out;
+}
+.desktop-island[data-desktop-state=compact]:hover {
+  box-shadow:
+    inset 0 1px #ffffff07,
+    0 0 0 1px #b18cd214,
+    0 14px 45px #0007;
+  transition: box-shadow 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OPACITY OVERVIEW ↔ PAGE — transição suave ao trocar aba
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.desktop-page-content,
+.desktop-overview {
+  transition: opacity 120ms ease-out;
+}
+body.desktop-transitioning .desktop-page-content,
+body.desktop-transitioning .desktop-overview {
+  transition: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   AVATAR DESKTOP — float orgânico + aurora
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.desktop-portrait .avatar {
+  animation: mascot-float-desktop 7.4s ease-in-out infinite;
+  filter: drop-shadow(0 10px 18px #08081128);
+}
+
+.desktop-compact .avatar-mini,
+.desktop-miniature .avatar-mini {
+  animation: none !important;
+}
+
+.desktop-presence {
+  position: relative;
+}
+
+.desktop-island[data-desktop-state=expanded][data-activity=idle]
+.desktop-presence::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 30% 50%, #b18cd215 0, transparent 65%);
+  opacity: 0;
+  animation: ilha-presenca-aurora 5s ease-in-out 0.6s infinite alternate;
+  pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOTION SAFETY
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-island,
+  .desktop-island::before,
+  .desktop-expanded,
+  .desktop-overview,
+  .desktop-toolbar,
+  .desktop-tabs,
+  .desktop-foot,
+  .desktop-message,
+  .desktop-composer,
+  .desktop-page-content,
+  .desktop-compact,
+  .desktop-portrait .avatar,
+  .desktop-island[data-desktop-state=expanded][data-activity=idle] .desktop-presence::before,
+  .desktop-page-content,
+  .desktop-overview {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+body.reduced .desktop-island,
+body.reduced .desktop-island::before,
+body.reduced .desktop-expanded,
+body.reduced .desktop-overview,
+body.reduced .desktop-toolbar,
+body.reduced .desktop-tabs,
+body.reduced .desktop-foot,
+body.reduced .desktop-message,
+body.reduced .desktop-composer,
+body.reduced .desktop-page-content,
+body.reduced .desktop-compact,
+body.reduced .desktop-portrait .avatar,
+body.reduced .desktop-island[data-desktop-state=expanded] .desktop-presence::before {
+  animation: none !important;
+  transition: none !important;
+}

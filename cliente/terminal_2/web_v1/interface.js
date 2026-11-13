@@ -85,21 +85,72 @@ function animateDesktopMotion(location) {
   const island=document.querySelector('.desktop-island');
   if(!island)return;
   const expanded=state.desktopState==='expanded';
+
+  // ── Compact → Expandida: animações de entrada suaves ──────────────
   if(expanded&&oldState!=='expanded') {
-    return;
-  }
-  if(!expanded&&oldState==='expanded') {
-    animateSafe(island.querySelector('.desktop-compact-copy'),
-      [{opacity:.55,transform:'translateX(-7px)'},{opacity:1,transform:'translateX(0)'}],
-      {duration:190,easing:'cubic-bezier(.2,.78,.2,1)'});
-    animateSafe(island.querySelector('.desktop-miniature'),
-      [{transform:'scale(.92)'},{transform:'scale(1)'}],
-      {duration:210,easing:'cubic-bezier(.2,.78,.2,1)'});
+    // Toolbar: desliza de cima com fade
+    animateSafe(island.querySelector('.desktop-toolbar'),
+      [{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:240,easing:'cubic-bezier(.22,.85,.2,1)',delay:30});
+    // Tabs: fade+slide
+    animateSafe(island.querySelector('.desktop-tabs,.desktop-window-body .desktop-tabs'),
+      [{opacity:0,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:220,easing:'cubic-bezier(.22,.85,.2,1)',delay:50});
+    // Presença (esquerda): desliza da esquerda
+    animateSafe(island.querySelector('.desktop-presence'),
+      [{opacity:0,transform:'translateX(-9px)'},{opacity:1,transform:'translateX(0)'}],
+      {duration:270,easing:'cubic-bezier(.22,.85,.2,1)',delay:70});
+    // Portrait/avatar: micro-bounce
+    animateSafe(island.querySelector('.desktop-portrait'),
+      [
+        {opacity:0,transform:'scale(0.84) translateY(10px)'},
+        {opacity:1,transform:'scale(1.04) translateY(-2px)',offset:0.6},
+        {opacity:1,transform:'scale(0.982) translateY(0)',offset:0.82},
+        {opacity:1,transform:'scale(1) translateY(0)'}
+      ],
+      {duration:420,easing:'linear',delay:75});
+    // Contexto (direita): desliza da direita
+    animateSafe(island.querySelector('.desktop-context'),
+      [{opacity:0,transform:'translateX(10px)'},{opacity:1,transform:'translateX(0)'}],
+      {duration:260,easing:'cubic-bezier(.22,.85,.2,1)',delay:90});
+    // Mensagem recente e compositor: fade suave
+    animateSafe(island.querySelector('.desktop-message'),
+      [{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:230,easing:'cubic-bezier(.2,.78,.2,1)',delay:120});
+    animateSafe(island.querySelector('.desktop-composer'),
+      [{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:230,easing:'cubic-bezier(.2,.78,.2,1)',delay:140});
+    // Rodapé: fade puro
+    animateSafe(island.querySelector('.desktop-foot'),
+      [{opacity:0},{opacity:1}],
+      {duration:280,easing:'ease-out',delay:160});
+    // Conteúdo de página (view=page)
+    animateSafe(island.querySelector('.desktop-page-content'),
+      [{opacity:0,transform:'translateY(7px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:270,easing:'cubic-bezier(.22,.85,.2,1)',delay:60});
+    animateSafe(island.querySelector('.desktop-page .context-bar'),
+      [{opacity:0,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],
+      {duration:220,easing:'cubic-bezier(.2,.78,.2,1)',delay:40});
     motionRunCount++;return;
   }
+
+  // ── Expandida → Compacta: restore da ilha compacta ────────────────
+  if(!expanded&&oldState==='expanded') {
+    animateSafe(island.querySelector('.desktop-compact-copy'),
+      [{opacity:.5,transform:'translateX(-8px) scale(.97)'},{opacity:1,transform:'translateX(0) scale(1)'}],
+      {duration:220,easing:'cubic-bezier(.33,1,.68,1)'});
+    animateSafe(island.querySelector('.desktop-miniature'),
+      [
+        {transform:'scale(.88) translateY(3px)'},
+        {transform:'scale(1.04) translateY(-1px)',offset:0.6},
+        {transform:'scale(1) translateY(0)'}
+      ],
+      {duration:300,easing:'linear'});
+    motionRunCount++;return;
+  }
+
+  // ── Navegação entre páginas (dentro da ilha expandida) ───────────
   if(expanded&&prior!==location) {
-    // Sem transformar a viewport scrollável inteira; ela contém gráficos,
-    // capas e painéis complexos, caros de rasterizar em cada quadro.
     const oldPage=prior.split(':').at(-1),currentPage=location.split(':').at(-1);
     const before=pages.findIndex(([id])=>id===oldPage);
     const after=pages.findIndex(([id])=>id===currentPage);

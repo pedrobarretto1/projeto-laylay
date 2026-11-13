@@ -1739,6 +1739,10 @@ def _separar_primeira_fronteira_forte(
             continue  # O adjunto pertence à matriz; não é um ato de parada.
         if m.group('sep') == ',' and m.start() == virgula_papel:
             continue  # Enquadramento nominal pertence à matriz, não a outra pergunta.
+        if m.group('sep') == ',' and _para_inicial_e_adjunto(bloco):
+            # A leitura integral já distinguiu preposição de parada. Cortar
+            # antes da matriz perderia a evidência que resolveu a homografia.
+            continue
         if m.group('sep') == ',' and moldura_narrativa_inicial(bloco):
             # Vírgula e coordenação internas não retiram o adjunto da oração.
             # Pontuação forte continua podendo abrir uma ordem independente.

@@ -1128,6 +1128,12 @@ def construir_contrato_semantico_fala(
     fonte_capacidades = evidencia_capacidades.get('fonte_capacidades_turno')
     if type(fonte_capacidades) is FonteCapacidadesTurno and fonte_capacidades.vigente(str(texto),resultado.get('turno_id')):
         resultado['fonte_capacidades_turno'] = fonte_capacidades
+    from mente_laylay.cognicao.documentacao_local_turno import DocumentacaoLocalTurno
+    documento_local = evidencia_capacidades.get('documentacao_local_turno')
+    if (type(documento_local) is DocumentacaoLocalTurno
+        and documento_local.turno_id == str(resultado.get('turno_id'))
+        and documento_local.texto_usuario == texto):
+        resultado['documentacao_local_turno'] = documento_local
     if encerramento_sessao:
         resultado['encerramento_assunto'] = 'sessao'
     from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
@@ -1297,6 +1303,11 @@ def construir_contrato_semantico_fala(
         resultado['metodo_inspecao'] = metodo
         resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], metodo.instrucao()]
     from mente_laylay.cognicao.formato_breve import construir_formato_breve
+    from mente_laylay.cognicao.redacao_discursiva import construir_retificacao_redacao
+    retificacao_redacao = construir_retificacao_redacao(texto, plano=planejamento)
+    if retificacao_redacao is not None:
+        resultado['retificacao_redacao'] = retificacao_redacao
+        resultado['conteudos_obrigatorios'] = [*resultado['conteudos_obrigatorios'], retificacao_redacao.instrucao()]
     formato_breve = construir_formato_breve(texto, plano=planejamento)
     if formato_breve is not None:
         resultado['formato_breve'] = formato_breve

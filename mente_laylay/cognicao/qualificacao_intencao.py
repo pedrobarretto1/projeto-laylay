@@ -6,7 +6,7 @@ autorização e disponibilidade permanecem nos respectivos owners canônicos.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, replace
 import re
 import unicodedata
 
@@ -37,6 +37,7 @@ class CandidatoIntencao:
     unidade: str
     quantidade: str
     modificadores: tuple[str, ...]
+    conteudo: str = ''
     autoriza_execucao: bool = field(default=False, init=False)
     comprova_efeito: bool = field(default=False, init=False)
 
@@ -81,6 +82,20 @@ def qualificar_intencao_por_capacidades(texto: str) -> QualificacaoIntencao | No
                 return None
             qualificacoes.extend(q.candidatos)
         return QualificacaoIntencao(texto, tuple(qualificacoes))
+    # Complemento de conteúdo não é um adjetivo da unidade de formato.
+    # Qualificar ambos no catálogo conserva o mesmo canal sem absorver um
+    # destino externo ou um verbo novo. Não há lista privada de assuntos.
+    complemento = re.fullmatch(r'(.+?) de ([^\W\d_]+)', pedido['nominal'])
+    if complemento:
+        quantidade = pedido['quantidade'] or pedido['contraida'][1:]
+        forma = qualificar_intencao_por_capacidades('Responda com ' + quantidade + ' ' + complemento[1])
+        conteudo = qualificar_intencao_por_capacidades('Responda com um ' + complemento[2])
+        if (forma and conteudo and len(forma.candidatos) == len(conteudo.candidatos) == 1
+                and forma.candidatos[0].capacidade == 'conversa.formato_resposta'
+                and conteudo.candidatos[0].capacidade == 'conversa.conteudo_resposta'):
+            return QualificacaoIntencao(texto, (replace(forma.candidatos[0],
+                conteudo=conteudo.candidatos[0].unidade),))
+        return None
     palavras = pedido['nominal'].split()
     # Coordenação só entre adjetivos da mesma unidade; jamais entre ordens.
     if any(p == 'e' and (i == 0 or i == len(palavras)-1 or

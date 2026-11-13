@@ -1723,8 +1723,11 @@ def atualizar_planejamento_turno(
             fonte_contextual = str(fundamentacao_contextual.get('fonte') or '')
             fontes_individuais = tuple(f['url'] for f in (fundamentacao_contextual.get('fontes') or [])[:5]
                 if isinstance(f, dict) and type(f.get('url')) is str and f['url'])
+            from mente_laylay.cognicao.documentacao_local_turno import documentacao_local_vigente
+            documento_local = documentacao_local_vigente(novo)
+            fontes_documentais = tuple(d.identidade for d in documento_local.documentos) if documento_local else ()
             suporte = capturar_suporte_autoria_obrigatoria(proposta_principal,
-                fontes_no_contexto=fontes + fontes_individuais + ((fonte_contextual,) if fonte_contextual else ()))
+                fontes_no_contexto=fontes + fontes_individuais + fontes_documentais + ((fonte_contextual,) if fonte_contextual else ()))
             if suporte is not None:
                 novo['suporte_autoria_proposto'] = suporte
             if autoria_revisada_proposta is not None:

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
 from mente_laylay.cognicao.referencias_linguagem import (
     referencia_explicacao_historica, texto_fora_de_citacoes, texto_tem_referencia_contextual,
-    contem_moldura_narrativa, enunciados_discursivos,
+    contem_moldura_narrativa, enunciados_discursivos, delimita_imaginacao_sem_efeito,
 )
 
 _HISTORICAS = frozenset({'explicacoes_historicas_por_ato', 'explicacao_ocorrencia',
@@ -115,10 +115,15 @@ def construir_criacao_ficcional(texto: str, *, plano: Mapping[str, Any],
         # listas de assuntos nem fazer da narrativa licença para outro ato.
         return None
     base = normalizar_texto_basico(texto_fora_de_citacoes(texto))
-    if (referencia_explicacao_historica(texto)
-        or re.search(r'\b(?:mundo real|na realidade|de verdade|realmente|real|fontes?|evidencias?)\b', base)):
-        return None
     enunciados = enunciados_discursivos(texto_fora_de_citacoes(texto))
+    # O contraste explícito nega efeito; não é uma consulta sobre realidade.
+    # Excluir somente a declaração integral deste veto, nunca os outros atos
+    # nem o texto que será conferido pela autorização e pela revisão.
+    realidade_consultada = normalizar_texto_basico(' '.join(
+        trecho for trecho in enunciados if not delimita_imaginacao_sem_efeito(trecho)))
+    if (referencia_explicacao_historica(texto)
+        or re.search(r'\b(?:mundo real|na realidade|de verdade|realmente|real|fontes?|evidencias?)\b', realidade_consultada)):
+        return None
     proximos = [i for i, trecho in enumerate(enunciados) if _PEDIDO_PROXIMO_ACONTECIMENTO.fullmatch(trecho)]
     if proximos:
         # O próprio turno fixa uma premissa antes da pergunta singular. Um
@@ -199,6 +204,10 @@ def fala_ficcional_em_bloco(fala: str) -> bool:
 
 def fala_ficcional_conferida(fala: str, *, criacao: CriacaoFiccional) -> bool:
     """Confere moldura e, quando solicitado, uma oração que avance o recorte."""
+    # Um delimitador explícito fixa o alcance, mesmo nas modalidades que
+    # admitem o prefixo legado. Não certificar texto fora ou bloco incompleto.
+    if ('«' in fala or '»' in fala) and not fala_ficcional_em_bloco(fala):
+        return False
     if not criacao.recorte_proximo_acontecimento:
         return fala_ficcional_delimitada(fala)
     if not fala_ficcional_em_bloco(fala):

@@ -236,7 +236,11 @@ def revisar_suporte_autoria(
     from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, fala_ficcional_conferida
     criacao = criacao_ficcional_vigente(plano)
     exige_moldura_ficcional = 'criacao_ficcional' in (plano.get('contrato_fala') or {})
-    exige_declaracao = obrigacao_explicativa or exige_moldura_ficcional
+    from mente_laylay.cognicao.redacao_discursiva import retificacao_redacao_vigente
+    obrigacao_retificacao = retificacao_redacao_vigente(plano) is not None
+    # A correção atual é fonte para seu reconhecimento, não para alegações
+    # acrescentadas à proposta. Ausência de pesquisa não dispensa esse vínculo.
+    exige_declaracao = obrigacao_explicativa or exige_moldura_ficcional or obrigacao_retificacao
     from mente_laylay.cognicao.fundamentacao_factual import (
         avaliar_nucleo_retomada_usuario, LIMITE_CONFERENCIA_RELATO_USUARIO,
     )
@@ -253,6 +257,7 @@ def revisar_suporte_autoria(
             "estado": estado, "turno_id": str(plano.get("id") or ""),
             "proposicoes": proposicoes, "fontes_lidas": fontes,
             "obrigacao_fonte_individual": obrigacao_explicativa,
+            "obrigacao_retificacao_atual": obrigacao_retificacao,
             "retomada_usuario": retomada_usuario,
             "perguntas_pendentes": list(perguntas_pendentes),
             "pode_confirmar_fato_externo": False,
@@ -331,8 +336,22 @@ def revisar_suporte_autoria(
     fontes_brutas = base.get("fontes")
     fontes = [dict(f) for f in fontes_brutas[:5] if isinstance(f, dict)] if isinstance(fontes_brutas, list) else []
     snapshots: list[dict[str, Any]] = []
+    from mente_laylay.cognicao.documentacao_local_turno import documentacao_local_vigente
+    documentacao = documentacao_local_vigente(plano)
+    documentos = {d.identidade: d for d in documentacao.documentos} if documentacao else {}
 
     def conferir_fonte(identidade: str, texto: str) -> dict[str, Any]:
+        if identidade.startswith('local:documentacao:'):
+            doc = documentos.get(identidade)
+            if doc is None:
+                return {'id': identidade, 'estado': 'documentacao_local_nao_vigente'}
+            snapshot = {'id': identidade, 'trecho': doc.texto, 'proprietario': doc.proprietario,
+                        'snapshot_id': identidade, 'alcance': 'documentacao_de_contrato',
+                        'comprova_efeito': False, 'autoriza_execucao': False}
+            if not any(f['snapshot_id'] == identidade for f in snapshots):
+                snapshots.append(snapshot)
+            return {'id': identidade, 'estado': ('documentacao_local_integral'
+                    if texto == doc.texto else 'documentacao_local_sem_implicacao'), 'snapshot_id': identidade}
         parecer, snapshot = conferir_apoio_fonte(identidade, texto, fundamentacao=base, agora=agora)
         if snapshot is not None and not any(f['snapshot_id'] == snapshot['snapshot_id'] for f in snapshots):
             snapshots.append(snapshot)
@@ -343,6 +362,7 @@ def revisar_suporte_autoria(
     parafrases: list[str] = []
     atos_sociais: list[str] = []
     redacoes: list[str] = []
+    locais: list[str] = []
     tem_referencia = False
     propostas = declaracao.get("proposicoes") or []
     declara_alvos = any("ato_proposto" in p for p in propostas)
@@ -352,7 +372,11 @@ def revisar_suporte_autoria(
         referencias = proposta["fontes"]
         tem_referencia = tem_referencia or bool(referencias)
         revisoes = [conferir_fonte(f, texto) for f in referencias]
-        estado = ("sem_fontes_declaradas" if not revisoes else
+        referencias_locais = any(f.startswith('local:documentacao:') for f in referencias)
+        estado = (('documentacao_local_integral' if all(
+                      f['estado'] == 'documentacao_local_integral' for f in revisoes)
+                   else 'documentacao_local_apoio_incompleto') if referencias_locais else
+                  "sem_fontes_declaradas" if not revisoes else
                   next((f["estado"] for f in revisoes if f["estado"] not in _APOIOS_CONFERIDOS),
                        "parafrase_estrutural_conferida" if any(
                            f["estado"] == "parafrase_estrutural_conferida" for f in revisoes)
@@ -390,22 +414,27 @@ def revisar_suporte_autoria(
             literais.append(texto)
         elif estado == "parafrase_estrutural_conferida":
             parafrases.append(texto)
+        elif estado == 'documentacao_local_integral' and all(
+                r['estado'] == 'documentacao_local_integral' for r in revisoes):
+            locais.append(texto)
 
+    if locais and len(locais) == len(proposicoes) and fala == suporte.fala_original:
+        return resultado('documentacao_local_conferida', proposicoes, snapshots, fala, False)
     if redacoes and len(redacoes) == len(proposicoes) and fala == suporte.fala_original:
         return resultado('redacao_nao_assertiva_conferida', proposicoes, snapshots, fala, False)
     requer_revisao = bool(exige_declaracao or tem_referencia or fontes or base.get("requer_evidencia_recente"))
     realizada = limite
     perguntas_pendentes = ()
-    if literais or parafrases or atos_sociais or redacoes:
-        if parafrases or atos_sociais or redacoes:
+    if literais or parafrases or atos_sociais or redacoes or locais:
+        if parafrases or atos_sociais or redacoes or locais:
             # Citação e paráfrase têm atribuições distintas; agrupá-las por
             # classe trocaria a ordem das unidades originais da autora.
             realizada = " ".join(
-                p["texto"] if p["estado"] in {"ato_social_conferido", "redacao_nao_assertiva_conferida"} else
+                p["texto"] if p["estado"] in {"ato_social_conferido", "redacao_nao_assertiva_conferida", "documentacao_local_integral"} else
                 "Parafraseando os trechos consultados: " + p["texto"]
                 if p["estado"] == "parafrase_estrutural_conferida"
                 else "Os trechos consultados registram: «" + p["texto"] + "»."
-                for p in proposicoes if p["estado"] in _APOIOS_CONFERIDOS or p["estado"] in {"ato_social_conferido", "redacao_nao_assertiva_conferida"})
+                for p in proposicoes if p["estado"] in _APOIOS_CONFERIDOS or p["estado"] in {"ato_social_conferido", "redacao_nao_assertiva_conferida", "documentacao_local_integral"})
         else:
             realizada = "Os trechos consultados registram: " + "; ".join("«" + t + "»" for t in literais)
         if len(realizada) > 4000:
