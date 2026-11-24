@@ -129,6 +129,10 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     """
     t = re.sub(r"\s+", " ", str(texto or "")).strip().casefold()
     t = "".join(c for c in unicodedata.normalize("NFD", t) if not unicodedata.combining(c))
+    if _pedido_resposta_sem_efeito_externo(t):
+        return "formato_resposta"
+    if pedido_repeticao_itens_mencionados(t):
+        return "reproducao"
     prefixo = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voce )?(?:pode|poderia|consegue) (?:me )?)?"
     resumo = (
         r"(?:resuma|resume|resumir|sintetize|sintetiza|sintetizar) "
@@ -179,6 +183,50 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     if re.fullmatch(prefixo + formato, t):
         return "formato_resposta"
     return ""
+
+
+def pedido_repeticao_itens_mencionados(texto: str) -> re.Match[str] | None:
+    """Liga a reprodução literal à lista mencionada na pergunta do falante."""
+    base = remover_acentos(re.sub(r"\s+", " ", texto.strip().casefold()))
+    return re.fullmatch(
+        r"(?:(?:quero|vamos) (?:verificar|testar) (?:a|nossa) memoria(?: imediata)?: )?"
+        r"quais (?:foram|eram|sao) os (?P<quantidade>dois|tres|quatro|[234]) "
+        r"(?:objetos|itens|elementos|detalhes|nomes) que (?:eu )?(?:mencionei|citei|listei)"
+        r"(?: (?:na|no|nessa|nesse|nesta|neste) (?P<referente>[a-z]+(?: [a-z]+)?))?\? "
+        r"(?:repita|reproduza|copie)-os (?:exatamente|literalmente)"
+        r"(?:, sem (?:acrescentar|adicionar) (?:nenhum|nada))?[.!]*",
+        base,
+    )
+
+
+def _pedido_resposta_sem_efeito_externo(texto: str) -> bool:
+    """A ressalva negativa restringe a resposta no chat; não cria um destino."""
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    pedido = re.fullmatch(
+        r"(?:(?:agora|por favor)[, ]+)*(?:(?:voce )?(?:pode|poderia|consegue) (?:me )?)?"
+        r"(?:responda|responde|responder) (?P<forma>[^,;.!?]+?)[, ]+"
+        r"sem (?:executar|realizar|efetuar) "
+        r"(?:(?:nenhuma|qualquer) )?(?:acao|acoes|operacao|operacoes|tarefas?) externas?[.!?]*",
+        texto,
+    )
+    if not pedido:
+        return False
+    forma = pedido["forma"]
+    if tipo_transformacao_conversacional("responda " + forma) == "formato_resposta":
+        return True
+    exemplo = re.fullmatch(
+        r"com um exemplo(?: (?:simples|curto|concreto|pratico))?"
+        r"(?: (?:de|do|da) (?P<tema>[a-z]+(?: [a-z]+)?))?",
+        forma,
+    )
+    if not exemplo:
+        return False
+    tema = (exemplo["tema"] or "").split()
+    return not tema or (
+        bool((consultar_morfologia(tema[0]) or 0) & 1)
+        and all((consultar_morfologia(palavra) or 0) & 2 for palavra in tema[1:])
+    )
 
 
 def texto_e_citacao_integral(texto: str) -> bool:
