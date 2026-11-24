@@ -20,7 +20,10 @@ from mente_laylay.cognicao.referencias_linguagem import (
     trecho_retificacao_do_enunciador,
 )
 from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
-from mente_laylay.cognicao.retomada_criacao import ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO, recorte_nome_publicado
+from mente_laylay.cognicao.retomada_criacao import (
+    ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO, recorte_primeira_mensagem, recorte_nome_publicado,
+    recorte_ato_proposta_inicial,
+)
 from mente_laylay.cognicao.proveniencia_informacao import (
     classificar_proveniencia_informacao,
     limitar_proveniencia_invalida,
@@ -73,6 +76,15 @@ _MATRIZ_DE_ELABORACAO = re.compile(
 )
 _MATRIZ_DE_PROPOSTA = re.compile(
     r"(?:qual|que)\s+seria\s+(?:a\s+)?(?:minha|sua|nossa)\s+(?:ideia|proposta)",
+    re.IGNORECASE,
+)
+_VERSAO_COMO_PERSPECTIVA = re.compile(
+    r"\bna\s+(?:sua|tua)(?:\s+pr[oó]pria)?\s+vers[aã]o(?=\s*(?:[,?!.;]|$))",
+    re.IGNORECASE,
+)
+_PERGUNTA_DE_FORMULACAO = re.compile(
+    r"^(?:qual|quais|que)\s+(?:seri(?:a|am)\s+)?(?:(?:a|o|as|os|um|uma)\s+)?"
+    r"(?:frase|fala|verso|final|desfecho|cena|hist[oó]ria|t[ií]tulo|mensagem|resposta)\b",
     re.IGNORECASE,
 )
 _ORDEM_NO_TEXTO_HIPOTETICO = re.compile(
@@ -325,12 +337,37 @@ def classificar_atualidade_factual(
         if abertura and MATRIZ_RETOMADA_CRIACAO.fullmatch(consulta_externa, abertura.end())
         else 0
     )
+    from mente_laylay.cognicao.normalizacao_linguagem import extrair_escolha_avaliativa
+
+    inicio_discursivo = re.match(r'^agora\b', consulta_externa, re.I)
+    if inicio_discursivo and (
+        extrair_escolha_avaliativa(consulta_externa) is not None
+        or re.match(
+            r'[, ]+(?:(?:eu )?(?:quero|gostaria de (?:ouvir|saber)) '
+            r'(?:a )?(?:sua|tua) opini[aã]o\s*(?:[:,]|$)'
+            r'|(?:(?:pense|pensa|reflita|reflete) (?:comigo|com a gente)'
+            r'|vamos (?:pensar|refletir)(?: junt[oa]s?)?)\s*(?::|$))',
+            consulta_externa[inicio_discursivo.end():], re.I,
+        )
+    ):
+        # Só o advérbio da abertura situa o pedido. Sinais na pergunta e
+        # outros domínios mutáveis ainda passam pelas regras abaixo.
+        inicio_tempo = inicio_discursivo.end()
     sinal_temporal = bool(_SINAL_TEMPO_EXPLICITO.search(bruto, inicio_tempo))
     if _ANCORA_HISTORICA.search(bruto) and not sinal_temporal:
         return {**base, "classe": "historica", "motivos": ["ancora_historica_explicita"]}
 
+    # A perspectiva da interlocutora modifica a formulação pedida. Ela só
+    # dispensa o marcador que lhe pertence, preservando qualquer outro fato
+    # mutável ou complemento nominal como “na sua versão do Python”.
+    texto_dominio = bruto
+    formulacao = _VERSAO_COMO_PERSPECTIVA.sub('', consulta_externa).lstrip(' ,')
+    if _PERGUNTA_DE_FORMULACAO.match(formulacao) and re.search(
+        r'\b(?:seria|seriam|diria|diriam|escreveria|inventaria)\b', formulacao, re.I,
+    ):
+        texto_dominio = _VERSAO_COMO_PERSPECTIVA.sub('', bruto)
     for classe, validade, padrao in _DOMINIOS_ATUALIDADE:
-        if padrao.search(bruto):
+        if padrao.search(texto_dominio):
             motivos = [f"dominio:{classe}"]
             if sinal_temporal:
                 motivos.append("marcador_temporal_explicito")
@@ -352,6 +389,10 @@ def classificar_atualidade_factual(
         }
 
     if sinal_temporal:
+        if recorte_ato_proposta_inicial(bruto) is not None:
+            return {**base, 'classe': 'historica', 'motivos': ['proposta_na_primeira_publicacao']}
+        if recorte_primeira_mensagem(bruto):
+            return {**base, 'classe': 'historica', 'motivos': ['primeira_mensagem_da_sessao']}
         ordem = _ORDEM_NO_TEXTO_HIPOTETICO.fullmatch(consulta_externa)
         if ordem and (not ordem['colecao'] or ordem_em_cena) and all(
                          m[0].casefold() in {'último', 'última', 'ultimo', 'ultima'}
@@ -879,7 +920,9 @@ _TITULO_IDENTIFICADO_NO_ENTORNO = re.compile(
 
 def _finalidade_nomeacao(texto_usuario: str) -> tuple[bool, bool]:
     """Lê o ato da entrada vigente, com alvo explícito e sem adotar citações."""
-    proposta = identificacao = False
+    from mente_laylay.cognicao.formato_oral import segundos_titulo_oral
+    proposta = segundos_titulo_oral(texto_usuario) is not None
+    identificacao = False
     for enunciado in enunciados_discursivos(texto_fora_de_citacoes(texto_usuario)):
         texto = _normalizar(enunciado).rstrip(".")
         if _PEDIDO_IDENTIFICACAO_TITULO.search(texto):
@@ -957,6 +1000,15 @@ def _citacao_didatica(prefixo: str, trecho: str) -> bool:
     # Não concede confiança à frase inteira nem a outra citação posterior.
     if (_INTRODUCAO_ENUNCIADO.search(prefixo)
             or _EXEMPLO_CONTEUDO_DISCURSIVO.search(prefixo)):
+        return True
+    # Uma mensagem que acompanharia uma proposta tem a mesma fronteira
+    # discursiva de um exemplo de fala. O resto da oração segue em revisão.
+    oracao = enunciados_discursivos(prefixo, separar_ponto_e_virgula=False)[-1:] or ('',)
+    if re.search(
+        r'\b(?:daria|tentaria dar|entregaria|ofereceria|sugeriria|proporia)\b[^:;]+'
+        r'\bcom\s+um[a]?\s+(?:bilhete|nota|mensagem|cart[aã]o)(?:\s+escrit[oa])?\s*:\s*$',
+        oracao[0], re.I,
+    ):
         return True
     novo_exemplo = _EXEMPLO_NOVA_FRASE.search(prefixo)
     frase_anterior = (
@@ -1154,10 +1206,17 @@ def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
         r"\b(?:acho|parece|soa|interessante|legal|curioso|curiosa|gosto|na minha opiniao)\b",
         t,
     ) or enunciacao_avaliativa_de_atividade(frase))
+    predicados = frase
+    avaliacao = re.match(r'^\s*é\s+(?:importante|útil|interessante|necessário|essencial)\s+'
+                         r'(?=(?:comparar|separar|diferenciar|distinguir)\b)', frase, re.I)
+    if avaliacao:
+        # A matriz avalia o ato de comparar. Uma nova cópula ou atribuição na
+        # justificativa continua visível. Distinguir conjunções antes de tirar acentos.
+        predicados = re.sub(r'(?<=—) +e (?=isso\b)|\be (?=como\b)', ' ', frase[avaliacao.end():])
     if tema_norm and tema_norm in t and not subjetiva and re.search(
         r"\b(?:e|foi|era|tem|teve|possui|produz|fabrica|criou|fundou|desenvolveu|"
         r"publicou|lancou|participou|trabalhou|pertence|fica|funciona)\b",
-        _predicados_sem_copula_de_foco_prospectivo(frase, tema),
+        _predicados_sem_copula_de_foco_prospectivo(predicados, tema),
     ):
         return True
     return bool(re.search(
@@ -1232,11 +1291,21 @@ def _fallback_sem_inventar(tema: str, texto_usuario: str) -> str:
 
 def texto_pede_recomendacao(texto: str) -> bool:
     """Reconhece o pedido factual; música e execução mantêm seus owners."""
-    return bool(not texto_e_metalinguistico(texto) and re.search(
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    if texto_e_metalinguistico(texto):
+        return False
+    base = texto_fora_de_citacoes(texto)
+    # O objeto direto define a entrega. Uma frase sugerida é escrita no
+    # canal atual. Outro pedido na mesma mensagem mantém seu próprio objeto.
+    base = re.sub(
+        r"\b(?:sugere|sugira|recomende|indique)\s+"
+        r"(?:(?:uma|duas|três|tres|quatro|\d+)\s+)?(?:frases?|falas?|mensagens?|perguntas?)\b",
+        "", base, flags=re.IGNORECASE)
+    return bool(re.search(
         r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b|"
         r"\b(?:quero|procuro|busco|preciso\s+de)\s+(?:um|uma)\s+"
         r"(?:modelo|op[cç][aã]o|alternativa)\b",
-        str(texto or ""), flags=re.IGNORECASE,
+        base, flags=re.IGNORECASE,
     ))
 
 
@@ -1642,7 +1711,8 @@ def validar_fala_com_fundamentacao(
             'opiniao_autoral_conferida': True, 'prova_factual': False,
             'prova_semantica_livre': False, 'autoriza_execucao': False,
             'relatos_usuario_conferidos': [], 'revisao_relatos_usuario': []}
-    if criacao_vinculada:
+    roteiro = ((plano or {}).get('contrato_fala') or {}).get('roteiro_concreto') or {}
+    if criacao_vinculada or roteiro.get('estrategia') == 'nomeacao_ficcional_justificada':
         # Sem bloco fechado, a finalidade não dispensa revisão das alegações,
         # inclusive na rota sem pesquisa que normalmente confere só relatos.
         apenas_relatos_usuario = False

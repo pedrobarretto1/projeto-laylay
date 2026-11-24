@@ -360,7 +360,7 @@ class RostoOledRuntime:
         leituras = {}
         for nome, s in self._sensores.items():
             idade_total = min(4294967295, s["idade_ms"] + idade)
-            expirada = idade_total > 300
+            expirada = idade_total > 300 and s["estado"] != "DESATIVADA"
             leituras[nome] = {**s, "idade_ms": idade_total,
                 "estado": "EXPIRADA" if expirada else s["estado"],
                 "mm": None if expirada else s["mm"]}

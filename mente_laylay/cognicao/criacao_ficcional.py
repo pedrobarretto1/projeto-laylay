@@ -336,7 +336,10 @@ def vincular_moldura_ficcional(pacote: PacotePrompt, *, plano: Mapping[str, Any]
     esquema = base.response_format['json_schema']['schema']
     unidades = esquema['properties']['suporte_proposicoes']
     unidades['minItems'] = unidades['maxItems'] = 1
-    unidades['items']['properties']['texto']['pattern'] = '^Na história, .+'
+    # O conversor de schema local ignora patterns sem as duas âncoras.
+    # Incluir quebras de linha preserva a criação em parágrafos; o validator
+    # abaixo continua responsável por conferir escopo e evidência.
+    unidades['items']['properties']['texto']['pattern'] = r'^Na história, (.|\n|\r)+$'
     if criacao.recorte_proximo_acontecimento:
         unidades['items']['properties']['texto']['pattern'] = '^Na história, «[^«»]+»$'
     def validar(dados):

@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
 from mente_laylay.cognicao.referencias_linguagem import (
     PerspectivaEnunciador, texto_fora_de_citacoes, natureza_predicado_pessoal,
+    separar_posicionamento_dialogico,
 )
 
 # Flexões de predicados pessoais; não é vocabulário de objetos/habilidades.
@@ -19,6 +20,38 @@ _COORDENACAO_PREPOSICIONAL = re.compile(
     r'\b(?P<prep>com|de|em|para|por|sem|sobre|contra)\s+voc[eê]\s+e\s+(?P=prep)\b',
     re.I,
 )
+_PESSOA_DIRETA = re.compile(r'\b(?:voc[eê]s?|tu|te|ti|contigo|[st]eus?|[st]uas?)\b', re.I)
+_PREDICADO_PESSOAL_ADICIONAL = re.compile(
+    r'\b(?:' + '|'.join(v for v in _VERBOS.split('|') if v not in {'e', 'esta', 'ta'})
+    + r'|é|est[aá]|t[aá])\b', re.I,
+)
+
+
+def _posicao_seguida_de_oracao_nominal(frase: str) -> bool:
+    """Delimita uma oração com sujeito próprio após a avaliação dialogal."""
+    posicao = separar_posicionamento_dialogico(frase)
+    if posicao is None:
+        return False
+    conteudo = str(posicao['conteudo']).rstrip(' .!?')
+    if _PESSOA_DIRETA.search(conteudo):
+        return False
+    # Uma comparação copulativa após o travessão retoma a oração anterior.
+    # Outros incisos ou predicados pessoais podem voltar ao interlocutor.
+    oracao, *inciso = re.split(r'\s+[—–]\s+', conteudo, maxsplit=1)
+    comparacao = re.fullmatch(r'(?:é|seria) como ([^,;:—–]+)', inciso[0], re.I) if inciso else None
+    # Exigir artigo evita confundir uma palavra com leitura nominal possível
+    # com um sujeito explícito, como o advérbio em "não houve".
+    if (not re.match(r'(?:o|a|os|as|um|uma|uns|umas)\s+', oracao, re.I)
+            or re.search(r'[,;:—–]', oracao) or (inciso and comparacao is None)):
+        return False
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia, grupo_nominal_de_papel
+
+    for verbo in re.finditer(r'\b[^\W\d_]+', oracao):
+        if ((consultar_morfologia(verbo[0]) or 0) & 256
+                and grupo_nominal_de_papel(oracao[:verbo.start()].strip())):
+            restante = oracao[verbo.end():] + (' ' + comparacao[1] if comparacao else '')
+            return not _PREDICADO_PESSOAL_ADICIONAL.search(restante)
+    return False
 
 
 def _predicado(texto: str, *, origem: bool) -> str | None:
@@ -111,9 +144,22 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
         return None
     # Só uma atribuição candidata exige a releitura do histórico. A busca
     # continua restrita a esta revisão e lê as fontes vigentes do plano.
+    reconhecimentos_conferidos: set[str] = set()
+    from mente_laylay.cognicao.redacao_discursiva import retificacao_redacao_vigente
+    retificacao = retificacao_redacao_vigente(plano)
+    realizacao = retificacao.conferir(fala) if retificacao is not None else None
+    if realizacao is not None and realizacao['posicionamento']:
+        # A aderência também roda antes da declaração de autoria. O vínculo
+        # linguístico vem da correção do usuário, disponível nesta fase;
+        # não é aprovação final da proposta nem dispensa sua declaração.
+        reconhecimentos_conferidos.add(realizacao['reconhecimento_integral'])
     predicados: set[str] | None = None
     sem_apoio = []
     for frase in re.split(r'(?<=[.!?])\s+', str(fala or '')):
+        # Reutilizar somente o trecho cuja correção foi vinculada à fonte
+        # atual pelo owner. A concordância não libera o restante da fala.
+        if frase.strip().rstrip('.!') in reconhecimentos_conferidos:
+            continue
         externa = texto_fora_de_citacoes(frase)
         # Leia a coordenação antes de "é" perder o acento. "Você" dentro de
         # dois complementos paralelos não é sujeito. Uma atribuição posterior
@@ -163,7 +209,8 @@ def conferir_afirmacoes_interlocutor(fala: str, *, plano: Mapping[str, Any]) -> 
                 and not re.search(r'\b(?:'+'|'.join(v for v in _VERBOS.split('|') if v!='e')+r')\b',restante))
             if (not restante.strip() or autobiografica
                 or impessoal
-                or (atividade_como_sujeito and not outra_atribuicao)):
+                or (atividade_como_sujeito and not outra_atribuicao)
+                or _posicao_seguida_de_oracao_nominal(externa)):
                 continue
         if predicados is None:
             predicados = _predicados_das_fontes(usuario, plano)

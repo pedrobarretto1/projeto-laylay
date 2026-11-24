@@ -661,7 +661,7 @@ def _verificar_fala_turno_base(
         problemas.extend(problemas_alegacoes)
         ajustada = str(validacao_alegacoes.get("fala") or ajustada).strip()
 
-    problemas_realidade = detectar_experiencia_pessoal_inventada(ajustada)
+    problemas_realidade = detectar_experiencia_pessoal_inventada(ajustada, plano=contrato)
     if problemas_realidade:
         problemas.extend(problemas_realidade)
         ajustada = remover_trechos_de_realidade_inventada(ajustada)

@@ -3,6 +3,10 @@
 #ifndef LAYLAY_SENSORES_DISTANCIA
 #define LAYLAY_SENSORES_DISTANCIA 0
 #endif
+#ifndef LAYLAY_SENSOR_BORDA
+#define LAYLAY_SENSOR_BORDA 1
+#endif
+static_assert(LAYLAY_SENSOR_BORDA==0 || LAYLAY_SENSOR_BORDA==1,"Perfil de borda invalido");
 uint32_t maxLoopProtecaoUs = 0, maxRenderProtecaoUs = 0, maxSensorProtecaoUs = 0;
 uint32_t ultimoLoopProtecaoUs = 0, maxIntervaloBordaMs = 0;
 #if LAYLAY_SENSORES_DISTANCIA
@@ -25,12 +29,14 @@ bool sensorResponde(uint8_t enderecoSensor) {
 }
 void iniciarSensoresDistancia() {
   for (auto &s : distancias) {
+    if (!LAYLAY_SENSOR_BORDA && &s==&distancias[1]) continue;
     s.presente=s.amostra=s.erroI2c=false;
     s.mm=65535;s.status=255;s.medidaEm=0;
     digitalWrite(s.pino, LOW); pinMode(s.pino, OUTPUT);
   }
   delay(10); // Só no boot, com nSLEEP já cortado.
   for (auto &s : distancias) {
+    if (!LAYLAY_SENSOR_BORDA && &s==&distancias[1]) continue;
     pinMode(s.pino, INPUT); // Libera o pull-up do módulo; não injeta tensão em XSHUT.
     delay(10);
     s.presente = sensorResponde(0x29) && s.dispositivo.begin(s.endereco, false, &Wire)
@@ -60,7 +66,7 @@ void atualizarSensoresDistancia(uint32_t agora) {
   if (agora - ultimaConsultaDistancia < 2) return;
   ultimaConsultaDistancia = agora;
   // Borda primeiro. Aplicar o corte antes de qualquer leitura frontal ou OLED.
-  lerSensorDistancia(distancias[1]);
+  if (LAYLAY_SENSOR_BORDA) lerSensorDistancia(distancias[1]);
   atualizarMotor(millis());
   lerSensorDistancia(distancias[0]);
 }
@@ -83,7 +89,7 @@ void processarConsultaDistancia(const char *entrada) {
 #if LAYLAY_SENSORES_DISTANCIA
   auto &f = distancias[0]; auto &b = distancias[1];
   uint32_t agora = millis();
-  const char *ef = estadoDistancia(f, agora), *eb = estadoDistancia(b, agora);
+  const char *ef = estadoDistancia(f, agora), *eb = LAYLAY_SENSOR_BORDA ? estadoDistancia(b, agora) : "DESATIVADA";
   responder("DIST 1 %lu FRENTE 48 %s %d %lu %u BORDA 49 %s %d %lu %u\n", seq,
     ef, !strcmp(ef, "VALIDA") ? int(f.mm) : -1,
     f.amostra ? (unsigned long)(agora - f.medidaEm) : 4294967295UL, unsigned(f.status),

@@ -34,22 +34,45 @@ class RetificacaoRedacao:
 
     def instrucao(self) -> str:
         return (f'O usuário corrigiu a ocorrência: «{self.negacao_ocorrencia}». '
-                'Reconheça essa correção literalmente numa frase, sem repetir a cena como lembrança. '
+                'Reconheça essa correção numa frase, preservando o acontecimento completo, '
+                'seus qualificadores e a negação no passado; pode mudar a ordem e o verbo de ocorrência. '
+                'Não troque o alvo por um pronome ambíguo nem repita a cena como lembrança. '
                 'Depois proponha a redação pedida, identificando-a como proposta: '
                 'Eu acrescentaria/escreveria/sugeriria: «texto proposto». '
                 'A proposta não é relato de experiência nem prova de fato. Não acrescente alegações fora dela.')
 
     def aceita(self, fala: str) -> bool:
+        return self.conferir(fala) is not None
+
+    def conferir(self, fala: str) -> dict[str, Any] | None:
+        """Uma leitura compartilhada para aderência e suporte da realização."""
         from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+        from mente_laylay.cognicao.referencias_linguagem import (
+            intervalos_citados, conferir_parafrase_negacao_ocorrencia, separar_posicionamento_dialogico,
+        )
+        texto = fala.strip()
+        citacoes = intervalos_citados(texto)
+        if len(citacoes) != 1:
+            return None
+        inicio, fim = citacoes[0]
+        if texto[fim:] not in {'', '.', '!'}:
+            return None
         forma = re.fullmatch(r'(?P<reconhecimento>[^.!?]+)[.!]\s+'
-            r'(?:Eu )?(?:acrescentaria|escreveria|sugeriria|proporia):\s*«(?P<proposta>[^«»]+)»[.!]?',
-            fala.strip(), re.I)
+            r'(?:Eu )?(?:acrescentaria|escreveria|sugeriria|proporia):\s*',
+            texto[:inicio], re.I)
         if forma is None:
-            return False
-        reconhecida = re.sub(r'^(?:voc[eê] tem raz[aã]o|entendi|certo|correto)\s*:\s*',
-                             '', forma['reconhecimento'], flags=re.I)
-        return (normalizar_texto_basico(reconhecida) == normalizar_texto_basico(self.negacao_ocorrencia)
-                and bool(forma['proposta'].strip()))
+            return None
+        posicionamento = separar_posicionamento_dialogico(forma['reconhecimento'])
+        reconhecida = (str(posicionamento['conteudo']) if posicionamento else
+            re.sub(r'^(?:entendi|certo|correto)\s*:\s*', '', forma['reconhecimento'], flags=re.I))
+        literal = normalizar_texto_basico(reconhecida) == normalizar_texto_basico(self.negacao_ocorrencia)
+        derivacao = conferir_parafrase_negacao_ocorrencia(self.negacao_ocorrencia, reconhecida)
+        proposta = texto[inicio+1:fim-1].strip()
+        if not proposta or not (literal or derivacao):
+            return None
+        return {'reconhecimento': reconhecida, 'literal': literal, 'derivacao': derivacao,
+                'reconhecimento_integral': forma['reconhecimento'], 'posicionamento': posicionamento,
+                'proposta': proposta, 'intervalo_proposta': [inicio, fim]}
 
 
 def construir_retificacao_redacao(texto: str, *, plano: Mapping[str, Any]) -> RetificacaoRedacao | None:
@@ -71,7 +94,18 @@ def construir_retificacao_redacao(texto: str, *, plano: Mapping[str, Any]) -> Re
         m = re.match(r'^(?:S[oó] um detalhe:\s*)?(?P<negacao>n[aã]o\s+'
             r'(?:houve|ocorreu|aconteceu)\s+(?:esse|essa|este|esta)\s+[^,;.!?]+)(?:[,;.!]|$)', parte, re.I)
         if m is not None:
-            negacoes.append(m['negacao'])
+            negacao = m['negacao']
+            restante = parte[m.end('negacao'):].rstrip(' .!')
+            if restante:
+                # Vírgula sozinha não prova fim da correção. Uma ressalva
+                # permanece na fonte; só coordenação aditiva com sujeito e
+                # verbo próprios permite delimitar a primeira declaração.
+                from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+                coordenada = re.match(r'^,\s*e\s+(?:eu|nós|nos|voc[eê]|voc[eê]s|ele|ela|eles|elas)'
+                    r'\s+(?:n[aã]o\s+)?(?P<verbo>[^\W\d_]+)\b', restante, re.I)
+                if coordenada is None or not (consultar_morfologia(coordenada['verbo']) or 0) & 32:
+                    negacao = parte[m.start('negacao'):].rstrip(' .!')
+            negacoes.append(negacao)
     if len(negacoes) != 1:
         return None
     return RetificacaoRedacao(str(plano['id']), texto, negacoes[0])
@@ -165,9 +199,10 @@ def conferir_redacao_nao_assertiva(texto: str, *, plano: Mapping[str, Any]) -> d
     Outras formulações permanecem na revisão normal, com suas fontes.
     """
     retificacao = retificacao_redacao_vigente(plano)
-    if retificacao is not None and retificacao.aceita(texto):
+    realizada = retificacao.conferir(texto) if retificacao is not None else None
+    if realizada is not None:
         from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
-        proposta = texto.split('«', 1)[1].rsplit('»', 1)[0].strip().rstrip('.!')
+        proposta = realizada['proposta'].rstrip('.!')
         # Reconhecimento literal não dá suporte a qualquer alegação colocada
         # entre aspas. Somente redação nominal; orações seguem revisão normal.
         if not all(grupo_nominal_de_papel(p.strip()) for p in proposta.split(',')):
@@ -175,7 +210,12 @@ def conferir_redacao_nao_assertiva(texto: str, *, plano: Mapping[str, Any]) -> d
         return {'tipo_ato': 'retificacao_com_proposta', 'ato_conferido': True,
             'fonte': {'tipo': 'utterance_atual', 'texto': retificacao.negacao_ocorrencia,
                       'turno_id': retificacao.turno_id},
-            'realizacao': {'texto': texto, 'escopo': 'correcao_literal_e_proposta_delimitada'},
+            'realizacao': {'texto': texto, 'escopo': 'correcao_vinculada_e_proposta_delimitada',
+                          'reconhecimento_literal': realizada['literal'],
+                          'reconhecimento_integral': realizada['reconhecimento_integral'],
+                          'posicionamento': realizada['posicionamento'],
+                          'derivacao': realizada['derivacao'],
+                          'intervalo_proposta': realizada['intervalo_proposta']},
             'estado_real_verificado': False, 'semantica_verificada': False, 'prova_implicacao': False,
             'pode_confirmar_fato_externo': False, 'autoriza_execucao': False}
     pergunta = conferir_pergunta_de_escolha(texto, plano=plano)

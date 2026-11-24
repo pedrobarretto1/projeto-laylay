@@ -80,11 +80,6 @@ def separar_adjunto_papel_inicial(texto: str, *, fonte_literal: str = '') -> tup
     return bruto[:fim], bruto[fim:]
 
 
-def termina_em_interrogativo(texto: str) -> bool:
-    """Distingue interrogativo final pontuado de conector sem complemento."""
-    return bool(re.search(r"\b(?:por\s+qu[eê]|como|quando)\s*\?+$", str(texto or '').strip(), re.I))
-
-
 def remover_conector_discursivo_inicial(texto: str) -> str:
     """Projeta a oração após 'e' inicial, sem classificar ou autorizar.
 
@@ -95,13 +90,25 @@ def remover_conector_discursivo_inicial(texto: str) -> str:
     return re.sub(r"^e(?:\s*,\s*|\s+)", "", bruto, count=1, flags=re.IGNORECASE)
 
 
+def termina_em_interrogativo(texto: str) -> bool:
+    """Distingue interrogativo final pontuado de conector sem complemento."""
+    return bool(re.search(r"\b(?:por\s+qu[eê]|como|quando)\s*\?+$", str(texto or '').strip(), re.I))
+
+
 _MOLDURA_METALINGUISTICA_RE = re.compile(
     r"^(?:"
     r"como\s+(?:eu|voce|você)\s+"
-    r"(?:perguntaria|diria|falaria|pediria|escreveria)\b|"
-    r"(?:a|essa|esta)\s+(?:frase|palavra|express[aã]o|pergunta|forma)\b"
+    r"(?:perguntaria|diria|falaria|pediria|escreveria)\b"
     r")",
     re.IGNORECASE,
+)
+_MENCAO_DE_FORMULACAO = re.compile(
+    r"^(?:a|essa|esta)\s+(?:frase|palavra|express[aã]o|pergunta|forma)\b", re.I,
+)
+_PREMISSA_NOVA_E_PERGUNTA_LOCAL = re.compile(
+    r"^que\s+tal\s+[^:;.!?]+:\s+[^:;.!?]+[.!]\s+"
+    r"(?:por\s+que|como|quando)\b[^:;.!?]*\b(?:ele|ela)\b[^:;.!?]*"
+    r"\b(?:ali|l[aá]|aqui|nesse lugar|nesse momento)\b[^:;.!?]*\?$", re.I,
 )
 _FALA_CITADA_RE = re.compile(
     r"^se\s+eu\s+(?:disser|falar|perguntar|escrever)\b.*"
@@ -191,6 +198,157 @@ def _tema_de_redacao_discursiva(texto: str) -> bool:
     return True
 
 
+def pede_formulacao_em_voz_alheia(texto: str) -> bool:
+    """Formulação hipotética integral no chat, sem destino externo."""
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+
+    base = normalizar_texto_basico(texto)
+    atributo = r'(?:incompleta|curta|breve|engracada|divertida)'
+    exemplo = r'(?:"[^"]+"|“[^”]+”|«[^»]+»|\'[^\']+\')'
+    pedido = re.fullmatch(
+        r'(?:pense|imagine|invente|formule|escreva)\s+(?:(?:so|apenas|somente)\s+)?(?:n?uma?|em uma?)\s+'
+        rf'(?:fala|frase|pergunta|mensagem|resposta)(?: {atributo}(?: e {atributo})?)?\s+que\s+'
+        r'(?P<sujeito>[a-z-]+(?:\s+[a-z-]+){0,5})\s+'
+        r'(?:diria|falaria|escreveria|perguntaria|faria|responderia)'
+        r'(?:\s+ao\s+[a-z]+(?:\s+de\s+(?:manha|tarde|noite))?)?'
+        rf'(?:,\s+como\s+{exemplo})?'
+        r'(?:\.\s+(?:voce\s+)?(?:invente|inventa) (?:o resto|a continuacao))?[.!?]*', base,
+    )
+    return bool(pedido and grupo_nominal_de_papel(re.sub(r'\b(?:bem|mal)-', '', pedido['sujeito'])))
+
+
+_ARTEFATO_DE_CALCULO = r'(?:a conta|o calculo|a operacao matematica)'
+_FORMATO_CONFIRMACAO_COM_CORRECAO = re.compile(
+    r'(?:(?:(?:voce )?(?:pode|poderia|consegue) )?responder|responda|responde) '
+    r'(?:so|somente|apenas) (?:sim|"sim"|“sim”|«sim»|\'sim\') ou '
+    rf'(?:corrigir|corrija|corrige) {_ARTEFATO_DE_CALCULO}[.!?]*',
+)
+
+
+def pede_confirmacao_breve_ou_correcao(texto: str) -> bool:
+    """Formato de uma resposta sobre a conta que já está no diálogo."""
+    return bool(_FORMATO_CONFIRMACAO_COM_CORRECAO.fullmatch(normalizar_texto_basico(texto)))
+
+
+_PREFIXO_DIRETIVA = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voc[eê] )?(?:pode|poderia|consegue) (?:me )?)?"
+
+
+def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
+    """O alvo é um diálogo no canal atual, com participantes e extensão opcionais."""
+    from mente_laylay.cognicao.qualificacao_intencao import NUMERO_EXTENSAO, QUANTIDADE_EXTENSAO
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    # Nesta gramática, a cópula «é» não marca coordenação entre atos.
+    texto = 'é'.join(remover_acentos(parte) for parte in re.split(r'\bé\b', texto.strip().casefold()))
+    tamanho = r'(?:curto|pequeno|breve)'
+    genero = r'(?:ficticio|imaginario)'
+    # Os sujeitos retomam os participantes. Os predicados ficam dentro da
+    # premissa, sem pontuação ou coordenação de uma nova ordem.
+    complemento = r'(?: (?!(?:e|mas|depois|entao|em seguida)\b)[\w-]+)*'
+    papel = rf'(?:nao )?(?P<verbo1>\w+){complemento}, (?:o outro|a outra) (?:nao )?(?P<verbo2>\w+){complemento}'
+    # Fazer os personagens falarem é uma restrição da cena. O infinitivo
+    # pessoal mantém os participantes como agentes da ação narrada.
+    desfecho = (
+        r'\. (?:faca|faz) (?:os dois|as duas|ambos|ambas) '
+        r'(?:(?:explicarem|defenderem|apresentarem|discutirem) '
+        r'(?:sua|a propria|cada) (?:posicao|opiniao|ideia|perspectiva)'
+        r'(?: e (?:terminarem|acabarem) (?:se )?\w+ndo)?'
+        r'|se (?:escutarem|ouvirem|entenderem|respeitarem))'
+    )
+    papel_retoma = r'(?:um|uma) que (?:se )?\w+(?: (?!e\b|mas\b|depois\b)[\w-]+){0,9}'
+    pedido = re.fullmatch(
+        _PREFIXO_DIRETIVA + r'(?:escreva|escreve|escrever|redija|redige|redigir|crie|cria|criar) '
+        + rf'um (?:{tamanho} )?dialogo(?: {tamanho}| (?P<genero>{genero}))?'
+        + rf'(?: (?:de|em|com) (?P<quantidade>{QUANTIDADE_EXTENSAO}) falas?)?'
+        + r'(?: entre (?P<participantes>[^.;:!?]+?))?'
+        + rf'(?:, (?P<papeis>{papel_retoma} e (?:outra|outro) que \w+'
+          r'(?: (?!e\b|mas\b|depois\b)[\w-]+){0,9}))?'
+        + r'(?:, (?:mostrando|indicando) que (?:um|uma) del[ae]s (?:quer|deseja|prefere) '
+          r'(?P<finalidade>\w+r)(?:, mas (?:nenhum|nenhuma|o outro|a outra) '
+          r'(?:quer|deseja|prefere) (?P<ressalva>\w+r)(?: [oa] outr[oa])?)?)?'
+        + r'(?: ao (?P<cena>olhar|observar|ver|ouvir|sentir) (?P<objeto>[^.;:!?]+?))?'
+        + rf'(?:: (?:um|uma) {papel}(?:{desfecho})?)?'
+        + r'(?: aqui| no chat| nesta conversa)?[.!?]*'
+        + rf'(?:\. (?:um|uma) (?P<verbo_papel1>\w+){complemento}; '
+          rf'(?:o outro|a outra) (?P<verbo_papel2>\w+){complemento}(?:{desfecho})?[.!?]*)?'
+        + r'(?: quero que (?:ambos|ambas|os dois|as duas) '
+          r'(?:entendam|compreendam|reconhecam) (?:as diferencas|a diferenca) '
+          r'entre (?:suas|seus|os|as) (?:emocoes|sentimentos|perspectivas|opinioes)[.!?]*)?'
+        + r'(?: quero (?:ver|ler) como (?:voce )?(?:transforma|desenvolve) '
+          r'(?:a|essa|esta) (?:ideia|premissa|proposta) em (?:cena|dialogo)[.!]*)?',
+        texto,
+    )
+    if pedido is None:
+        return None
+    participantes = pedido['participantes'] or ''
+    if pedido['papeis']:
+        if not re.fullmatch(r'(?:ess[ae]s |est[ae]s |aquel[ae]s )?(?:duas|dois|2) '
+                            r'(?:pessoas|personagens|amig[oa]s)', participantes):
+            return None
+        oracoes = re.split(r'\s+e (?:outra|outro) que ', pedido['papeis'])
+        verbos = [re.sub(r'^(?:um|uma) que (?:se )?', '', parte).split()[0] for parte in oracoes]
+        if not all((consultar_morfologia(v) or 0) & 256 for v in verbos):
+            return None
+    if pedido['finalidade'] and (not participantes or not all(
+        (consultar_morfologia(verbo) or 0) & 32 for verbo in
+        (pedido['finalidade'], pedido['ressalva']) if verbo
+    )):
+        return None
+    if pedido['verbo1'] and (
+        not participantes or not all(
+            (consultar_morfologia(pedido[campo]) or 0) & 256
+            for campo in ('verbo1', 'verbo2')
+        )
+    ):
+        return None
+    if pedido['verbo_papel1'] and (
+        not participantes or not all(
+            (consultar_morfologia(pedido[campo]) or 0) & 256
+            for campo in ('verbo_papel1', 'verbo_papel2')
+        )
+    ):
+        return None
+    if pedido['cena'] and (' que ' not in participantes or not _tema_de_redacao_discursiva(pedido['objeto'])):
+        return None
+    participantes = re.sub(r'^(?:ess[ae]s|est[ae]s|aquel[ae]s) ', '', participantes)
+    participantes = re.sub(rf'^{NUMERO_EXTENSAO} ', '', participantes, count=1)
+    divergencia = re.fullmatch(
+        r'(?P<grupo>.+?) que (?:discordam|divergem) sobre (?P<assunto>.+)', participantes,
+    )
+    if divergencia:
+        assunto = divergencia['assunto']
+        verbo, _, objeto = assunto.partition(' ')
+        if verbo.endswith(('ar', 'er', 'ir')) and (consultar_morfologia(verbo) or 0) & 32:
+            assunto = objeto
+        if not _tema_de_redacao_discursiva(assunto):
+            return None
+        participantes = divergencia['grupo']
+    if pedido['participantes'] and not (participantes and _tema_de_redacao_discursiva(participantes)):
+        return None
+    return pedido
+
+
+def _pede_pergunta_discursiva(texto: str, prefixo: str) -> bool:
+    """Pede uma pergunta como conteúdo, com tema e justificativa opcionais."""
+    unidade = r'uma pergunta(?: (?:nova|aberta|original|inedita|breve))*'
+    reencontro = r'(?:para (?:(?:a|nossa) proxima conversa|(?:o|nosso) proximo encontro), )?'
+    tema_da_conversa = r'que (?:continue|retome|aprofunde) (?:a|nossa|essa) (?:conversa|reflexao|discussao) sobre '
+    justificativa = r'(?:e (?:explique|diga) (?:sua escolha|por que (?:a )?escolheu))'
+    pedido = re.fullmatch(
+        prefixo + reencontro
+        + r'(?:escolha|escolhe|escolher|proponha|propoe|propor|formule|formula|formular) '
+        + unidade + rf'(?:(?: sobre | {tema_da_conversa})(?P<tema>[^.!?;:]+?))?'
+        + r'(?: que (?:voce )?gostaria de (?:discutir|explorar|fazer) (?:no proximo encontro|na proxima conversa))?'
+        + rf'(?: {justificativa}|\. (?:quero|prefiro|pode ser) {unidade}'
+        + r'(?: realmente aberta)?(?:, sem resposta (?:obvia|pronta))?'
+        + r'(?:,? e uma frase (?:dizendo|explicando) por que (?:a )?escolheu)?)?[.!?]*',
+        texto,
+    )
+    return bool(pedido and (
+        not pedido['tema'] or _tema_de_redacao_discursiva(pedido['tema'].replace(', ', ' e '))
+    ))
+
+
 def tipo_transformacao_conversacional(texto: str) -> str:
     """Descreve um ato completo sobre a conversa, sem resolver sua fonte.
 
@@ -201,11 +359,16 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     literal = re.sub(r"\s+", " ", unicodedata.normalize("NFC", str(texto or ""))).strip().casefold()
     t = literal
     t = "".join(c for c in unicodedata.normalize("NFD", t) if not unicodedata.combining(c))
+    if _pedido_resposta_sem_efeito_externo(t):
+        return "formato_resposta"
+    if pedido_repeticao_itens_mencionados(t):
+        return "reproducao"
     # Moldura de reformulação não muda alvo/canal. Só a instrução completa
     # seguinte pode adquirir o papel discursivo; tentar abrir recurso externo
     # continua fora deste leitor. O original não é reescrito.
-    t = re.sub(r'^(?:agora[, ]+)?(?:tente|tenta|experimente|experimenta) assim:\s*', '', t, count=1)
-    prefixo = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voc[eê] )?(?:pode|poderia|consegue) (?:me )?)?"
+    moldura_reformulacao = r'^(?:agora[, ]+)?(?:tente|tenta|experimente|experimenta) assim:\s*'
+    t = re.sub(moldura_reformulacao, '', t, count=1)
+    prefixo = _PREFIXO_DIRETIVA
     from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
     from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
 
@@ -214,11 +377,20 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     from mente_laylay.cognicao.qualificacao_intencao import qualificar_intencao_por_capacidades
     if qualificar_intencao_por_capacidades(texto) is not None:
         return "formato_resposta"
+    enumerada = re.fullmatch(
+        r'(?:(?:para (?:terminarmos|encerrarmos) (?:a|nossa) conversa, )?tenho dois pedidos:\s*)?'
+        r'primeiro,?\s+(?P<primeiro>[^;!?]+);\s*segundo,?\s+(?P<segundo>[^;!?]+)[.!?]*', t)
+    if (enumerada and tipo_transformacao_conversacional(enumerada['primeiro']) == 'resumo'
+            and tipo_transformacao_conversacional(enumerada['segundo']) == 'redacao'):
+        return 'redacao'
 
     # O mesmo objeto textual reconhecido pela recuperação também é autoria;
     # repetir seu conteúdo não autoriza executar o que estiver sendo citado.
     if pedido_repeticao_literal_da_fala(texto):
         return "reproducao"
+    from mente_laylay.cognicao.retomada_criacao import pedido_tema_e_pergunta_reencontro
+    if pedido_tema_e_pergunta_reencontro(texto):
+        return "redacao"
     # Em responder + com + grupo nominal, o complemento descreve o conteúdo
     # da resposta, não um recurso a operar. A análise nominal conserva
     # adjetivos e concordância sem enumerar cores, números ou outros temas.
@@ -245,6 +417,12 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     )
     if re.fullmatch(prefixo + resumo, t):
         return "resumo"
+    resumo_do_dialogo = re.fullmatch(prefixo + r'(?:resuma|resume|sintetize) em '
+        r'(?:uma|duas|tres|\d+) frases? o que (?:aprendemos|discutimos|conversamos) '
+        r'sobre (?P<tema>[^,;.!?]+)[.!?]*', t)
+    if resumo_do_dialogo and (_tema_de_redacao_discursiva(resumo_do_dialogo['tema'])
+            or re.fullmatch(r'[\w-]+(?: e [\w-]+){0,3}', resumo_do_dialogo['tema'])):
+        return 'resumo'
     if re.fullmatch(prefixo + comparacao, t):
         return "comparacao"
     transicao = re.fullmatch(prefixo + r"(?:mude|muda|mudar|troque|troca|trocar) de "
@@ -262,7 +440,11 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         r"(?: (?:aqui|no chat|nesta conversa))?"
         r"(?:[, ]+sem (?:metafora|metaforas|rodeios))?[.!?]*"
     )
-    if re.fullmatch(prefixo + redacao, t):
+    if (re.fullmatch(prefixo + redacao, t)
+            or ('dialogo' in t and pedido_dialogo_discursivo(re.sub(moldura_reformulacao, '', literal, count=1)))
+            or _pede_pergunta_discursiva(t, prefixo)):
+        return "redacao"
+    if pede_formulacao_em_voz_alheia(t):
         return "redacao"
     # Enriquecer conteúdo no próprio discurso é autoria. Destino e objeto
     # precisam estar integralmente delimitados: escrever em arquivo/e-mail
@@ -316,7 +498,12 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         + rf'(?:\. {quantidade} (?:frases?|paragrafos?|linhas?|palavras?)(?:, por favor)?)?[.!?]*', t)
     if criacao and (not criacao['tema'] or _tema_de_redacao_discursiva(criacao['tema'])):
         return 'redacao'
-    adjetivo_forma = r"(?:breve|curta|objetiva|direta)"
+    adjetivo_forma = r"(?:breve|curta|objetiva|direta|simples|clara)"
+    estilo_do_interlocutor = (
+        r"(?:do (?:seu|teu) (?:proprio )?(?:jeito|modo)|"
+        r"da (?:sua|tua) (?:propria )?(?:maneira|forma))"
+    )
+    limite_ao_discurso = r"sem executar (?:nada|comandos|(?:nenhuma|qualquer) (?:acao|operacao))"
     # Quantificadores limitam a extensão do artefato textual, sem trocar
     # o alvo da instrução por uma operação. Consumir o grupo inteiro mantém
     # destinos externos e ordens coordenadas fora deste contrato.
@@ -328,8 +515,13 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         rf"de (?:forma|maneira) {adjetivo_forma}(?: e {adjetivo_forma})*|"
         r"brevemente|objetivamente|diretamente|naturalmente|espontaneamente|"
         r"com (?:humor|naturalidade|espontaneidade)|"
+        rf"com {quantidade_extensao} exemplos?(?: (?:concretos?|curtos?|simples|praticos?))?|"
+        rf"{estilo_do_interlocutor}|{limite_ao_discurso}|"
+        rf"com (?:{_ARTEFATO_DE_CALCULO}|os passos (?:da conta|do calculo))|"
         r"(?:(?:so|apenas|somente) )?com (?:a fala|a resposta|o texto)|"
-        r"sem (?:metaforas?|rodeios))"
+        r"sem (?:metaforas?|rodeios|"
+        r"(?:inventar|presumir|supor) (?:(?:um|uma|o|a|os|as) )?"
+        r"(?:diagnosticos?|causas?|dados|fatos|resultados|memorias|lembrancas)))"
     )
     canal_atual = r"(?:aqui|no chat|nesta conversa)"
     ligacao_forma = r"(?:,\s*(?:e )?| e | )"
@@ -340,9 +532,53 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     )
     # Forma da resposta no canal atual, sem alvo externo. A correspondência
     # integral conserva a autoridade de destinos e de ordens independentes.
-    if re.fullmatch(prefixo + formato, t):
+    if re.fullmatch(prefixo + formato, t) or _FORMATO_CONFIRMACAO_COM_CORRECAO.fullmatch(t):
         return "formato_resposta"
     return ""
+
+
+def pedido_repeticao_itens_mencionados(texto: str) -> re.Match[str] | None:
+    """Liga a reprodução literal à lista mencionada na pergunta do falante."""
+    base = remover_acentos(re.sub(r"\s+", " ", texto.strip().casefold()))
+    return re.fullmatch(
+        r"(?:(?:quero|vamos) (?:verificar|testar) (?:a|nossa) memoria(?: imediata)?: )?"
+        r"quais (?:foram|eram|sao) os (?P<quantidade>dois|tres|quatro|[234]) "
+        r"(?:objetos|itens|elementos|detalhes|nomes) que (?:eu )?(?:mencionei|citei|listei)"
+        r"(?: (?:na|no|nessa|nesse|nesta|neste) (?P<referente>[a-z]+(?: [a-z]+)?))?\? "
+        r"(?:repita|reproduza|copie)-os (?:exatamente|literalmente)"
+        r"(?:, sem (?:acrescentar|adicionar) (?:nenhum|nada))?[.!]*",
+        base,
+    )
+
+
+def _pedido_resposta_sem_efeito_externo(texto: str) -> bool:
+    """A ressalva negativa restringe a resposta no chat; não cria um destino."""
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+
+    pedido = re.fullmatch(
+        r"(?:(?:agora|por favor)[, ]+)*(?:(?:voce )?(?:pode|poderia|consegue) (?:me )?)?"
+        r"(?:responda|responde|responder) (?P<forma>[^,;.!?]+?)[, ]+"
+        r"sem (?:executar|realizar|efetuar) "
+        r"(?:(?:nenhuma|qualquer) )?(?:acao|acoes|operacao|operacoes|tarefas?) externas?[.!?]*",
+        texto,
+    )
+    if not pedido:
+        return False
+    forma = pedido["forma"]
+    if tipo_transformacao_conversacional("responda " + forma) == "formato_resposta":
+        return True
+    exemplo = re.fullmatch(
+        r"com um exemplo(?: (?:simples|curto|concreto|pratico))?"
+        r"(?: (?:de|do|da) (?P<tema>[a-z]+(?: [a-z]+)?))?",
+        forma,
+    )
+    if not exemplo:
+        return False
+    tema = (exemplo["tema"] or "").split()
+    return not tema or (
+        bool((consultar_morfologia(tema[0]) or 0) & 1)
+        and all((consultar_morfologia(palavra) or 0) & 2 for palavra in tema[1:])
+    )
 
 
 def texto_e_citacao_integral(texto: str) -> bool:
@@ -359,14 +595,27 @@ def texto_e_metalinguistico(texto: str) -> bool:
     bruto = re.sub(r"\s+", " ", str(texto or "")).strip()
     if not bruto:
         return False
-    return bool(
+    if (
         texto_e_citacao_integral(bruto)
         or _MOLDURA_METALINGUISTICA_RE.search(bruto)
         or _FALA_CITADA_RE.search(bruto)
         or _EXEMPLO_METALINGUISTICO_RE.search(bruto)
         or texto_discute_evidencia_textual(bruto)
         or tipo_transformacao_conversacional(bruto) == "comparacao"
-    )
+    ):
+        return True
+    if not _MENCAO_DE_FORMULACAO.match(bruto):
+        return False
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, intervalos_citados
+
+    # Uma menção inicial não se estende a uma pergunta de cena que segue
+    # uma premissa nova e declarada. Perguntas sobre o sentido e citações
+    # conservam a leitura metalinguística.
+    if intervalos_citados(bruto):
+        return True
+    partes = enunciados_discursivos(bruto)
+    return not (len(partes) >= 3 and not any('?' in parte for parte in partes[:-1])
+                and _PREMISSA_NOVA_E_PERGUNTA_LOCAL.fullmatch(' '.join(partes[-2:])))
 
 
 CORRECOES_FONETICAS = (
@@ -989,6 +1238,28 @@ def texto_pede_projecao_de_consequencia(texto: str) -> bool:
         r'\b(?:seria|e|parece|pareceria) (?:bom|boa|ruim|melhor|pior)\b', condicao))
 
 
+def extrair_escolha_avaliativa(texto: str) -> tuple[str, tuple[str, str]] | None:
+    """Consulta com um critério avaliativo e duas alternativas explícitas."""
+    base = normalizar_texto_basico(texto)
+    if ':' in base:
+        abertura, _, consulta = base.partition(':')
+        if not re.fullmatch(
+            r'(?:agora\s+)?(?:quero(?:\s+(?:ouvir|saber))?\s+(?:a\s+)?(?:sua|tua)\s+opiniao'
+            r'(?:\s+sobre\s+[^!?;]+)?|na\s+(?:sua|tua)\s+opiniao)', abertura.strip(),
+        ):
+            return None
+        base = consulta.strip()
+    nominal = r'[^\W\d_][\w-]*(?:\s+[^\W\d_][\w-]*){0,6}'
+    pedido = re.fullmatch(
+        r'qual\s+(?:foi|seria|e)\s+(?P<criterio>[oa]\s+[a-z-]+\s+mais\s+'
+        r'(?:divertid[oa]|engracad[oa]|interessante|criativ[oa]|surpreendente|marcante))'
+        rf'[^:;!?—–]*\s+[—–-]\s+(?P<a>{nominal})\s+ou\s+(?P<b>{nominal})\?', base,
+    )
+    if pedido is None or pedido['a'] == pedido['b'] or ' ou ' in pedido['a']:
+        return None
+    return pedido['criterio'], (pedido['a'], pedido['b'])
+
+
 def texto_pede_opiniao(texto: str) -> bool:
     """Reconhece molduras de opinião sem autorizar uma ação operacional.
 
@@ -1009,6 +1280,8 @@ def texto_pede_opiniao(texto: str) -> bool:
     t = normalizar_texto_basico(''.join(externo))
     if not t:
         return False
+    if extrair_escolha_avaliativa(t) is not None:
+        return True
     from mente_laylay.cognicao.referencias_linguagem import consulta_opiniao_propria
     if consulta_opiniao_propria(texto) is not None:
         return True

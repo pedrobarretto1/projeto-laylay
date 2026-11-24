@@ -360,6 +360,17 @@ _CONTRATO_POR_DOMINIO = {
         "proprietario": "mente_laylay.autonomia.fluxos_conversa",
         "dependencias": ("provedor da habilidade quando necessário",),
         "limites": "sugestões não autorizam execução por conta própria",
+        "documentacao_explicativa": {
+            "proprietario": "mente_laylay.cognicao.contrato_fala",
+            "assuntos": (("afirmacao", "afirmacoes", "enunciado", "enunciados", "proposicao"),
+                         ("factual", "factuais", "verificavel", "verificaveis"),
+                         ("opiniao", "opinioes", "juizo", "julgamento")),
+            "trechos": (
+                "Uma afirmação factual diz algo que pode ser conferido por evidências e pode se revelar verdadeiro ou falso.",
+                "Uma opinião pessoal expressa uma avaliação ou preferência de quem fala.",
+                "Por exemplo, «O relógio marca oito horas» é verificável, enquanto «A manhã está bonita» expressa uma avaliação pessoal.",
+            ),
+        },
         # Contratos de resultado, sem criar intents executáveis para autoria.
         "qualificacao_intencao": ({
             "id": "conversa.formato_resposta",

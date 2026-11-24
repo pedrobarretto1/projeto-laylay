@@ -44,7 +44,7 @@ class LinguagemAprendidaRuntime:
         self.falar = falar
         self.turno_id_getter = turno_id_getter
         self.log = log
-        self._apelidos_cache: dict[str, Any] = {"ts": 0.0, "mapa": {}}
+        self._apelidos_cache: dict[str, Any] = {"ts": 0.0, "mapa": {}, "carregado": False}
         self._metricas_tolerancia: dict[str, Any] = {
             "normalizacoes": 0,
             "entradas_corrigidas": 0,
@@ -60,7 +60,8 @@ class LinguagemAprendidaRuntime:
         """Carrega apelidos aprendidos do banco e mantém cache leve em memória."""
         agora = time.time()
         cache = self._apelidos_cache
-        if not force and cache.get("mapa") and agora - float(cache.get("ts") or 0.0) < 180:
+        if (not force and cache.get("carregado")
+                and 0 <= agora - float(cache.get("ts") or 0.0) < 180):
             return dict(cache.get("mapa") or {})
 
         mapa = {}
@@ -80,9 +81,15 @@ class LinguagemAprendidaRuntime:
                 mapa[alias_norm] = alvo
         except Exception as e:
             self.log(f"⚠️ [APELIDOS] falha ao carregar cache: {e}")
+            self._apelidos_cache = {"ts": agora, "mapa": {}, "carregado": False}
+            self._cache_normalizacao_turno.clear()
+            return {}
 
-        self._apelidos_cache["ts"] = agora
-        self._apelidos_cache["mapa"] = mapa
+        if mapa != cache.get("mapa"):
+            # Resultados derivados não podem sobreviver à mudança da fonte,
+            # mesmo quando o ensino/refresh acontece dentro do mesmo turno.
+            self._cache_normalizacao_turno.clear()
+        self._apelidos_cache = {"ts": agora, "mapa": mapa, "carregado": True}
         return dict(mapa)
 
     def aplicar_apelidos(self, texto: str) -> str:

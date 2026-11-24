@@ -37,11 +37,17 @@ def selecionar_documentacao_local(texto: str, *, turno_id: Any,
         return None
     from mente_laylay.especialistas.capacidades import documentos_explicativos_locais
     from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
-    termos = set(re.findall(r'\w+', normalizar_texto_basico(texto)))
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos
+
+    termos_por_enunciado = tuple(
+        set(re.findall(r'\w+', normalizar_texto_basico(enunciado)))
+        for enunciado in enunciados_discursivos(texto)
+    )
     documentos = []
     for d in documentos_explicativos_locais():
-        if d['dominio'] not in dominios_registrados or not all(
-                termos.intersection(grupo) for grupo in d['assuntos']):
+        if d['dominio'] not in dominios_registrados or not any(
+                all(termos.intersection(grupo) for grupo in d['assuntos'])
+                for termos in termos_por_enunciado):
             continue
         digest = hashlib.sha256((str(turno_id) + '\0' + texto + '\0' + d['proprietario']
                                  + '\0' + d['texto']).encode('utf8')).hexdigest()

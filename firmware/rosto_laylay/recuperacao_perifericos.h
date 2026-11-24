@@ -8,8 +8,10 @@ void atualizarRecuperacaoPerifericos(uint32_t agora) {
   falhaImu=!imu.presente || imu.erro || !imu.amostra || uint32_t(agora-imu.medidaEm)>500;
 #endif
 #if LAYLAY_SENSORES_DISTANCIA
-  for (auto &s:distancias)
+  for (auto &s:distancias) {
+    if (!LAYLAY_SENSOR_BORDA && &s==&distancias[1]) continue;
     falhaDistancia|=!s.presente || s.erroI2c || !s.amostra || uint32_t(agora-s.medidaEm)>500;
+  }
 #endif
   bool falhaTela=!telaInicializada || falhaFrameI2c;
   if (!falhaImu && !falhaDistancia && !falhaTela) {falhaPerifericosEmCurso=false;return;}

@@ -1,0 +1,28 @@
+{
+  "head_base": "a0db6d549e01ef5e17cf62c63905b79c0732cc7e",
+  "firmware_gravado": true,
+  "sha256": "01b388b8c5bb3135bcd659cc8158fc4d27c19de954a4cb4b92dcb13e805b75be",
+  "perfil": {
+    "sensor_frontal": true,
+    "sensor_borda": false,
+    "protecao_parede_mm": 100,
+    "imu": false,
+    "pwm_minimo": 150,
+    "pwm_maximo": 255
+  },
+  "teste_host": "parede sem borda, perfil duplo e reconexao GREEN; GPIO simulado",
+  "testes_python": [
+    "146 passed transporte/companhia/protecao",
+    "26 passed protecao com casos novos",
+    "22 passed recuperacao USB e suspensao tecnica"
+  ],
+  "serial_real": [
+    "STOPPED 1",
+    "ERROR 1 OLED_AUSENTE",
+    "DIST 1 1 FRENTE 48 AUSENTE -1 4294967295 255 BORDA 49 DESATIVADA -1 4294967295 255"
+  ],
+  "movimentos_enviados": 0,
+  "parada_confirmada": true,
+  "validacao_fisica_pendente": "OLED e frontal nao detectados; aguardando conferencia dos fios",
+  "laylay_aberta_pelo_agente": false
+}

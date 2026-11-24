@@ -1,0 +1,6 @@
+validar_parede_sem_borda.cpp
+validar_protecao.cpp
+PROTECAO_GREEN: limiares, corte, medo, recuo, giro, 3 amostras, falha, STOP, sem loop
+validar_reconexao_protecao.cpp
+RECONEXAO_GUARD_GREEN: perda OLED corta, nova sessao/lease reage, rosto sozinho nao move
+Assertion failed: modosGpio[10] == OUTPUT && niveisGpio[10] == LOW, file C:\Users\pbarr\Downloads\pasta organizada\programacao\PY\projeto lay\laylay\firmware\rosto_laylay\validacao_host\Adafruit_VL53L0X.h, line 18

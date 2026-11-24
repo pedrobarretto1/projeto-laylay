@@ -32,11 +32,13 @@ bool reflexoProtecaoAtivo() {
       || !strcmp(faseProtecao, "SEGUINDO");
 }
 const char *riscoProtecao(uint32_t agora) {
+  if (LAYLAY_SENSOR_BORDA) {
   const char *b = estadoDistancia(distancias[1], agora);
   if (distancias[1].amostra && uint32_t(agora - distancias[1].medidaEm) > 75) return "FALHA_BORDA";
   if (!strcmp(b, "INVALIDA")) return "BORDA_SEM_RETORNO";
   if (strcmp(b, "VALIDA")) return "FALHA_BORDA";
   if (distancias[1].mm > LIMITE_BORDA_MM) return "BORDA";
+  }
   const char *f = estadoDistancia(distancias[0], agora);
   if (distancias[0].amostra && uint32_t(agora - distancias[0].medidaEm) > 150) return "FALHA_FRENTE";
   // RangeStatus inválido recente é desconhecido, não uma parede fictícia.
@@ -127,14 +129,16 @@ void iniciarProtecao(const char *causa, uint32_t seq, uint32_t agora) {
   atualizarAlertaProtecao(agora);
   sinalAlertaProtecao(agora,!strcmp(causa,"OBSTACULO") ? 11 : 9);
 }
+const LeitorDistancia &referenciaProtecao() { return distancias[LAYLAY_SENSOR_BORDA ? 1 : 0]; }
+bool superficieProtecaoConfirmada() { return !LAYLAY_SENSOR_BORDA || distancias[1].mm<=120; }
 bool contarSeguraProtecao(uint32_t agora, bool histerese) {
   const char *risco = riscoProtecao(agora);
   bool segura = !strcmp(risco, "NENHUM")
-      && (!histerese || distancias[1].mm <= 120)
+      && (!histerese || superficieProtecaoConfirmada())
       && (strcmp(estadoDistancia(distancias[0], agora), "VALIDA") || distancias[0].mm > (histerese ? 120 : 100));
   if (!segura) { amostrasSegurasProtecao = 0; return false; }
-  if (ultimaAmostraProtecao != distancias[1].medidaEm) {
-    ultimaAmostraProtecao = distancias[1].medidaEm;
+  if (ultimaAmostraProtecao != referenciaProtecao().medidaEm) {
+    ultimaAmostraProtecao = referenciaProtecao().medidaEm;
     if (amostrasSegurasProtecao < 3) ++amostrasSegurasProtecao;
   }
   return amostrasSegurasProtecao >= 3;
@@ -165,13 +169,13 @@ bool atualizarProtecaoCorporal(uint32_t agora) {
         && uint32_t(agora-inicioFaseProtecao)>=4000;
     bool admitirBusca=(trocarParaParede || repetirBusca) && vigiaProtecao && conectado
         && uint32_t(agora-ultimoPacote)<ttl && motoresProntos && telaInicializada
-        && !strcmp(riscoProtecao(agora),"OBSTACULO") && distancias[1].mm<=120;
+        && !strcmp(riscoProtecao(agora),"OBSTACULO") && superficieProtecaoConfirmada();
     if (!admitirBusca) {
       amostrasTrocaRiscoProtecao=0;
-      ultimaTrocaRiscoProtecao=distancias[1].medidaEm;
+      ultimaTrocaRiscoProtecao=referenciaProtecao().medidaEm;
     }
-    else if (ultimaTrocaRiscoProtecao!=distancias[1].medidaEm) {
-      ultimaTrocaRiscoProtecao=distancias[1].medidaEm;
+    else if (ultimaTrocaRiscoProtecao!=referenciaProtecao().medidaEm) {
+      ultimaTrocaRiscoProtecao=referenciaProtecao().medidaEm;
       if (++amostrasTrocaRiscoProtecao>=3) { iniciarProtecao("OBSTACULO",0,agora); return true; }
     }
     if (travaProtecao && contarSeguraProtecao(agora, true)) {
@@ -204,8 +208,10 @@ bool atualizarProtecaoCorporal(uint32_t agora) {
   }
   // Falha do barramento durante uma manobra também corta a ponte.
   const char *f = estadoDistancia(distancias[0], agora), *b = estadoDistancia(distancias[1], agora);
-  if ((strcmp(f,"VALIDA") && strcmp(f,"INVALIDA")) || (strcmp(b,"VALIDA") && strcmp(b,"INVALIDA"))
-      || uint32_t(agora - distancias[1].medidaEm) > 75 || uint32_t(agora - distancias[0].medidaEm) > 150) {
+  if ((strcmp(f,"VALIDA") && strcmp(f,"INVALIDA"))
+      || (LAYLAY_SENSOR_BORDA && ((strcmp(b,"VALIDA") && strcmp(b,"INVALIDA"))
+          || uint32_t(agora - distancias[1].medidaEm) > 75))
+      || uint32_t(agora - distancias[0].medidaEm) > 150) {
     terminarProtecao("BLOQUEADA", agora); return true;
   }
   uint32_t idade = agora - inicioFaseProtecao;
@@ -238,13 +244,13 @@ bool atualizarProtecaoCorporal(uint32_t agora) {
       tentativasBuscaProtecao = parede ? 1 : 0;
       if (parede) sinalAlertaProtecao(agora,12);
       amostrasSegurasProtecao=0; ultimaFrenteProtecao=distancias[0].medidaEm;
-      ultimaAmostraProtecao=distancias[1].medidaEm;
+      ultimaAmostraProtecao=referenciaProtecao().medidaEm;
     }
   } else if (!strcmp(faseProtecao,"BUSCANDO")) {
     const uint16_t tempos[] = {160,240,400,320};
     if (idade >= tempos[tentativasBuscaProtecao-1]) {
       faseNovaProtecao("CONFERINDO",agora); amostrasSegurasProtecao=0;
-      ultimaFrenteProtecao=distancias[0].medidaEm; ultimaAmostraProtecao=distancias[1].medidaEm;
+      ultimaFrenteProtecao=distancias[0].medidaEm; ultimaAmostraProtecao=referenciaProtecao().medidaEm;
     } else {
       int lado=tentativasBuscaProtecao<=2 ? 1 : -1;
       aplicarReflexoProtecao(170*lado,-170*lado,agora);
@@ -252,7 +258,7 @@ bool atualizarProtecaoCorporal(uint32_t agora) {
   } else if (!strcmp(faseProtecao,"CONFERINDO")) {
     // Não reutilizar leituras da orientação anterior nem avançar pelo relógio.
     bool novaFrente=distancias[0].medidaEm!=ultimaFrenteProtecao;
-    if (novaFrente && distancias[1].medidaEm!=ultimaAmostraProtecao) {
+    if (novaFrente && referenciaProtecao().medidaEm!=ultimaAmostraProtecao) {
       ultimaFrenteProtecao=distancias[0].medidaEm;
       contarSeguraProtecao(agora,true);
     }
@@ -269,7 +275,7 @@ bool atualizarProtecaoCorporal(uint32_t agora) {
     // Estimativa por tempo; não afirma 180 graus nem posição conhecida.
     if (idade >= 900) {
       faseNovaProtecao("VERIFICANDO", agora); amostrasSegurasProtecao = 0;
-      ultimaAmostraProtecao = distancias[1].medidaEm;
+      ultimaAmostraProtecao = referenciaProtecao().medidaEm;
     } else aplicarReflexoProtecao(140,-140,agora);
   } else if (!strcmp(faseProtecao,"VERIFICANDO")) {
     if (contarSeguraProtecao(agora, false)) faseNovaProtecao("SEGUINDO", agora);

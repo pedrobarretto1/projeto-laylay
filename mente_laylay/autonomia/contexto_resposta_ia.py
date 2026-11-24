@@ -177,6 +177,8 @@ def negociar_autoria_com_fontes(
         pacote = vincular_atos_no_pacote_autoral(pacote, plano=plano_autoria)
         from mente_laylay.cognicao.criacao_ficcional import vincular_moldura_ficcional
         pacote = vincular_moldura_ficcional(pacote, plano=plano_autoria)
+        from mente_laylay.cognicao.formato_breve import vincular_dialogo_ao_pacote
+        pacote = vincular_dialogo_ao_pacote(pacote, plano=plano_autoria)
     return pacote
 
 

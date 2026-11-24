@@ -188,6 +188,10 @@ def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_hist
             fatos["intencao_em_curso"]["objetivo_curto"] = {
                 k:intencao["objetivo_curto"][k] for k in ("proposito","criterio_conclusao","estado")
                 if k in intencao["objetivo_curto"]}
+    # A correlação muda a cada turno; mantê-la ao fim preserva o prefixo dos
+    # fatos inalterados para o cache do provedor, sem reutilizar estado antigo.
+    if "turno_id" in fatos:
+        fatos["turno_id"] = fatos.pop("turno_id")
     return (
         "--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n"
         + json.dumps(fatos, ensure_ascii=False, allow_nan=False, separators=(",", ":"))

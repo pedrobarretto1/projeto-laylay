@@ -216,7 +216,8 @@ class CompanhiaCorporalRuntime:
                 and saude.get("consulta_id", 0) <= pedido.get("saude_consulta_id", 0)):
             return {"ok":False,"motivo":"aguardando_nova_saude_apos_falha"}
         if sensores.get("suportado") and (not sensores.get("recente") or
-            any((sensores.get("leituras") or {}).get(n,{}).get("estado") not in {"VALIDA","INVALIDA"}
+            any((sensores.get("leituras") or {}).get(n,{}).get("estado") not in
+                ({"VALIDA","INVALIDA","DESATIVADA"} if n=="borda" else {"VALIDA","INVALIDA"})
                 for n in ("frente","borda"))):
             return {"ok":False,"motivo":"aguardando_sensores_na_reconexao"}
         sessao=str(diag.get("sessao") or "")

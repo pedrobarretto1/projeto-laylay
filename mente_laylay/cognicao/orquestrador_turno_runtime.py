@@ -1458,6 +1458,7 @@ def _iniciar_planejamento_turno(
         funcao_comunicativa=funcao_comunicativa,
         mente=mente_antes_turno,
         falas_recentes=falas_recentes,
+        mensagens_recentes=mensagens_recentes,
         explicacao_ocorrencia=explicacao_ocorrencia,
         recuperar_explicacao_ocorrencia=recuperar_explicacao,
     )
@@ -1492,7 +1493,8 @@ def _iniciar_planejamento_turno(
         # sem emprestar fonte ao rascunho ou alterar autoridade operacional.
         contrato_fala = construir_contrato_semantico_fala(texto, turno=turno, plano=plano,
             funcao_comunicativa=funcao_comunicativa, mente=mente_antes_turno,
-            falas_recentes=falas_recentes, explicacao_ocorrencia=explicacao_ocorrencia,
+            falas_recentes=falas_recentes, mensagens_recentes=mensagens_recentes,
+            explicacao_ocorrencia=explicacao_ocorrencia,
             recuperar_explicacao_ocorrencia=recuperar_explicacao)
     turno['contrato_fala'] = contrato_fala
     plano['contrato_fala'] = contrato_fala

@@ -500,7 +500,65 @@ def _adota_proposicao_perguntada(usuario: str, primeira: str) -> bool:
             consultas.append(m[1].strip())
     if len(consultas) != 1 or '?' in primeira:
         return False
-    return bool(re.match(r'^\s*' + re.escape(consultas[0]) + r'(?=\W|$)', primeira, re.I))
+    return bool(re.match(
+        r'^\s*(?:sim,\s*)?' + re.escape(consultas[0]) + r'(?=\W|$)', primeira, re.I,
+    ))
+
+
+def adota_criterio_de_duracao(usuario: str, resposta: str, primeira: str) -> bool:
+    """Reconhece uma preferência expressa pela conduta que sustenta o vínculo."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    consulta = re.search(
+        r'\bo que (?:voce|tu) (?:acha|considera) mais importante para '
+        r'(?:uma?|[oa]) (?P<tema>[\w-]+) (?:durar|se manter|continuar)\b',
+        normalizar_texto_basico(usuario))
+    if not consulta or '?' in primeira:
+        return False
+    resposta_normalizada = normalizar_texto_basico(resposta)
+    tema = re.escape(consulta['tema'])
+    if not re.search(rf'\b{tema}\b', resposta_normalizada):
+        return False
+    posicao = normalizar_texto_basico(primeira)
+    return bool(re.match(
+        r'^(?:eu )?(?:(?:acho|acredito|considero) que )?'
+        r'(?:o que mais (?:sustenta|fortalece|mantem) [^.!?;]+ e |'
+        r'(?:[oa] )?[\w-]+ (?:vem|nasce) (?:de|do|da) |'
+        rf'[^.!?,:;]+ e o que mais (?:sustenta|fortalece|mantem) (?:uma?|[oa]) (?={tema}\b))\S',
+        posicao))
+
+
+def _adota_proposta_pratica(usuario: str, primeira: str) -> bool:
+    """Reconhece uma posição pela conduta proposta para o dilema perguntado."""
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+
+    # A interrogativa de modo pede como agir diante da premissa, não a
+    # repetição dela. Fixar os sujeitos impede validar conselho sobre outro tema.
+    consultas = re.findall(
+        r'(?:^|[.!?:]\s*)(?:quando|se) (?P<sujeitos>[^,.!?;:]+?) '
+        r'(?:parecem|parecerem|estao|ficarem|forem|entram|entrarem) [^,.!?;:]+, '
+        r'como (?:voce |tu )?[a-z]+rias? [^.!?;:]+\?',
+        normalizar_texto_basico(texto_fora_de_citacoes(usuario)),
+    )
+    if len(consultas) != 1:
+        return False
+    grupos = consultas[0].split(' e ')
+    if len(grupos) != 2 or not all(grupo_nominal_de_papel(g) for g in grupos):
+        return False
+    if '?' in primeira:
+        return False
+    resposta = normalizar_texto_basico(texto_fora_de_citacoes(primeira))
+    sujeitos = ' e '.join(r'(?:[oa]s? )?' + re.escape(re.sub(r'^[oa]s? ', '', g)) for g in grupos)
+    # Exigir uma relação modal entre os mesmos sujeitos e um método afirmado
+    # em seguida. Isso registra a posição, sem provar o resultado do método.
+    return bool(re.match(
+        rf'^{sujeitos} (?:nao (?:precisam|tem de|tem que)|podem) [^.!?;:—–]+'
+        r'\s*(?:[—–;:]|,\s*(?:pois|porque))\s*'
+        r'(?:(?:eu )?posso|(?:nos )?podemos|a gente pode|da para|e possivel) '
+        r'[a-z]+(?:ar|er|ir) (?!\[citacao\])[\w ]+',
+        resposta,
+    ))
 
 
 def _opcao_escolhida(resposta: str, referente: str) -> str:
@@ -536,6 +594,18 @@ _MARCADORES_DISCURSIVOS_RELATO = {
 }
 
 
+def _diretiva_sem_relato_atual(
+    usuario: str, contrato: Mapping[str, Any], turno_id: Any,
+) -> bool:
+    from mente_laylay.cognicao.normalizacao_linguagem import pedido_dialogo_discursivo
+    from mente_laylay.cognicao.quantidade_perguntas import pedido_integral_de_pergunta
+    from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
+
+    return (pedido_repeticao_literal_da_fala(usuario)
+        or pedido_integral_de_pergunta(usuario, contrato=contrato, turno_id=turno_id)
+        or pedido_dialogo_discursivo(usuario) is not None)
+
+
 def _relato_informativo_sem_ancora(
     usuario: str, resposta: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any],
     *, turno_id: Any = None,
@@ -545,10 +615,7 @@ def _relato_informativo_sem_ancora(
     É uma prova limitada: falta de termos em comum pede reparo, mas presença
     deles não atesta que a resposta compreendeu o relato.
     """
-    from mente_laylay.cognicao.referencias_linguagem import (
-        PerspectivaEnunciador, pedido_repeticao_literal_da_fala,
-    )
-    from mente_laylay.cognicao.quantidade_perguntas import pedido_integral_de_pergunta
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
     perspectiva = contrato.get('perspectiva_enunciador')
     fonte_atual = bool(type(perspectiva) is PerspectivaEnunciador
         and perspectiva.vigente(usuario, turno_id)
@@ -562,8 +629,7 @@ def _relato_informativo_sem_ancora(
         # A âncora de uma reprodução é a fonte anterior, não as palavras
         # da diretiva. Mesma distinção usada por _contrato_relato_atual;
         # esta guarda lexical não certifica a fidelidade nem o efeito citado.
-        and not pedido_repeticao_literal_da_fala(usuario)
-        and not pedido_integral_de_pergunta(usuario, contrato=contrato, turno_id=turno_id)
+        and not _diretiva_sem_relato_atual(usuario, contrato, turno_id)
     ):
         return False
     ancora = _termos_ancora(usuario) - _MARCADORES_DISCURSIVOS_RELATO
@@ -575,8 +641,6 @@ def _relato_informativo_sem_ancora(
 def _contrato_relato_atual(
     usuario: str, contrato: Mapping[str, Any], roteiro: Mapping[str, Any], *, turno_id: Any,
 ) -> bool:
-    from mente_laylay.cognicao.referencias_linguagem import pedido_repeticao_literal_da_fala
-    from mente_laylay.cognicao.quantidade_perguntas import pedido_integral_de_pergunta
     return bool(
         turno_id and str(contrato.get("turno_id")) == str(turno_id)
         and contrato.get("origem") == "mente_unica"
@@ -585,8 +649,7 @@ def _contrato_relato_atual(
         and set(contrato.get("atos") or ()) == {"conversa"}
         and roteiro.get("estrategia") == "resposta_direta"
         and roteiro.get("ancora_literal") == usuario
-        and not pedido_repeticao_literal_da_fala(usuario)
-        and not pedido_integral_de_pergunta(usuario, contrato=contrato, turno_id=turno_id)
+        and not _diretiva_sem_relato_atual(usuario, contrato, turno_id)
     )
 
 
@@ -933,17 +996,29 @@ def validar_aderencia_contrato_fala(
     partes = _frases(resposta)
     primeira = partes[0] if partes else ""
     problemas: list[str] = []
+    if estrategia == 'orientacao_hipotetica':
+        from mente_laylay.cognicao.geracao_concreta import (
+            orientacao_em_cenario_completa, pedido_orientacao_em_cenario,
+        )
+        if not orientacao_em_cenario_completa(resposta, pedido_orientacao_em_cenario(usuario), consulta=usuario):
+            problemas.append('orientacao_hipotetica_incompleta')
     from mente_laylay.cognicao.referencias_linguagem import (
         PerspectivaEnunciador, divergencias_perspectiva_enunciador,
     )
     perspectiva = contrato.get("perspectiva_enunciador")
     divergencias_pessoa = ()
+    vocativo_apresentado = ""
+    escolha_avaliativa = None
     if (type(perspectiva) is PerspectivaEnunciador
         and perspectiva.vigente(texto_usuario, turno_id)
         and str(contrato.get("turno_id")) == perspectiva.turno_id):
         divergencias_pessoa = divergencias_perspectiva_enunciador(usuario, resposta)
         if divergencias_pessoa:
             problemas.append("perspectiva_enunciador_invertida")
+        if estrategia == "saudacao_simples" and contrato.get("origem") == "mente_unica":
+            vocativo_apresentado = perspectiva.vocativo_apresentado()
+        if contrato.get('origem') == 'mente_unica':
+            escolha_avaliativa = contrato.get('escolha_avaliativa')
     contradicoes_capacidade = _contradicoes_capacidade(usuario, resposta, contrato, turno_id)
     if contradicoes_capacidade:
         problemas.append("capacidade_documentada_negada")
@@ -1114,20 +1189,41 @@ def validar_aderencia_contrato_fala(
                 "tudo bem", "to aqui", "estou aqui", "por aqui", "cheguei",
                 "bom te ver", "que bom",
             }
-            if valor not in genericos:
+            if valor not in genericos and not (vocativo_apresentado and valor == _normalizar(vocativo_apresentado)):
                 problemas.append("saudacao_inventou_vocativo")
 
+    posicao_alternativa = False
     if estrategia in {"opiniao_com_criterio", "resposta_multiacto"} and "opiniao" in atos:
+        if escolha_avaliativa:
+            from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+
+            criterio, opcoes = escolha_avaliativa
+            alternativas = '|'.join(map(re.escape, opcoes))
+            primeira_normalizada = normalizar_texto_basico(primeira)
+            posicao_alternativa = '?' not in primeira_normalizada and bool(re.match(
+                rf'^(?:na hist[oó]ria,\s*)?{re.escape(criterio)}\s+(?:foi|seria|e)\s+'
+                rf'(?:{alternativas})(?!\s*[,—–]?\s*(?:ou|talvez|nao)\b)'
+                r'(?=\s*(?:[.,—–!]|porque\b|$))', primeira_normalizada,
+            ))
         posicao_proposicional = _adota_proposicao_perguntada(usuario, primeira)
-        posicao = posicao_proposicional or _encontrar_posicao(resposta, referente)
+        posicao_pratica = _adota_proposta_pratica(usuario, primeira)
+        posicao_de_duracao = adota_criterio_de_duracao(usuario, resposta, primeira)
+        posicao = (posicao_alternativa or posicao_proposicional or posicao_pratica
+                   or posicao_de_duracao or _encontrar_posicao(resposta, referente))
         if not posicao:
             problemas.append("ato_opiniao_nao_respondido")
         elif estrategia == "opiniao_com_criterio" and not (
-            posicao_proposicional or _POSICAO.search(primeira) or localizar_enunciacao_avaliativa(primeira)
+            posicao_alternativa or posicao_proposicional or posicao_pratica or posicao_de_duracao
+            or _POSICAO.search(primeira) or localizar_enunciacao_avaliativa(primeira)
         ):
             problemas.append("opiniao_nao_veio_na_primeira_frase")
-        if posicao and not _tem_criterio_concreto(resposta, referente=referente):
-            problemas.append("opiniao_sem_criterio_concreto")
+        argumento = resposta
+        if posicao_alternativa:
+            from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+
+            argumento = texto_fora_de_citacoes(primeira)
+        if posicao and not _tem_criterio_concreto(argumento, referente=referente):
+            problemas.append('escolha_avaliativa_sem_criterio' if posicao_alternativa else 'opiniao_sem_criterio_concreto')
         anterior_opiniao = str(
             contrato.get("fala_anterior_relevante") or ultima_resposta or ""
         )
@@ -1256,6 +1352,8 @@ def validar_aderencia_contrato_fala(
         "saudacao_nao_respondida_no_inicio",
         "saudacao_inventou_vocativo",
         "ato_opiniao_nao_respondido",
+        "orientacao_hipotetica_incompleta",
+        "escolha_avaliativa_sem_criterio",
         "opiniao_nao_veio_na_primeira_frase",
         "esclarecimento_sem_explicacao",
         "esclarecimento_sem_ancora_anterior",
@@ -1347,6 +1445,7 @@ def validar_aderencia_contrato_fala(
         "requer_reparo": bool(problemas),
         "problemas": problemas,
         "estrategia": estrategia,
+        'posicao_alternativa_conferida': posicao_alternativa,
         "nucleo_atendido": not bool(nucleares.intersection(problemas)),
         "contrato_reparo": contrato_reparo,
         "autoriza_execucao": False,

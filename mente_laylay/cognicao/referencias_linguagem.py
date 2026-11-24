@@ -318,6 +318,54 @@ def texto_fora_de_citacoes(texto: str) -> str:
     return _PADRAO_TRECHO_CITADO.sub(' [citacao] ', str(texto or ''))
 
 
+def conferir_parafrase_negacao_ocorrencia(fonte: str, reconhecimento: str) -> dict | None:
+    """Conserva o argumento integral e a negação de ocorrência concluída.
+
+    A alternância existencial/sujeito anteposto não é similaridade lexical:
+    ambos os enunciados precisam realizar o mesmo predicado negativo passado
+    sobre o mesmo argumento definido. Não resolve pronome, elipse, causa,
+    sinonímia do alvo ou verdade externa. Uso: correção fornecida pelo usuário.
+    """
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+
+    determinantes = {'esse': ('m', 'demonstrativo'), 'este': ('m', 'demonstrativo'),
+                    'essa': ('f', 'demonstrativo'), 'esta': ('f', 'demonstrativo'),
+                    'o': ('m', 'definido'), 'a': ('f', 'definido')}
+    verbo = r'(?:houve|ocorreu|aconteceu)'
+
+    def ler(texto: str) -> dict | None:
+        inteiro = unicodedata.normalize('NFC', texto).strip()
+        formas = (
+            ('existencial', rf'não\s+(?P<verbo>{verbo})\s+(?P<alvo>.+)'),
+            ('sujeito_anteposto', r'(?P<alvo>.+)\s+não\s+(?P<verbo>ocorreu|aconteceu)'),
+        )
+        for forma, padrao in formas:
+            m = re.fullmatch(padrao, inteiro, re.I)
+            if m is None:
+                continue
+            alvo = re.sub(r'\s+', ' ', m['alvo']).casefold()
+            determinante, _, nucleo = alvo.partition(' ')
+            if determinante not in determinantes or not grupo_nominal_de_papel(nucleo):
+                continue
+            return {'alvo': nucleo, 'determinante': determinante,
+                    'genero': determinantes[determinante][0], 'forma': forma,
+                    'verbo': m['verbo'].casefold(), 'intervalo_alvo': list(m.span('alvo'))}
+        return None
+
+    origem, destino = ler(fonte), ler(reconhecimento)
+    if origem is None or destino is None:
+        return None
+    if (origem['alvo'] != destino['alvo'] or origem['genero'] != destino['genero']
+            or (destino['determinante'] != origem['determinante']
+                and destino['determinante'] not in {'o', 'a'})):
+        return None
+    return {'regra': 'negacao_ocorrencia_passada_mesmo_argumento',
+            'fonte': origem, 'reconhecimento': destino,
+            'polaridade': 'negativa', 'tempo': 'passado_concluido',
+            'apoio_estrutural_conferido': True, 'semantica_livre_verificada': False,
+            'pode_confirmar_fato_externo': False, 'autoriza_execucao': False}
+
+
 def enunciados_discursivos(
     texto: str, *, intervalos_protegidos: tuple[tuple[int, int], ...] | None = None,
     separar_ponto_e_virgula: bool = True,
@@ -451,6 +499,7 @@ def complemento_recordacao_dialogo(texto: str) -> str:
             base = abertura['consulta']
     consulta = re.fullmatch(
         r"(?:(?:voc[eê]\s+)?(?:se\s+)?(?:lembra|recorda)|"
+        r"(?:voc[eê]\s+)?(?:consegue|pode|poderia)\s+(?:lembrar|recordar)|"
         r"tu\s+(?:te\s+)?(?:lembras|recordas))\s+(?P<complemento>[^.!?;]+)\?",
         base, re.I,
     )
@@ -608,6 +657,21 @@ def natureza_predicado_pessoal(predicado: str) -> str:
         if all((consultar_morfologia(p) or 0)&64 for p in modificada['modificadores'].split()):
             return 'posicionamento_dialogico'
     return 'atribuicao_pessoal_nao_conferida'
+
+
+def separar_posicionamento_dialogico(texto: str) -> dict[str, object] | None:
+    """Separa avaliação simples e conteúdo, sem conferir verdade de nenhum.
+
+    Reutiliza a classe de predicado pessoal; não remove complementos da
+    avaliação nem toma a concordância por prova da proposição seguinte.
+    """
+    m = re.fullmatch(r'(?P<prefixo>voc[eê]\s+(?P<predicado>[^:;,—–.!?]+))'
+                     r'\s*[:;,—–]\s*(?P<conteudo>\S[\s\S]*)', texto.strip(), re.I)
+    if m is None or natureza_predicado_pessoal(m['predicado']) != 'posicionamento_dialogico':
+        return None
+    return {'prefixo': m['prefixo'], 'conteudo': m['conteudo'],
+            'intervalo_conteudo': list(m.span('conteudo')),
+            'autoriza_execucao': False, 'pode_confirmar_fato_externo': False}
 
 
 def predicado_consulta_modo_pessoal(texto: str) -> str:

@@ -1,6 +1,39 @@
 """Receipts físicos simulados; owner USB, mente, cooperação e DEV reais."""
 import time
 import pytest
+
+def test_borda_desativada_e_explicita_sem_inventar_distancia_segura():
+    from mente_laylay.especialistas.percepcao_distancia import interpretar_linha_distancia
+    r=interpretar_linha_distancia("DIST 1 7 FRENTE 48 VALIDA 80 10 0 BORDA 49 DESATIVADA -1 4294967295 255",7)
+    assert r["borda"]["estado"]=="DESATIVADA" and r["borda"]["mm"] is None
+    with pytest.raises(ValueError):
+        interpretar_linha_distancia("DIST 1 7 FRENTE 48 DESATIVADA -1 0 255 BORDA 49 VALIDA 100 0 0",7)
+
+
+def test_diagnostico_preserva_borda_desativada_em_vez_de_expirar_medicao_inexistente():
+    from mente_laylay.especialistas.rosto_oled_runtime import RostoOledRuntime
+    r=RostoOledRuntime(estado_getter=lambda:{})
+    r._serial=object()
+    r._sensores_em=r.monotonic()
+    r._sensores={"borda":{"estado":"DESATIVADA","mm":None,"idade_ms":4294967295,"status":255}}
+    leitura=r.diagnostico()["sensores"]["leituras"]["borda"]
+    assert leitura["estado"]=="DESATIVADA" and leitura["mm"] is None
+
+
+@pytest.mark.parametrize("frente",["VALIDA","ERRO_I2C","DESATIVADA"])
+def test_retomada_sem_borda_ainda_exige_frontal_operante(frente):
+    from scripts.tests.test_companhia_suspensao_tecnica import preparar,falhar_expressao
+    estado,esp,rosto,corpo,_,t=preparar()
+    try:
+        falhar_expressao(estado,esp,rosto,corpo)
+        esp.eack=True;t[0]+=6;rosto._saude_em=float('-inf')
+        assert rosto.sincronizar()
+        diag=rosto.diagnostico()
+        diag["sensores"]={"suportado":True,"recente":True,"leituras":{
+            "frente":{"estado":frente},"borda":{"estado":"DESATIVADA","mm":None}}}
+        r=corpo.companhia._recuperar_conexao(diag)
+        assert r["motivo"]==("confirmando_estabilidade_corporal" if frente=="VALIDA" else "aguardando_sensores_na_reconexao")
+    finally:rosto.encerrar()
 from scripts.tests.test_corpo_transporte_oled import EspCorpo
 from scripts.tests.test_companhia_corporal import montar, ativar, emocao, motores
 from mente_laylay.especialistas.percepcao_distancia import interpretar_linha_protecao

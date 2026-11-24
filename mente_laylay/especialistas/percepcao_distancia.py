@@ -14,7 +14,7 @@ def interpretar_linha_distancia(linha: str, sequencia: int) -> dict:
     resultado = {}
     for nome, indice in (("frente", 5), ("borda", 11)):
         estado, mm, idade, status = p[indice:indice+4]
-        if estado not in estados:
+        if estado not in estados and not (nome == "borda" and estado == "DESATIVADA"):
             raise ValueError("estado_distancia_invalido")
         mm, idade, status = int(mm), int(idade), int(status)
         if not 0 <= idade <= 4294967295 or not 0 <= status <= 255:

@@ -78,6 +78,8 @@ _PROPOSTA_CITADA = re.compile(
     r'(?:(?:(?:a|minha|uma)\s+)?pergunta(?:\s+que\s+(?:eu\s+)?(?:faria|proporia|formularia)\b[^.!?;:]*)?'
     r'|(?:(?:as|minhas|duas|tres)\s+)*perguntas(?:\s+(?:para|a|ao|aos)\s+[^.!?;:]+)?'
     r'|(?:eu\s+)?perguntaria(?:\s+[^.!?;:]+)?'
+    r'|(?:(?:eu\s+)?(?:escolhi|escolho|proponho|propus|proporia)|minha escolha e)'
+    r'\s+(?:a|uma)\s+pergunta'
     rf'|(?:ao|aos|para)\s+[^.!?;:]+):\s*(?:{_ITEM_LISTA}\s*)?$'
 )
 _INTERROGACAO = re.compile(r'\?+')

@@ -15,7 +15,7 @@ struct Adafruit_VL53L0X {
   bool begin(uint8_t endereco, bool, WireSimulada *) {
     assert(niveisGpio[7] == LOW);
     assert(modosGpio[endereco == 0x30 ? 0 : 10] == INPUT);
-    if (endereco == 0x30) assert(modosGpio[10] == OUTPUT && niveisGpio[10] == LOW);
+    if (endereco == 0x30 && LAYLAY_SENSOR_BORDA) assert(modosGpio[10] == OUTPUT && niveisGpio[10] == LOW);
     if (falharInicio) return false;
     Wire.extras[endereco] = true;
     return true;

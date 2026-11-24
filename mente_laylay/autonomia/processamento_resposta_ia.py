@@ -174,6 +174,11 @@ def resposta_precisa_continuacao_autonoma(
         return False
     if fala_adia_resposta_sem_continuacao(resposta):
         return True
+    from mente_laylay.cognicao.confirmacao_aritmetica import confirmacao_aritmetica_vigente
+    if plano and plano.get('texto_usuario') == pedido and confirmacao_aritmetica_vigente(plano) is not None:
+        # A revisão do ato polar verifica a verdade e o formato. Continuar a
+        # conta aqui trocaria a confirmação pedida por uma explicação.
+        return False
     from mente_laylay.cognicao.redacao_discursiva import redacao_discursiva_vigente
     if (plano and plano.get('texto_usuario') == pedido
         and redacao_discursiva_vigente(plano) is not None):
@@ -519,8 +524,7 @@ def preparar_resposta_para_execucao(
 
         enviar_mensagem_cb = enviar_preservando_fontes
     if (callable(enviar_mensagem_cb) and plano_autoria.get("id")
-        and plano_autoria.get("texto_usuario") == str(texto_usuario or "").strip()
-        and plano_autoria.get("fundamentacao_factual")):
+        and plano_autoria.get("texto_usuario") == str(texto_usuario or "").strip()):
         from mente_laylay.autonomia.contexto_resposta_ia import negociar_autoria_com_fontes
         from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
         enviar_autoria_original = enviar_mensagem_cb
@@ -530,9 +534,13 @@ def preparar_resposta_para_execucao(
                 tuple(dict(m) for m in mensagens),
                 contexto_fechado=bool(kwargs.get("_contexto_fechado")),
                 contrato_saida=kwargs.get("_contrato_saida")),
-                dict(plano_autoria["fundamentacao_factual"]), incluir_evidencia=True, plano_autoria=plano_autoria)
+                dict(plano_autoria.get("fundamentacao_factual") or {}), incluir_evidencia=True, plano_autoria=plano_autoria)
+            # Ausência de fontes não elimina os limites autorais do host.
+            # A negociação livre também transporta a moldura vigente e seu
+            # validator; descartá-la faria o reparo perder o contrato original.
             if pacote.contrato_saida.nome not in {"autoria_referenciada_v3", "autoria_por_ato_v4",
-                                                 "autoria_referenciada_v5", "autoria_por_ato_v5"}:
+                                                 "autoria_referenciada_v5", "autoria_por_ato_v5",
+                                                 "autoria_livre_v5"}:
                 return enviar_autoria_original(mensagens, **kwargs)
             kwargs["_contrato_saida"] = pacote.contrato_saida
             kwargs["_reserva_saida_tokens"] = pacote.reserva_saida_tokens
@@ -734,7 +742,7 @@ def preparar_resposta_para_execucao(
             comunicacao_autocorrigida = True
     realidade_bloqueada = False
     problemas_realidade = (
-        detectar_experiencia_pessoal_inventada(fala_limpa)
+        detectar_experiencia_pessoal_inventada(fala_limpa, plano=plano_comunicacao)
         if not comandos else []
     )
     if problemas_realidade and callable(enviar_mensagem_cb):
@@ -785,7 +793,7 @@ def preparar_resposta_para_execucao(
                 limpar_texto_fala_cb=limpar_texto_fala_cb,
                 fallback_fala=fallback_fala,
             )
-            ainda_invalida = detectar_experiencia_pessoal_inventada(fala_reparada)
+            ainda_invalida = detectar_experiencia_pessoal_inventada(fala_reparada, plano=plano_comunicacao)
             if fala_reparada and not comandos_reparados and not ainda_invalida:
                 selecionar_autoria(fala_reparada)
                 fala_limpa = fala_reparada
@@ -1050,7 +1058,21 @@ def preparar_resposta_para_execucao(
         fala_reparada = ""
         reparo_modelo_indisponivel = False
         motivo_falha_reparo = "reparo_rejeitado"
-        if not somente_consultiva and callable(enviar_mensagem_cb):
+        if not somente_consultiva:
+            autoria_local = montar_reparo_parcial_local(
+                fala_limpa, avaliacao_comunicacao, plano=plano_comunicacao,
+                principal=resposta_bruta, anterior=autoria_atual,
+            )
+            if autoria_local is not None and avaliar_qualidade_comunicacao(
+                texto, autoria_local.fala_original, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            ).get("aceita"):
+                autoria_atual = autoria_local
+                reescrita_aceita = True
+                fala_reparada = autoria_local.fala_original
+                registrar_log("🧭 [COMUNICAÇÃO] lacuna preenchida localmente antes de pedir reparo.")
+        if not somente_consultiva and not fala_reparada and callable(enviar_mensagem_cb):
             try:
                 pacote_reparo = montar_pacote_reparo_comunicacao(
                     texto, fala_limpa, avaliacao_comunicacao,
@@ -1115,23 +1137,6 @@ def preparar_resposta_para_execucao(
                 registrar_log(
                     "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
                     f"{type(erro).__name__}"
-                )
-        if (not somente_consultiva and not fala_reparada
-            and motivo_falha_reparo not in {"orcamento_turno_obsoleto", "orcamento_turno_finalizado"}):
-            autoria_local = montar_reparo_parcial_local(
-                fala_limpa, avaliacao_comunicacao, plano=plano_comunicacao,
-                principal=resposta_bruta, anterior=autoria_atual,
-            )
-            if autoria_local is not None and avaliar_qualidade_comunicacao(
-                texto, autoria_local.fala_original, plano=plano_comunicacao,
-                ultima_resposta=ultima_resposta_comunicacao,
-                entrada_usuario_repetida=entrada_usuario_repetida,
-            ).get("aceita"):
-                autoria_atual = autoria_local
-                reescrita_aceita = True
-                fala_reparada = autoria_local.fala_original
-                registrar_log(
-                    f"🧭 [COMUNICAÇÃO] lacuna preenchida localmente | causa={motivo_falha_reparo}"
                 )
         if somente_consultiva:
             pass

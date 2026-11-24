@@ -97,6 +97,23 @@ _CONTRASTE_TRUNCADO = re.compile(
     r"(?:o|a|os|as)?\s*[\wÀ-ÿ'-]+(?:\s+[\wÀ-ÿ'-]+){0,2}[.!?…]*$",
     re.IGNORECASE,
 )
+_CONSULTA_ESCUTA_ANTES_DE_CONCLUIR = re.compile(
+    r"\b(?:escutar|ouvir)\b[^.!?;]{0,45}\bantes de (?:julgar|(?:tirar|chegar a) conclusões)\b", re.I,
+)
+_SUPOSICAO_COMO_CONTRASTE = re.compile(
+    r"\bn[aã]o (?:imaginar|presumir|supor|adivinhar) [^.!?;]+?,\s*"
+    r"(?:mas|e sim) (?:supor|presumir|adivinhar|imaginar) (?:o que|como) "
+    r"[^.!?;]{0,40}\b(?:sente|sentem|sentiu|sentiram)\b", re.I,
+)
+_CONSULTA_INTERPRETACAO_E_FATO = re.compile(
+    r'\binterpreta[cç][oõ]es\b[^!?;]{0,160}\b(?:afirma[cç][aã]o|afirma[cç][oõ]es)\b'
+    r'[^!?;]{0,120}\b(?:verdadeiras?|verdade|comprov[aá]ve(?:l|is))\b[^!?;]*\?', re.I,
+)
+_CRITERIO_PARA_AFIRMACAO = re.compile(
+    r'\b(?:afirma[cç][aã]o|afirma[cç][oõ]es|fatos?)\b[^.!?;]{0,140}(?<!n[aã]o )\b'
+    r'(?:pode(?:m)? ser (?:conferid[oa]s?|confirmad[oa]s?|verificad[oa]s?|testad[oa]s?)|'
+    r'(?:exige|exigem|precisa|precisam)(?: de)? (?:prova|evid[eê]ncia|verifica[cç][aã]o))\b', re.I,
+)
 _RESPOSTA_VAZIA_DISFARCADA = re.compile(
     r"^(?:claro|sim|posso|vamos|beleza|tá|ta|certo|ah|a+h+|entendi)"
     r"[.!?…\s-]*$",
@@ -284,6 +301,9 @@ _CONSELHO_PRESCRITIVO = re.compile(
 # se perdeu. Os demais itens são observações de estilo: não justificam apagar uma
 # fala válida da LLM nem substituí-la por uma mensagem sobre o próprio sistema.
 _PROBLEMAS_BLOQUEANTES = frozenset({
+    "suposicao_de_sentimento_tratada_como_escuta",
+    "distincao_interpretacao_afirmacao_ausente",
+    "orientacao_hipotetica_incompleta",
     "retomada_usuario_sem_nucleo_conferido",
     "perspectiva_enunciador_invertida",
     "referencia_fala_observada_invalida",
@@ -420,6 +440,9 @@ def _respondeu_posicao(texto_usuario: str, resposta: str) -> bool:
     if _MARCADORES_POSICAO.search(resposta) or localizar_enunciacao_avaliativa(resposta):
         return True
     primeira = re.split(r"(?<=[.!?…])\s+", _normalizar(resposta), maxsplit=1)[0]
+    from mente_laylay.cognicao.validacao_contrato_fala import adota_criterio_de_duracao
+    if adota_criterio_de_duracao(texto_usuario, resposta, primeira):
+        return True
     primeira = re.sub(r"^(?:eu\s+)?(?:fico\s+com|vou\s+de|escolho)\s+", "", primeira, flags=re.I)
     for opcao in _opcoes_preferencia(texto_usuario):
         if re.match(rf"^{re.escape(opcao)}(?:\b|\s*[,;:!.-])", primeira, re.IGNORECASE):
@@ -646,6 +669,13 @@ def avaliar_qualidade_comunicacao(
     if not resposta:
         problemas.append("fala_vazia")
     else:
+        from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+        if (_CONSULTA_ESCUTA_ANTES_DE_CONCLUIR.search(texto_fora_de_citacoes(usuario))
+                and _SUPOSICAO_COMO_CONTRASTE.search(texto_fora_de_citacoes(resposta))):
+            problemas.append("suposicao_de_sentimento_tratada_como_escuta")
+        if (_CONSULTA_INTERPRETACAO_E_FATO.search(texto_fora_de_citacoes(usuario))
+                and not _CRITERIO_PARA_AFIRMACAO.search(texto_fora_de_citacoes(resposta))):
+            problemas.append("distincao_interpretacao_afirmacao_ausente")
         if contem_ataque_pessoal(resposta):
             problemas.append("ataque_pessoal")
         if (
@@ -1288,6 +1318,19 @@ def montar_mensagens_reparo_comunicacao(
         instrucao += " " + limite_metodo
     if reparo.get('limite_perguntas'):
         instrucao += ' ' + reparo['limite_perguntas']
+    if 'suposicao_de_sentimento_tratada_como_escuta' in bloqueios:
+        instrucao += (' Explique como escutar reduz suposições. Uma hipótese sobre o sentimento '
+                      'pode orientar uma pergunta, mas depende da confirmação da pessoa.')
+    if 'distincao_interpretacao_afirmacao_ausente' in bloqueios:
+        instrucao += (' Preserve as duas experiências do cenário. Em seguida, dê um exemplo de afirmação '
+                      'sobre o mesmo objeto e diga como ela pode ser conferida.')
+    if 'orientacao_hipotetica_incompleta' in bloqueios:
+        from mente_laylay.cognicao.geracao_concreta import pedido_orientacao_em_cenario
+        formato = pedido_orientacao_em_cenario(texto_usuario)
+        if formato == 'etapas':
+            instrucao += ' Escreva as etapas 1., 2. e 3. Confira o que pode ser verificado e preserve a incerteza.'
+        elif formato == 'falas':
+            instrucao += (' Explique a abordagem em uma frase. Depois, use Pessoa A: «fala» e Pessoa B: «fala».')
     if reparo.get('limite_formato_breve'):
         instrucao += ' ' + reparo['limite_formato_breve']
     if reparo.get('retificacao_redacao'):
@@ -1333,6 +1376,12 @@ def contingencia_comunicacao(
     estrategia = str(contrato.get("estrategia") or "").strip()
     atos = {str(item or "").casefold() for item in contrato.get("atos_obrigatorios") or []}
     referente = str(contrato.get("referente") or "").strip()
+
+    if estrategia == 'orientacao_hipotetica' and contrato.get('autoriza_execucao') is False:
+        from mente_laylay.cognicao.geracao_concreta import realizar_orientacao_em_cenario
+        orientacao = realizar_orientacao_em_cenario(texto)
+        if orientacao:
+            return orientacao
 
     if estrategia == "expressao_solicitada":
         from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
@@ -1598,7 +1647,10 @@ def contingencia_comunicacao(
             "Bom saber. Pelo menos uma coisa decidiu colaborar hoje kkk.",
             "Ótimo. Então seguimos sem drama por enquanto.",
         ], evitar=falas_evitar)
-    if _PERGUNTA_DE_POSICAO.search(texto) and nome:
+    # Um foco trazido de outro turno pode ser apenas o rótulo de um
+    # personagem. A contingência não pode promovê-lo a tema da opinião atual.
+    if (_PERGUNTA_DE_POSICAO.search(texto) and nome and ':' not in nome
+            and re.search(rf'(?<!\w){re.escape(nome)}(?!\w)', texto, re.I)):
         molde = escolher_variacao([
             "{nome} me interessa, mas não vou inventar um detalhe só para deixar a resposta bonita.",
             "Tenho interesse em {nome}, só não vou fabricar uma opinião específica pra parecer convincente.",

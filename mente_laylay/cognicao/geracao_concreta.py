@@ -315,6 +315,84 @@ def texto_declara_estado_observavel(texto: str) -> bool:
     return bool(bruto and "?" not in bruto and _DECLARACAO_ESTADO_OBSERVAVEL.search(bruto))
 
 
+def pedido_orientacao_em_cenario(texto: str) -> str:
+    """Qualifica orientação interpessoal, mantendo outras consultas independentes."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, intervalos_citados
+
+    if intervalos_citados(texto):
+        return ''
+    partes = [normalizar_texto_basico(p) for p in enunciados_discursivos(texto)]
+    if len(partes) not in (2, 3):
+        return ''
+    consulta = partes[-2]
+    if not re.search(r'\b(?:pessoas?|amigos?|conversa|sentimentos?)\b', ' '.join(partes[:-1])):
+        return ''
+    if (len(partes) == 2 and re.search(r'(?:^|[:,] )se (?:duas|tres|dois|uma|um) ', consulta)
+            and re.search(r', como [^!?]+?\?$', consulta)
+            and re.fullmatch(r'explique (?:a|sua) solu[cç][aã]o em (?:tres|3) etapas[.!]?', partes[-1])):
+        return 'etapas'
+    if (len(partes) == 3
+            and re.fullmatch(r'(?:vamos (?:discutir|imaginar) (?:um dilema|um cenario|uma situacao)|imagine): [^!?]+[.!]', partes[0])
+            and re.fullmatch(r'como (?:os dois|as duas|ambos|ambas|eles|elas) poderiam conversar[^!?]*\?', consulta)
+            and re.fullmatch(r'explique e (?:sugira|escreva|proponha) uma (?:frase|fala) para cada (?:pessoa|um)[.!]?', partes[-1])):
+        return 'falas'
+    return ''
+
+
+def orientacao_em_cenario_completa(fala: str, formato: str, *, consulta: str = '') -> bool:
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.referencias_linguagem import intervalos_citados, texto_fora_de_citacoes
+
+    if formato == 'etapas':
+        projecao = texto_fora_de_citacoes(fala)
+        numeros = re.findall(r'(?:^|(?<=\s))([1-9])(?:\.(?!\d)|\))\s+(?=[^\W\d_])', projecao)
+        if numeros != ['1', '2', '3']:
+            return False
+        consulta = normalizar_texto_basico(consulta)
+        if 'o que realmente foi dito' in consulta:
+            base = normalizar_texto_basico(projecao)
+            return bool(re.search(r'\b(?:mensagens?|registros?|gravacoes|anotacoes|transcricao)\b', base)
+                        and re.search(r'em aberto|nao (?:da para|podem|e possivel) (?:confirmar|cravar)', base))
+        return True
+    if formato == 'falas':
+        intervalos = intervalos_citados(fala)
+        if len(intervalos) != 2:
+            return False
+        abertura = fala[:intervalos[0][0]]
+        # A explicação precisa existir em prosa antes do rótulo da primeira
+        # fala. O ponto separa o conselho da redação para cada pessoa.
+        explicacao, separador, rotulo = abertura.strip().rpartition('.')
+        entre = fala[intervalos[0][1]:intervalos[1][0]].strip(' .')
+        return bool(separador and explicacao.strip() and rotulo.strip().endswith(':')
+                    and entre.endswith(':') and entre.casefold() != rotulo.strip().casefold())
+    return False
+
+
+def realizar_orientacao_em_cenario(texto: str) -> str:
+    """Compõe medidas possíveis a partir da situação, sem atestar seu resultado."""
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos
+
+    formato = pedido_orientacao_em_cenario(texto)
+    base = normalizar_texto_basico(texto)
+    if (formato == 'etapas' and 'o que realmente foi dito' in base
+            and re.search(r'\b(?:lembrancas|versoes|relatos) diferentes\b', base)):
+        return ('1. Ouça as duas versões e reconheça como cada pessoa viveu a conversa. '
+                '2. Separem as palavras lembradas do que cada um entendeu e confiram, juntos, mensagens ou gravações, se houver. '
+                '3. Se não houver registro suficiente, deixem o que foi dito em aberto e conversem sobre como cada um se sentiu.')
+    if formato == 'falas' and re.search(r'\b(?:ignorad[oa]|deixad[oa] de lado)\b', base):
+        premissa = enunciados_discursivos(texto)[0]
+        motivo = re.search(
+            r'\bdemorou a responder[^;.!?]*,\s*mas\s+[^;.!?]+?\s+estava ocupad[oa]\s+'
+            r'(?P<motivo>[^;.!?]+)\.', premissa, re.I)
+        if motivo:
+            return ('Eu separaria a demora da intenção: cada um conta o que aconteceu do seu lado e ouve o outro. '
+                    'Pessoa A: «Quando a resposta demorou, me senti de lado. Posso te contar como foi pra mim?» '
+                    f'Pessoa B: «Eu estava {motivo["motivo"]}. Entendo que a demora te fez sentir assim. Quer me contar?»')
+    return ''
+
+
 def construir_roteiro_geracao_concreta(
     texto: str,
     *,
@@ -705,6 +783,21 @@ def construir_roteiro_geracao_concreta(
             "explicar o que foi perguntado; se for como usar, dar um exemplo de pedido",
             "respeitar disponibilidade e limites documentados sem inferir estados atuais",
             "tratar a dúvida com atenção; exemplos didáticos não são ações deste turno",
+        )
+    elif (not atualidade_factual.get('depende_atualidade') and not recomendacao
+          and (orientacao := pedido_orientacao_em_cenario(texto))):
+        estrategia = 'orientacao_hipotetica'
+        ancora = bruto
+        nucleo = 'propor uma forma prática de lidar com a situação descrita pelo usuário'
+        entrega = ('separe a solução em três etapas numeradas' if orientacao == 'etapas'
+                   else 'explique brevemente a abordagem e ofereça uma fala atribuída a cada pessoa')
+        sequencia = (
+            'mantenha as premissas no cenário e trate sentimentos como relatos de cada pessoa',
+            entrega,
+            ('diferencie a citação literal da interpretação, proponha conferir registros se existirem '
+             'e deixe em aberto o que não pode ser confirmado' if orientacao == 'etapas' else
+             'separe o sentimento da intenção atribuída e use apenas a razão da demora dada no cenário'),
+            'não acrescente causas, acontecimentos, certeza nem efeitos externos',
         )
     elif classificar_proporcao(bruto) == "matematica" or pedido_atual_de_ensino(bruto):
         estrategia = "explicacao_didatica"

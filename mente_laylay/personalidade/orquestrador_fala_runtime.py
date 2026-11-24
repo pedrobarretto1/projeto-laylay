@@ -676,6 +676,9 @@ class OrquestradorFalaRuntime:
             proativa=_proativa, preservar_texto=True,
         )
         fala = str(direcao.get("fala") or fala)
+        if not _proativa and _progresso is None:
+            from mente_laylay.cognicao.formato_breve import restaurar_linhas_dialogo
+            fala = restaurar_linhas_dialogo(fala, plano_antes)
         # O diretor sugere estilo, mas só o episódio da mente compartilhada
         # possui autoridade para emoção e intensidade publicadas em voz/texto.
         direcao = dict(direcao)

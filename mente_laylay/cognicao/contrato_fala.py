@@ -650,6 +650,7 @@ def construir_contrato_semantico_fala(
     funcao_comunicativa: Mapping[str, Any] | None = None,
     mente: Mapping[str, Any] | None = None,
     falas_recentes: Iterable[str] = (),
+    mensagens_recentes: Iterable[Mapping[str, Any]] = (),
     explicacao_ocorrencia: Any = None,
     recuperar_explicacao_ocorrencia: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
@@ -1175,7 +1176,13 @@ def construir_contrato_semantico_fala(
             and recordacao.turno_id == str(resultado['turno_id'])):
         resultado['recordacao_atributo'] = recordacao
     from mente_laylay.cognicao.retomada_criacao import construir_retomada_criacao
-    retomada_criacao = construir_retomada_criacao(texto, plano=planejamento, mente=estado)
+    entradas = [m['content'] for m in mensagens_recentes if isinstance(m, Mapping)
+                and m.get('role') == 'user' and isinstance(m.get('content'), str)]
+    if entradas and entradas[-1] == texto:
+        entradas.pop()
+    retomada_criacao = construir_retomada_criacao(texto, plano=planejamento, mente=estado,
+        respostas_recentes=resultado.get('respostas_anteriores_turno'),
+        mensagens_anteriores_usuario=tuple(entradas))
     if retomada_criacao is not None:
         resultado['retomada_criacao'] = retomada_criacao
         return resultado

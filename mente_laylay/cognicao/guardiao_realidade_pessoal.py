@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any, Mapping
 
 
 _EXPERIENCIA_FISICA = re.compile(
@@ -80,10 +81,51 @@ _ACAO_FISICA_FUTURA = re.compile(
     re.IGNORECASE,
 )
 
+_ATRIBUICAO_A_TERCEIRO = re.compile(
+    r'(?:^|(?<=[,;.!?])\s+(?:mas\s+)?)(?:acho\s+que\s+)?'
+    r'(?P<emissor>[oa]\s+[^\W\d_][\w-]*(?:\s+[^\W\d_][\w-]*){0,3})\s+'
+    r'(?:(?:disse|diz|dizia|respondeu|responde|responderia)|'
+    r'(?:é|era|seria)\s+[^,;.!?]{1,100},\s+com\s+um[a]?\s+(?:olhar|express[aã]o)\s+que\s+(?:diz|dizia))'
+    r'\s*:\s*$', re.IGNORECASE,
+)
+_ATRIBUICAO_A_PERSONAGEM_NOMEADO = re.compile(
+    r'(?:^|[.!?—–])\s*(?P<emissor>(?-i:[A-ZÀ-Ý])[\w-]+)'
+    r'(?:,\s*que [^,.!?;:]{1,75},)?\s+'
+    r'(?:(?:sorri|ri|suspira|acena|olha)\s+e\s+)?'
+    r'(?:diz|disse|diria|responde|respondeu|responderia|pergunta|perguntou):\s*$',
+    re.I,
+)
 
-def detectar_experiencia_pessoal_inventada(fala: str) -> list[str]:
+
+def _voz_da_autora(texto: str) -> str:
+    from mente_laylay.cognicao.referencias_linguagem import intervalos_citados
+
+    partes = list(texto)
+    inicio = 0
+    for abertura, fim in intervalos_citados(texto):
+        moldura = texto[inicio:abertura]
+        atribuicao = (_ATRIBUICAO_A_TERCEIRO.search(moldura)
+                      or _ATRIBUICAO_A_PERSONAGEM_NOMEADO.search(moldura))
+        if atribuicao and not re.search(
+            r'\b(?:laylay|lay|assistente|eu|meu|minha|nosso|nossa)\b', atribuicao['emissor'], re.I,
+        ):
+            # A primeira pessoa dentro da fala atribuída pertence a outro
+            # emissor. O enunciado externo continua sob a guarda, inclusive
+            # quando a mesma afirmação reaparece depois da citação.
+            partes[abertura:fim] = ' ' * (fim - abertura)
+        inicio = fim
+    return ''.join(partes)
+
+
+def detectar_experiencia_pessoal_inventada(
+    fala: str, *, plano: Mapping[str, Any] | None = None,
+) -> list[str]:
     """Retorna categorias objetivas; não decide estilo nem cria resposta."""
-    texto = re.sub(r"\s+", " ", str(fala or "")).strip()
+    if plano:
+        from mente_laylay.cognicao.formato_breve import dialogo_ficcional_inteiramente_atribuido
+        if dialogo_ficcional_inteiramente_atribuido(fala, plano):
+            return []
+    texto = _voz_da_autora(re.sub(r"\s+", " ", str(fala or "")).strip())
     problemas: list[str] = []
     if _EXPERIENCIA_FISICA.search(texto):
         problemas.append("experiencia_fisica_inventada")
