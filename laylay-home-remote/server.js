@@ -5,7 +5,7 @@ const sessions=new Map(), hits=new Map();
 const keyOK=k=>typeof k==='string'&&/^[!-~]{16,18}$/.test(k)&&!k.includes('|');
 const digest=k=>crypto.createHash('sha256').update(k).digest('hex');
 const now=()=>Date.now();
-function reply(res,code,body=''){if(!res.destroyed&&!res.writableEnded){res.writeHead(code,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(body);}}
+function reply(res,code,body=''){if(!res.destroyed&&!res.writableEnded){res.writeHead(code,{'Content-Type':'text/plain; charset=utf-8','Content-Length':Buffer.byteLength(body),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(body);}}
 function body(req){return new Promise((resolve,reject)=>{let b='';req.setEncoding('utf8');req.on('data',c=>{b+=c;if(b.length>128){reject(Error('large'));req.destroy()}});req.on('end',()=>resolve(b));req.on('error',reject);});}
 function finish(d,code,v){const p=d.pending;if(!p)return;d.pending=null;clearTimeout(p.timer);reply(p.res,code,v);}
 const server=http.createServer(async(req,res)=>{
@@ -16,7 +16,7 @@ const server=http.createServer(async(req,res)=>{
  if(req.method!=='POST'||!['/api/rele','/api/device','/api/ack'].includes(url))return reply(res,404,'not found');
  if(req.headers.origin && req.headers.origin!=='https://'+req.headers.host && req.headers.origin!=='http://'+req.headers.host)return reply(res,403,'origin');
  const key=req.headers['x-laylay-key'];if(!keyOK(key))return reply(res,401,'invalid key');
- const b=await body(req),id=digest(key);let d=sessions.get(id);
+ const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').split(',')[0].trim();const t=now();let hit=hits.get(ip);if(!hit||t-hit.start>60000){hit={start:t,n:0};if(hits.size<2000||hits.has(ip))hits.set(ip,hit);}if(++hit.n>180)return reply(res,429,'rate limit');const b=await body(req),id=digest(key);let d=sessions.get(id);
  if(url==='/api/device'){
   if(!/^[01]$/.test(b))return reply(res,400,'state');
   if(!d){if(sessions.size>=256)return reply(res,503,'capacity');d={seen:0,state:null,pending:null};sessions.set(id,d);}
@@ -37,6 +37,6 @@ const server=http.createServer(async(req,res)=>{
  res.on('close',()=>{if(d.pending===p){clearTimeout(p.timer);d.pending=null;}});
  }catch(e){reply(res,400,'request failed');}
 });
-setInterval(()=>{for(const [id,d] of sessions)if(now()-d.seen>60000&&!d.pending)sessions.delete(id)},30000).unref();
+setInterval(()=>{for(const [id,d] of sessions)if(now()-d.seen>60000&&!d.pending)sessions.delete(id);for(const [ip,h] of hits)if(now()-h.start>60000)hits.delete(ip)},30000).unref();
 server.requestTimeout=10000;server.headersTimeout=5000;server.maxHeadersCount=32;
 server.listen(Number(process.env.PORT||10000),'0.0.0.0');
