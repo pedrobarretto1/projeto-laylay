@@ -7,7 +7,7 @@ const pool={async query(query,params=[]){const r=await fetch('https://'+dbUrl.ho
 
 const scrypt=promisify(crypto.scrypt), now=()=>Date.now(), hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const live=new Map(),limits=new Map();
-const html=fs.readFileSync(__dirname+'/index.html');
+const html=fs.readFileSync(__dirname+'/index.html'), guest=fs.readFileSync(__dirname+'/public.html');
 const validKey=k=>typeof k==='string'&&/^[!-~]{16,18}$/.test(k)&&!k.includes('|');
 const username=s=>typeof s==='string'&&/^[a-z0-9_.-]{3,32}$/.test(s);
 const password=s=>typeof s==='string'&&s.length>=10&&s.length<=100;
@@ -21,15 +21,38 @@ function limited(req,kind,max){let ip=String(req.headers['x-forwarded-for']||req
 function finish(d,c,b){let p=d.pending;if(!p)return;d.pending=null;clearTimeout(p.timer);reply(p.res,c,b);}
 const server=http.createServer(async(req,res)=>{try{
  const path=new URL(req.url,'http://localhost').pathname;
- if(req.method==='GET'&&path==='/')return reply(res,200,html,'text/html; charset=utf-8');
+ if(req.method==='GET'&&path==='/')return reply(res,200,guest,'text/html; charset=utf-8');
+ if(req.method==='GET'&&path==='/conta')return reply(res,200,html,'text/html; charset=utf-8');
  if(req.method==='GET'&&path==='/health'){await pool.query('select 1');return reply(res,200,'ok');}
  if(req.headers.origin&&req.headers.origin!=='https://'+req.headers.host&&req.headers.origin!=='http://'+req.headers.host)return reply(res,403,'origin');
  if(req.method==='GET'&&path==='/api/account/devices'){
  const u=await account(req);if(!u)return json(res,401,{error:'Entre na sua conta'});
- const r=await pool.query('select device_key,name from lh_devices where owner=$1 order by name',[u]);
- return json(res,200,{username:u,devices:r.rows.map(x=>({id:x.device_key,name:x.name,online:!!live.get(hash(x.device_key))&&now()-live.get(hash(x.device_key)).seen<20000}))});
+ const r=await pool.query('select device_key,name,public_id,public_enabled from lh_devices where owner=$1 order by name',[u]);
+ return json(res,200,{username:u,devices:r.rows.map(x=>({id:x.device_key,name:x.name,publicId:x.public_id,publicEnabled:x.public_enabled===true||x.public_enabled==='t',online:!!live.get(hash(x.device_key))&&now()-live.get(hash(x.device_key)).seen<20000}))});
+ }
+ if(req.method==='GET'&&path==='/api/public/devices'){
+ if(limited(req,'public-list',40))return reply(res,429,'Aguarde');
+ const r=await pool.query('select public_id,name,device_key from lh_devices where public_enabled=true order by name limit 100');
+ return json(res,200,r.rows.map(x=>{const d=live.get(hash(x.device_key)),online=!!d&&now()-d.seen<20000;return {id:x.public_id,name:x.name,online,state:online?d.state:null};}));
  }
  if(req.method!=='POST')return reply(res,404,'not found');
+ if(path==='/api/account/public'){
+ const u=await account(req);if(!u)return reply(res,401,'Entre na conta');
+ const b=JSON.parse(await body(req));if(!/^[a-f0-9-]{36}$/.test(b.id||'')||typeof b.enabled!=='boolean')return reply(res,400,'Dados invalidos');
+ const r=await pool.query('update lh_devices set public_enabled=$1 where public_id=$2 and owner=$3 returning device_key',[b.enabled,b.id,u]);if(!r.rowCount)return reply(res,404,'Dispositivo indisponivel');
+ if(!b.enabled){const d=live.get(hash(r.rows[0].device_key));if(d?.pending?.guest&&!d.pending.delivered)finish(d,403,'Acesso publico revogado');}
+ return reply(res,200,'OK');
+ }
+ if(path==='/api/public/control'){
+ if(limited(req,'public-control',12))return reply(res,429,'Limite de comandos');
+ const b=JSON.parse(await body(req));if(!/^[a-f0-9-]{36}$/.test(b.id||'')||!['0','1'].includes(b.action))return reply(res,400,'Comando invalido');
+ const r=await pool.query('select device_key from lh_devices where public_id=$1 and public_enabled=true',[b.id]);if(!r.rowCount)return reply(res,404,'Dispositivo nao liberado');
+ const d=live.get(hash(r.rows[0].device_key));if(!d||now()-d.seen>20000)return reply(res,503,'ESP32 offline');
+ if(d.pending||now()-(d.lastGuest||0)<3000)return reply(res,409,'Aguarde o ultimo comando');
+ d.lastGuest=now();const p={id:crypto.randomBytes(12).toString('hex'),action:b.action,expires:now()+6500,delivered:false,guest:true,res,timer:null};d.pending=p;p.timer=setTimeout(()=>finish(d,504,'sem confirmacao'),6500);
+ res.on('close',()=>{if(d.pending===p){clearTimeout(p.timer);d.pending=null;}});return;
+ }
+
  if(['/api/account/register','/api/account/login','/api/account/enroll'].includes(path)){
  if(limited(req,'auth',8))return reply(res,429,'Muitas tentativas. Aguarde um minuto.');
  const b=JSON.parse(await body(req)),u=String(b.username||'').trim().toLowerCase(),p=b.password;
