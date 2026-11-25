@@ -1,6 +1,10 @@
 'use strict';
-const http=require('node:http'),fs=require('node:fs'),crypto=require('node:crypto'),{promisify}=require('node:util'),{Pool}=require('pg');
-const pool=new Pool({connectionString:process.env.DATABASE_URL,max:4,connectionTimeoutMillis:8000});
+const http=require('node:http'),fs=require('node:fs'),crypto=require('node:crypto'),{promisify}=require('node:util');
+const connection=process.env.DATABASE_URL;
+const dbUrl=new URL(connection);
+if(!dbUrl.hostname.endsWith('.neon.tech'))throw Error('Invalid database host');
+const pool={async query(query,params=[]){const r=await fetch('https://'+dbUrl.hostname+'/sql',{method:'POST',headers:{'Content-Type':'application/json','Neon-Connection-String':connection,'Neon-Raw-Text-Output':'true','Neon-Array-Mode':'false'},body:JSON.stringify({query,params}),signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('database unavailable');const x=await r.json();return {rows:x.rows,rowCount:x.rowCount};}};
+
 const scrypt=promisify(crypto.scrypt), now=()=>Date.now(), hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const live=new Map(),limits=new Map();
 const html=fs.readFileSync(__dirname+'/index.html');
@@ -18,7 +22,7 @@ function finish(d,c,b){let p=d.pending;if(!p)return;d.pending=null;clearTimeout(
 const server=http.createServer(async(req,res)=>{try{
  const path=new URL(req.url,'http://localhost').pathname;
  if(req.method==='GET'&&path==='/')return reply(res,200,html,'text/html; charset=utf-8');
- if(req.method==='GET'&&path==='/health')return reply(res,200,'ok');
+ if(req.method==='GET'&&path==='/health'){await pool.query('select 1');return reply(res,200,'ok');}
  if(req.headers.origin&&req.headers.origin!=='https://'+req.headers.host&&req.headers.origin!=='http://'+req.headers.host)return reply(res,403,'origin');
  if(req.method==='GET'&&path==='/api/account/devices'){
  const u=await account(req);if(!u)return json(res,401,{error:'Entre na sua conta'});
