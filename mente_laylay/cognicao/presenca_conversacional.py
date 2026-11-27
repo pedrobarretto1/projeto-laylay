@@ -11,7 +11,7 @@ import unicodedata
 from typing import Any, Mapping, TYPE_CHECKING
 from mente_laylay.cognicao.normalizacao_linguagem import (
     SAUDACOES_CONVERSACIONAIS, SAUDACOES_TEMPORAIS,
-    normalizar_texto_basico, separar_saudacao_inicial,
+    normalizar_texto_basico, separar_saudacao_inicial, texto_e_metalinguistico,
 )
 from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
 from mente_laylay.personalidade.perfil_amizade import IDENTIDADE_VOZ_LAYLAY
@@ -35,10 +35,13 @@ _SENTIDO_CORTESIA = "Eu estava retribuindo sua gentileza e dizendo que estou por
 _SENTIDO_DESPEDIDA = "Quis respeitar seu encerramento da conversa e me despedir."
 
 _AGRADECIMENTO_A_CONVERSA = re.compile(
-    r"(?:(?:valeu|obrigad[ao]|agradeco) pel[oa]|(?:gostei|adorei|curti) d[oa]) "
-    r"(?:conversa|papo|bate[- ]papo|companhia)(?:\s*[, ]+\s*(?:lay|laylay|chatgpt))?"
+    r"(?:(?:valeu|obrigad[ao]|agradeco) pel[oa]|(?:gostei|adorei|curti)(?: muito)? d[oa]) "
+    r"(?:conversa|papo|bate[- ]papo|companhia)(?: de hoje)?(?:\s*[, ]+\s*(?:lay|laylay|chatgpt))?"
 )
 _ATE_PROXIMA = r"(?:ate (?:mais|logo|amanha|a proxima)|tchau)"
+_FECHO_DE_SAIDA = re.compile(rf"(?:^|[,;—]\s*|\s+[-–]\s+)(?P<fecho>{_ATE_PROXIMA})"
+                            r"(?:[, ]+(?:lay|laylay|chatgpt))?$")
+_SAIDA_DO_FALANTE = re.compile(r"(?:eu )?(?:vou|preciso|tenho que) [a-z]+r\b")
 _PERGUNTA_DE_PRESENCA = re.compile(
     r"(?:e )?(?:(?:voce|vc|tu) )?(?:ainda )?"
     r"(?:(?:(?:ta|esta|continua|segue) )?acordad[ao]|"
@@ -56,17 +59,33 @@ def consulta_presenca_conversacional(texto: str) -> bool:
     return bool(_PERGUNTA_DE_PRESENCA.fullmatch(corpo))
 
 
-def despedida_social(texto: str) -> str:
-    """A despedida pode merecer resposta sem ser uma solicitação de fechar a sessão."""
+def _ler_fecho_social(texto: str) -> tuple[str, tuple[str, ...]]:
     autoral = texto_fora_de_citacoes(texto)
     partes = enunciados_discursivos(autoral)
-    if "?" in autoral or len(partes) < 2:
-        return ""
-    saudacao, resto = separar_saudacao_inicial(partes[-1])
-    agradecimento = normalizar_texto_basico(partes[-2]).strip(" .!")
-    if saudacao in SAUDACOES_TEMPORAIS and not resto and _AGRADECIMENTO_A_CONVERSA.fullmatch(agradecimento):
-        return saudacao
-    return ""
+    if "?" in autoral or not partes:
+        return "", ()
+    final = normalizar_texto_basico(partes[-1]).strip(" .!")
+    if (fecho := _FECHO_DE_SAIDA.search(final)) and not texto_e_metalinguistico(partes[-1]):
+        prefixo = final[:fecho.start()].strip()
+        anteriores = (*partes[:-1], prefixo) if prefixo else partes[:-1]
+        # Uma fórmula anexada a outra oração precisa pertencer ao falante.
+        # "Ele disse, até mais" não traz a mesma evidência de fecho social.
+        if (not prefixo or _AGRADECIMENTO_A_CONVERSA.fullmatch(prefixo)
+                or (_SAIDA_DO_FALANTE.match(prefixo) and any(
+                    _AGRADECIMENTO_A_CONVERSA.fullmatch(normalizar_texto_basico(trecho).strip(" .!"))
+                    for trecho in partes[:-1]
+                ))):
+            return fecho["fecho"], anteriores
+    saudacao, resto = separar_saudacao_inicial(final)
+    if (saudacao in SAUDACOES_TEMPORAIS and not resto and len(partes) >= 2
+            and _AGRADECIMENTO_A_CONVERSA.fullmatch(normalizar_texto_basico(partes[-2]).strip(" .!"))):
+        return saudacao, partes[:-2]
+    return "", ()
+
+
+def despedida_social(texto: str) -> str:
+    """Lê o fecho social sem comandar o encerramento da sessão."""
+    return _ler_fecho_social(texto)[0]
 
 
 def retribui_despedida_social(fala: str) -> bool:
@@ -76,7 +95,7 @@ def retribui_despedida_social(fala: str) -> bool:
         return False
     final = normalizar_texto_basico(partes[-1]).strip(" .!")
     saudacao, resto = separar_saudacao_inicial(final)
-    return bool(re.fullmatch(_ATE_PROXIMA, final)
+    return bool((_FECHO_DE_SAIDA.search(final) and not texto_e_metalinguistico(partes[-1]))
         or (saudacao in SAUDACOES_TEMPORAIS and (not resto or re.fullmatch(rf"(?:e )?{_ATE_PROXIMA}", resto))))
 
 
@@ -96,7 +115,7 @@ def realizar_despedida_social(texto: str, *, plano: Mapping[str, Any]) -> str:
         or "despedida_social" not in atos
         or atos - {"conversa", "reacao", "agradecimento", "despedida_social"}):
         return ""
-    cortesia = despedida_social(texto)
+    cortesia, antecedentes = _ler_fecho_social(texto)
     if not cortesia:
         return ""
     from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
@@ -104,12 +123,16 @@ def realizar_despedida_social(texto: str, *, plano: Mapping[str, Any]) -> str:
 
     # O agradecimento final pode dominar a leitura da fala inteira. Antes de
     # encerrar a resposta local, preserve pedidos anteriores como atos próprios.
-    antecedentes = enunciados_discursivos(texto_fora_de_citacoes(texto))[:-2]
     for trecho in antecedentes:
         if (classificar_proporcao(trecho) in {"explicativa", "matematica"}
             or classificar_modalidade_turno(trecho).get("modalidade_geral") not in {"conversa", "reacao"}):
             return ""
-    return "Gostei do papo também. " + _SAUDACOES[cortesia].rstrip()
+    if cortesia in SAUDACOES_TEMPORAIS:
+        return "Gostei do papo também. " + _SAUDACOES[cortesia].rstrip()
+    if any(_AGRADECIMENTO_A_CONVERSA.fullmatch(normalizar_texto_basico(trecho).strip(" .!"))
+           for trecho in antecedentes):
+        return "Gostei do papo também. Até a próxima!"
+    return "Até a próxima!"
 
 
 def _presenca_integral(fala: Any) -> bool:

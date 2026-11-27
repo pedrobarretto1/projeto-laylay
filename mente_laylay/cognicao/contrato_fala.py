@@ -709,7 +709,9 @@ def construir_contrato_semantico_fala(
     # A moldura de "acha" protege a rota conversacional, mas uma pergunta
     # de consequência não exige posição avaliativa. Qualificar cada ato
     # conserva a opinião independente de outra pergunta no mesmo turno.
-    from mente_laylay.cognicao.coerencia_preferencia import alternativas_preferencia, escolha_cotidiana_de_conduta
+    from mente_laylay.cognicao.coerencia_preferencia import (
+        alternativas_preferencia, escolha_cotidiana_de_conduta, escolha_nominal_cotidiana,
+    )
 
     pares_preferencia = [opcoes for trecho in trechos_opiniao
                          if (opcoes := alternativas_preferencia(trecho))]
@@ -1052,16 +1054,22 @@ def construir_contrato_semantico_fala(
     # ampliar espaço para explicar não amplia autoridade nem obriga prolixidade.
     perfil_proporcao = classificar_proporcao(texto)
     escolha_cotidiana = ""
+    escolha_nominal_breve = False
     if (perfil_proporcao in {"objetiva", "normal"} and not criativo
         and leitura.get("autoriza_execucao") is False and not (
             planejamento.get("requer_execucao") or planejamento.get("comandos"))
-        and set(atos) <= {"conversa", "pergunta", "reacao", "opiniao"}
+        and set(atos) <= {"conversa", "pergunta", "reacao", "opiniao", "saudacao"}
         and isinstance(segmentos, list) and segmentos
         and all(isinstance(s, Mapping) and s.get("modalidade") in {"conversa", "pergunta", "reacao"}
+                and s.get("natureza_acao") != "transformacao_conversacional"
                 for s in segmentos)):
         escolha_cotidiana = escolha_cotidiana_de_conduta(bruto)
         if escolha_cotidiana:
             obrigatorios.append("responder à escolha na primeira frase e só desenvolver o mesmo cenário")
+        elif escolha_nominal_cotidiana(bruto):
+            escolha_nominal_breve = True
+            obrigatorios.append("dizer qual alternativa escolheria em uma frase com um detalhe concreto")
+            proibidas.append("comparar todas as opções, divagar ou devolver a pergunta")
     acolhimento_breve = (
         funcao == "desabafo"
         and funcao_dados.get("relato_afetivo_explicito") is True
@@ -1145,7 +1153,8 @@ def construir_contrato_semantico_fala(
         max_frases=max_frases,
         acolhimento_breve=acolhimento_breve,
         permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not (
-            relato_explicito or encerramento_sessao or cortesia_temporal or cortesia_de_saida),
+            relato_explicito or encerramento_sessao or cortesia_temporal or cortesia_de_saida
+            or escolha_nominal_breve),
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
         fala_anterior_relevante=(

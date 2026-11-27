@@ -1106,7 +1106,7 @@ def montar_pacote_reparo_comunicacao(
             "conferência oferecido. A seleção é proposta, não prova de pertinência, "
             "verdade atual, causa ou autorização. O host revisará a resposta.")
     else:
-        return PacotePrompt(tuple(lista))
+        return PacotePrompt(tuple(lista), contexto_fechado=reparo.get('responder_ao_pedido_atual') is True)
 
     def validar(dados: dict[str, Any]) -> None:
         if (set(dados) != {"fala", "comandos"} or dados.get("fala") not in opcoes
@@ -1265,11 +1265,26 @@ def montar_mensagens_reparo_comunicacao(
                 historico, fala_rejeitada, colagem_com_interlocutor=reparo_parcial.get('colagem_com_interlocutor') is True,
             )
             instrucao += (
-                ' A resposta antiga foi reutilizada integral ou predominantemente. Responda ao pedido atual, '
+                ' Responda ao pedido atual, '
                 'preservando a cena da troca recente quando necessária. As falas anteriores '
                 'da assistente são apenas contexto do diálogo, nunca prova de fatos ou efeitos. '
                 'Em criação imaginativa, crie o conteúdo pedido; não volte a responder à '
                 'pergunta antiga nem explique este diagnóstico.')
+        if reparo_parcial.get('preservar_autoria_do_interlocutor'):
+            payload['mensagem_atual'] = texto_usuario
+            troca = payload['troca_recente']
+            if (troca and troca[-1]['role'] == 'user'
+                    and troca[-1]['content'] == texto_usuario):
+                troca.pop()
+            payload['fontes_dialogo'] = [
+                fonte for fonte in payload['fontes_dialogo'] if fonte['content'] != texto_usuario
+            ]
+            instrucao += (
+                ' mensagem_atual é a fala integral do interlocutor. Dirija-se a ele ao reagir '
+                'ao que ele contou. Não reescreva a experiência ou o julgamento dele como '
+                'se fossem da Laylay. Se ele estiver reagindo à sua última fala, '
+                'responda a essa reação com uma contribuição própria, sem recapitular a conversa.'
+            )
         instrucao += (
             ' A primeira pessoa nas fontes_dialogo pertence ao usuário, falante desses dados. '
             'Você, Laylay, é a autora da nova resposta: atribua o relato a ele em discurso '

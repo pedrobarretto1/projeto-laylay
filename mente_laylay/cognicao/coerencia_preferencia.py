@@ -13,11 +13,15 @@ from mente_laylay.cognicao.referencias_linguagem import (
 
 
 _DETERMINANTE = r"(?:o|a|os|as|um|uma|algo)"
+_OPCOES_LITERAIS = r"(?P<a>[^?,.!:;]+?)\s+ou\s+(?P<b>[^?,.!:;]+)"
 _CONSULTA = re.compile(
     r"^(?:e\s+)?(?:voce|vc|tu|laylay|lay)\s+"
     r"(?:prefere|preferiria|escolheria|iria\s+(?:mais\s+)?de|"
     r"ficaria\s+com|optaria\s+por)\s+"
-    r"(?P<a>[^?,.!:;]+?)\s+ou\s+(?P<b>[^?,.!:;]+)\?*$"
+    rf"{_OPCOES_LITERAIS}\?*$"
+)
+_HIPOTESE_NOMINAL = re.compile(
+    rf"^(?:e\s+)?(?:voce|vc|tu|laylay|lay)\s+(?:teria|iria\s+por)\s+{_OPCOES_LITERAIS}\?$"
 )
 _ESCOLHE = (r"(?:prefiro|escolho|escolheria|(?:vou|iria) de|(?:fico|ficaria) com|"
             r"(?:opto|optaria) por|gosto mais (?:de|do|da))")
@@ -46,6 +50,21 @@ def escolha_cotidiana_de_conduta(texto: str) -> str:
     if not partes or autoral.count("?") != 1:
         return ""
     return partes[-1] if realizacoes_escolha_cotidiana(partes[-1]) else ""
+
+
+def escolha_nominal_cotidiana(texto: str) -> bool:
+    """Qualifica o ritmo de uma escolha literal, inclusive a hipotética."""
+    autoral = texto_fora_de_citacoes(texto)
+    partes = enunciados_discursivos(autoral)
+    if not partes or autoral.count("?") != 1 or not partes[-1].endswith("?"):
+        return False
+    if alternativas_preferencia(partes[-1]):
+        return True
+    achado = _HIPOTESE_NOMINAL.fullmatch(normalizar_texto_basico(partes[-1]))
+    if achado is None:
+        return False
+    opcoes = (_sem_determinante(achado["a"]), _sem_determinante(achado["b"].removeprefix("por ")))
+    return len(set(opcoes)) == 2 and all(map(operando_opiniao_literal, opcoes))
 
 
 def realizacoes_escolha_cotidiana(pergunta: str) -> tuple[str, ...]:
