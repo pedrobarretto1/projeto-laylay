@@ -147,7 +147,9 @@ class ContratoExplicativoAto:
         if (not isinstance(texto, str) or not texto
             or texto[:300] != segmento.get("texto_estrutural")
             or not isinstance(objeto, str)
-            or not all(isinstance(v, str) for v in (modalidade, natureza, motivo))):
+            or not isinstance(modalidade, str)
+            or not isinstance(natureza, str)
+            or not isinstance(motivo, str)):
             return None
         intervalo = dados.get("intervalo_objeto")
         if relacao == "consulta_significado":
@@ -820,6 +822,7 @@ def normalizar_resposta_preparada(
     leitura: Mapping[str, Any] = (
         dict(leitura_bruta) if isinstance(leitura_bruta, Mapping) else {}
     )
+    leitura_reparada = origem.get("leitura_semantica_reparada")
     return ContratoRespostaTurno(
         resposta_bruta=origem.get("resposta_bruta", ""),
         fala=origem.get("fala", ""),
@@ -828,8 +831,7 @@ def normalizar_resposta_preparada(
         aprendizados=aprendizados,
         leitura_semantica=leitura,
         leitura_semantica_reparada=(
-            origem.get("leitura_semantica_reparada")
-            if isinstance(origem.get("leitura_semantica_reparada"), Mapping) else {}
+            leitura_reparada if isinstance(leitura_reparada, Mapping) else {}
         ),
         autocorrigida=origem.get("autocorrigida", False),
         suprimir_fala=origem.get("suprimir_fala", False),

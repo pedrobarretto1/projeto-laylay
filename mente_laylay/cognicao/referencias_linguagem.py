@@ -687,6 +687,11 @@ class PerspectivaEnunciador:
         return bool(self.turno_id and self.texto_usuario
             and str(turno_id) == self.turno_id and texto_usuario == self.texto_usuario)
 
+    def vocativo_apresentado(self) -> str:
+        from mente_laylay.cognicao.identidade_conversacional import nome_apresentado_para_vocativo
+
+        return nome_apresentado_para_vocativo(self.texto_usuario)
+
     def para_prompt(self) -> dict[str, object]:
         return {"falante_entrada": self.falante_entrada, "autora_resposta": self.autora_resposta,
                 "origem": "papeis_do_canal", "autoriza_execucao": False, "comprova_fato": False}

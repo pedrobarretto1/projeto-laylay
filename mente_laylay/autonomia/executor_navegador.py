@@ -348,7 +348,7 @@ def _executar_listar_abas(
             return ResultadoDespacho.concluido(False)
 
         rotulo = _rotulo_aba(ativa)
-        params_resolvidos: Dict[str, Any] = {}
+        params_resolvidos = {}
         tab_id = _id_aba(ativa)
         if tab_id is not None:
             params_resolvidos["tab_id"] = tab_id

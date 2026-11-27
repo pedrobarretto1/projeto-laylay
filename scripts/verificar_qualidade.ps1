@@ -5,14 +5,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not (Test-Path -LiteralPath $Python)) {
+$Executavel = Get-Command -Name $Python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $Executavel) {
     throw "Python do projeto não encontrado em $Python"
 }
+$Python = $Executavel.Source
 
-& $Python -m compileall -q laylay.py mente_laylay tests
+& $Python -m compileall -q laylay.py mente_laylay scripts/tests
 if ($LASTEXITCODE -ne 0) { throw "compileall falhou" }
 
-& $Python -m ruff check laylay.py mente_laylay tests
+& $Python -m ruff check laylay.py mente_laylay scripts/tests
 if ($LASTEXITCODE -ne 0) { throw "Ruff encontrou uma regressão crítica" }
 
 & $Python -m mypy --follow-imports=skip `

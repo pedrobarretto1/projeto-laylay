@@ -558,7 +558,7 @@ class ObservabilidadeMenteRuntime:
             fallback=fallback,
         )
         agora = float(self.clock())
-        evento = {
+        evento: dict[str, Any] = {
             "componente": _codigo(componente, "desconhecido", 64),
             "codigo": _codigo(codigo, "falha", 80),
             "error_code": _codigo(codigo, "falha", 80),
@@ -660,7 +660,7 @@ class ObservabilidadeMenteRuntime:
                         or str(evento_anterior.get("fase") or "") != fase_limpa
                     ):
                         continue
-                    ocorrencia = {"ts": agora}
+                    ocorrencia: dict[str, float | str] = {"ts": agora}
                     if turno_limpo:
                         ocorrencia["turno_id"] = turno_limpo
                         evento_anterior["turno_id"] = turno_limpo

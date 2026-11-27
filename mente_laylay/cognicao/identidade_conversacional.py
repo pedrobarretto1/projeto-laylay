@@ -42,6 +42,36 @@ def remover_vocativo_laylay(texto: str) -> str:
     return re.sub(r"\s+", " ", fala).strip()
 
 
+def nome_apresentado_para_vocativo(texto: str) -> str:
+    """Nome declarado neste diálogo, sem confirmar identidade ou gravar memória."""
+    from mente_laylay.cognicao.normalizacao_linguagem import separar_saudacao_inicial
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, intervalos_citados
+    from mente_laylay.memoria_mental.identidade_usuario import extrair_nome_usuario_explicito
+
+    partes = enunciados_discursivos(texto)
+    if not partes:
+        return ""
+    saudacao, resto = separar_saudacao_inicial(partes[0])
+    if saudacao and not resto:
+        partes = partes[1:]
+
+    def apresentado(parte: str) -> str:
+        if intervalos_citados(parte):
+            return ""
+        reencontro = re.fullmatch(
+            r'(?i:sou eu),\s+(?:(?i:o|a)\s+)?(?P<nome>[^\W\d_]+(?:[-\s][^\W\d_]+){0,3})[.!]', parte,
+        )
+        if reencontro and all(p[0].isupper() for p in re.split(r'[-\s]', reencontro['nome'])):
+            return _normalizar(reencontro['nome'])
+        return _normalizar(extrair_nome_usuario_explicito(parte))
+
+    nome = apresentado(partes[0]) if partes else ""
+    if (not nome or nome in IDENTIDADE_LAYLAY['apelidos']
+            or any(outro and outro != nome for outro in map(apresentado, partes[1:]))):
+        return ""
+    return nome
+
+
 def analisar_identidade_turno(texto: str, *, falante: str = "usuario") -> Dict[str, Any]:
     bruto = str(texto or "").strip()
     base = _normalizar(bruto)

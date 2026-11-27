@@ -116,6 +116,15 @@ def test_ponte_orienta_ritmo_da_escolha_com_saudacao_sem_descartar_autoria(monke
     assert dados["resposta"]["texto"] == longa and not dados["resposta"]["degradada"]
 
 
+def test_ponte_publica_saudacao_com_pergunta_hipotetica(monkeypatch):
+    monkeypatch.setattr(autoria, "PONTE", PONTE_INSTALADA)
+    entrada = "Oi, Laylay! Se você tivesse uma tarde livre, qual jogo de tabuleiro escolheria?"
+    fala = "Oi! Eu escolheria um jogo de dedução, porque adoro o blefe e as suspeitas da mesa."
+    dados = autoria.coletar_autoria({"entrada": entrada, "historico": []}, [proposta(fala)])
+    assert len(dados["publicacoes"]) == 1
+    assert dados["resposta"]["texto"] == fala
+
+
 @pytest.mark.parametrize("entrada", [
     "Você escolheria um cachorro ou um gato? Explique a escolha em detalhes.",
     "Você escolheria um cachorro ou um gato que te faz lembrar da infância?",

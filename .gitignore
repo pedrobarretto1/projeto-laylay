@@ -117,7 +117,9 @@ memoria/
 contexto.txt
 contexto-*.txt
 teste.md
-# O playlists.json principal é versionado; este é um resíduo local de testes.
+# Playlists do usuário e resíduos de testes ficam locais.
+/playlists.json
+/tests/playlists.json
 /scripts/tests/playlists.json
 
 # Áudios pessoais, datasets e modelos locais
