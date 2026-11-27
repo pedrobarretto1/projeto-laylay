@@ -10,6 +10,48 @@ from mente_laylay.memoria_mental.foco_contexto import extrair_topico_foco_vivo
 from mente_laylay.memoria_mental.pendencia import criar_pendencia, limpar_pendencia, registrar_pendencia
 
 
+_OFERTA_FAIXA_PLAYLIST = re.compile(
+    r"(?:se\s+(?:voc[eê]\s+)?quiser,\s*)?"
+    r"(?:posso\s+(?:te\s+)?(?:sugerir|indicar|recomendar)|"
+    r"quer\s+que\s+eu\s+(?:te\s+)?(?:sugira|indique|recomende))\s+"
+    r"uma\s+(?:faixa|m[uú]sica)\s+(?:d[ae]|na)\s+playlist\s+"
+    r"(?:'(?P<simples>[^'\n]{1,120})'|\"(?P<duplas>[^\"\n]{1,120})\"|"
+    r"«(?P<angulares>[^»\n]{1,120})»|“(?P<curvas>[^”\n]{1,120})”)"
+    r"(?:\s+(?:para|pra)\s+[^.!?;\n]{1,140})?[.!?]*",
+    re.IGNORECASE,
+)
+
+
+def playlist_da_oferta_de_faixa(fala: str) -> str:
+    """Lê somente uma oferta autônoma de indicação com playlist nomeada."""
+    from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos
+
+    partes = enunciados_discursivos(fala)
+    if not partes:
+        return ""
+    oferta = _OFERTA_FAIXA_PLAYLIST.fullmatch(partes[-1])
+    return next((v.strip() for v in oferta.groupdict().values() if v), "") if oferta else ""
+
+
+def registrar_oferta_faixa_publicada(
+    estado: Dict[str, Any], *, fala: str, entrega_id: str,
+) -> Dict[str, Any]:
+    """A oferta nasce na entrega observada e permite apenas leitura da playlist."""
+    if not entrega_id or (estado.get("registro_semantico") or {}).get("ultima_fala_observada_id") != entrega_id:
+        return estado
+    playlist = playlist_da_oferta_de_faixa(fala)
+    if not playlist:
+        return estado
+    existente = estado.get("oferta_pendente") or {}
+    if existente.get("entrega_id") == entrega_id:
+        return estado
+    return {**estado, "oferta_pendente": {
+        "tipo": "musica", "intent": "LAYLAY_PLAYLIST_LIST", "modo": "sugerir_faixa_playlist",
+        "contexto": playlist, "entrega_id": entrega_id, "resposta_esperada": "sim_ou_nao",
+        "autoriza_execucao": False, "ts": time.time(),
+    }}
+
+
 def classificar_pergunta_com_proposito(texto: str) -> Dict[str, str]:
     """Classifica apenas perguntas cuja resposta muda o próximo passo."""
     fala = str(texto or "").strip()
@@ -121,6 +163,9 @@ def registrar_oferta_pendente(
     """Registra uma oferta na mente única, independentemente da habilidade."""
     estado = dict(estado_atual or {})
     fala = re.sub(r"\s+", " ", str(resposta or "")).strip()
+    if playlist_da_oferta_de_faixa(fala):
+        # Somente o canal de entrega pode registrar esta oferta.
+        return estado
     classificacao = classificar_pergunta_com_proposito(fala)
     proposito = str(classificacao.get("proposito") or "")
     recomendacao_implicita = bool(re.search(

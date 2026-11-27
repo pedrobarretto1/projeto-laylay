@@ -11,6 +11,7 @@ hiddenimports = collect_submodules("mente_laylay")
 
 for pacote in (
     "AppOpener",
+    "bleak",
     "comtypes",
     "ctranslate2",
     "edge_tts",

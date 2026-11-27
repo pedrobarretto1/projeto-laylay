@@ -932,15 +932,18 @@ def preparar_resposta_para_execucao(
         if not comandos and not falha_tecnica_llm and not realidade_bloqueada
         else {"aceita": True, "problemas": [], "foco": {}}
     )
-    if (
-        "conquista_minimizada_sem_base"
-        in avaliacao_comunicacao.get("problemas_bloqueantes", ())
-        and not comandos
-    ):
+    bloqueios_comunicacao = avaliacao_comunicacao.get("problemas_bloqueantes", ())
+    acolhimento_breve = dict(plano_comunicacao.get("contrato_fala") or {}).get("acolhimento_breve") is True
+    motivo_realizacao_local = ""
+    if "conquista_minimizada_sem_base" in bloqueios_comunicacao:
+        motivo_realizacao_local = "conquista_minimizada_sem_base"
+    elif acolhimento_breve and bloqueios_comunicacao and not plano_comunicacao.get("requer_execucao"):
+        motivo_realizacao_local = "acolhimento_breve"
+    if motivo_realizacao_local and not comandos:
         fala_local = contingencia_comunicacao(
             texto,
             falas_evitar=falas_recentes_comunicacao,
-            motivo_falha="conquista_minimizada_sem_base",
+            motivo_falha=motivo_realizacao_local,
             somente_realizacao_contextual=True,
         )
         if fala_local:
@@ -958,7 +961,7 @@ def preparar_resposta_para_execucao(
                 )
                 avaliacao_comunicacao = avaliacao_local
                 comunicacao_autocorrigida = True
-                registrar_log("🧷 [COMUNICAÇÃO] conquista preservada localmente.")
+                registrar_log(f"🧷 [COMUNICAÇÃO] realização contextual revisada | motivo={motivo_realizacao_local}")
     if (
         "autopercepcao_emocional_sem_causa"
         in avaliacao_comunicacao.get("problemas_bloqueantes", ())
@@ -1138,6 +1141,28 @@ def preparar_resposta_para_execucao(
                     "⚠️ [COMUNICAÇÃO] tentativa de reparo falhou: "
                     f"{type(erro).__name__}"
                 )
+        if not somente_consultiva and not fala_reparada and not comandos and not realidade_bloqueada:
+            from mente_laylay.cognicao.presenca_conversacional import realizar_despedida_social
+
+            despedida = realizar_despedida_social(texto, plano=plano_comunicacao)
+            if despedida and avaliar_qualidade_comunicacao(
+                texto, despedida, plano=plano_comunicacao,
+                ultima_resposta=ultima_resposta_comunicacao,
+                entrada_usuario_repetida=entrada_usuario_repetida,
+            ).get("aceita"):
+                fala_reparada = despedida
+                autoria_atual = None
+                registrar_log("🧭 [COMUNICAÇÃO] despedida recuperada pelo contrato do turno.")
+        preserva_parcial = False
+        if (not somente_consultiva and not fala_reparada and not comandos
+                and not realidade_bloqueada and not falha_tecnica_llm
+                and autoria_atual is not None and autoria_atual.fala_original == fala_limpa):
+            from mente_laylay.cognicao.plano_turno import verificar_fala_turno
+
+            verificacao = verificar_fala_turno(fala_limpa, plano={
+                **plano_comunicacao, "autoria_revisada_proposta": autoria_atual,
+            }, ultima_resposta=ultima_resposta_comunicacao)
+            preserva_parcial = verificacao.get("entrega_parcial") is True
         if somente_consultiva:
             pass
         elif fala_reparada:
@@ -1148,6 +1173,11 @@ def preparar_resposta_para_execucao(
             )
             comunicacao_autocorrigida = True
             registrar_log("🧭 [COMUNICAÇÃO] resposta reparada antes da fala e da memória.")
+        elif preserva_parcial:
+            # A publicação refaz a conferência usando a autoria original.
+            # A projeção parcial verificada não substitui a declaração de fonte.
+            reescrita_aceita = True
+            registrar_log("🧭 [COMUNICAÇÃO] apoio parcial preservado após falha de reparo.")
         else:
             registrar_log(f"🛟 [IA:CONTINGÊNCIA] causa={motivo_falha_reparo} etapa=reparo")
             problemas_observados = tuple(avaliacao_comunicacao.get("problemas_bloqueantes") or ())

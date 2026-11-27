@@ -1,0 +1,22 @@
+[
+  [
+    0.001,
+    "TESTSTATUS 1 1 PARADO 0 150"
+  ],
+  [
+    0.265,
+    "PWM aplicado aos dois motores por 2000 ms. S = parar."
+  ],
+  [
+    2.264,
+    "Tempo encerrado; ponte desligada."
+  ],
+  [
+    2.693,
+    "TESTSTATUS 1 1 PARADO 0 150"
+  ],
+  [
+    2.966,
+    "Ponte desligada por comando."
+  ]
+]

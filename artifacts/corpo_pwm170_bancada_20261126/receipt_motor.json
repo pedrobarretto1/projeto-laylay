@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "motivo": "",
+  "aplicacao_pwm_confirmada": true,
+  "parada_confirmada": true,
+  "pwm_esquerdo": 170,
+  "pwm_direito": 170,
+  "duracao_ms": 2000,
+  "evidencia": "mack_pwm_e_sack",
+  "prova_rotacao": false,
+  "prova_parada_fisica": false,
+  "leitura_rotacao_valida": false,
+  "evidencia_leitura_rotacao": "",
+  "cancelado": false,
+  "status": "sucesso",
+  "interrompido_por_protecao": false,
+  "risco_detectado": "",
+  "protecao": {}
+}

@@ -191,7 +191,7 @@ _RECONHECIMENTO_ESTADO = re.compile(
 )
 _ESTADO_USUARIO = re.compile(
     r"\b(?:estou|t[oô]|t[aá]|ando)\s+"
-    r"(?:tudo\s+|um\s+pouco\s+|meio\s+|muito\s+)?"
+    r"(?:(?:tudo|um\s+pouco|meio|muito|bem|bastante)\s+)*"
     r"(?P<estado>bem|mal|cansad[oa]|triste|preocupad[oa]|ansios[oa]|"
     r"feliz|animad[oa]|tranquil[oa])\b",
     re.IGNORECASE,
@@ -436,6 +436,25 @@ def _frases(texto: str) -> list[str]:
         for parte in re.split(r"(?<=[.!?…])\s+", str(texto or "").strip())
         if parte.strip()
     ]
+
+
+def _contraste_negado_e_afirmado(entrada: str, fala: str) -> bool:
+    """Uma mesma resposta não pode negar e depois descrever a distinção pedida."""
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+
+    consulta = re.search(
+        r'\b(?:qual (?:é )?a|que) diferen[cç]a entre (?P<par>[^?.!,:;]+)\?',
+        texto_fora_de_citacoes(entrada), re.I,
+    )
+    negacao = re.match(
+        r'\s*n[aã]o (?:h[aá]|existe) diferen[cç]a entre (?P<par>[^—–:;.!?]+?)'
+        r'\s*[—–:]\s*(?:um|uma) [eé] (?P<primeiro>[^.!?;]+?)'
+        r'(?:\s*,\s*|\s+e\s+)(?:o outro|a outra)(?: [eé])? (?P<segundo>[^.!?;]+)',
+        texto_fora_de_citacoes(fala), re.I,
+    )
+    return bool(consulta and negacao
+                and _normalizar(consulta['par']) == _normalizar(negacao['par'])
+                and _normalizar(negacao['primeiro']) != _normalizar(negacao['segundo']))
 
 
 def _tokens_relevantes(texto: str, *, referente: str = "") -> set[str]:
@@ -996,6 +1015,36 @@ def validar_aderencia_contrato_fala(
     partes = _frases(resposta)
     primeira = partes[0] if partes else ""
     problemas: list[str] = []
+    from mente_laylay.cognicao.presenca_conversacional import despedida_social, retribui_despedida_social
+
+    tem_despedida_social = (
+        "despedida_social" in atos and contrato.get("origem") == "mente_unica"
+        and contrato.get("autoriza_execucao") is False
+        and str(contrato.get("turno_id")) == str(turno_id)
+        and bool(despedida_social(usuario))
+    )
+    if tem_despedida_social and not retribui_despedida_social(resposta):
+        problemas.append("despedida_social_nao_retribuida")
+    from mente_laylay.cognicao.coerencia_preferencia import (
+        alternativas_preferencia_vigentes, escolha_cotidiana_de_conduta, preferencia_conflitante,
+    )
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+    perspectiva = contrato.get("perspectiva_enunciador")
+    escolha_cotidiana = contrato.get("escolha_cotidiana")
+    escolha_vigente = (
+        escolha_cotidiana and contrato.get("autoriza_execucao") is False
+        and contrato.get("origem") == "mente_unica"
+        and type(perspectiva) is PerspectivaEnunciador and perspectiva.vigente(usuario, turno_id)
+        and str(contrato.get("turno_id")) == perspectiva.turno_id
+        and escolha_cotidiana == escolha_cotidiana_de_conduta(usuario)
+    )
+    if escolha_vigente and len(partes) > int(contrato.get("max_frases") or 3):
+        problemas.append("escolha_cotidiana_fora_do_ritmo")
+    alternativas_preferencia = alternativas_preferencia_vigentes(contrato, texto_usuario, turno_id)
+    if alternativas_preferencia and preferencia_conflitante(resposta, alternativas_preferencia):
+        problemas.append("opiniao_conflitante_no_mesmo_escopo")
+    if _contraste_negado_e_afirmado(usuario, resposta):
+        problemas.append("contraste_negado_e_afirmado")
     if estrategia == 'orientacao_hipotetica':
         from mente_laylay.cognicao.geracao_concreta import (
             orientacao_em_cenario_completa, pedido_orientacao_em_cenario,
@@ -1352,6 +1401,10 @@ def validar_aderencia_contrato_fala(
         "saudacao_nao_respondida_no_inicio",
         "saudacao_inventou_vocativo",
         "ato_opiniao_nao_respondido",
+        "despedida_social_nao_retribuida",
+        "escolha_cotidiana_fora_do_ritmo",
+        "opiniao_conflitante_no_mesmo_escopo",
+        "contraste_negado_e_afirmado",
         "orientacao_hipotetica_incompleta",
         "escolha_avaliativa_sem_criterio",
         "opiniao_nao_veio_na_primeira_frase",
@@ -1404,6 +1457,18 @@ def validar_aderencia_contrato_fala(
                      r"n[aã]o, eu n[aã]o recebi)\b", fala, re.I):
             problemas.append("expressao_solicitada_virou_recusa")
     contrato_reparo = _resumo_reparo(contrato, roteiro)
+    if tem_despedida_social:
+        contrato_reparo["despedida_social"] = (
+            "Retribua a despedida ao final da fala sem abrir outra pergunta, convite ou assunto."
+        )
+    if escolha_vigente:
+        contrato_reparo["escolha_cotidiana"] = escolha_cotidiana
+    if "opiniao_conflitante_no_mesmo_escopo" in problemas:
+        contrato_reparo["alternativas_preferencia"] = list(alternativas_preferencia)
+        contrato_reparo["coerencia_preferencia"] = (
+            "Reescreva com uma escolha por situação. Se a preferência for condicional, "
+            "diga qual cenário mudaria a escolha. Gostar das duas opções é possível."
+        )
     if _contrato_relato_atual(usuario, contrato, roteiro, turno_id=turno_id):
         contrato_reparo['relato_atual'] = {'texto': usuario, 'falante': 'usuario',
             'reiniciar_ato_social': False, 'comprova_fato': False, 'autoriza_execucao': False}

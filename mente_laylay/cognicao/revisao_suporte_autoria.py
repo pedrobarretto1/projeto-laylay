@@ -86,8 +86,9 @@ def _perguntas_pendentes(plano: dict[str, Any], fatos_conferidos: list[str]) -> 
         return ()
     if any(len(enunciados_discursivos(fato)) != 1 for fato in fatos_conferidos):
         return ()
-    cobertos = {chave(_ATRIBUICAO_DIRETA, fato.removesuffix(".")) for fato in fatos_conferidos}
-    if not cobertos <= alvos.keys():
+    valores = {" ".join(fato.split()) for fato in fatos_conferidos}
+    cobertos = {chave(_ATRIBUICAO_DIRETA, fato.removesuffix(".")) for fato in valores}
+    if len(cobertos) != len(valores) or not cobertos <= alvos.keys():
         return ()
     return tuple(pergunta for alvo, pergunta in alvos.items() if alvo not in cobertos)
 
@@ -252,7 +253,7 @@ def revisar_suporte_autoria(
         suporte = revisada.suporte_composto()
     def resultado(estado: str, proposicoes: list[dict[str, Any]], fontes: list[dict[str, Any]],
                   realizada: str = fala, aplicar: bool = False, *,
-                  perguntas_pendentes: tuple[str, ...] = ()) -> RevisaoSuporteAutoria:
+                  perguntas_pendentes: tuple[str, ...] = (), parcial: bool = False) -> RevisaoSuporteAutoria:
         return RevisaoSuporteAutoria(SnapshotComandoIA({
             "estado": estado, "turno_id": str(plano.get("id") or ""),
             "proposicoes": proposicoes, "fontes_lidas": fontes,
@@ -260,6 +261,7 @@ def revisar_suporte_autoria(
             "obrigacao_retificacao_atual": obrigacao_retificacao,
             "retomada_usuario": retomada_usuario,
             "perguntas_pendentes": list(perguntas_pendentes),
+            "parcial": parcial,
             "pode_confirmar_fato_externo": False,
         }), realizada, aplicar)
 
@@ -425,6 +427,7 @@ def revisar_suporte_autoria(
     requer_revisao = bool(exige_declaracao or tem_referencia or fontes or base.get("requer_evidencia_recente"))
     realizada = limite
     perguntas_pendentes = ()
+    parcial = False
     if literais or parafrases or atos_sociais or redacoes or locais:
         if parafrases or atos_sociais or redacoes or locais:
             # Citação e paráfrase têm atribuições distintas; agrupá-las por
@@ -447,6 +450,7 @@ def revisar_suporte_autoria(
                                        for p in perguntas_pendentes)
                 if len(realizada) + len(separador) + len(complemento) <= 4000:
                     realizada += separador + complemento
+                    parcial = bool(literais or parafrases)
     # Só a própria emissão ou a realização limitada deste mesmo contrato pode
     # receber este julgamento. Não tomar o suporte para fala de outro owner.
     if fala not in {suporte.fala_original, realizada}:
@@ -459,4 +463,4 @@ def revisar_suporte_autoria(
                          limite if limitar else fala, limitar)
     return resultado("revisao_limitada" if requer_revisao else "sem_obrigacao_de_fonte_individual",
                      proposicoes, snapshots, realizada if requer_revisao else fala, requer_revisao,
-                     perguntas_pendentes=perguntas_pendentes if requer_revisao else ())
+                     perguntas_pendentes=perguntas_pendentes if requer_revisao else (), parcial=parcial)

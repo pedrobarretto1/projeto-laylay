@@ -49,6 +49,7 @@ DEPENDENCIAS_ORQUESTRACAO_TURNO = (
     "_pendencia_ativa_turno_mente",
     "_persistir_correcao_duravel_mente",
     "_pesquisa_contextual_runtime",
+    "_registro_memoria_pessoas_runtime",
     "_planejar_turno_mente",
     "_registrar_etapa_turno_mente",
     "_registrar_preferencia_humor",

@@ -1,6 +1,7 @@
 # Rosto físico da Laylay — primeiro teste
 
 Controle por rede local: veja [configuração do Wi-Fi](WIFI.md).
+Controle por Bluetooth LE: veja [conexão BLE](BLE.md).
 
 ESP32-C3 Super Mini, OLED I2C SSD1306 0,96″ **128×64**.
 SDA → GPIO **8**, SCK/SCL → GPIO **9**, GND → GND, VCC → 3V3.

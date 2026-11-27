@@ -51,13 +51,18 @@ def _sobreposicao(a: str, b: str, *, somente_conteudo: bool = False) -> float:
 _ABERTURA_DE_NOVO_TEMA = re.compile(
     r"^(?:(?:mudando|trocando) de (?:assunto|tema|t[oó]pico)|"
     r"vamos fazer uma mudan[cç]a(?: completa)? de (?:cen[aá]rio|assunto|tema))"
-    r"\s*:\s*(?=[^\W\d_])", re.IGNORECASE,
+    r"\s*[:,]\s*(?=[^\W\d_])", re.IGNORECASE,
 )
 _RETOMADA_DE_TEMA = re.compile(
     r"^(?:voltando|retomando)\s+(?:a|ao|à|o|os|as|aquele|aquela)\s+[^,;.!?]+,|"
     r"^antes\s+de\s+(?:mudar|trocar)\s+de\s+(?:assunto|tema|t[oó]pico)\s*,|"
     r"^(?:o que|qual|quais)\b[^,;.!?]*\bvoc[eê]\s+(?:disse|falou|respondeu|prop[oô]s|sugeriu)\b",
     re.IGNORECASE,
+)
+_CONTINUACAO_EXPLICITA_DIALOGO = re.compile(
+    r"(?:(?:a gente\s+)?(?:vamos|podemos|pode|quer)\s+(?:continuar|prosseguir|retomar)|continue|prossiga|retome)"
+    r"(?:\s+(?:de onde (?:a gente )?parou|(?:a|o) (?:conversa|papo|historia|assunto)"
+    r"(?: (?P<anterior>anterior|de antes|de ontem|da ultima sessao))?))?",
 )
 
 
@@ -97,13 +102,27 @@ def inicio_contexto_discursivo(mensagens: list[Any], indice_atual: int) -> int:
             # "Disso" sozinho pode apontar para algo do tema ativo. A
             # mudança na própria fala fornece a âncora para voltar além dele.
             return 0
-    for indice in range(indice_atual, -1, -1):
+    inicio_ativo = max((
+        i + 1 for i, item in enumerate(mensagens[:indice_atual])
+        if isinstance(item, dict) and item.get("dialogo_arquivado") is True
+    ), default=0)
+    if inicio_ativo:
+        tem_dialogo_local = any(
+            isinstance(item, dict) and item.get("role") == "user"
+            for item in mensagens[inicio_ativo:indice_atual]
+        )
+        for parte in enunciados_discursivos(texto_fora_de_citacoes(atual)):
+            pedido = _CONTINUACAO_EXPLICITA_DIALOGO.fullmatch(_normalizar(parte).strip(" ."))
+            if pedido and (pedido.group("anterior") or not tem_dialogo_local):
+                # Na abertura não existe uma conversa local para continuar.
+                return 0
+    for indice in range(indice_atual, inicio_ativo - 1, -1):
         item = mensagens[indice]
         if not isinstance(item, dict) or str(item.get("role") or "").casefold() != "user":
             continue
         if introduz_tema(str(item.get("content") or "")):
             return indice
-    return 0
+    return inicio_ativo
 
 
 def selecionar_fontes_dialogo(

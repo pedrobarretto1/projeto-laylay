@@ -22,6 +22,7 @@ from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.emocoes.erro_proposta import evento_corresponde_erro_proposta
 from mente_laylay.memoria_mental.resultado_acao import identificar_solicitacao_execucao
 from mente_laylay.cognicao.escopo_autorizacao import AtoAguardandoMaterializacao
+from mente_laylay.cognicao.consulta_identificacao import resposta_identificacao_publica_vigente
 from mente_laylay.cognicao.enigma_numerico import realizar_enigma_numerico
 from mente_laylay.cognicao.materializacao_contextual import MaterializacaoAtoContextual
 from mente_laylay.cognicao.roteiro_execucao_por_atos import RoteiroExecucaoPrincipal
@@ -327,6 +328,7 @@ class RespostaIARuntime:
                 "tratado_prioritario_parcial": "comando_prioritario_parcial",
                 "tratado_pre_fluxo": "pre_fluxo",
                 "tratado_enigma_numerico": "autoria_local",
+                "tratada_identificacao_publica": "autoria_local",
                 "resposta_tecnica_suprimida": "resposta_tecnica",
             }
             dados_trace = {"fase": fase}
@@ -365,6 +367,19 @@ class RespostaIARuntime:
                 except Exception as erro:
                     falha_registro_local(erro)
 
+            contexto_inicio_cb = _get(ctx, "contexto_inicio")
+            contexto_inicio = None
+            if isinstance(turno, dict) and turno.get("fonte_consulta_local") and callable(contexto_inicio_cb):
+                contexto_inicio = contexto_inicio_cb()
+                plano_local = _get(_get(contexto_inicio, "mente_integrada_estado", {}), "plano_turno_atual", {})
+                emitir_curta = _get(contexto_inicio, "_emitir_resposta_curta")
+                consulta_local = resposta_identificacao_publica_vigente(t, plano_local)
+                if (consulta_local and _get(plano_local, "id") == turno_id_principal
+                        and callable(emitir_curta) and not descartar_se_obsoleta()
+                        and emitir_curta(t, consulta_local, habilidade="identificacao_publica") is True):
+                    marcar_fase("tratada_identificacao_publica", conclusao_local=True)
+                    return
+
             comandos_prioritarios = _get(ctx, "processar_comandos_prioritarios")
             if callable(comandos_prioritarios):
                 complemento = ComplementoConversacionalTurno.da_prioridade(turno, t)
@@ -388,8 +403,8 @@ class RespostaIARuntime:
                     marcar_fase("tratado_prioritario", conclusao_local=True)
                     return
 
-            contexto_inicio_cb = _get(ctx, "contexto_inicio")
-            contexto_inicio = contexto_inicio_cb() if callable(contexto_inicio_cb) else {}
+            if contexto_inicio is None:
+                contexto_inicio = contexto_inicio_cb() if callable(contexto_inicio_cb) else {}
             inicio_fluxo = _get(ctx, "processar_inicio_fluxo")
             if callable(inicio_fluxo) and inicio_fluxo(contexto_inicio, t):
                 marcar_fase("tratado_pre_fluxo", conclusao_local=True)
@@ -400,6 +415,11 @@ class RespostaIARuntime:
                 mente_inicio = _get(contexto_inicio, "mente_integrada_estado", {})
                 plano_local = _get(mente_inicio, "plano_turno_atual", {})
                 if turno_id_principal and _get(plano_local, "id") == turno_id_principal:
+                    identificacao_publica = resposta_identificacao_publica_vigente(t, plano_local)
+                    if (identificacao_publica and not descartar_se_obsoleta()
+                            and emitir_curta(t, identificacao_publica, habilidade="identificacao_publica") is True):
+                        marcar_fase("tratada_identificacao_publica", conclusao_local=True)
+                        return
                     enigma = realizar_enigma_numerico(t, plano=plano_local)
                     if enigma and not descartar_se_obsoleta() and emitir_curta(t, enigma) is True:
                         marcar_fase("tratado_enigma_numerico", conclusao_local=True)

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bancada virtual da Laylay</title>
+  <link rel="stylesheet" href="estilo.css">
+  <script src="bancada.js" defer></script>
+</head>
+<body>
+  <div class="bancada">
+    <header class="cabecalho">
+      <div class="identidade">
+        <span class="marca" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="6" width="16" height="20" rx="4"/><path d="M4 13v8m24-8v8M12 12h8M13 18h.1m5.9 0h.1"/></svg></span>
+        <div><h1>Bancada virtual<span> da Laylay</span></h1><p>Simulação de corpo e sensores</p></div>
+      </div>
+      <div id="conexao" class="status" data-status="espera" role="status"><span class="status-luz" aria-hidden="true"></span><span id="conexao-texto">Conectando ao firmware</span></div>
+    </header>
+
+    <nav class="navegacao" aria-label="Vistas da bancada">
+      <button id="abrir-arena" type="button" aria-pressed="true" aria-controls="vista-arena">Arena</button>
+      <button id="abrir-editor" type="button" aria-pressed="false" aria-controls="vista-editor">Firmware</button>
+    </nav>
+
+    <main class="instrumentos" data-vista="arena">
+      <section id="vista-arena" class="painel bancada-arena" aria-labelledby="arena-titulo">
+        <div class="faixa">
+          <h2 id="arena-titulo">Arena <small>Vista superior</small></h2>
+          <div class="acoes">
+            <button id="nivelar" type="button" title="Nivelar corpo (N)">Nivelar</button>
+            <button id="reiniciar" type="button" title="Repor posições da arena">Repor cena</button>
+          </div>
+        </div>
+        <div class="ferramentas" role="group" aria-label="Ferramentas do corpo">
+          <button type="button" data-modo="pegar" aria-pressed="true"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M10 2v16m-8-8h16M7 5l3-3 3 3m-6 10 3 3 3-3M5 7l-3 3 3 3m10-6 3 3-3 3"/></svg>Pegar <kbd>1</kbd></button>
+          <button type="button" data-modo="girar" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.4 7A6 6 0 1 1 4 12m0-8v4h4"/></svg>Girar <kbd>2</kbd></button>
+          <button type="button" data-modo="inclinar" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 20 20"><path d="m3 13 13-7 1 3-13 7zM4 18h13M6 4l3 3M6 7V4h3"/></svg>Inclinar <kbd>3</kbd></button>
+        </div>
+        <div class="arena-tela">
+          <canvas id="arena" width="854" height="584" tabindex="0" aria-label="Arena interativa da Laylay" aria-describedby="dica teclado"></canvas>
+          <div id="aviso" class="aviso" role="status" hidden></div>
+        </div>
+        <div class="rodape-arena">
+          <p id="dica">Arraste a Laylay para pegar e solte para apoiar. Arraste o obstáculo para dentro do feixe.</p>
+          <details><summary>Teclado</summary><p id="teclado">Na arena, use <kbd>1</kbd> a <kbd>3</kbd> para escolher a ferramenta e as setas para manipular o corpo. Use <kbd>Espaço</kbd> para pegar ou soltar, <kbd>Shift</kbd> + setas para mover o obstáculo e <kbd>N</kbd> para nivelar.</p></details>
+        </div>
+      </section>
+
+      <section id="vista-editor" class="painel bancada-editor" aria-labelledby="editor-titulo" hidden>
+        <div class="faixa">
+          <h2 id="editor-titulo">Editor de firmware <small>Cópia da bancada</small></h2>
+          <button id="aplicar-firmware" class="acao-primaria" type="button" disabled>Salvar e aplicar</button>
+        </div>
+        <div class="editor-barra">
+          <label for="arquivo-firmware">Arquivo</label>
+          <select id="arquivo-firmware" disabled><option value="">Carregando…</option></select>
+          <span id="rascunho-firmware" class="editor-pendente" hidden>Alterações pendentes</span>
+        </div>
+        <textarea id="editor-firmware" aria-label="Código do arquivo selecionado" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Selecione um arquivo do firmware." disabled></textarea>
+        <div class="editor-retorno">
+          <p id="estado-firmware" role="status">Carregando editor…</p>
+          <details id="detalhes-firmware"><summary>Saída da compilação</summary><pre id="log-firmware">—</pre></details>
+        </div>
+      </section>
+
+      <aside class="instrumentos-laterais" aria-label="Leituras da bancada">
+        <section class="painel" aria-labelledby="visor-titulo">
+          <div class="faixa"><h2 id="visor-titulo">Visor OLED</h2><span class="mono resolucao">128 × 64</span></div>
+          <div class="visor-moldura">
+            <canvas id="oled" width="128" height="64" role="img" aria-label="Imagem do visor enviada pelo firmware" hidden></canvas>
+            <span id="oled-vazio">Aguardando imagem</span>
+          </div>
+        </section>
+        <section class="painel" aria-labelledby="telemetria-titulo">
+          <div class="faixa"><h2 id="telemetria-titulo">Telemetria</h2></div>
+          <dl class="leituras">
+            <div class="distancia"><dt>Sensor frontal</dt><dd id="frente">—</dd></div>
+            <div><dt>IMU</dt><dd id="imu">—</dd></div>
+            <div><dt>Reação corporal</dt><dd id="manuseio-fase">—</dd></div>
+            <div><dt>Proteção</dt><dd id="protecao">—</dd></div>
+            <div><dt>PWM esquerda · direita</dt><dd id="pwm">—</dd></div>
+          </dl>
+          <div class="linha-firmware"><label for="ultima">Última leitura do firmware</label><output id="ultima">—</output></div>
+        </section>
+        <section class="painel" aria-labelledby="postura-titulo">
+          <div class="faixa"><h2 id="postura-titulo">Postura virtual</h2><span id="apoio" class="mono resolucao">—</span></div>
+          <dl class="orientacao">
+            <div><dt>Giro</dt><dd id="yaw">—</dd></div>
+            <div><dt>Lateral</dt><dd id="roll">—</dd></div>
+            <div><dt>Frente</dt><dd id="pitch">—</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

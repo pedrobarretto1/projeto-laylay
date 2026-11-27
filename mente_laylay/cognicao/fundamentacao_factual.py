@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable
 
 from mente_laylay.cognicao.normalizacao_linguagem import PADRAO_COORDENACAO_OPERACIONAL, texto_e_metalinguistico
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
 from mente_laylay.cognicao.referencias_linguagem import (
     contem_moldura_narrativa,
     enunciados_discursivos,
@@ -20,6 +21,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     trecho_retificacao_do_enunciador,
 )
 from mente_laylay.cognicao.gramatica_operacional import texto_consulta_estado_recurso
+from mente_laylay.cognicao.presenca_conversacional import consulta_presenca_conversacional
 from mente_laylay.cognicao.retomada_criacao import (
     ABERTURA_RETOMADA_CRIACAO, MATRIZ_RETOMADA_CRIACAO, recorte_primeira_mensagem, recorte_nome_publicado,
     recorte_ato_proposta_inicial,
@@ -55,6 +57,14 @@ _PEDIDO_NOMEACAO_DO_DIALOGO = re.compile(
     r'|como\s+(?:voce|tu)\s+chamaria\s+)'
     r'(?:a\s+)?(?:nossa|esta|essa)\s+(?:conversa|historia|resposta|mensagem|frase)'
     r'(?:\s+de\s+(?:hoje|ontem|agora))?[?!.]*'
+)
+_RETOMADA_TEMA_DO_DIALOGO = re.compile(
+    r'(?:para (?:terminarmos|encerrarmos|fecharmos) (?:a|nossa) conversa'
+    r'(?: sobre [^,:;.!?]+)?,\s*)?'
+    r'(?:o que|qual foi (?:a |o )?(?:principal )?(?:ideia|tema|assunto)(?: principal)? (?:de )?que) '
+    r'(?:(?:nos )?(?:conversamos|discutimos|falamos|abordamos)'
+    r'|a gente (?:conversou|discutiu|falou|abordou)) '
+    r'(?:hoje|(?:nesta|nessa|na nossa) conversa(?: de hoje)?)\?'
 )
 _TEMPO_NO_ANTECEDENTE_HIPOTETICO = re.compile(
     r"se\s+(?:[^\W\d_]+\s+){0,4}(?P<verbo>[^\W\d_]+ss(?:e|es|emos|em))\b"
@@ -250,6 +260,10 @@ def classificar_atualidade_factual(
         "confianca": 0.0,
         "motivos": [],
     }
+    from mente_laylay.cognicao.criacao_ficcional import AceiteOfertaFiccional
+    aceite = leitura.get('aceite_oferta_ficcional')
+    if type(aceite) is AceiteOfertaFiccional and aceite.vigente(str(texto or '').strip(), leitura):
+        return {**base, 'classe': 'ficcional', 'confianca': 0.99, 'motivos': ['aceite_oferta_ficcional_publicada']}
     if recorte_nome_publicado(bruto):
         return {**base, 'classe': 'historica', 'motivos': ['nome_autorado_no_dialogo']}
     if texto_e_metalinguistico(bruto):
@@ -315,6 +329,8 @@ def classificar_atualidade_factual(
     afirmacao_mutavel = bool(_AFIRMACAO_ATUAL_MUTAVEL.search(bruto) or disponibilidade)
     if not normalizado or (not eh_consulta and not afirmacao_mutavel):
         return {**base, "classe": "nao_consulta", "motivos": ["fala_nao_consultiva"]}
+    if consulta_presenca_conversacional(bruto):
+        return {**base, "classe": "contexto_pessoal", "motivos": ["presenca_na_conversa_atual"]}
     if _CONSULTA_PESSOAL_OU_INTERNA.search(bruto) or _RETOMADA_ENUNCIACAO.search(bruto):
         return {**base, "classe": "contexto_pessoal", "motivos": ["resposta_vem_da_mente_local"]}
     if _CONSULTA_MATEMATICA.search(bruto):
@@ -389,6 +405,10 @@ def classificar_atualidade_factual(
         }
 
     if sinal_temporal:
+        if _RETOMADA_TEMA_DO_DIALOGO.fullmatch(normalizar_texto_basico(consulta_externa)):
+            # Aqui o tempo delimita a conversa lembrada. A revisão da fala
+            # continua responsável por impedir lembranças e fatos inventados.
+            return {**base, 'classe': 'historica', 'motivos': ['tema_da_conversa_atual']}
         if recorte_ato_proposta_inicial(bruto) is not None:
             return {**base, 'classe': 'historica', 'motivos': ['proposta_na_primeira_publicacao']}
         if recorte_primeira_mensagem(bruto):
@@ -405,7 +425,6 @@ def classificar_atualidade_factual(
             # Exigir elaboração positiva, pois uma ida hipotética também
             # pode motivar consulta factual (portão do voo, saldo, preço).
             return {**base, "confianca": 0.85, "motivos": ["tempo_do_antecedente_hipotetico"]}
-        from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
         if re.fullmatch(r'(?:se\s+[^,;.!?]+,\s*)?o que\s+(?:viria|vem|passa)\s+(?:(?:a|na|pela)\s+)?'
             r'(?:sua|tua)\s+(?:cabeca|mente)(?:\s+agora)?[?!.]*', normalizar_texto_basico(bruto)):
             return {**base,'classe':'contexto_pessoal','motivos':['elaboracao_da_interlocutora']}
@@ -532,6 +551,11 @@ def extrair_tema_fundamentacao(
         bruto, flags=re.IGNORECASE,
     ):
         return ""
+
+    from mente_laylay.cognicao.consulta_identificacao import tema_identificacao
+    tema_identificado = tema_identificacao(bruto)
+    if tema_identificado:
+        return tema_identificado
 
     recomendacao = re.search(
         r"\b(?:recomenda|recomende|recomendar|indica|indique|sugere|sugira)\b"
@@ -1198,7 +1222,7 @@ def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
         return False
     if _titulos_citados(frase) or re.search(r"\b(?:18|19|20)\d{2}\b", t):
         return True
-    if any(_grupo_presente(set(t.split()), grupo) for grupo in _GRUPOS_ESPECIFICOS):
+    if any(_grupo_presente(_tokens_caracteristicas(frase), grupo) for grupo in _GRUPOS_ESPECIFICOS):
         return True
     tema_norm = _normalizar(tema)
     from mente_laylay.cognicao.normalizacao_linguagem import enunciacao_avaliativa_de_atividade
@@ -1226,6 +1250,33 @@ def _frase_especifica_sem_base(frase: str, tema: str = "") -> bool:
         str(frase or ""),
         flags=re.IGNORECASE,
     ))
+
+
+_VIVER_FORMA_NOMINAL = r"\b(?:viver(?:es|mos|des|em)?|vivendo)\b"
+_VIVER_COM_COMPLEMENTO_FACTUAL = re.compile(
+    rf"{_VIVER_FORMA_NOMINAL}\s+(?:(?:s[oó]|apenas|atualmente|agora|sempre)\s+)*"
+    r"(?:em|no|na|nos|nas|aqui|ali|l[aá]|fora|dentro|perto|longe|at[eé]|durante)\b"
+    rf"|\b(?:onde|aonde)\b[^,.;!?]{{0,60}}{_VIVER_FORMA_NOMINAL}"
+    rf"|{_VIVER_FORMA_NOMINAL}\s+(?:por\s+)?(?:mais\s+)?(?:\d+|poucos|muitos)\b",
+    re.IGNORECASE,
+)
+
+
+def _tokens_caracteristicas(texto: str) -> set[str]:
+    # A relativa livre tem «o que» como objeto de viver. Só essa ocorrência
+    # é experiencial; «vive em X» e «ainda vive» continuam sob revisão.
+    projetado = re.sub(
+        r"\b(?P<moldura>(?:o|aquilo) que "
+        r"(?:ela|ele|voc[eê]|algu[eé]m|(?:o|a|um|uma) [^\W\d_]+) )vive\b"
+        r"(?=\s*(?:[.,;:!?—–]|$))",
+        r"\g<moldura>experimenta", texto, flags=re.I,
+    )
+    # O prefixo «vive» também casa com infinitivo e gerúndio. Só nessas
+    # formas, exija um complemento local ou temporal antes de sinalizar
+    # uma característica factual. Os predicados finitos seguem na revisão.
+    if not _VIVER_COM_COMPLEMENTO_FACTUAL.search(projetado):
+        projetado = re.sub(_VIVER_FORMA_NOMINAL, " ", projetado, flags=re.I)
+    return set(_normalizar(projetado).split())
 
 
 def _grupo_presente(tokens: set[str], grupo: set[str]) -> bool:
@@ -1776,6 +1827,15 @@ def validar_fala_com_fundamentacao(
     posicoes_didaticas = {m.start() for m, papel in papeis_citados if papel == "enunciado"}
     recursos_locais = _recursos_locais_documentados(documentacao_capacidades)
     evidencia_obra = _normalizar(base.get("resumo")) if base.get("confiavel") else ""
+    tokens_evidencia = _tokens_caracteristicas(evidencia)
+    from mente_laylay.cognicao.coerencia_preferencia import (
+        alternativas_preferencia_vigentes, frase_de_preferencia_condicional,
+    )
+    plano_atual = plano or {}
+    alternativas = alternativas_preferencia_vigentes(
+        plano_atual.get("contrato_fala") or {}, texto_usuario, plano_atual.get("id"),
+    ) if (plano_atual.get("texto_usuario") == texto_usuario
+          and not plano_atual.get("comandos") and not plano_atual.get("requer_execucao")) else ()
     identificacao_sem_evidencia = False
     fim_frase = 0
     for frase_original in frases:
@@ -1825,9 +1885,9 @@ def validar_fala_com_fundamentacao(
         )
         anos = set(re.findall(r"\b(?:18|19|20)\d{2}\b", _normalizar(frase)))
         ano_sem_evidencia = any(ano not in evidencia_norm for ano in anos)
-        tokens = set(_normalizar(frase).split())
-        tokens_evidencia = set(evidencia_norm.split())
-        categoria_sem_evidencia = any(
+        tokens = _tokens_caracteristicas(frase)
+        preferencia_condicional = frase_de_preferencia_condicional(frase_original, alternativas)
+        categoria_sem_evidencia = not preferencia_condicional and any(
             _grupo_presente(tokens, grupo) and not _grupo_presente(tokens_evidencia, grupo)
             for grupo in _GRUPOS_ESPECIFICOS
         )
@@ -1851,6 +1911,7 @@ def validar_fala_com_fundamentacao(
         sem_base = bool(
             not base.get("confiavel")
             and _frase_especifica_sem_base(frase, tema)
+            and not preferencia_condicional
             and not reacao_social_preferencia
             and not explicacao_metalinguistica
         )

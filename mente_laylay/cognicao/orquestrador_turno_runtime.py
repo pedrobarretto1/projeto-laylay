@@ -1070,6 +1070,10 @@ def _iniciar_planejamento_turno(
     turno['identidade'] = identidade_turno
     turno['funcao_comunicativa'] = funcao_comunicativa
     turno['encerramento_assunto'] = encerramento_assunto
+    from mente_laylay.cognicao.criacao_ficcional import reconhecer_aceite_oferta_ficcional
+    aceite_ficcional = reconhecer_aceite_oferta_ficcional(texto_cognitivo, turno=turno, mente=mente_antes_turno)
+    if aceite_ficcional is not None:
+        turno['aceite_oferta_ficcional'] = aceite_ficcional
     retrato_turno, entidades_recentes = ns['_construir_retrato_turno_mente'](texto_cognitivo, turno=turno, mente=mente_antes_turno, contexto_perceptivo=ns['_obter_contexto_perceptivo'](), playlist_state=ns['playlist_state'], jogo_contexto=jogo_contexto)
     quarentena_app = descrever_quarentena_referencia_app(mente_antes_turno)
     if quarentena_app and referencia_app_quarentenavel_c1d(texto_cognitivo):
@@ -1156,6 +1160,35 @@ def _iniciar_planejamento_turno(
     tema_factual = ns['_extrair_tema_fundamentacao_mente'](
         texto_cognitivo, retrato=retrato_turno, registro_semantico=registro_semantico,
     )
+    from mente_laylay.cognicao.consulta_identificacao import (
+        cargo_identificacao_atual, construir_resposta_identificacao_publica,
+        delimitar_fonte_identificacao, recuperar_identificacao_local,
+    )
+    from mente_laylay.autonomia.orquestracao_cooperativa import OrquestradorCooperativoRuntime
+
+    orquestrador_cooperativo = ns.get('_orquestrador_cooperativo_runtime')
+    reserva_pessoal = getattr(ns.get('_registro_memoria_pessoas_runtime'), 'reserva_consulta', None)
+    escopo_consulta, referente_consulta = delimitar_fonte_identificacao(texto, turno=turno)
+    selecionar_fonte = getattr(orquestrador_cooperativo, 'selecionar_fonte_consulta',
+        OrquestradorCooperativoRuntime.selecionar_fonte_consulta)
+    fonte_consulta = selecionar_fonte(
+        escopo_consulta, lambda: callable(reserva_pessoal) and reserva_pessoal(texto))
+    consulta_local = fonte_consulta in {'historico', 'ficcao'}
+    if consulta_local:
+        turno['fonte_consulta_local'] = fonte_consulta
+    consulta_pessoal = consulta_local or fonte_consulta == 'memoria_pessoal'
+    identificacao = referente_consulta if fonte_consulta == 'pesquisa_contextual' else ''
+    if consulta_pessoal:
+        tema_factual = ''
+    cargo_identificado = cargo_identificacao_atual(texto_cognitivo) if identificacao else ''
+    if identificacao:
+        tema_factual = cargo_identificado or identificacao
+    resposta_identificada = None
+    if consulta_local:
+        resposta_identificada = recuperar_identificacao_local(
+            texto, turno_id=turno.get('id'), escopo=fonte_consulta, tema=referente_consulta,
+            historico=list(getattr(ns['_estado_compartilhado_runtime'], 'memoria_conversa', {}).get('messages') or []),
+        )
     contrato_anterior = dict(mente_antes_turno.get('contrato_fala_atual') or {})
     estrategia_anterior = str(dict(contrato_anterior.get('roteiro_concreto') or {}).get('estrategia') or '')
     try:
@@ -1184,14 +1217,14 @@ def _iniciar_planejamento_turno(
     if not foco_didatico and re.search(r'\bn[aã]o entendi\b', str(texto_cognitivo or ''), re.I):
         foco_didatico = str(fundamento_anterior.get('foco_didatico') or '')[:100]
     pesquisa_multifonte_ativa = str(getattr(ns.get('_pesquisa_contextual_runtime'), 'modo_multifonte', 'desativado')) == 'ativo'
-    if consulta_didatica and pesquisa_multifonte_ativa and not retrato_turno.get('operacao_explicita') and str(turno.get('modalidade_geral') or turno.get('modalidade') or '') != 'comando':
+    if consulta_didatica and not consulta_pessoal and pesquisa_multifonte_ativa and not retrato_turno.get('operacao_explicita') and str(turno.get('modalidade_geral') or turno.get('modalidade') or '') != 'comando':
         tema_factual = consulta_didatica
     else:
         consulta_didatica = ''
     # Uma declaração pessoal pode ativar memória e pesquisa ao mesmo tempo.
     # A memória guarda a preferência confirmada; a pesquisa apenas enriquece
     # a conversa. Nenhuma das duas substitui a resposta humana do turno.
-    if not tema_factual and aprendizados_explicitos:
+    if not tema_factual and aprendizados_explicitos and not consulta_local:
         tema_factual = str(aprendizados_explicitos[0].get('valor') or '').strip()[:160]
     turno['tema_factual'] = tema_factual
     recomendacao_contextual = bool(
@@ -1233,7 +1266,10 @@ def _iniciar_planejamento_turno(
             or continuacao_recomendacao
         )
         try:
-            if exige_resposta_factual_agora:
+            pesquisar_cargo = getattr(pesquisa_runtime, 'pesquisar_ocupante_cargo', None)
+            if cargo_identificado and callable(pesquisar_cargo):
+                pesquisa_factual = pesquisar_cargo(cargo_identificado)
+            elif exige_resposta_factual_agora:
                 pesquisar_recomendacoes = getattr(
                     pesquisa_runtime,
                     'pesquisar_recomendacoes_tema',
@@ -1286,6 +1322,12 @@ def _iniciar_planejamento_turno(
             pesquisa_factual,
             atualidade=atualidade_factual,
         )
+        if (identificacao and not consulta_didatica
+                and (cargo_identificado or not atualidade_factual.get('depende_atualidade'))):
+            resposta_identificada = construir_resposta_identificacao_publica(
+                texto, turno_id=turno.get('id'), pesquisa=pesquisa_factual,
+                fundamentacao=fundamentacao_factual, cargo=cargo_identificado, tema=identificacao,
+            )
         fundamentacao_factual.update({
             'papel_cooperativo': 'enriquecimento_auxiliar',
             'nao_substitui_resposta_principal': True,
@@ -1313,7 +1355,6 @@ def _iniciar_planejamento_turno(
     turno['operacao_explicita'] = str(retrato_turno.get('operacao_explicita') or '')
     especialistas = ns['_construir_parecer_especialistas_mente'](texto_cognitivo, turno=turno, funcao_comunicativa=funcao_comunicativa, retrato=retrato_turno, saude=ns['_saude_mente_runtime'].snapshot())
     deliberacao = dict(especialistas.get('deliberacao') or {})
-    orquestrador_cooperativo = ns.get('_orquestrador_cooperativo_runtime')
     registrar_consenso = getattr(orquestrador_cooperativo, 'registrar_deliberacao_turno', None)
     if deliberacao and callable(registrar_consenso):
         try:
@@ -1415,6 +1456,17 @@ def _iniciar_planejamento_turno(
         if isinstance(evidencia_habilidades, dict):
             plano['evidencia_capacidades'] = dict(evidencia_habilidades)
     plano['fundamentacao_factual'] = fundamentacao_factual
+    if resposta_identificada is not None:
+        plano['identificacao_publica'] = resposta_identificada
+    registrar_passagem = getattr(orquestrador_cooperativo, 'registrar_passagem_consulta', None)
+    if escopo_consulta and fonte_consulta and callable(registrar_passagem):
+        try:
+            plano['cooperacao_consulta'] = registrar_passagem(
+                turno_id=str(plano.get('id') or ''), fonte=fonte_consulta,
+                resultado=resposta_identificada.motivo if resposta_identificada else 'delegada',
+            )
+        except Exception as erro:
+            registrar_falha_opcional(ns, 'cooperacao', 'falha_publicacao_consulta', erro=erro)
     from mente_laylay.cognicao.categoria_preferencia import montar_apoios_categoria_preferencia
     apoios_categoria = montar_apoios_categoria_preferencia(
         plano, catalogo_aplicativos=ns.get('_catalogo_aplicativos_runtime'),

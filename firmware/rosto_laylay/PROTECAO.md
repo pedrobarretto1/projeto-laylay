@@ -12,6 +12,9 @@ Concessão, leitura e expressão continuam sendo contratos diferentes.
   separados por320ms parada. Pavor permanece nos olhos; não há tremor de motor.
   Sem confirmação de superfície não gira nem avança. Termina bloqueada após
   esgotar os passinhos; não repete recuo infinito no mesmo episódio.
+- Ausência de leitura inferior mantém os mesmos vetos de proteção. Olhos em
+  alerta mostram que a superfície está incerta. O medo e o pavor correspondem
+  à borda medida.
 - Parede: irritação, recuo250ms/PWM160, pausa100ms, até quatro giros por rodada
   (160/240/400/320ms/PWM170), alternando o lado após as duas primeiras tentativas.
   Para entre giros e exige três leituras novas de ambos os sensores, superfície

@@ -178,6 +178,13 @@ class OrquestradorFalaRuntime:
             avisos.append("Ainda não tenho confirmação do resultado da parte operacional.")
         if complemento is not None:
             fala_segura = " ".join([p for p in (fala_segura, *avisos) if p])
+        historico = []
+        if complemento is not None:
+            historico = list(ns["_estado_compartilhado_runtime"].memoria_conversa_get("messages", []) or [])
+            if (historico and isinstance(historico[-1], Mapping)
+                and historico[-1].get("role") == "user"
+                and historico[-1].get("content") == lote.texto_usuario):
+                historico.pop()
         if lote.resultados or complemento is not None:
             confirmacao = personalizar_confirmacao_composta_llm(
                 lote.resultados, fala_segura,
@@ -185,6 +192,7 @@ class OrquestradorFalaRuntime:
                 informacoes=lote.informacoes,
                 **({"texto_conversacional": complemento.texto,
                     "avisos_obrigatorios": avisos,
+                    "historico_conversa": [m for m in historico if isinstance(m, Mapping)],
                     "complemento_conversacional": complemento} if complemento is not None else {}),
             )
             fala = confirmacao.fala
@@ -704,6 +712,14 @@ class OrquestradorFalaRuntime:
             self._sequencia_emissao_fala = max(self._sequencia_emissao_fala, *ordens, 0) + 1
             ordem_emissao_fala = self._sequencia_emissao_fala
         ocorrencia_fala_id = f"{mensagem_id}:{time.time_ns()}"
+        from mente_laylay.cognicao.consulta_identificacao import RespostaDocumentalPublicada
+
+        documento_publicado = RespostaDocumentalPublicada.vincular(
+            entrega_id=ocorrencia_fala_id, turno_id=turno_id,
+            texto_usuario=str(plano_antes.get("texto_usuario") or ""), fala=fala,
+            tema=str((plano_antes.get("fundamentacao_factual") or {}).get("tema") or ""),
+            documento=plano_antes.get("identificacao_publica"),
+        ) if not _proativa and _progresso is None else None
         inicio_publicacao_texto = time.perf_counter()
         texto_publicado = False
         for observador in tuple(self._observadores_texto_final):
@@ -743,13 +759,23 @@ class OrquestradorFalaRuntime:
                         # contamina uma sessão/chat aberto depois da emissão.
                         if mental.get("sessao_conversa_ts") != sessao_fala:
                             return mental
+                        anterior = mental.get("registro_semantico") or {}
                         registro = registrar_fala_observada(
-                            mental.get("registro_semantico"),
+                            anterior,
                             ocorrencia_id=ocorrencia_fala_id, turno_id=turno_id,
                             fala=texto_entregue, resultados=resultados_entrega,
                             canal=canal, ordem_emissao=ordem_emissao_fala,
                             criterio_autoral=criterio_entrega,
+                            documento_publicado=documento_publicado,
                         )
+                        from mente_laylay.memoria_mental.continuidade_contexto import registrar_oferta_faixa_publicada
+
+                        if not any(isinstance(f, Mapping) and f.get("id") == ocorrencia_fala_id
+                                   for f in anterior.get("falas_observadas", ())):
+                            mental = registrar_oferta_faixa_publicada(
+                                {**mental, "registro_semantico": registro},
+                                fala=texto_entregue, entrega_id=ocorrencia_fala_id,
+                            )
                         return registrar_esclarecimento_proposicao_entregue(
                             {**mental, "registro_semantico": registro},
                             dict(plano_antes.get("contrato_fala") or {}).get("revisao_alegacao"),

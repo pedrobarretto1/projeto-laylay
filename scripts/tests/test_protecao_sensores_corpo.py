@@ -235,6 +235,24 @@ def test_busca_requer_owner_da_concessao_vigente_e_revogacao_desarma():
     rosto.encerrar()
 
 
+@pytest.mark.parametrize("texto", ["ande para frente", "ande para trás"])
+def test_ordem_manual_preserva_a_mesma_concessao_e_a_vigia(texto):
+    from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
+    _, esp, rosto, corpo, _, _ = montar(esp=EspPresenca())
+    rosto.busca_obstaculos_getter = corpo.companhia.autorizar_busca_obstaculos
+    assert ativar(corpo)["ok"]
+    assert rosto.sincronizar() and esp.vigia
+    sessao = rosto.diagnostico()["sessao"]
+    pedido = detectar_intencao_corpo(texto)
+    retorno = corpo.executar(pedido["intent"], pedido["params"])
+    assert retorno["interrompido_por_protecao"] and retorno["parada_confirmada"]
+    assert corpo.companhia.autorizar_busca_obstaculos(sessao)
+    assert rosto.sincronizar() and esp.vigia
+    assert corpo.executar("CORPO_PARAR", {})["ok"]
+    assert rosto.sincronizar() and not esp.vigia
+    rosto.encerrar()
+
+
 @pytest.mark.parametrize("extra",["PAVOR 5 1","DESESPERO 1 1","PAVOR 1 2"])
 def test_alerta_malformado_nao_entra_no_retrato(extra):
     with pytest.raises(ValueError):

@@ -217,6 +217,7 @@ class RetomadaCriacao:
     detalhes_cena: ConsultaDetalhesCena | None = None
     consulta_lista_usuario: bool = False
     lista_do_usuario: str = ''
+    personagem_consultado: str = ''
 
 
 def _consulta_detalhes_cena(texto: str) -> ConsultaDetalhesCena | None:
@@ -288,7 +289,14 @@ def _recortar_lista_do_usuario(anterior: str, pedido: re.Match[str]) -> str:
             continue
         moldura = normalizar_texto_basico(moldura)
         if referente:
-            ancora = r'\b(?:na|no|num|numa|em (?:um|uma)) ' + re.escape(referente)
+            alvo = referente
+            if moldura.startswith(('imagine ', 'imagina ')):
+                alvo = re.sub(r' imaginari[oa]$', '', alvo)
+            ancora = (
+                r'\b(?:(?:na|no|num|numa|em (?:um|uma)|um|uma) )'
+                + re.escape(alvo)
+                + r'(?: com (?:dois|tres|quatro|[234]) (?:objetos|itens|elementos|detalhes|nomes))?'
+            )
         else:
             ancora = r'\b(?:objetos|itens|elementos|detalhes|nomes)'
         if not re.search(ancora + r'$', moldura):
@@ -297,6 +305,40 @@ def _recortar_lista_do_usuario(anterior: str, pedido: re.Match[str]) -> str:
         if len(_itens_da_lista(literal)) == quantidade:
             candidatas.append(literal)
     return candidatas[0] if len(candidatas) == 1 else ''
+
+
+def _personagem_de_fala_recente(texto: str) -> str:
+    if intervalos_citados(texto):
+        return ''
+    consulta = re.fullmatch(
+        r'(?:na|em sua|na sua) (?:fala|cena|historia) que voce (?:acabou de )?'
+        r'(?:criar|escrever|contar|criou|escreveu|contou), '
+        r'qual (?:foi|era) a pergunta d[oa] (?P<papel>[\w-]+)'
+        r'(?: que (?:estava|ficou|andava) com (?:o|a|um|uma) [\w-]+(?: [\w-]+)?)?\? '
+        r'(?:voce )?(?:pode|consegue|poderia) (?:citar|repetir) a (?:fala|frase) '
+        r'(?:inteira|completa) que (?:ele|ela) (?:disse|fez|falou)\?',
+        normalizar_texto_basico(texto),
+    )
+    return consulta['papel'] if consulta else ''
+
+
+def _citar_fala_do_personagem(retomada: RetomadaCriacao) -> str:
+    cena = _ultima_fala_publicada(retomada)
+    alvo = retomada.personagem_consultado
+    fim_anterior = 0
+    candidatas = []
+    for inicio, fim in intervalos_citados(cena):
+        moldura = normalizar_texto_basico(cena[fim_anterior:inicio]).strip(' .,!?—–')
+        autor = re.fullmatch(
+            r'(?P<emissor>[oa] [\w-]+)(?: com (?:o|a|um|uma) [\w-]+(?: [\w-]+)?)?'
+            r'\s+(?:diz|disse|responde|respondeu|pergunta|perguntou):', moldura,
+        )
+        if autor and autor['emissor'][2:] == alvo:
+            candidatas.append(cena[inicio + 1:fim - 1])
+        fim_anterior = fim
+    if len(candidatas) != 1 or '?' not in candidatas[0] or any(c in candidatas[0] for c in '«»'):
+        return ''
+    return f'Na cena, a fala foi: «{candidatas[0]}»'
 
 
 def _realizar_detalhes_cena(retomada: RetomadaCriacao, pedido: ConsultaDetalhesCena) -> str:
@@ -938,6 +980,10 @@ def construir_retomada_criacao(texto: str, *, plano: Mapping[str, Any],
         anterior = mensagens_anteriores_usuario[-1] if mensagens_anteriores_usuario else ''
         return RetomadaCriacao(str(plano['id']), texto, (), False, None,
             consulta_lista_usuario=True, lista_do_usuario=_recortar_lista_do_usuario(anterior, consulta_lista))
+    personagem = _personagem_de_fala_recente(texto)
+    if personagem:
+        return RetomadaCriacao(str(plano['id']), texto, (), False, None,
+            respostas_reencontro=respostas_recentes, personagem_consultado=personagem)
     detalhes = _consulta_detalhes_cena(texto)
     if detalhes is not None:
         return RetomadaCriacao(str(plano['id']), texto, (), False, None,
@@ -1125,6 +1171,11 @@ def avaliar_retomada_criacao(fala: str, *, plano: Mapping[str, Any]) -> dict[str
             if pedido_repeticao_itens_mencionados(texto) and retomada.lista_do_usuario:
                 realizacao = retomada.lista_do_usuario + '.'
                 cobertura = 'lista_literal_do_interlocutor'
+        elif retomada.personagem_consultado:
+            limite = 'Qual fala do personagem você quer que eu cite?'
+            if retomada.personagem_consultado == _personagem_de_fala_recente(texto):
+                realizacao = _citar_fala_do_personagem(retomada)
+                cobertura = 'fala_atribuida_ao_personagem' if realizacao else 'ausente'
         elif retomada.detalhes_cena is not None:
             limite = 'Pode me mostrar a fala completa da personagem para eu conferir os detalhes?'
             if retomada.detalhes_cena == _consulta_detalhes_cena(texto):

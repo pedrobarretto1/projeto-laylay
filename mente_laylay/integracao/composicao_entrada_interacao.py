@@ -68,6 +68,7 @@ DEPENDENCIAS_COMANDOS_IMEDIATOS = (
     "detectar_intencao_deterministica",
     "_responder_pergunta_capacidade_local", "_area_transferencia_runtime",
     "_orquestrador_cooperativo_runtime",
+    "_pesquisa_contextual_runtime",
     "_processar_oferta_area_transferencia_pendente",
     "_caixa_entrada_pessoal_runtime", "_central_notificacoes_runtime",
 )
@@ -86,6 +87,7 @@ DEPENDENCIAS_CONTEXTO_CHAT = (
     "_texto_pede_direcao_musical_generica",
     "_responder_pedido_direcao_musical_generica",
     "_processar_confirmacao_sugestao_musical", "_texto_pede_opiniao_musica_atual",
+    "_processar_aceite_oferta_playlist",
     "_responder_opiniao_musica_atual", "_handle_feedback_pendente_misto",
     "_handle_feedback_pendente", "_bloquear_playlist_temporariamente",
     "_registro_musica_operacoes_runtime",

@@ -1,10 +1,27 @@
 # IMU corporal — primeira versão, 15/10/2026
 
-Ligação: VCC→3V3, GND/AD0→GND, SDA→GPIO8, SCL→GPIO9. XDA/XCL/INT livres.
+Ligação: VCC→3V3, GND→GND, SDA→GPIO8, SCL→GPIO9. XDA/XCL/INT livres.
+O firmware autodetecta o endereço I²C: AD0 em GND usa `0x68`, AD0 em 3V3
+usa `0x69`. Deve responder exatamente um módulo com identidade compatível.
 Montagem definitiva: firme no corpo, componentes para cima, sem balanço nos fios.
+Para componentes para baixo com inversão em torno do eixo X, compile com
+`LAYLAY_IMU_INVERTIDA_X=1`. O firmware converte aceleração e giroscópio
+para a referência do corpo antes de calibrar. Os limites de inclinação e
+tombamento continuam valendo na referência corrigida.
+
+Com o corpo montado e apoiado na posição nivelada, meça as medianas de roll
+e pitch com a compensação de inversão ativa e os ajustes de repouso zerados.
+Defina essas medianas em centésimos de grau com
+`LAYLAY_IMU_REPOUSO_ROLL_CG` e `LAYLAY_IMU_REPOUSO_PITCH_CG`. Na montagem
+medida em 26/11/2026, os valores foram `-1119` e `276`, respectivamente.
+Esse ajuste fixo gira a aceleração e a velocidade angular para a referência
+do chassi. Em cada partida, a calibração automática continua estimando o
+viés do giroscópio; a referência do chassi não depende da postura na partida.
 O módulo marcado MPU-6050 de Pedro respondeu WHO_AM_I=0x98. Esse ID corresponde
 ao ICM-20689; o driver aceita explicitamente 0x68 ou 0x98, confirma o ID duas
 vezes e relê a configuração das escalas. Não ignora identidades desconhecidas.
+No ICM-20689, o driver aplica o reset de software de PWR_MGMT_1 antes da
+configuração. Um pacote inercial todo zerado não alimenta a calibração.
 Referência: https://product.tdk.com/en/search/sensor/mortion-inertial/imu/info?part_no=ICM-20689
 
 Escalas ±4g/±500°/s, filtro digital, amostragem solicitada a cada10ms. O loop
@@ -12,6 +29,9 @@ continua finito, sem esperar conversões. Calibração inicial exige100 amostras
 quietas e pelo menos1,8s; tempo efetivo depende da cadência. Uma lacuna>75ms
 invalida a calibração. Não se integra uma lacuna como giro. Roll/pitch vêm da
 gravidade quando plausível; yaw integra velocidade angular corrigida por bias.
+No ICM-20689, a calibração aceita até 7°/s de viés lateral se a direção e a
+magnitude da gravidade ficarem estáveis ao longo da janela. O limite no
+eixo vertical continua em 5°/s, pois a gravidade não distingue giro nesse eixo.
 Yaw é relativo, deriva e não mede posição/distância ou permite retorno exato.
 
 Inclinação≥14° suspende motores;≥40° classifica tombamento. Balanço exige energia
@@ -28,6 +48,10 @@ Protocolo somente leitura: `ICAPS 1 <sessao>` → IMU1/IMU0; `IMU 1 <seq>` retor
 estado, idade, calibração, roll/pitch/yaw e velocidade em centésimos de grau,
 norma em milésimos de g, classificação e WHO_AM_I decimal. `IPROBE 1 <seq>`
 lê identidades nos endereços0x68/0x69, sem renovar FACE nem iniciar calibração.
+Também imprime `ICAL` com a contagem atual de amostras quietas, lacunas,
+amostras fora dos critérios de repouso e picos de variação de aceleração
+(milésimos de g) e velocidade angular (centésimos de grau/s) na calibração.
+`DPROBE 1 <seq>` revela em qual etapa parou a inicialização do VL53L0X.
 
 `TURN 1 <sessao> <seqMotor> <anguloAssinado> <pwm> <prazoMs>` reutiliza a admissão
 e sequência do MOTOR. Esquerda positiva; direita negativa. Ângulos15..360°, PWM

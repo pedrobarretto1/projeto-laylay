@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List
+from typing import Any, Callable, Dict, Iterable, List
 
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto
 from mente_laylay.iot.configuracao import (
@@ -50,6 +50,16 @@ class RegistroDispositivos:
             return None
         return dispositivo
 
+    def substituir(self, dispositivo: DispositivoIoT, *, persistir: Callable[[DispositivoIoT], Any]) -> None:
+        nome = normalizar_texto(dispositivo.nome)
+        candidato = RegistroDispositivos(
+            item for chave, item in self._dispositivos.items() if chave != nome
+        )
+        if dispositivo.ativo:
+            candidato.registrar(dispositivo)
+        persistir(dispositivo)
+        self._dispositivos, self._aliases = candidato._dispositivos, candidato._aliases
+
     def listar(self, ambiente: str = "", *, somente_ativos: bool = True) -> List[DispositivoIoT]:
         ambiente_norm = normalizar_texto(ambiente)
         itens = []
@@ -80,6 +90,19 @@ def criar_dispositivo_ventilador(*, protocolo: str = "simulado") -> DispositivoI
             "dps_estado": "1",
             "variaveis": nomes_variaveis_tuya(PREFIXO_TUYA_VENTILADOR),
         },
+    )
+
+
+def criar_dispositivo_esp32() -> DispositivoIoT:
+    return DispositivoIoT(
+        nome="rele_esp32",
+        nome_amigavel="Relé ESP32",
+        tipo="rele",
+        ambiente="quarto",
+        protocolo="esp32",
+        aliases=("relé", "esp32", "relé do esp32"),
+        capacidades=frozenset({"ligar", "desligar", "status"}),
+        configuracao={"transporte": "auto", "nome_ble": "Laylay Home"},
     )
 
 

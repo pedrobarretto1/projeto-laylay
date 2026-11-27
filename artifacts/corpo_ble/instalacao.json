@@ -1,0 +1,20 @@
+{
+  "sha256": "d3fe379f252780908a07d45e1177f38dc350db28f389323088c41f73f8660165",
+  "firmware_gravado": true,
+  "ble_status_usb": "ADVERTISING",
+  "ble_link_pelo_ar": null,
+  "motivo_sem_teste_ble": "PC sem adaptador Bluetooth",
+  "transportes": {
+    "COM4": {
+      "face_confirmada": true,
+      "parada_confirmada": true,
+      "meio": "serial"
+    },
+    "WIFI": {
+      "face_confirmada": true,
+      "parada_confirmada": true,
+      "meio": "tcp",
+      "ble_anuncio_simultaneo": true
+    }
+  }
+}

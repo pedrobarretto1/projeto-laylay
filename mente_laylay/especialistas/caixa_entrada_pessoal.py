@@ -16,11 +16,16 @@ from typing import Any, Callable
 from mente_laylay.autonomia.agendamento_mental import (
     extrair_parametros_temporais_lembrete,
 )
+from mente_laylay.cognicao.consulta_identificacao import (
+    RespostaDocumentalPublicada, RespostaIdentificacaoPublica, fonte_documental_vigente,
+)
+from mente_laylay.cognicao.gramatica_operacional import referencia_resposta_para_nota
 from mente_laylay.integracao.registro_conversa_llm import resolver_enviador_modelo
 from mente_laylay.memoria_mental.aprendizado_rotina_musica import (
     classificar_confirmacao_local,
 )
 from mente_laylay.memoria_mental.resultado_acao import (
+    ResultadoAcao,
     interpretar_tratamento_operacional,
 )
 from urllib.parse import urlsplit
@@ -168,7 +173,7 @@ class CaixaEntradaPessoalRuntime:
             return {}
         return dict(atual)
 
-    def _carregar(self) -> dict[str, Any]:
+    def _carregar(self, *, exigir_formato_valido: bool = False) -> dict[str, Any]:
         with self._lock:
             if not self.caminho.exists():
                 return {"versao": self.VERSAO, "itens": []}
@@ -176,8 +181,13 @@ class CaixaEntradaPessoalRuntime:
                 dados = json.loads(self.caminho.read_text(encoding="utf-8"))
             except Exception as erro:
                 self.log(f"⚠️ [CAIXA DE ENTRADA] leitura falhou: {type(erro).__name__}")
+                if exigir_formato_valido:
+                    raise ValueError("Não foi possível reler a caixa de entrada.") from erro
                 return {"versao": self.VERSAO, "itens": []}
             itens_brutos = dados.get("itens") if isinstance(dados, dict) else []
+            if exigir_formato_valido and (not isinstance(dados, dict) or "itens" not in dados
+                    or not isinstance(itens_brutos, list) or any(not isinstance(i, dict) for i in itens_brutos)):
+                raise ValueError("Formato da caixa de entrada desconhecido.")
             itens = itens_brutos if isinstance(itens_brutos, list) else []
             return {
                 "versao": self.VERSAO,
@@ -801,6 +811,8 @@ class CaixaEntradaPessoalRuntime:
             )
 
     def _adicionar(self, texto: str) -> bool:
+        if referencia_resposta_para_nota(texto) is not None:
+            return False
         conteudo, origem = self._extrair_conteudo(texto)
         if not conteudo:
             self.falar("O que você quer que eu anote?", "calma", 1)
@@ -808,8 +820,34 @@ class CaixaEntradaPessoalRuntime:
         if _parece_segredo(conteudo):
             self.falar("Isso parece conter um segredo ou dado sensível. Não vou colocar na caixa.", "preocupada", 2)
             return True
-        agora = self.agora()
         tipo = _classificar_tipo(conteudo, texto)
+        item, criou = self._persistir_nota(
+            conteudo, origem=origem, tipo=tipo, revisar_amanha=bool(
+                re.search(r"\bamanha\b", _normalizar(texto))
+            ),
+        )
+        self._registrar(
+            {"intent": "INBOX_ADD", "params": {
+                "nota_id": item.get("id", ""), "tipo_nota": tipo, "alvo": conteudo[:180],
+            }},
+            texto, criou, status=("nota_guardada" if criou else
+                                 "nota_ja_guardada" if item else "falha_execucao"),
+            confirmado=bool(item),
+        )
+        if criou:
+            complemento = " e marquei para você rever amanhã" if item.get("revisar_em") else ""
+            self.falar(f"Guardei como {tipo}{complemento}.", "feliz", 1)
+        elif item:
+            self.falar(f"Essa {tipo} já estava guardada; mantive uma só cópia.", "debochada", 1)
+        else:
+            self.falar("Entendi a nota, mas o arquivo não confirmou a gravação.", "calma", 1)
+        return True
+
+    def _persistir_nota(
+        self, conteudo: str, *, origem: str, tipo: str, revisar_amanha: bool = False,
+    ) -> tuple[dict[str, Any], bool]:
+        """Persiste ou relê o item exato, com o mesmo lock para a deduplicação."""
+        agora = self.agora()
         item: dict[str, Any] = {
             "id": uuid.uuid4().hex[:10],
             "tipo": tipo,
@@ -820,64 +858,60 @@ class CaixaEntradaPessoalRuntime:
             "criado_em": agora.isoformat(),
             "atualizado_em": agora.isoformat(),
         }
-        if re.search(r"\bamanha\b", _normalizar(texto)):
+        if revisar_amanha:
             item["revisar_em"] = (agora + dt.timedelta(days=1)).date().isoformat()
-        dados = self._carregar()
-        duplicada = next((
-            existente for existente in reversed(dados["itens"])
-            if existente.get("status") == "ativo"
-            and str(existente.get("tipo") or "") == tipo
-            and _normalizar(existente.get("conteudo")) == _normalizar(conteudo)
-        ), None)
-        if duplicada:
-            self._ultimo_id = str(duplicada.get("id") or "")
-            self._ultimo_item_criado_id = self._ultimo_id
-            self._registrar(
-                {
-                    "intent": "INBOX_ADD",
-                    "params": {
-                        "nota_id": self._ultimo_id,
-                        "tipo_nota": tipo,
-                        "alvo": conteudo[:180],
-                    },
-                },
-                texto,
-                False,
-                status="nota_ja_guardada",
-                confirmado=True,
-            )
-            self.falar(
-                f"Essa {tipo} já estava guardada; mantive uma só cópia.",
-                "debochada",
-                1,
-            )
-            return True
-        dados["itens"].append(item)
-        ok = self._salvar(dados)
-        resultado = {
-            "intent": "INBOX_ADD",
-            "params": {"nota_id": item["id"], "tipo_nota": tipo, "alvo": conteudo[:180]},
-        }
-        self._registrar(
-            resultado,
-            texto,
-            ok,
-            status="nota_guardada" if ok else "falha_execucao",
-            confirmado=ok,
-        )
-        if ok:
-            self._ultimo_id = str(item["id"])
-            self._ultimo_item_criado_id = str(item["id"])
-            if callable(self.observar_item):
+        with self._lock:
+            try:
+                dados = self._carregar(exigir_formato_valido=True)
+            except ValueError:
+                return {}, False
+            duplicada = next((
+                existente for existente in reversed(dados["itens"])
+                if existente.get("status") == "ativo"
+                and existente.get("id")
+                and str(existente.get("tipo") or "") == tipo
+                and (_normalizar(existente.get("conteudo")) == _normalizar(conteudo)
+                     if origem != "pesquisa_contextual" else existente.get("conteudo") == conteudo)
+            ), None)
+            if duplicada is None:
+                dados["itens"].append(item)
+                if not self._salvar(dados):
+                    return {}, False
                 try:
-                    self.observar_item(dict(item))
-                except Exception as erro:
-                    self.log(f"⚠️ [CAIXA DE ENTRADA] aprendizado isolado: {type(erro).__name__}")
-            complemento = " e marquei para você rever amanhã" if item.get("revisar_em") else ""
-            self.falar(f"Guardei como {tipo}{complemento}.", "feliz", 1)
-        else:
-            self.falar("Entendi a nota, mas o arquivo não confirmou a gravação.", "calma", 1)
-        return True
+                    relidos = self._carregar(exigir_formato_valido=True)["itens"]
+                except ValueError:
+                    return {}, False
+                item = next((registro for registro in relidos if registro == item), {})
+                if not item:
+                    return {}, False
+            else:
+                item = duplicada
+            self._ultimo_id = str(item["id"])
+            self._ultimo_item_criado_id = self._ultimo_id
+        if duplicada is None and callable(self.observar_item):
+            try:
+                self.observar_item(dict(item))
+            except Exception as erro:
+                self.log(f"⚠️ [CAIXA DE ENTRADA] aprendizado isolado: {type(erro).__name__}")
+        return dict(item), duplicada is None
+
+    def guardar_resultado_pesquisa(self, *, fonte: RespostaIdentificacaoPublica,
+                                   tema: str, ocorrencia_id: str, texto: str,
+                                   solicitacao_id: str,
+                                   publicacao: RespostaDocumentalPublicada | None = None) -> ResultadoAcao:
+        """A caixa recebe o comprovante documental em vez do texto de comando."""
+        item, criou = {}, False
+        if ((publicacao is None or publicacao.tema == tema)
+                and fonte_documental_vigente(fonte, turno_id=ocorrencia_id, texto=texto, publicacao=publicacao)):
+            conteudo = f"{fonte.fala}\n\nFonte: {fonte.url}"
+            if not _parece_segredo(conteudo):
+                item, criou = self._persistir_nota(conteudo, origem="pesquisa_contextual", tipo="nota")
+        return ResultadoAcao(
+            intent="INBOX_ADD", alvo=tema, id_solicitacao=solicitacao_id, origem="executor",
+            texto_usuario=texto, params={"nota_id": item.get("id", ""), "tipo_nota": "nota"},
+            status=("nota_guardada" if criou else "nota_ja_guardada" if item else "falha_execucao"),
+            executou=criou, confirmado=bool(item), ok=bool(item),
+        )
 
     def _adicionar_discussao(
         self,

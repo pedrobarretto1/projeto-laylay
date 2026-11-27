@@ -4865,6 +4865,14 @@ def processo_esta_ativo(pid: int) -> bool:
 
 
 def main() -> int:
+    # Configurar antes de inicializar o WebEngine. O modo por software evitou
+    # os blocos pretos observados com o painel aberto no Windows.
+    if sys.platform == 'win32' and os.environ.get('LAYLAY_WEBENGINE_GPU') != '1':
+        chave = 'QTWEBENGINE_CHROMIUM_FLAGS'
+        flags = os.environ.get(chave, '')
+        if '--disable-gpu' not in flags.split():
+            os.environ[chave] = f'{flags} --disable-gpu'.strip()
+
     from cliente.terminal_2.interface_web_v1 import JanelaInterfaceWebV1
 
     host, port, token = configuracao_ponte()

@@ -8,7 +8,9 @@ Build: `LAYLAY_SENSORES_DISTANCIA=1`, `LAYLAY_SENSOR_BORDA=0`,
 `LAYLAY_PROTECAO_CORPORAL=1`, `LAYLAY_WIFI=1`,
 `LAYLAY_HABILITAR_MOTORES_BANCADA=1`, `LAYLAY_LIMITE_MOTOR_TESTE_MS=5000`,
 `LAYLAY_IMU=0`, `LAYLAY_SOM_PONTE=0`,
-`LAYLAY_PWM_MINIMO_MOTOR=150`, `LAYLAY_PWM_MAXIMO_MOTOR=255`.
+`LAYLAY_PWM_MINIMO_MOTOR=170`, `LAYLAY_PWM_MAXIMO_MOTOR=255`.
+No PC, este perfil usa `LAYLAY_CORPO_PWM_MINIMO=170` e
+`LAYLAY_CORPO_PWM_MAXIMO=255`. A ponte parada continua com PWM zero.
 
 O frontal mantém o limite de 100 mm. A busca usa amostras novas do frontal
 para verificar a saída; não depende de um sensor inferior inexistente.

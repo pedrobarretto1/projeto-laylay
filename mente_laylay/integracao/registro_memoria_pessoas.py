@@ -58,6 +58,10 @@ class RegistroMemoriaPessoas:
     def processar(self, texto: str) -> bool:
         return bool(self.servico.processar(texto))
 
+    def reserva_consulta(self, texto: str) -> bool:
+        reservar = getattr(self.servico, "reserva_consulta", None)
+        return bool(callable(reservar) and reservar(texto))
+
     def contexto_para_prompt(self, texto: str) -> str:
         return str(self.servico.contexto_para_prompt(texto) or "")
 

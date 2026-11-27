@@ -1,0 +1,62 @@
+--- a/protecao_corporal.h
++++ b/protecao_corporal.h
+@@ -10,2 +10,3 @@
+ constexpr uint16_t LIMITE_BORDA_MM = 130, LIMITE_OBSTACULO_MM = 100;
++constexpr uint16_t LIMITE_LIBERACAO_FRONTAL_MM = 120, GANHO_BUSCA_FRONTAL_MM = 15;
+ uint32_t incidenteProtecao = 0, motorOrigemProtecao = 0, inicioProtecao = 0;
+@@ -24,2 +25,5 @@
+ bool buscaFrontalRepetida = false;
++int sentidoGiroFrontal = 0;
++uint16_t frenteAntesGiro = 0;
++uint8_t amostrasMelhoraFrontal = 0;
+ uint8_t recuosMedrososProtecao = 0;
+@@ -185,3 +189,4 @@
+       && (!histerese || superficieProtecaoConfirmada())
+-      && (strcmp(estadoDistancia(distancias[0], agora), "VALIDA") || distancias[0].mm > (histerese ? 120 : 100));
++      && (strcmp(estadoDistancia(distancias[0], agora), "VALIDA")
++          || distancias[0].mm > (histerese ? LIMITE_LIBERACAO_FRONTAL_MM : LIMITE_OBSTACULO_MM));
+   if (!segura) { amostrasSegurasProtecao = 0; return false; }
+@@ -217,5 +222,11 @@
+         && uint32_t(agora-inicioFaseProtecao)>=4000;
++    const char *risco = riscoProtecao(agora);
++    // Uma busca já iniciada usa o mesmo limiar para sair da espera e para
++    // liberar a trava. Entre os dois limiares só cabe reavaliar, sem avançar.
++    bool frenteAindaEstreita = repetirBusca && !strcmp(risco,"NENHUM")
++        && !strcmp(estadoDistancia(distancias[0],agora),"VALIDA")
++        && distancias[0].mm<=LIMITE_LIBERACAO_FRONTAL_MM;
+     bool admitirBusca=(trocarParaParede || repetirBusca) && vigiaProtecao && conectado
+         && uint32_t(agora-ultimoPacote)<ttl && motoresProntos && telaInicializada
+-        && !strcmp(riscoProtecao(agora),"OBSTACULO") && superficieProtecaoConfirmada();
++        && (!strcmp(risco,"OBSTACULO") || frenteAindaEstreita) && superficieProtecaoConfirmada();
+     if (!admitirBusca) {
+@@ -292,3 +303,7 @@
+       tentativasBuscaProtecao = parede ? 1 : 0;
+-      if (parede) sinalAlertaProtecao(agora,12);
++      if (parede) {
++        sentidoGiroFrontal = ladoBuscaFrontal;
++        frenteAntesGiro = !strcmp(f,"VALIDA") ? distancias[0].mm : 0;
++        sinalAlertaProtecao(agora,12);
++      }
+       amostrasSegurasProtecao=0; ultimaFrenteProtecao=distancias[0].medidaEm;
+@@ -302,6 +317,6 @@
+       faseNovaProtecao("CONFERINDO",agora); amostrasSegurasProtecao=0;
++      amostrasMelhoraFrontal=0;
+       ultimaFrenteProtecao=distancias[0].medidaEm; ultimaAmostraProtecao=referenciaProtecao().medidaEm;
+     } else {
+-      int lado=tentativasBuscaProtecao<=2 ? ladoBuscaFrontal : -ladoBuscaFrontal;
+-      aplicarReflexoProtecao(170*lado,-170*lado,agora);
++      aplicarReflexoProtecao(170*sentidoGiroFrontal,-170*sentidoGiroFrontal,agora);
+     }
+@@ -312,2 +327,6 @@
+       ultimaFrenteProtecao=distancias[0].medidaEm;
++      if (frenteAntesGiro && !strcmp(f,"VALIDA")
++          && distancias[0].mm>=frenteAntesGiro+GANHO_BUSCA_FRONTAL_MM) {
++        if (amostrasMelhoraFrontal<2) ++amostrasMelhoraFrontal;
++      } else amostrasMelhoraFrontal=0;
+       contarSeguraProtecao(agora,true);
+@@ -318,2 +337,5 @@
+       else {
++        // Só insiste no primeiro sentido se houver ganho nas novas leituras.
++        if (tentativasBuscaProtecao!=1 || amostrasMelhoraFrontal<2)
++          sentidoGiroFrontal = -ladoBuscaFrontal;
+         ++tentativasBuscaProtecao; faseNovaProtecao("BUSCANDO",agora);

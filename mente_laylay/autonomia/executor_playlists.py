@@ -552,7 +552,6 @@ def _tocar(
         )
         return ResultadoDespacho.concluido()
     _definir_ultima(deps, nome)
-    total = total_playlist
     obter_estado = getattr(deps.musica_operacoes, "estado", None)
     estado_reproducao = dict(obter_estado() or {}) if callable(obter_estado) else {}
     sem_confirmacao = (
@@ -575,10 +574,9 @@ def _tocar(
     deps.falar_por_status(status, fala_de_confirmacao(
         "playlist_play",
         fallback=(
-            f"Abri a primeira faixa de {nome} e mantive a fila com {total} músicas ativa, "
-            "mas o player não confirmou o áudio."
+            f"Abri a playlist {nome}."
             if sem_confirmacao else
-            f"Abrindo sua playlist de {nome}. Você já tem {total} músicas guardadas comigo."
+            f"A playlist {nome} começou a tocar."
         ),
         alvo=nome,
         contexto=deps.contexto_fala(),

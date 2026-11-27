@@ -27,6 +27,26 @@ _TIPOS_RECURSO_NOMINAL = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ReferenciaRespostaParaNota:
+    tema: str = ""
+    somente_ultima: bool = False
+
+
+def referencia_resposta_para_nota(texto: str) -> ReferenciaRespostaParaNota | None:
+    """Distingue um pedido de retomar resposta de conteúdo literal para nota."""
+    pedido = re.fullmatch(
+        r"(?:por\s+favor[,]?\s+)?"
+        r"(?:(?:pode|poderia)\s+(?:salvar|guardar|anotar|registrar)|"
+        r"salv[ae]|guard[ae]|anot[ae]|registr[ae])\s+(?:"
+        r"(?:essa|esta|(?P<ultima>a\s+[uú]ltima))\s+resposta|"
+        r"a\s+resposta\s+sobre\s+(?P<tema>[\wÀ-ÿ' -]{3,120}))\s+"
+        r"(?:numa\s+nota|em\s+uma\s+nota|nas\s+(?:minhas\s+)?notas)",
+        texto.strip(" .,!?;:"), re.IGNORECASE,
+    )
+    return ReferenciaRespostaParaNota((pedido["tema"] or "").strip(), bool(pedido["ultima"])) if pedido else None
+
+
 def texto_consulta_estado_recurso(texto: str) -> bool:
     """Consulta aberta de estado, sem resolver alvo nem produzir autorização.
 

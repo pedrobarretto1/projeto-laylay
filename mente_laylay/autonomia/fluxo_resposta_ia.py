@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict
+from mente_laylay.autonomia.pre_fluxo_musical import processar_aceite_oferta_playlist
 from mente_laylay.autonomia.pre_fluxo_contextual import (
     executar_pipeline_pre_fluxo,
     processar_bloqueio_playlist_temporario,
@@ -30,6 +31,7 @@ ETAPAS_PRE_FLUXO_AUDITADAS = (
     ("comentario_resultado_operacional", "continuidade"),
     ("continuacao_visao_jogo", "continuidade"),
     ("opiniao_musica_atual", "continuidade"),
+    ("aceite_oferta_faixa_playlist", "confirmacao"),
     ("resposta_pendencia_prioritaria", "pendencia"),
     ("feedback_pendente", "pendencia"),
     ("confirmacao_musical_pendente", "confirmacao"),
@@ -134,6 +136,7 @@ def processar_inicio_fluxo_resposta_ia(ctx: Dict[str, Any], texto: str) -> bool:
     if not usar_ia_principal_semantica:
         etapas.append(lambda: processar_opiniao_musica_atual(ctx, t))
     etapas.extend([
+        lambda: processar_aceite_oferta_playlist(ctx, t),
         lambda: processar_resposta_pendencia_prioritaria(ctx, t),
         # Uma contraproposta pode conter verbo operacional ("melhor diminuir
         # o brilho"). A sugestão pendente precisa interpretá-la antes que o

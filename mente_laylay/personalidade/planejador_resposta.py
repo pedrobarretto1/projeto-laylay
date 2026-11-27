@@ -175,6 +175,11 @@ def _ancora_resultado(resultado: ResultadoAcao, classe: str) -> str:
     if classe == "pendente":
         return f"Ainda não mexi em {objeto}; falta sua confirmação."
     if classe == "nao_executado":
+        if resultado.intent == "CORPO_MOVER":
+            from mente_laylay.autonomia.executor_corpo import fala_impedimento_movimento
+
+            if fala := fala_impedimento_movimento(resultado):
+                return fala
         return f"Não executei o pedido em {objeto}." if alvo else "Não executei o que você pediu."
     if classe == "incerto":
         if resultado.executou is True:
@@ -275,6 +280,14 @@ def fala_resultado_por_aspectos(resultado: ResultadoAcao) -> str:
     """Realiza alcances e medidas; observação não substitui conclusão global."""
     if not resultado.tem_observacoes_do_executor:
         return ""
+    if (resultado.intent == "PLAYLIST_PLAY" and resultado.origem == "executor"
+            and resultado.status == "playlist_enviada_sem_confirmacao" and resultado.executou is True
+            and resultado.alvo):
+        confirmados = {a.escopo for a in resultado.aspectos if a.confirmado is True}
+        if "início da reprodução do vídeo" in confirmados:
+            return f"A playlist {resultado.alvo} começou a tocar."
+        if "abertura do vídeo" in confirmados:
+            return f"A reprodução automática da playlist {resultado.alvo} ficou bloqueada."
     classe = classificar_resultado(resultado)
     # Cancelamento não desfaz as partes já observadas desta ocorrência.
     ancora = (f"O pedido em {resultado.alvo or 'o alvo solicitado'} foi cancelado."
@@ -307,6 +320,9 @@ def planejar_resposta_acao(
 ) -> PlanoResposta:
     classe = classificar_resultado(resultado)
     alvo = str(resultado.alvo or "isso").strip()
+    if classe == "nao_executado" and resultado.intent == "CORPO_MOVER":
+        return PlanoResposta(_ancora_resultado(resultado, classe), classe, "calma", 1,
+                             classificar_grau_compromisso(resultado.texto_usuario), False)
     fala = re.sub(r"\s+", " ", str(fala_base or "")).strip()
     if not fala or not _fala_compativel(fala, classe):
         if classe == "sucesso":
@@ -386,4 +402,5 @@ def fala_factual_resultados_compostos(
         else:
             ancora = _ancora_resultado(item, classe)
         partes.append(str(informacoes.get(item.id_solicitacao) or ancora).strip())
-    return "; ".join(parte.rstrip(" .;") for parte in partes if parte).strip(" ;") + "." if partes else ""
+    fala = "; ".join(parte.rstrip(" .;") for parte in partes if parte).strip(" ;")
+    return fala + "." if fala and not fala.endswith(("?", "!")) else fala

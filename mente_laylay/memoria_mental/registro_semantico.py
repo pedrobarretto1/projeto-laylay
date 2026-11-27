@@ -184,10 +184,16 @@ def projetar_registro_semantico_persistivel(registro: Mapping[str, Any] | None) 
     estado = dict(registro or {})
     estado.pop('primeira_fala_textual', None)
     if 'falas_observadas' in estado:
-        estado['falas_observadas'] = [
-            {**f, 'criterio_autoral': asdict(f['criterio_autoral'])}
-            if isinstance(f, Mapping) and type(f.get('criterio_autoral')) is CriterioAutoralPublicado
-            else f for f in estado['falas_observadas']]
+        falas = []
+        for original in estado['falas_observadas']:
+            if not isinstance(original, Mapping):
+                falas.append(original)
+                continue
+            fala = {k: v for k, v in original.items() if k != 'documento_publicado'}
+            if type(fala.get('criterio_autoral')) is CriterioAutoralPublicado:
+                fala['criterio_autoral'] = asdict(fala['criterio_autoral'])
+            falas.append(fala)
+        estado['falas_observadas'] = falas
     return estado
 
 
@@ -195,7 +201,7 @@ def registrar_fala_observada(
     registro: Dict[str, Any] | None, *, ocorrencia_id: str, turno_id: str,
     fala: str, resultados: tuple[ResultadoAcao, ...], canal: str,
     agora: float | None = None, ordem_emissao: int | None = None,
-    criterio_autoral: Any = None,
+    criterio_autoral: Any = None, documento_publicado: Any = None,
 ) -> Dict[str, Any]:
     """Liga conteúdo entregue aos receipts capturados na mesma publicação.
 
@@ -237,6 +243,7 @@ def registrar_fala_observada(
         if (anterior.get("fala") != fala or anterior.get("turno_id") != turno_id
             or anterior.get("resultados") != snapshots
             or anterior.get('criterio_autoral') != criterio_publicado
+            or anterior.get('documento_publicado') != documento_publicado
             or (ordem_emissao is not None and anterior.get("ordem_emissao") != ordem_emissao)):
             raise ValueError("Outra publicação não pode reescrever a ocorrência da fala.")
         anterior["canais"] = list(dict.fromkeys([*anterior.get("canais", []), canal]))
@@ -251,6 +258,8 @@ def registrar_fala_observada(
             "autoriza_execucao": False, "ordem_emissao": ordem})
         if criterio_publicado is not None:
             historico[-1]['criterio_autoral'] = criterio_publicado
+        if documento_publicado is not None:
+            historico[-1]['documento_publicado'] = documento_publicado
         atual = next((i for i in historico if i.get('id') == estado['ultima_fala_observada_id']), {})
         if ordem > (atual.get('ordem_emissao') or 0):
             estado['ultima_fala_observada_id'] = ocorrencia_id
@@ -292,6 +301,42 @@ def selecionar_fala_observada(
         return {}
     from mente_laylay.memoria_mental.estado_compartilhado_runtime import EstadoCompartilhadoRuntime
     return EstadoCompartilhadoRuntime._copiar_valor(dict(fala))
+
+
+def localizar_respostas_documentais(
+    registro: Mapping[str, Any] | None, tema: str = "", *, somente_ultima: bool = False,
+) -> tuple:
+    """Recupera entregas com evidência nativa, sem promover o histórico a fonte."""
+    from mente_laylay.cognicao.consulta_identificacao import RespostaDocumentalPublicada, fonte_documental_vigente
+    from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+
+    if not isinstance(registro, Mapping):
+        return ()
+    alvo = normalizar_texto_basico(tema)
+    ultima_id = registro.get('ultima_fala_observada_id')
+    candidatos = []
+    vistos = set()
+    for fala in reversed(registro.get('falas_observadas', ())):
+        if not isinstance(fala, Mapping):
+            continue
+        if somente_ultima and fala.get('id') != ultima_id:
+            continue
+        publicada = fala.get('documento_publicado')
+        if type(publicada) is not RespostaDocumentalPublicada:
+            continue
+        documento = publicada.documento
+        if (publicada.entrega_id != fala.get('id') or fala.get('fala') != documento.fala
+                or (alvo and normalizar_texto_basico(publicada.tema) != alvo)
+                or not fonte_documental_vigente(documento, turno_id=fala.get('turno_id'), texto=documento.texto_usuario)
+                or not selecionar_fala_observada(registro, ocorrencia_id=publicada.entrega_id)):
+            continue
+        if not alvo and publicada.entrega_id == ultima_id:
+            return (publicada,)
+        chave = (normalizar_texto_basico(publicada.tema), documento.fala, documento.url)
+        if chave not in vistos:
+            candidatos.append(publicada)
+            vistos.add(chave)
+    return tuple(candidatos)
 
 
 def selecionar_primeira_fala_textual(registro: Mapping[str, Any], *, agora: float | None = None) -> Dict[str, Any]:

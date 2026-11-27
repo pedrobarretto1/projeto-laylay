@@ -31,9 +31,12 @@ ACOES_MUSICA_PAINEL = frozenset({
     "audio_output_select",
 })
 ACOES_IOT_PAINEL = frozenset({"iot_status", "iot_power", "iot_brightness"})
+ACOES_ESP32_PAINEL = frozenset({"iot_esp32_config", "iot_esp32_painel"})
 ACOES_DIRETAS_PAINEL = frozenset({
     *ACOES_MUSICA_PAINEL,
     *ACOES_IOT_PAINEL,
+    *ACOES_ESP32_PAINEL,
+    "iot_forget",
     "routine_cancel",
 })
 
@@ -186,7 +189,33 @@ def executar_acao_painel_tipado(
     *,
     executar_intencao: Callable[[dict[str, Any], str], Any],
     selecionar_saida_audio: Callable[[str], Any] | None = None,
+    configurar_esp32: Callable[..., bool] | None = None,
+    abrir_painel_esp32: Callable[[], bool] | None = None,
+    esquecer_dispositivo: Callable[[str], bool] | None = None,
 ) -> Any:
+    if acao_id == "iot_forget":
+        dados = dict(payload or {})
+        nome = _identificador_fechado(dados.get("device"))
+        if not nome or dados.get("confirmed") is not True or not esquecer_dispositivo:
+            return False
+        if not esquecer_dispositivo(nome):
+            return False
+        return {"executou": True, "confirmado": True, "resumo": "Dispositivo esquecido pela Laylay"}
+    if acao_id in ACOES_ESP32_PAINEL:
+        dados = dict(payload or {})
+        if dados.get("device") != "rele_esp32":
+            return False
+        if acao_id == "iot_esp32_painel":
+            return bool(abrir_painel_esp32 and abrir_painel_esp32())
+        campos = ("display_name", "room", "transport", "ble_name")
+        if not configurar_esp32 or any(not isinstance(dados.get(campo), str) for campo in campos):
+            return False
+        if not configurar_esp32(dados["device"], *(dados[campo].strip() for campo in campos)):
+            return {
+                "executou": False, "confirmado": False,
+                "resumo": "Configuração recusada. Confira os campos e se o nome já está em uso.",
+            }
+        return {"executou": True, "confirmado": True, "resumo": "Configuração do ESP32 salva"}
     if str(acao_id or "").strip() == "audio_output_select":
         referencia = str(dict(payload or {}).get("device_ref") or "").strip().casefold()
         if not re.fullmatch(r"[a-f0-9]{16}", referencia):

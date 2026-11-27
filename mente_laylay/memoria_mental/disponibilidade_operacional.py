@@ -228,6 +228,7 @@ class DisponibilidadeOperacionalRuntime:
                 motivo=str(corpo_bruto.get("motivo") or "requer_firmware_motor_habilitado_e_sessao_vigente"),
                 evidencia_recente=corpo_disponivel,
             ), "companhia": dict(corpo_bruto.get("companhia") or {}), "experiencia": dict(corpo_bruto.get("experiencia") or {}),
+                "duracao_maxima_manual_ms": corpo_bruto.get("duracao_maxima_manual_ms"),
                 "rampa_suportada": corpo_bruto.get("rampa_suportada") is True,
                 "sensores": dict(corpo_bruto.get("sensores") or {}),
                 "imu": dict(corpo_bruto.get("imu") or {}),

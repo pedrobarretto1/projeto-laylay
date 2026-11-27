@@ -300,8 +300,10 @@ class ConfiguracaoAplicacaoRuntime:
 
     def companhia_bancada_ao_iniciar(self) -> bool:
         """Preferência humana persistida; não é uma concessão de transporte."""
-        _, valores = self._ler_env()
         chave = "LAYLAY_CORPO_COMPANHIA_BANCADA_AO_INICIAR"
+        if "LAYLAY_CORPO_SIMULADOR_PORTA" in os.environ:
+            return os.environ.get(chave) == "1"
+        _, valores = self._ler_env()
         return str(valores.get(chave, os.environ.get(chave, "0"))).strip().casefold() in {
             "1", "true", "sim", "yes", "on", "ligado",
         }
@@ -320,8 +322,10 @@ class ConfiguracaoAplicacaoRuntime:
         return {"saved": self.perfil_corporal() == perfil, "perfil_corporal": self.perfil_corporal(), "restart_required": True}
 
     def passeio_bancada_ao_iniciar(self) -> bool:
-        _, valores = self._ler_env()
         chave = "LAYLAY_CORPO_PASSEIO_BANCADA_AO_INICIAR"
+        if "LAYLAY_CORPO_SIMULADOR_PORTA" in os.environ:
+            return self.companhia_bancada_ao_iniciar() and os.environ.get(chave) == "1"
+        _, valores = self._ler_env()
         return self.companhia_bancada_ao_iniciar() and str(
             valores.get(chave, os.environ.get(chave, "0"))).strip().casefold() in {
                 "1", "true", "sim", "yes", "on", "ligado",

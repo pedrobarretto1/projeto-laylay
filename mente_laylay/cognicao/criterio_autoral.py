@@ -16,6 +16,37 @@ CRITERIOS_AUTORAIS = {
     'nao_declarado': '',
 }
 
+RECONHECIMENTO_ESCOPO_OPINIAO = 'Ah, entendi. '
+
+# Realizações subjetivas. Declaram interesse do momento, sem descrever o alvo
+# como fato, confirmar experiência passada ou provar a causa da preferência.
+MOTIVOS_NA_POSICAO_AUTORAL = {
+    'genero_musical': (
+        ('curiosidade', 'Tenho vontade de explorar esse estilo.'),
+        ('afinidade_estetica', 'É um estilo que me chama atenção.'),
+    ),
+    'categoria_geral': (('curiosidade', 'Gosto de descobrir o que chama a atenção de cada pessoa.'),),
+    'escolha': (('curiosidade', 'É uma opção que eu tenho vontade de explorar.'),),
+}
+
+
+def separar_motivo_na_posicao(fala: str) -> tuple[str, str | None]:
+    for motivos in MOTIVOS_NA_POSICAO_AUTORAL.values():
+        for codigo, motivo in motivos:
+            sufixo = ' ' + motivo
+            if fala.endswith(sufixo):
+                return fala.removesuffix(sufixo), codigo
+    return fala, None
+
+
+def nucleo_declaracao_autoral(fala: str) -> str:
+    """Separa a moldura social emitida pelo host da posição subjetiva."""
+    from mente_laylay.cognicao.normalizacao_linguagem import SAUDACOES_CONVERSACIONAIS
+
+    molduras = (*SAUDACOES_CONVERSACIONAIS.values(), RECONHECIMENTO_ESCOPO_OPINIAO)
+    posicao, _ = separar_motivo_na_posicao(fala)
+    return next((posicao.removeprefix(moldura) for moldura in molduras if posicao.startswith(moldura)), posicao)
+
 
 def validar_codigo_criterio(codigo: Any) -> str:
     if type(codigo) is not str or codigo not in CRITERIOS_AUTORAIS:
@@ -162,7 +193,8 @@ def materializar_criterio_publicado(fonte: CriterioAutoralEmissao | CriterioAuto
         portadoras = [f for f in registro.get('falas_observadas', ())
                       if isinstance(f, Mapping) and f.get('id') == fonte.portadora_id]
         if (len(portadoras) != 1 or criterio_publicado_da_fala(registro, portadoras[0], agora=instante) != fonte
-            or fonte.declaracao.casefold() not in fala.casefold()):
+            or not nucleo_declaracao_autoral(fonte.declaracao)
+            or nucleo_declaracao_autoral(fonte.declaracao).casefold() not in fala.casefold()):
             raise ValueError('criterio_historico_sem_origem_vigente')
         # TTL e identidade da autoria original não são renovados pela explicação.
         return replace(fonte, portadora_id=ocorrencia_id, turno_portador=turno_id,

@@ -765,12 +765,13 @@ class MemoriaPessoasRuntime:
                 "relacao": _RELACOES_NORMALIZADAS.get(relacao, relacao),
             }
         consulta = re.search(
-            r"\b(?:quem (?:e|eh)|o que (?:voce )?(?:sabe|lembra) (?:sobre|da|do)|"
+            r"\b(?P<pedido>quem (?:e|eh)|o que (?:voce )?(?:sabe|lembra) (?:sobre|da|do)|"
             r"me (?:fala|conte) (?:sobre|da|do)) (?:a |o )?(?P<nome>[a-z][a-z' -]{1,80})$",
             t,
         )
         if consulta and _nome_valido(consulta.group("nome")):
-            return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(consulta.group("nome"))}
+            return {"intent": "PEOPLE_QUERY", "nome": _nome_apresentacao(consulta.group("nome")),
+                    "consulta_aberta": consulta["pedido"].startswith(("quem ", "me "))}
         # ``me lembra de X`` e ``lembra de X`` são pedidos de agenda, não
         # consultas sobre uma pessoa chamada ``X``. O padrão antigo buscava
         # ``lembra de`` em qualquer posição e, por isso, capturava frases como
@@ -860,20 +861,30 @@ class MemoriaPessoasRuntime:
             resposta += f". Você me contou que {prefixo.lower() if resposta else prefixo} {'; '.join(detalhes)}"
         return resposta.lstrip(". ") + "."
 
-    def _consultar(self, texto: str, pedido: dict[str, Any]) -> bool:
-        dados = self._carregar()
-        dados["metricas"]["consultas"] += 1
-        pessoas: list[dict[str, Any]]
+    def _resolver_consulta(self, dados: dict[str, Any], pedido: dict[str, Any]) -> list[dict[str, Any]]:
         if pedido.get("ultimo"):
             ultima = self._ultima(dados)
-            pessoas = [ultima] if ultima else []
-        elif pedido.get("relacao"):
-            pessoas = [
+            return [ultima] if ultima else []
+        if pedido.get("relacao"):
+            return [
                 p for p in self._ativas(dados)
                 if any(r.get("tipo") == pedido["relacao"] and r.get("status") == "ativo" for r in p.get("relacoes") or [])
             ]
-        else:
-            pessoas = self._por_nome(dados, str(pedido.get("nome") or ""))
+        return self._por_nome(dados, str(pedido.get("nome") or ""))
+
+    def reserva_consulta(self, texto: str) -> bool:
+        """Consulta pessoal explícita ou registro local pertinente vence pesquisa pública."""
+        pedido = self._detectar_pedido(texto) or {}
+        return pedido.get("intent") == "PEOPLE_QUERY" and (
+            not pedido.get("consulta_aberta") or bool(self._resolver_consulta(self._carregar(), pedido))
+        )
+
+    def _consultar(self, texto: str, pedido: dict[str, Any]) -> bool:
+        dados = self._carregar()
+        pessoas = self._resolver_consulta(dados, pedido)
+        if not pessoas and pedido.get("consulta_aberta"):
+            return False
+        dados["metricas"]["consultas"] += 1
         if not pessoas:
             alvo = str(pedido.get("nome") or pedido.get("relacao") or "essa pessoa")
             fala, status = f"Você ainda não me contou nada confiável sobre {alvo}.", "nao_encontrado"

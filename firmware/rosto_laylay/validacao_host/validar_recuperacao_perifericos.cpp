@@ -10,10 +10,45 @@
 int main(int argc, char **argv) {
   Wire.extras[0x29]=true;
   Wire.registrosImu[0x75]=0x98;Wire.registrosImu[0x3F]=0x20;
+  if(argc>1 && !strcmp(argv[1],"vies_lateral")) {
+    Wire.extras[0x68]=true;
+    // +5,5 °/s no eixo X sem alteração da direção da gravidade.
+    Wire.registrosImu[0x43]=0x01;Wire.registrosImu[0x44]=0x68;
+    setup();
+    for(unsigned t=100;t<2500;t+=10) {tempoSimulado=t;loop();}
+    assert(!strcmp(estadoImu(),"PRONTA") && fabsf(imu.bias[0]-5.5f)<.05f);
+    auto girando=imu;
+    girando.calibrar();
+    for(unsigned t=2500;t<4900;t+=10)
+      girando.incorporar(t,0,0,1,0,0,5.5f,false);
+    assert(!girando.calibrada && girando.bloqueia(4890));
+    girando.calibrar();
+    for(unsigned t=4900;t<9000;t+=10) {
+      float rad=(t-4900)*.000096f;
+      girando.incorporar(t,0,sinf(rad),cosf(rad),5.5f,0,0,false);
+    }
+    assert(!girando.calibrada && girando.bloqueia(8990));
+    puts("VIES_LATERAL_GREEN: repouso confirmado; giro real continua bloqueando");return 0;
+  }
+  if(argc>1 && !strcmp(argv[1],"imu_zerada")) {
+    Wire.extras[0x68]=true;
+    Wire.registrosImu[0x3F]=0;
+    setup();
+    tempoSimulado=1000;
+    atualizarImuCorporal(millis());
+    assert(!strcmp(estadoImu(),"ERRO_I2C") && !imu.amostra && manuseioBloqueiaMotor(millis()));
+    Wire.registrosImu[0x3F]=0x20;
+    for(unsigned t=1010;t<3200;t+=10) {tempoSimulado=t;loop();}
+    assert(!strcmp(estadoImu(),"PRONTA") && !motorEmUso());
+    puts("IMU_ZERADA_GREEN: pacote nulo rejeitado, amostras reais retornam");return 0;
+  }
   if(argc>1 && !strcmp(argv[1],"distancia")) {
     Wire.extras[0x68]=true;
     distancias[0].dispositivo.falharInicio=true;
     setup();assert(!distancias[0].presente && distancias[1].presente);
+    Serial.saida.clear();
+    processarLinha("DPROBE 1 1");
+    assert(Serial.saida.find("DPROBE 1 1 FALHA_INIT PRONTA")!=std::string::npos);
     for(unsigned t=100;t<12000;t+=10) {tempoSimulado=t;loop();}
     // Tentativas espaçadas; a falha persistente continua visível e bloqueada.
     auto ultima=ultimaRecuperacaoPerifericos;
@@ -23,6 +58,19 @@ int main(int argc, char **argv) {
     assert(distancias[0].presente && distancias[1].presente && !motorEmUso());
     assert(!conectado && !vigiaProtecao);
     puts("DISTANCIA_GREEN: nova enumeracao sem colisao, espera limitada e tracao cortada");return 0;
+  }
+  if(argc>1 && !strcmp(argv[1],"tracao")) {
+    Wire.extras[0x68]=true;setup();
+    tempoSimulado=3000;
+    processarLinha("HELLO 1 01234567");
+    processarLinha("FACE 1 01234567 1 0 1 0 5000");
+    imu.erro=true;
+    motorPendente=true;
+    falhaPerifericosEmCurso=true;
+    inicioFalhaPerifericos=2400;
+    atualizarRecuperacaoPerifericos(millis());
+    assert(!conectado && !motorEmUso() && perdasSessaoCorpo==1);
+    puts("TRACAO_GREEN: sessao interrompida com motor em curso");return 0;
   }
   if(argc>1 && !strcmp(argv[1],"oled")) {
     Wire.presente=false;setup();assert(!telaInicializada);
@@ -53,17 +101,23 @@ int main(int argc, char **argv) {
   for(unsigned t=100;t<9000;t+=10) {tempoSimulado=t;loop();}
   assert(imu.presente && imu.calibrada && !imu.erro);
   assert(!motorEmUso() && !conectado && !vigiaProtecao);
-  // Lacuna real: nova calibração, sessão anterior cancelada e nenhum replay.
+  // Perder só o sensor impede tração e recalibra, com OLED e USB saudáveis.
   processarLinha("HELLO 1 01234567");
   processarLinha("FACE 1 01234567 1 0 1 0 5000");
   Wire.extras[0x68]=false;
   for(unsigned t=9000;t<9800;t+=10) {tempoSimulado=t;loop();}
-  assert(!conectado && !motorEmUso() && !vigiaProtecao);
+  assert(conectado && !strcmp(sessao,"01234567") && !motorEmUso() && !vigiaProtecao);
+  assert(manuseioBloqueiaMotor(millis()));
   auto perdas=perdasSessaoCorpo;
   Wire.extras[0x68]=true;
-  for(unsigned t=9800;t<18000;t+=10) {tempoSimulado=t;loop();}
+  for(unsigned t=9800;t<18000;t+=10) {
+    tempoSimulado=t;
+    if(t==13000 || t==17000) processarLinha(t==13000 ?
+      "FACE 1 01234567 2 0 1 0 5000" : "FACE 1 01234567 3 0 1 0 5000");
+    loop();
+  }
   assert(imu.presente && imu.calibrada && !imu.erro);
-  assert(!conectado && !motorEmUso() && perdasSessaoCorpo==perdas);
+  assert(conectado && !motorEmUso() && perdasSessaoCorpo==perdas);
   // Sem retorno óptico é leitura válida do protocolo, não falha elétrica.
   distancias[0].dispositivo.statusMedida=4;
   auto perdasAntes=perdasSessaoCorpo;

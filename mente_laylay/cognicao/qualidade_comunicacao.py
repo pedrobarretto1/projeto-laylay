@@ -31,6 +31,7 @@ from mente_laylay.cognicao.validacao_contrato_fala import (
 from mente_laylay.cognicao.reacao_social_curta import (
     classificar_provocacao_curta,
     resposta_contingencia_provocacao,
+    resposta_contingencia_risada,
 )
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
 from mente_laylay.cognicao.normalizacao_linguagem import termina_em_interrogativo
@@ -255,13 +256,13 @@ _MARCADORES_EXPLICACAO_LITERAL = re.compile(
     re.IGNORECASE,
 )
 _ESTADO_PESSOAL = re.compile(
-    r"\b(?:eu\s+)?(?:estou|to|tô)\s+"
-    r"(?:tudo\s+|um\s+pouco\s+|meio\s+|muito\s+)?"
+    r"(?<!\bnão )(?<!\bnao )\b(?:eu\s+)?(?:estou|to|tô|fiquei|me senti)\s+"
+    r"(?:(?:tudo|um\s+pouco|meio|muito|bem|bastante)\s+)?"
     r"(?P<estado>cansad[oa]|triste|mal|preocupad[oa]|ansios[oa]|feliz|animad[oa])\b",
     re.IGNORECASE,
 )
 _RECONHECIMENTO_ESTADO = re.compile(
-    r"\b(?:cans|trist|preocup|ansios|feliz|animad|imagino|poxa|pesou|"
+    r"\b(?:(?:cans|trist|preocup|ansios|feliz|animad)\w*|imagino|poxa|pesou|"
     r"pesado|entendo|pega\s+leve|vai\s+com\s+calma|descans|bom\s+saber|"
     r"que\s+bom|eu\s+ouvi)\b",
     re.IGNORECASE,
@@ -323,6 +324,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "pergunta_direta_nao_respondida",
     "opiniao_evitada_sem_necessidade",
     "opiniao_contradisse_posicao_recente",
+    "opiniao_conflitante_no_mesmo_escopo",
     "deriva_de_dominio",
     "preferencia_pessoal_nao_reconhecida",
     "fato_pessoal_inferiu_preferencia",
@@ -333,6 +335,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "alivio_autoria_usuario_invertida",
     "autopercepcao_emocional_sem_causa",
     "alivio_resposta_desproporcional",
+    "desabafo_resposta_desproporcional",
     "conquista_minimizada_sem_base",
     "relacao_pessoal_sexualizada",
     "relacao_pessoal_abriu_pergunta",
@@ -344,6 +347,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "saudacao_nao_respondida_no_inicio",
     "saudacao_inventou_vocativo",
     "ato_opiniao_nao_respondido",
+    "contraste_negado_e_afirmado",
     "esclarecimento_sem_explicacao",
     "esclarecimento_sem_ancora_anterior",
     "esclarecimento_comecou_por_outra_metafora",
@@ -356,6 +360,8 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     "agradecimento_nao_reconhecido",
     "agradecimento_retomou_assunto_antigo",
     "agradecimento_abriu_nova_pergunta",
+    "despedida_social_nao_retribuida",
+    "escolha_cotidiana_fora_do_ritmo",
     "adiamento_nao_reconhecido",
     "adiamento_nao_foi_curto",
     "conselho_especifico_nao_solicitado",
@@ -393,6 +399,7 @@ _PROBLEMAS_BLOQUEANTES = frozenset({
     DESCUMPRIDA,
     DESTINATARIO_DIVERGENTE,
     "proximo_acontecimento_fora_do_recorte",
+    "oferta_ficcional_nao_cumprida",
     "falha_operacional_sem_evidencia",
     "resultado_operacional_sem_evidencia",
 })
@@ -546,6 +553,8 @@ def avaliar_qualidade_comunicacao(
     if (criacao is not None and criacao.recorte_proximo_acontecimento
             and not fala_ficcional_conferida(resposta, criacao=criacao)):
         problemas.append('proximo_acontecimento_fora_do_recorte')
+    if criacao is not None and criacao.aceite_oferta and not fala_ficcional_conferida(resposta, criacao=criacao):
+        problemas.append('oferta_ficcional_nao_cumprida')
     from mente_laylay.cognicao.afirmacoes_interlocutor import conferir_afirmacoes_interlocutor
     pessoal = conferir_afirmacoes_interlocutor(fala, plano=plano_atual)
     if pessoal is not None:
@@ -624,17 +633,19 @@ def avaliar_qualidade_comunicacao(
             problemas.append("citacao_incompleta_na_autoria")
         elif contem_ciclo_de_enunciados(resposta):
             problemas.append("repeticao_interna_de_enunciado")
-    copia_usuario = bool(type(fonte_canal) is PerspectivaEnunciador
+    proteger_autoria_usuario = bool(type(fonte_canal) is PerspectivaEnunciador
         and fonte_canal.vigente(texto_usuario, plano_atual.get('id'))
         and str(contrato_atual.get('turno_id')) == fonte_canal.turno_id
         and contrato_atual.get('origem') == 'mente_unica'
         and not tipo_transformacao_conversacional(texto_usuario)
-        and not reproducao_solicitada
-        and contem_copia_extensa(fala, fonte_canal.texto_usuario))
-    if copia_usuario or (recentes_vigentes
+        and not reproducao_solicitada)
+    copia_usuario = proteger_autoria_usuario and contem_copia_extensa(fala, fonte_canal.texto_usuario)
+    proteger_falas_anteriores = (recentes_vigentes
             and not plano_atual.get('requer_execucao') and not plano_atual.get('comandos')
-            and not pedido_retomada_fala_assistente(texto_usuario)
-            and respostas_recentes.contem_reuso_predominante(fala)):
+            and not pedido_retomada_fala_assistente(texto_usuario))
+    colagem = (proteger_autoria_usuario and proteger_falas_anteriores
+               and bool(respostas_recentes.fontes_da_colagem_com_interlocutor(fala)))
+    if copia_usuario or colagem or (proteger_falas_anteriores and respostas_recentes.contem_reuso_predominante(fala)):
         aderencia = validar_aderencia_contrato_fala(
             texto_usuario, fala, contrato_fala=plano_atual.get('contrato_fala'),
             ultima_resposta=resposta_anterior, turno_id=plano_atual.get('id'),
@@ -643,7 +654,9 @@ def avaliar_qualidade_comunicacao(
             'responder_ao_pedido_atual': True, 'autoriza_execucao': False}
         if type(respostas_recentes) is RespostasAnterioresTurno:
             reparo['respostas_anteriores_turno'] = respostas_recentes
-        if copia_usuario:
+        if colagem:
+            reparo['colagem_com_interlocutor'] = True
+        if copia_usuario or colagem:
             reparo['preservar_autoria_do_interlocutor'] = (
                 'a mensagem atual pertence ao usuário; reagir ou acrescentar uma contribuição própria, '
                 'sem devolver os blocos extensos como fala nova da Laylay')
@@ -725,11 +738,12 @@ def avaliar_qualidade_comunicacao(
             and _minimiza_conquista_sem_base(resposta)
         ):
             problemas.append("conquista_minimizada_sem_base")
-        if contrato_turno.get("funcao") == "alivio" and not plano_atual.get("requer_execucao"):
+        acolhimento_breve = contrato_fala_vigente and contrato_turno.get("acolhimento_breve") is True
+        if (contrato_turno.get("funcao") == "alivio" or acolhimento_breve) and not plano_atual.get("requer_execucao"):
             limite_frases = max(1, min(3, int(contrato_turno.get("max_frases") or 3)))
             frases = [parte for parte in re.split(r"(?<=[.!?])\s+", resposta) if parte.strip()]
             if len(frases) > limite_frases or len(palavras) > 48:
-                problemas.append("alivio_resposta_desproporcional")
+                problemas.append("desabafo_resposta_desproporcional" if acolhimento_breve else "alivio_resposta_desproporcional")
         if (
             contrato_turno.get("funcao") == "alivio"
             and str(plano_atual.get("texto_usuario") or "").strip() == usuario
@@ -1008,7 +1022,42 @@ def montar_pacote_reparo_comunicacao(
     """Negocia somente o ato solicitado, com realizações conferíveis pelo owner."""
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
     from mente_laylay.integracao.contrato_saida_estruturada import ContratoSaidaEstruturada
+    from mente_laylay.cognicao.criacao_ficcional import criacao_ficcional_vigente, vincular_moldura_ficcional
+
+    criacao = criacao_ficcional_vigente(plano)
+    if criacao is not None and criacao.aceite_oferta is not None:
+        from mente_laylay.cognicao.suporte_autoria import exigir_suporte_no_pacote_autoral
+
+        pacote = PacotePrompt((
+            {"role": "system", "content": "Você é Laylay. Refaça só a história aceita, em até três frases."},
+            {"role": "user", "content": texto_usuario},
+        ), contexto_fechado=True)
+        return vincular_moldura_ficcional(exigir_suporte_no_pacote_autoral(pacote), plano=plano)
     reparo = dict(avaliacao.get("contrato_reparo") or {})
+    from mente_laylay.cognicao.coerencia_preferencia import realizacoes_escolha_cotidiana
+    opcoes_escolha = realizacoes_escolha_cotidiana(reparo.get("escolha_cotidiana") or "")
+    if opcoes_escolha:
+        def validar_escolha(dados: dict[str, Any]) -> None:
+            if (set(dados) != {"fala", "comandos"} or dados.get("fala") not in opcoes_escolha
+                or dados.get("comandos") != []):
+                raise ValueError("realizacao_fora_da_escolha_cotidiana")
+
+        codec = ContratoSaidaEstruturada("escolha_cotidiana_v1", "[ESCOLHA_COTIDIANA]", {
+            "type": "object", "additionalProperties": False, "required": ["fala", "comandos"],
+            "properties": {"fala": {"type": "string", "enum": list(opcoes_escolha)},
+                           "comandos": {"type": "array", "maxItems": 0, "items": {"type": "object"}}},
+        }, validar_escolha)
+        return PacotePrompt((
+            {"role": "system", "content": (
+                "Você é a Laylay. Escolha a alternativa que combina com você nessa situação. "
+                "As opções estão em primeira pessoa e no hipotético. Use apenas uma das falas "
+                "do schema. Sua escolha é conversa e não autoriza nenhuma ação."
+            )},
+            {"role": "user", "content": json.dumps({
+                "mensagem_atual": texto_usuario,
+                "escolha_cotidiana": reparo["escolha_cotidiana"],
+            }, ensure_ascii=False)},
+        ), contexto_fechado=True, reserva_saida_tokens=192, contrato_saida=codec)
     lista = montar_mensagens_reparo_comunicacao(texto_usuario, fala_rejeitada, avaliacao, mensagens=mensagens)
     from mente_laylay.cognicao.criacao_ficcional import montar_pacote_realidade_narrativa
     pacote_realidade = montar_pacote_realidade_narrativa(texto_usuario,
@@ -1171,8 +1220,8 @@ def montar_mensagens_reparo_comunicacao(
         "Nomeie os assuntos em vez de usar referentes soltos como 'o outro'. Se a mensagem "
         "pedir esclarecimento, diga primeiro em linguagem direta o que a fala anterior quis "
         "dizer; não tente explicar uma metáfora com outra. Não narre o ato de responder, não "
-        "fale do terminal sem ter sido perguntada. Sem quantidade solicitada, faça no máximo uma pergunta espontânea. Evite poesia "
-        "decorativa fora de pedidos criativos. Ao receber uma relação pessoal, apenas "
+        "fale do terminal sem ter sido perguntada. Sem quantidade solicitada, faça no máximo uma pergunta espontânea. "
+        "Ao receber uma relação pessoal, apenas "
         "reconheça o nome e a relação: não sexualize, não faça insinuação e não abra uma "
         "pergunta nova. A resposta deve continuar clara "
         "mesmo sem tom de voz. Se o payload trouxer contrato_de_reparo, cumpra o núcleo "
@@ -1212,7 +1261,9 @@ def montar_mensagens_reparo_comunicacao(
         if (type(respostas_recentes) is RespostasAnterioresTurno
                 and respostas_recentes.texto_usuario == texto_usuario
                 and 'resposta_repetida_literal' in (avaliacao.get('problemas') or ())):
-            payload['troca_recente'] = respostas_recentes.contexto_sem_reuso(historico, fala_rejeitada)
+            payload['troca_recente'] = respostas_recentes.contexto_sem_reuso(
+                historico, fala_rejeitada, colagem_com_interlocutor=reparo_parcial.get('colagem_com_interlocutor') is True,
+            )
             instrucao += (
                 ' A resposta antiga foi reutilizada integral ou predominantemente. Responda ao pedido atual, '
                 'preservando a cena da troca recente quando necessária. As falas anteriores '
@@ -1324,6 +1375,9 @@ def montar_mensagens_reparo_comunicacao(
     if 'distincao_interpretacao_afirmacao_ausente' in bloqueios:
         instrucao += (' Preserve as duas experiências do cenário. Em seguida, dê um exemplo de afirmação '
                       'sobre o mesmo objeto e diga como ela pode ser conferida.')
+    if 'contraste_negado_e_afirmado' in bloqueios:
+        instrucao += (' Explique em que os dois conceitos diferem e sob qual aspecto. '
+                      'Preserve a resposta às outras partes da pergunta.')
     if 'orientacao_hipotetica_incompleta' in bloqueios:
         from mente_laylay.cognicao.geracao_concreta import pedido_orientacao_em_cenario
         formato = pedido_orientacao_em_cenario(texto_usuario)
@@ -1353,6 +1407,8 @@ def montar_mensagens_reparo_comunicacao(
         if bloqueios == {'repeticao_interna_de_enunciado'}:
             payload.pop("rascunho_rejeitado", None)
         instrucao += " Apresente a escolha ou conclusão uma vez e acrescente só o que trouxer conteúdo novo."
+    from mente_laylay.personalidade.perfil_amizade import orientar_registro_amizade
+    instrucao += " " + orientar_registro_amizade(permite_metafora=reparo.get("permite_metafora") is True)
     payload['contrato_de_reparo'] = projetar_contrato_reparo_conversacional(payload['contrato_de_reparo'])
     return [
         {"role": "system", "content": instrucao},
@@ -1565,14 +1621,15 @@ def contingencia_comunicacao(
         preferencia = _preferencia_contingencia(opcoes)
         if preferencia:
             return preferencia
-    estado_pessoal = _ESTADO_PESSOAL.search(texto)
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+    estado_pessoal = _ESTADO_PESSOAL.search(texto_fora_de_citacoes(texto))
     if estado_pessoal:
         estado = str(estado_pessoal.group("estado") or "").casefold()
         if estado.startswith("cans"):
             return escolher_variacao([
-                "Poxa, então pega mais leve hoje. Você não precisa funcionar no máximo o tempo todo.",
-                "Então pega mais leve hoje, viu? Nem todo dia precisa ser vivido no modo desempenho máximo.",
-                "Cansaço cobra caro quando a gente finge que ele não existe. Pega mais leve hoje.",
+                "Poxa, bateu o cansaço. Se quiser conversar um pouco, tô por aqui.",
+                "Poxa, o cansaço pesou. Pode falar no seu ritmo.",
+                "Esse cansaço pesa. Se quiser um papo tranquilo, tô por aqui.",
             ], evitar=falas_evitar)
         if estado.startswith("trist") or estado == "mal":
             return escolher_variacao([
@@ -1641,7 +1698,7 @@ def contingencia_comunicacao(
             "Agora ficou claro, quem gosta de {valor} é sua {relacao}.",
         ], evitar=falas_evitar)
         return molde.format(relacao=relacao, valor=valor)
-    if re.search(r"\b(?:eu\s+)?(?:estou|t[oô])\s+bem\b", texto, re.I):
+    if re.search(r"(?<!\bnão )(?<!\bnao )\b(?:eu\s+)?(?:estou|t[oô])\s+bem(?=\s*(?:[,.!?;]|$))", texto, re.I):
         return escolher_variacao([
             "Que bom. Fico feliz de saber.",
             "Bom saber. Pelo menos uma coisa decidiu colaborar hoje kkk.",
@@ -1669,12 +1726,9 @@ def contingencia_comunicacao(
             "De nada. Eu reclamo, mas entrego kkk.",
             "Sempre às ordens — com moderação, porque eu também tenho pose.",
         ], evitar=falas_evitar)
-    if re.search(r"(?:\bkk+k*\b|\brsrs+\b|😂|🤣)", texto, re.I):
-        return escolher_variacao([
-            "Kkkkk, tá bom, essa me pegou.",
-            "Tá, essa foi boa kkk. Não vou nem tentar manter a pose.",
-            "Kkkkk, ponto seu. Aproveita porque eu não distribuo vitória assim sempre.",
-        ], evitar=falas_evitar)
+    risada = resposta_contingencia_risada(texto, evitar=falas_evitar)
+    if risada:
+        return risada
     if re.search(r"\b(?:faz sentido|concordo|justo)\b", texto, re.I):
         return escolher_variacao([
             "Justo. Dessa vez a gente tá na mesma página.",

@@ -101,6 +101,9 @@ bool reflexoProtecaoAtivo();
 void cancelarProtecaoCorporal();
 bool medoProtecaoCorporal(uint32_t agora);
 int expressaoProtecaoCorporal(uint32_t agora);
+enum class ReacaoFrontal { Neutra, Curiosa, Surpresa, Impaciente, Aliviada };
+ReacaoFrontal expressaoFrontal();
+float olharEsperaFrontal(uint32_t agora);
 void atualizarSensoresDistancia(uint32_t agora);
 void invalidarSessao();
 void invalidarSessaoPor(const char *motivo);
@@ -571,7 +574,10 @@ void renderizar(uint32_t agora) {
   float tristezaDetalhe = 0, brilhoDetalhe = 0, verticalDetalhe = 0;
   bool medoLocal = medoProtecaoCorporal(agora) && !dormindo;
   int reacaoLocal = dormindo ? 0 : expressaoProtecaoCorporal(agora);
-  bool pavorLocal = reacaoLocal==2, irritacaoLocal = reacaoLocal==3;
+  bool pavorLocal = reacaoLocal==2, alertaLocal = reacaoLocal==4;
+  const int reacaoManuseio = dormindo ? 0 : expressaoManuseio();
+  const auto frontal = !dormindo && !reacaoManuseio && !medoLocal && !alertaLocal ? expressaoFrontal() : ReacaoFrontal::Neutra;
+  const bool irritacaoLocal = frontal == ReacaoFrontal::Impaciente;
   if (faseExpressao == 1 || faseExpressao == 3) {
     switch (estiloExpressao) {
       case 1: alegriaDetalhe = 1; ruborDetalhe = .8f; brilhoDetalhe = 1;
@@ -598,6 +604,10 @@ void renderizar(uint32_t agora) {
     proximoOlhar = agora + random(1800, 4200);
   }
   float alvoOlhar = dormindo ? 0 : emocao == 6 ? -2.5f : olharAlvo;
+  if (!expressaoAtiva && irritacaoLocal) {
+    const float olharBusca = olharEsperaFrontal(agora);
+    if (olharBusca != 0) alvoOlhar = olharBusca;
+  }
   if (expressaoAtiva && !dormindo) alvoOlhar = faseExpressao == 3 ? 0
       : ladoExpressao * (estiloExpressao == 6 ? 3.5f : 5.5f);
   if (!dormindo) alvoOlhar = misturar(alvoOlhar,olharManuseio(),pesoOlharManuseio());
@@ -619,17 +629,25 @@ void renderizar(uint32_t agora) {
   // permanece até fechar: evita abrir olhos neutros no meio do adormecer.
   if (!dormindo) {
   float alturaAlvo = emocao == 5 ? 30 : emocao == 2 ? 19 : emocao == 6 ? 18 : emocao == 7 ? 19 : 26;
-  int reacaoManuseio=expressaoManuseio();
   if (reacaoManuseio) {
     alturaAlvo=reacaoManuseio==3?20:reacaoManuseio==4?23:35;
     larguraDetalhe=reacaoManuseio==3?1:reacaoManuseio==4?0:-7;
     if(reacaoManuseio==3) {inclinacaoDetalhe=4;assimetriaDetalhe=-4;ruborDetalhe=.45f;}
     if(reacaoManuseio==4) {inclinacaoDetalhe=2;assimetriaDetalhe=-2;}
+    if(reacaoManuseio==5) {alturaAlvo=28;larguraDetalhe=-2;assimetriaDetalhe=3;}
+    if(reacaoManuseio==6) {alturaAlvo=26;larguraDetalhe=0;assimetriaDetalhe=8;inclinacaoDetalhe=7;}
+    if(reacaoManuseio==7) {alturaAlvo=33;larguraDetalhe=-8;assimetriaDetalhe=-2;}
+    if(reacaoManuseio==8) {alturaAlvo=37;larguraDetalhe=-10;tristezaDetalhe=.9f;assimetriaDetalhe=-5;}
+    if(reacaoManuseio==9) {alturaAlvo=17;larguraDetalhe=3;inclinacaoDetalhe=9;assimetriaDetalhe=-5;}
     detalhe=1;brilhoDetalhe=.8f;
   }
   if (medoLocal) { alturaAlvo = 32; larguraDetalhe = -6; detalhe = 1; tristezaDetalhe = .7f; }
   if (pavorLocal) { alturaAlvo=34; larguraDetalhe=-8; detalhe=1; tristezaDetalhe=1; }
-  if (irritacaoLocal) { alturaAlvo=22; larguraDetalhe=1; detalhe=1; }
+  if (frontal == ReacaoFrontal::Surpresa) { alturaAlvo=37; larguraDetalhe=-7; brilhoDetalhe=1; detalhe=1; }
+  if (frontal == ReacaoFrontal::Curiosa) { alturaAlvo=29; larguraDetalhe=-2; assimetriaDetalhe=4; brilhoDetalhe=.55f; detalhe=1; }
+  if (irritacaoLocal) { alturaAlvo=19; larguraDetalhe=2; detalhe=1; }
+  if (frontal == ReacaoFrontal::Aliviada) { alturaAlvo=24; alegriaDetalhe=.8f; detalhe=1; }
+  if (alertaLocal && !reacaoManuseio) { alturaAlvo=29; larguraDetalhe=-2; assimetriaDetalhe=2; brilhoDetalhe=.5f; detalhe=1; }
   alturaAlvo += detalhe * (faseExpressao == 0 ? -3 : faseExpressao == 3 ? 2 : faseExpressao == 2 ? -1.5f : 0);
   alturaAlvo += alturaDetalhe * detalhe;
   alturaOlho = aproximar(alturaOlho, alturaAlvo, dt, 0.24f);
@@ -640,7 +658,7 @@ void renderizar(uint32_t agora) {
   float palpebraAlvo = medoLocal ? -4 : irritacaoLocal ? 8 : misturar(inclinacaoBase,
       inclinacaoDetalhe, detalhe * ((faseExpressao == 1 || faseExpressao == 3)
       && estiloExpressao >= 2 && estiloExpressao <= 7));
-  if(reacaoManuseio==3 || reacaoManuseio==4) palpebraAlvo=inclinacaoDetalhe;
+  if(reacaoManuseio==3 || reacaoManuseio==4 || reacaoManuseio==6 || reacaoManuseio==9) palpebraAlvo=inclinacaoDetalhe;
   inclinacaoPalpebra = aproximar(inclinacaoPalpebra,palpebraAlvo,dt,0.24f);
   float alegriaAlvo = medoLocal || irritacaoLocal ? 0 : max(emocao == 1 ? 1.0f : 0.0f, alegriaDetalhe * detalhe);
   olhosAlegres = aproximar(olhosAlegres, alegriaAlvo, dt, 0.24f);
@@ -747,11 +765,15 @@ bool sessaoValida(const char *s) {
 #include "imu_corporal.h"
 #include "giro_medido.h"
 #include "recuperacao_perifericos.h"
+#include "transporte_ble.h"
 
 void processarLinha(const char *entrada, OrigemControle origem) {
   EscopoOrigem escopo(origem);
   if (origem == OrigemControle::TCP && (!tcpAutenticado || !tcpClientePresente)) return;
   if (processarConfiguracaoWifi(entrada, origem)) return;
+  if (origem == OrigemControle::USB && !strcmp(entrada, "BLE_STATUS 1")) {
+    responderStatusBleCorporal(); return;
+  }
   bool hello = !strncmp(entrada, "HELLO ", 6);
   bool demo = !strcmp(entrada, "DEMO") || !strcmp(entrada, "DEMO_HACK")
            || !strcmp(entrada, "DEMO_GLITCH") || !strcmp(entrada, "DEMO_FALA");
@@ -761,7 +783,9 @@ void processarLinha(const char *entrada, OrigemControle origem) {
   }
   if (!strncmp(entrada, "STOP", 4)) { processarParada(entrada); return; }
   if (!strncmp(entrada, "HEALTH ", 7)) { processarSaudeCorporal(entrada); return; }
-  if (!strncmp(entrada, "DIST ", 5)) { processarConsultaDistancia(entrada); return; }
+  if (!strncmp(entrada, "DIST ", 5) || !strncmp(entrada, "DPROBE ", 7)) {
+    processarConsultaDistancia(entrada); return;
+  }
   if (!strncmp(entrada, "IMU ", 4)) { processarConsultaImu(entrada); return; }
   if (!strncmp(entrada, "IPROBE ", 7)) { processarSondaImu(entrada); return; }
   if (!strncmp(entrada, "TURN ", 5)) { processarGiroMedido(entrada); return; }
@@ -948,6 +972,7 @@ void setup() {
   digitalWrite(PINO_SOM, LOW); pinMode(PINO_SOM, OUTPUT);
 #endif
   iniciarWifi();
+  iniciarBleCorporal();
   Wire.begin(PINO_SDA, PINO_SCL);
   Wire.setClock(400000);
   Wire.setTimeOut(5); // Uma falha do barramento não segura a tração por 30ms.
@@ -978,6 +1003,7 @@ void loop() {
   // Corte antes de ler uma avalanche de comandos ou iniciar I2C/render.
   atualizarMotor(millis());
   atualizarWifi();
+  atualizarBleCorporal();
   atualizarMotor(millis());
   // Limite por iteração: entrada serial não paralisa a animação.
   for (int bytes = 0; bytes < 256 && Serial.available(); ++bytes) {

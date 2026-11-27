@@ -111,6 +111,10 @@ def _dominio_explicito_referencia(texto: str) -> str:
         r"vscode|firefox|brave|calculadora)\b", t,
     ):
         return "app"
+    from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
+
+    if detectar_intencao_corpo(t):
+        return "corpo_motor"
     return ""
 
 
@@ -255,6 +259,10 @@ def _dominio_intent_contextual(intent: str) -> str:
     for dominio, intents in _DOMINIOS_INTENT_CONTEXTO.items():
         if nome in intents:
             return dominio
+    from mente_laylay.especialistas.capacidades import consultar_capacidade
+
+    if consultar_capacidade(nome).get("dominio") == "corpo_motor":
+        return "corpo_motor"
     return ""
 
 

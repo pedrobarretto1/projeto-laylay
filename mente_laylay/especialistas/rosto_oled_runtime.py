@@ -1,4 +1,4 @@
-"""Saída expressiva USB/TCP: um owner de sessão, sem interpretar ou autorizar ações."""
+"""Saída expressiva USB/TCP/BLE: um owner de sessão corporal."""
 from __future__ import annotations
 
 import os
@@ -15,6 +15,7 @@ from mente_laylay.especialistas.percepcao_distancia import (
 )
 from mente_laylay.especialistas.saude_corporal import interpretar_saude, validar_identidade_corpo_usb
 from mente_laylay.especialistas.percepcao_inercial import interpretar_imu
+from mente_laylay.especialistas.corpo_ble_transporte import abrir_corpo_ble
 from mente_laylay.memoria_mental.atividade_operacional_runtime import (
     projetar_atividade_operacional, projetar_falha_operacional, projetar_sucesso_operacional, projetar_envio_operacional,
 )
@@ -69,6 +70,8 @@ class RostoOledRuntime:
         autodetectar: bool = False,
         listar_portas: Callable[[], tuple[str, ...]] = _listar_portas_rosto,
         abrir_serial: Callable[[str], Any] = _abrir_serial,
+        config_ble_path: Path | str | None = None,
+        abrir_ble: Callable[[str], Any] = abrir_corpo_ble,
         config_wifi_path: Path | str | None = None,
         wifi_alternativo_path: Path | str | None = None,
         rede_local: Any = None,
@@ -105,6 +108,8 @@ class RostoOledRuntime:
         self.listar_portas = listar_portas
         self._porta_ativa = ""
         self.abrir_serial = abrir_serial
+        self._config_ble_path = Path(config_ble_path) if config_ble_path is not None else None
+        self.abrir_ble = abrir_ble
         self.abrir_tcp = abrir_tcp
         self.rede_local = rede_local
         self.identidade_usb_getter = identidade_usb_getter or (lambda: {})
@@ -194,13 +199,14 @@ class RostoOledRuntime:
         with self._lock:
             recente = self.monotonic() - self._ultimo_ack < 2.5
             hack_recente = self.monotonic() - self._ultimo_ack_hack < 1.2
+            virtual = self.porta == "CORPO_VIRTUAL"
             return {
-                "configurado": bool(self.porta or self.autodetectar or self._config_wifi_path is not None),
+                "configurado": bool(self.porta or self.autodetectar or self._config_wifi_path is not None or self._config_ble_path),
                 "conectado": self._serial is not None,
                 "sessao": self._sessao,
-                "transporte": "tcp" if self._config_wifi_path is not None else "serial",
-                "canal_autenticado": self._serial is not None and self._config_wifi_path is not None,
-                "modo_conexao": "rede" if self._config_wifi_path is not None else "automatico" if self.autodetectar else "manual",
+                "transporte": "simulado" if virtual else "ble" if self._config_ble_path else "tcp" if self._config_wifi_path is not None else "serial",
+                "canal_autenticado": self._serial is not None and bool(virtual or self._config_ble_path or self._config_wifi_path),
+                "modo_conexao": "bancada_virtual" if virtual else "bluetooth" if self._config_ble_path else "rede" if self._config_wifi_path is not None else "automatico" if self.autodetectar else "manual",
                 "selecao_automatica_usb_wifi": self._wifi_alternativo_path is not None,
                 "endpoint": self._config_wifi.endpoint if self._config_wifi is not None else "",
                 "porta_ativa": self._porta_ativa,
@@ -675,7 +681,7 @@ class RostoOledRuntime:
 
     def sincronizar(self) -> bool:
         """Uma amostra atual e um receipt correlacionado; nenhuma fila histórica."""
-        if not self.porta and not self.autodetectar and self._config_wifi_path is None:
+        if not (self.porta or self.autodetectar or self._config_wifi_path or self._config_ble_path):
             return False
         with self._lock:
             try:
@@ -683,7 +689,16 @@ class RostoOledRuntime:
                     if self._wifi_alternativo_path is not None:
                         self._selecionar_canal_automatico()
                     porta = self._porta_ativa or self.porta
-                    if self._config_wifi_path is not None:
+                    if self._config_ble_path:
+                        config = carregar_configuracao_corpo_wifi(self._config_ble_path)
+                        if config is None:
+                            raise ConnectionError("pareamento_ble_ausente")
+                        porta = "BLE"
+                        self._serial = self.abrir_ble(config.token)
+                        pareamento = validar_identidade_corpo_usb(self.identidade_usb_getter())
+                        if pareamento and self._ler_saude().get("dispositivo") != pareamento["dispositivo"]:
+                            raise ConnectionError("identidade_ble_divergente")
+                    elif self._config_wifi_path is not None:
                         self._ler_config_wifi()
                         if self._erro_wifi:
                             self._erro = self._erro_wifi
@@ -809,7 +824,8 @@ class RostoOledRuntime:
                 self._ultimo_ack = float("-inf")
                 self._fechar()
                 if self.relatar_falha and not self._deve_parar() and self._erro != self._ultima_falha_relatada:
-                    self.relatar_falha("rosto_oled", "sincronizacao_tcp" if self._config_wifi_path is not None else "sincronizacao_serial", erro=erro,
+                    canal = "ble" if self._config_ble_path else "tcp" if self._config_wifi_path is not None else "serial"
+                    self.relatar_falha("rosto_oled", "sincronizacao_" + canal, erro=erro,
                                        classe="degradacao", impacto="rosto", fallback="rosto_local_dormindo")
                     self._ultima_falha_relatada = self._erro
                 self._publicar()
@@ -865,6 +881,7 @@ class RostoOledRuntime:
                        duracao: int = 0, cancelado: bool = False) -> dict[str, Any]:
         return {
             "ok": ok, "motivo": motivo, "aplicacao_pwm_confirmada": pwm,
+            "transporte_simulado": self.porta == "CORPO_VIRTUAL",
             "parada_confirmada": parada, "pwm_esquerdo": esquerdo,
             "pwm_direito": direito, "duracao_ms": duracao,
             "evidencia": "mack_pwm_e_sack" if pwm and parada else "sack" if parada else "sem_receipt_completo",
@@ -1140,8 +1157,11 @@ def criar_rosto_oled_runtime(**kwargs: Any) -> RostoOledRuntime:
     automatico = porta.casefold() in {"", "auto"}
     desligado = porta.casefold() in {"off", "0", "desligado"}
     rede_explicita = porta.casefold() == "wifi"
+    ble_explicito = porta.casefold() in {"ble", "bluetooth"}
     caminho_wifi = kwargs.pop("config_wifi_path", os.environ.get("LAYLAY_CORPO_WIFI_CONFIG", CAMINHO_CONFIGURACAO_WIFI))
-    if rede_explicita:
+    if ble_explicito:
+        kwargs["config_ble_path"] = caminho_wifi
+    elif rede_explicita:
         # Escolha humana de transporte prevalece sobre preferência automática;
         # arquivo ausente/inválido não permite procurar outro alvo pela USB.
         kwargs["config_wifi_path"] = caminho_wifi
@@ -1156,7 +1176,7 @@ def criar_rosto_oled_runtime(**kwargs: Any) -> RostoOledRuntime:
                 kwargs["config_wifi_path"] = caminho_wifi
             else:
                 kwargs["wifi_alternativo_path"] = caminho_wifi
-    kwargs["porta"] = "" if automatico or desligado or rede_explicita else porta
+    kwargs["porta"] = "" if automatico or desligado or rede_explicita or ble_explicito else porta
     kwargs.setdefault("autodetectar", automatico and "config_wifi_path" not in kwargs)
     if "config_wifi_path" in kwargs or "wifi_alternativo_path" in kwargs:
         kwargs.setdefault("rede_local", RedeLocalCorpoWindows())

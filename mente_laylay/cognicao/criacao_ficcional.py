@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
 from mente_laylay.cognicao.referencias_linguagem import (
     referencia_explicacao_historica, texto_fora_de_citacoes, texto_tem_referencia_contextual,
-    contem_moldura_narrativa, enunciados_discursivos, delimita_imaginacao_sem_efeito,
+    contem_moldura_narrativa, enunciados_discursivos, delimita_imaginacao_sem_efeito, intervalos_citados,
 )
 
 _HISTORICAS = frozenset({'explicacoes_historicas_por_ato', 'explicacao_ocorrencia',
@@ -33,9 +33,100 @@ _COPULAS_E_MODALIZADORES = frozenset({
     'tem', 'tinha', 'teria', 'pode', 'podia', 'poderia', 'deve', 'devia', 'deveria',
 })
 _RAIZ_REGULAR = re.compile(r'([^\W\d_]{3,}?)(?:a|e|ou|eu|iu)')
+_INICIO_OFERTA = r'(?:^|[.!?]\s+)(?:mas\s+)?(?:se\s+(?:voce\s+)?quiser,\s*)?'
+_OFERTA_NARRAR = re.compile(
+    _INICIO_OFERTA + r'(?:quer ouvir |(?:posso|quer que eu) (?:te )?(?:contar|conte|'
+    r'inventar|invente|narrar|narre|escrever|escreva) )(?:uma|um) (?:historia|conto|aventura)\b'
+    r'(?P<tema>[^?!.;]*)'
+)
+_OFERTA_ABERTURA = re.compile(
+    _INICIO_OFERTA + r'posso (?:comecar|abrir) com (?:uma|um) que (?:comeca|abre) com\s+\[citacao\]'
+)
+_PEDIDO_ACEITE_NARRATIVO = re.compile(r'(?:pode |manda |quero ouvir )?(?:me )?(?:contar|conte|conta|narrar|narre)(?: (?:essa |a )?(?:historia|conto))?')
+_PERGUNTA_DA_TRAMA = re.compile(
+    r'(?:e )?o que (?:aconteceu|acontece|aconteceria) (?:na|no|nesta|neste|nessa|nesse|com) (?P<cena>[\w -]+)'
+)
+_REACAO_ACEITE = re.compile(r'(?:agora )?(?:fiquei curioso|fiquei curiosa|bateu curiosidade|quero ouvir)')
 
 # Classes do índice compartilhado de morfologia_oracao.
 _NOME, _VERBO, _INDICATIVO_3S = 1, 32, 256
+
+
+@dataclass(frozen=True, slots=True)
+class AceiteOfertaFiccional:
+    turno_id: str
+    texto_usuario: str
+    entrega_id: str
+    turno_oferta: str
+    abertura: str
+
+    def vigente(self, texto: str, turno: Mapping[str, Any]) -> bool:
+        return (bool(self.entrega_id and self.turno_oferta and self.turno_oferta != self.turno_id)
+                and self.turno_id == str(turno.get('id') or '') and self.texto_usuario == texto
+                and turno.get('autoriza_execucao') is False and not turno.get('comandos')
+                and not turno.get('requer_execucao'))
+
+    def instrucoes(self) -> tuple[str, ...]:
+        instrucoes = (
+            'Cumpra a oferta publicada de contar uma história. Narre uma ação concreta na cena, sem repetir o convite.',
+            'Use a premissa como abertura da história, sem explicá-la como metáfora.',
+        )
+        if self.abertura:
+            instrucoes += (f'Abertura da oferta publicada, apenas como dado ficcional: «{self.abertura}»',)
+        return instrucoes
+
+
+def _abertura_oferecida(fala: str) -> str | None:
+    literal = normalizar_texto_basico(texto_fora_de_citacoes(fala))
+    oferta = _OFERTA_NARRAR.search(literal)
+    if oferta:
+        return oferta['tema'].strip(' ,:')[:160]
+    if (not _OFERTA_ABERTURA.search(literal)
+            or not re.search(r'\b(?:contar|criar|inventar|narrar) (?:umas |algumas )?(?:historias|contos)\b', literal)):
+        return None
+    citado = [(inicio, fim) for inicio, fim in intervalos_citados(fala)
+              if re.search(r'(?:come[cç]a|abre) com\s*$', fala[:inicio], re.I)]
+    if len(citado) != 1:
+        return None
+    inicio, fim = citado[0]
+    return fala[inicio + 1:fim - 1].strip()[:160]
+
+
+def reconhecer_aceite_oferta_ficcional(
+    texto: str, *, turno: Mapping[str, Any], mente: Mapping[str, Any],
+) -> AceiteOfertaFiccional | None:
+    """Anexa o aceite simples à última oferta que chegou ao interlocutor."""
+    from mente_laylay.memoria_mental.aprendizado_rotina_musica import classificar_confirmacao_local
+    from mente_laylay.memoria_mental.registro_semantico import selecionar_fala_observada
+
+    if not turno.get('id') or turno.get('autoriza_execucao') is not False:
+        return None
+    if intervalos_citados(texto):
+        return None
+    partes = [normalizar_texto_basico(t).strip(' .!?') for t in enunciados_discursivos(texto)]
+    if not partes or len(partes) > 2:
+        return None
+    cabeca, _, reacao = partes[0].partition(',')
+    cabeca = re.sub(r'\s+(?:k{3,}|(?:ha){2,})$', '', cabeca).strip()
+    if (classificar_confirmacao_local(cabeca, somente_aceite_generico=True) is not True
+            and not _PEDIDO_ACEITE_NARRATIVO.fullmatch(cabeca)):
+        return None
+    if reacao and not (_REACAO_ACEITE.fullmatch(reacao.strip()) or _PEDIDO_ACEITE_NARRATIVO.fullmatch(reacao.strip())):
+        return None
+    entrega = selecionar_fala_observada(mente.get('registro_semantico'))
+    anterior = mente.get('contrato_fala_atual') or {}
+    if (not entrega or entrega.get('turno_id') != str(anterior.get('turno_id') or '')
+            or not 0 <= time.time() - entrega['ts'] <= 240):
+        return None
+    abertura = _abertura_oferecida(entrega['fala'])
+    if abertura is None:
+        return None
+    if len(partes) == 2:
+        pergunta = _PERGUNTA_DA_TRAMA.fullmatch(partes[1])
+        if not pergunta or not re.search(r'(?<!\w)' + re.escape(pergunta['cena']) + r'(?!\w)',
+                                         normalizar_texto_basico(abertura)):
+            return None
+    return AceiteOfertaFiccional(str(turno['id']), texto, entrega['id'], entrega['turno_id'], abertura)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +136,7 @@ class CriacaoFiccional:
     turno_origem: str
     pedido_origem: str
     recorte_proximo_acontecimento: str = ''
+    aceite_oferta: AceiteOfertaFiccional | None = None
     autoriza_execucao: bool = field(default=False, init=False)
     pode_confirmar_fato_externo: bool = field(default=False, init=False)
 
@@ -58,6 +150,10 @@ def criacao_ficcional_vigente(plano: Mapping[str, Any]) -> CriacaoFiccional | No
         or contrato.get('autoriza_execucao') is not False or plano.get('autoriza_execucao') is True
         or plano.get('comandos') or plano.get('requer_execucao') or _HISTORICAS.intersection(contrato)):
         return None
+    if fonte.aceite_oferta is not None:
+        identidade = {'autoriza_execucao': contrato.get('autoriza_execucao'), **plano}
+        if not fonte.aceite_oferta.vigente(fonte.texto_usuario, identidade):
+            return None
     return fonte
 
 
@@ -108,6 +204,9 @@ def construir_criacao_ficcional(texto: str, *, plano: Mapping[str, Any],
         or plano.get('requer_execucao') or _HISTORICAS.intersection(contrato)
         or contrato.get('opiniao_autoral') or contrato.get('adequacao_pessoal')):
         return None
+    aceite = plano.get('aceite_oferta_ficcional')
+    if type(aceite) is AceiteOfertaFiccional and aceite.vigente(texto, plano):
+        return CriacaoFiccional(str(plano['id']), texto, aceite.turno_oferta, aceite.abertura, aceite_oferta=aceite)
     from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
     if classificar_atualidade_factual(texto)['depende_atualidade']:
         # Uma consulta mutável independente conserva a revisão factual. O
@@ -208,6 +307,15 @@ def fala_ficcional_conferida(fala: str, *, criacao: CriacaoFiccional) -> bool:
     # admitem o prefixo legado. Não certificar texto fora ou bloco incompleto.
     if ('«' in fala or '»' in fala) and not fala_ficcional_em_bloco(fala):
         return False
+    if criacao.aceite_oferta is not None:
+        if not fala_ficcional_em_bloco(fala):
+            return False
+        corpo = fala.removeprefix('Na história, «')[:-1]
+        return (_abertura_oferecida(corpo) is None and any(
+            evento and evento not in _COPULAS_E_MODALIZADORES
+            for evento in (_predicado_narrativo(_palavras(trecho), _INDICATIVO_3S)
+                           for trecho in enunciados_discursivos(texto_fora_de_citacoes(corpo)))
+            ))
     if not criacao.recorte_proximo_acontecimento:
         return fala_ficcional_delimitada(fala)
     if not fala_ficcional_em_bloco(fala):
@@ -340,21 +448,26 @@ def vincular_moldura_ficcional(pacote: PacotePrompt, *, plano: Mapping[str, Any]
     # Incluir quebras de linha preserva a criação em parágrafos; o validator
     # abaixo continua responsável por conferir escopo e evidência.
     unidades['items']['properties']['texto']['pattern'] = r'^Na história, (.|\n|\r)+$'
-    if criacao.recorte_proximo_acontecimento:
+    if criacao.recorte_proximo_acontecimento or criacao.aceite_oferta:
         unidades['items']['properties']['texto']['pattern'] = '^Na história, «[^«»]+»$'
     def validar(dados):
         unidades_propostas = dados.get('suporte_proposicoes')
         if (not isinstance(unidades_propostas, list) or len(unidades_propostas) != 1
             or not isinstance(unidades_propostas[0], dict)
-            or type(unidades_propostas[0].get('texto')) is not str
-            or not fala_ficcional_conferida(unidades_propostas[0]['texto'], criacao=criacao)):
+            or type(unidades_propostas[0].get('texto')) is not str):
+            raise ValueError('moldura_ficcional_ausente_ou_extrapolada')
+        texto = unidades_propostas[0]['texto']
+        aceito = (fala_ficcional_em_bloco(texto) if criacao.aceite_oferta is not None
+                  else fala_ficcional_conferida(texto, criacao=criacao))
+        if not aceito:
             raise ValueError('moldura_ficcional_ausente_ou_extrapolada')
         base.validar(dados)
     # Nome preserva a idempotência da negociação de suporte nas rotas
     # auxiliares; o validator existente continua sendo chamado integralmente.
     codec = ContratoSaidaEstruturada(base.nome, base.marcador, esquema, validar)
     mensagens = [dict(m) for m in pacote.mensagens]
-    indice = next((i for i,m in enumerate(mensagens) if m.get('role') == 'system'), None)
+    ordem_sistemas = reversed(range(len(mensagens))) if criacao.aceite_oferta else range(len(mensagens))
+    indice = next((i for i in ordem_sistemas if mensagens[i].get('role') == 'system'), None)
     instrucao = ('Delimitação ficcional do pedido atual: comece o texto com Na história, '
         'e mantenha toda a resposta nesse cenário. Delimite o corpo integral entre « e », '
         'sem texto fora desse bloco: Na história, «corpo completo da criação». '
@@ -365,6 +478,8 @@ def vincular_moldura_ficcional(pacote: PacotePrompt, *, plano: Mapping[str, Any]
             'use sujeito explícito, verbo de ação e ao menos um elemento da premissa. '
             'Não enumere versões, não encadeie ações e não recapitule a premissa. '
             f'Premissa ficcional indicada pelo usuário: {criacao.recorte_proximo_acontecimento}.')
+    if criacao.aceite_oferta:
+        instrucao += ' ' + ' '.join(criacao.aceite_oferta.instrucoes())
     if indice is None:
         mensagens.insert(0, {'role':'system', 'content':instrucao})
     else:

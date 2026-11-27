@@ -60,6 +60,15 @@ def _nome_apresentacao(nome: str) -> str:
     return limpo[:120]
 
 
+_ORACAO_FINAL_APOS_CATEGORIA = re.compile(
+    r"^(?:pra|para)\s+(?:que\b|"
+    r"(?:(?:a gente|eu|tu|voc[eê]s?|ele|ela|n[oó]s|eles|elas)\s+)?"
+    r"(?:n[aã]o\s+)?(?:(?:me|te|se|nos|vos)\s+)?"
+    r"(?:[^\W\d_]+(?:ar|er|ir)(?:mos|des|em|es)?|p[oô]r(?:mos|des|em|es)?)\b)",
+    re.IGNORECASE,
+)
+
+
 def _extrair_mencoes_categorizadas(texto: str) -> list[dict]:
     """Preserva menções concorrentes antes de tentar escolher um referente."""
     categorias = {
@@ -91,6 +100,10 @@ def _extrair_mencoes_categorizadas(texto: str) -> list[dict]:
             trecho = re.sub(r"\s+(?:(?:e|ou)\s+)?(?:o|a|um|uma)?\s*$", "", trecho).strip()
         designacao = bool(re.search(r"\bchamad[oa]\s*$", marca.group(0), re.IGNORECASE))
         if not titulo_citado and not designacao:
+            # A categoria nomeia o tipo de obra. A oração seguinte descreve
+            # sua finalidade e não fornece identidade para o registro.
+            if _ORACAO_FINAL_APOS_CATEGORIA.match(trecho):
+                continue
             anterior = bruto[:marca.start()]
             if re.match(r"^(?:desse|dessa|deste|desta|daquel[ea])\b", trecho, re.IGNORECASE):
                 # O complemento aponta para outro objeto, sem dar nome à categoria.

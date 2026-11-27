@@ -111,3 +111,20 @@ def resposta_contingencia_provocacao(
         "Ousadia chegou antes do argumento, né? Continua, quero ver onde isso vai dar.",
         "Tá se sentindo íntimo hoje kkk. Pelo menos melhora essa provocação.",
     ], evitar=evitar)
+
+
+def resposta_contingencia_risada(
+    texto: str,
+    *,
+    evitar: Iterable[str] = (),
+) -> str:
+    """A reação local cobre somente uma mensagem composta de risada."""
+    marcadores = re.split(r"[\s.,!?]+", texto.strip(" \t\r\n.,!?"))
+    if not all(re.fullmatch(r"(?:k{2,}|(?:rs){2,}|(?:ha){2,}|[😂🤣]+)", item, re.I)
+               for item in marcadores):
+        return ""
+    return escolher_variacao([
+        "Kkkkk, tá bom, essa me pegou.",
+        "Tá, essa foi boa kkk. Não vou nem tentar manter a pose.",
+        "Kkkkk, ponto seu. Aproveita porque eu não distribuo vitória assim sempre.",
+    ], evitar=evitar)

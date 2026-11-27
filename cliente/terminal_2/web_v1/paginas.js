@@ -247,11 +247,31 @@
   };
   p.views.lamp=()=>{
     const d=obj(s.dashboard), iot=obj(d.iot), devices=list(iot.devices), context=obj(d.context), confirmed=devices.filter(item=>item.state_confirmed).length;
-    const cards=devices.map((device,index)=>{
+    const cards=devices.map(device=>{
       const on=device.state_confirmed===true&&device.state==='on',unknown=device.state_confirmed!==true,available=s.connected&&iot.controls_available===true;
-      return `<article class="pr-device device ${on?'is-on on':''}"><div class="device-illustration">${ico('lamp')}</div><div class="device-copy"><h3>${text(device.display_name)}</h3><p><span class="pr-device-state ${on?'on':''}"><i></i>${device.state_confirmed?(on?'Ligado':'Desligado'):device.state==='offline'?'Offline':'Sem leitura'}</span></p><p>${text(device.room)} · ${text(device.type)}</p></div><button class="toggle" data-tp-action="${on?'iot-off':'iot-on'}" data-index="${index}" aria-pressed="${on}" aria-label="${on?'Desligar':'Ligar'} ${text(device.display_name)}"${disabled(available&&list(device.capabilities).includes(on?'desligar':'ligar')&&!busy('iot_power'))}></button><details class="device-options"><summary>Ajustes e estado</summary>${number(device.brightness_percent)!==null?`<label class="pr-brightness"><span>Brilho <output>${percent(device.brightness_percent)}</output></span><input type="range" min="1" max="100" value="${device.brightness_percent}" data-tp-change="brightness" data-index="${index}" aria-label="Brilho de ${text(device.display_name)}"${disabled(available&&list(device.capabilities).includes('ajustar_brilho')&&!busy('iot_brightness'))}></label>`:''}<div class="pr-device-actions">${unknown?button('Desligar','iot-off',`data-index="${index}"`,available&&list(device.capabilities).includes('desligar')&&!busy('iot_power')):''}${button(ico('refresh')+' Atualizar estado','iot-status',`data-index="${index}" aria-label="Atualizar ${text(device.display_name)}"`,available&&!busy('iot_status'))}</div></details></article>`;
+      const name=esc(device.name), attrs=`data-name="${name}"`;
+      const canPower=state=>available&&list(device.capabilities).includes(state)&&!busy('iot_power');
+      const status=device.state_confirmed?(on?'Ligado':'Desligado'):device.state==='offline'?'Offline':'Sem leitura';
+      return `<article class="pr-device device ${on?'is-on on':''}" data-render-key="iot-${name}">
+        <div class="device-illustration">${ico('lamp')}</div>
+        <div class="device-copy"><h3>${text(device.display_name)}</h3>
+          <p><span class="pr-device-state ${on?'on':''}"><i></i>${status}</span></p>
+          <p>${text(device.room)} · ${text(device.type)}</p>
+        </div>
+        <button class="toggle" data-tp-action="${on?'iot-off':'iot-on'}" ${attrs} aria-pressed="${on}"
+          aria-label="${on?'Desligar':'Ligar'} ${esc(device.display_name)}"${disabled(canPower(on?'desligar':'ligar'))}></button>
+        <details class="device-options"><summary>Ajustes e estado</summary>
+          ${number(device.brightness_percent)!==null?`<label class="pr-brightness"><span>Brilho <output>${percent(device.brightness_percent)}</output></span><input type="range" min="1" max="100" value="${device.brightness_percent}" data-tp-change="brightness" ${attrs} aria-label="Brilho de ${esc(device.display_name)}"${disabled(available&&list(device.capabilities).includes('ajustar_brilho')&&!busy('iot_brightness'))}></label>`:''}
+          <div class="pr-device-actions">
+            ${unknown?button('Desligar','iot-off',attrs,canPower('desligar')):''}
+            ${button(ico('refresh')+' Atualizar estado','iot-status',attrs,available&&!busy('iot_status'))}
+            ${device.esp32_transport?button('Configurar ESP32','esp32-config',attrs,available&&!busy('iot_esp32_config')):''}
+            ${button('Esquecer dispositivo','iot-forget',attrs,s.connected&&!busy('iot_forget'))}
+          </div>
+        </details>
+      </article>`;
     }).join('');
-    return wrap('SEU ESPAÇO, EM SINTONIA','Automação','Pequenos ajustes para deixar o dia do seu jeito.',`<div class="pr-section-heading"><h3>Sua casa agora</h3><span class="pr-inline-meta">${devices.length} dispositivos · ${confirmed} estados confirmados</span></div><div class="pr-device-grid">${cards||empty('Seus dispositivos aparecem aqui quando forem publicados.')}</div><div class="pr-section-heading pr-space-top"><div><h3>No seu dia</h3><p>Rotinas e lembretes do seu espaço</p></div><span class="tp-pill">${list(obj(d.routines).items).length} agendados</span></div>${section('Rotinas e agenda',routines())}${disclosure('Pedidos em andamento',list(s.events).filter(e=>e.state==='awaiting_confirmation'||e.state==='partial'||e.state==='failed').slice(-5).map(e=>`<div class="tp-list-line"><div><strong>${text(e.summary||e.title)}</strong><small>${text(e.state)}</small></div></div>`).join('')||empty('Nenhuma pendência publicada nesta projeção.'),'Confirmações e resultados')}<div class="pr-support-line"><span><i class="pr-online-dot ${iot.provider_available?'':'unavailable'}"></i>Integração ${iot.provider_available?'disponível':'indisponível'}</span><span>${fresh(iot.freshness)} · ${stamp(iot.observed_at)}</span></div>${disclosure('Contexto e integração',`${kv('Contexto de jogo',context.freshness==='unavailable'?'Indisponível':context.game_active?'Jogo observado':'Nenhum jogo observado')}${kv('Jogo',text(context.game_name))}${note('O contexto é observado pelo runtime. Esta tela não concede autorização.')}${kv('Controles',iot.controls_available?'Disponíveis':'Somente leitura')}${kv('Modo',text(iot.mode))}`,'Informações de apoio')}`);
+    return wrap('SEU ESPAÇO, EM SINTONIA','Automação','Pequenos ajustes para deixar o dia do seu jeito.',`<div class="pr-section-heading"><h3>Sua casa agora</h3><span class="pr-inline-meta">${devices.length} dispositivos · ${confirmed} estados confirmados</span></div><div class="pr-device-grid">${cards||empty('Seus dispositivos aparecem aqui quando forem publicados.')}</div><div class="pr-section-heading pr-space-top"><div><h3>No seu dia</h3><p>Rotinas e lembretes do seu espaço</p></div><span class="tp-pill">${list(obj(d.routines).items).length} agendados</span></div>${section('Rotinas e agenda',routines())}${disclosure('Pedidos em andamento',list(s.events).filter(e=>e.state==='awaiting_confirmation'||e.state==='partial'||e.state==='failed').slice(-5).map(e=>`<div class="tp-list-line"><div><strong>${text(e.summary||e.title)}</strong><small>${text(e.state)}</small></div></div>`).join('')||empty('Nenhuma pendência publicada nesta projeção.'),'Confirmações e resultados')}<div class="pr-support-line"><span><i class="pr-online-dot ${iot.provider_available?'':'unavailable'}"></i>Integração ${iot.provider_available?'disponível':'indisponível'}</span><span>${fresh(iot.freshness)}</span></div>${disclosure('Contexto e integração',`${kv('Contexto de jogo',context.freshness==='unavailable'?'Indisponível':context.game_active?'Jogo observado':'Nenhum jogo observado')}${kv('Jogo',text(context.game_name))}${note('O contexto é observado pelo runtime. Esta tela não concede autorização.')}${kv('Controles',iot.controls_available?'Disponíveis':'Somente leitura')}${kv('Modo',text(iot.mode))}`,'Informações de apoio')}`);
   };
   p.views.memory=()=>{
     const items=list(obj(s.dashboard).memory_recent), health=obj(obj(obj(s.dashboard).health).memory), names={preference:'Preferências',reminder:'Lembretes',task:'Ações confirmadas'};
@@ -344,7 +364,35 @@
     else if(a==='preference')p.request('preferencia',{name:target.dataset.name,value:target.dataset.value==='true'});
     else if(a==='accent')p.request('preferencia',{name:'cor',value:target.dataset.value});
     else if(a==='routine-cancel'){const r=list(obj(obj(s.dashboard).routines).items)[Number(target.dataset.index)];if(r)dialog('Cancelar rotina?',`<p>${esc(r.name)}</p>`,'Cancelar rotina',()=>action('routine_cancel',`cancela a rotina ${r.name}`,{name:r.name}),true);}
-    else if(a.startsWith('iot-')){const d=list(obj(obj(s.dashboard).iot).devices)[Number(target.dataset.index)];if(d){if(a==='iot-status')action('iot_status',`atualiza o estado de ${d.display_name}`,{device:d.name});else {const state=a==='iot-on'?'on':'off';action('iot_power',`${state==='on'?'liga':'desliga'} ${d.display_name}`,{device:d.name,state});}}}
+    else if(a==='esp32-config'){
+      const d=list(obj(obj(s.dashboard).iot).devices).find(device=>device.name===name);
+      if(!d?.esp32_transport)return;
+      const options=[['auto','Automático · Wi-Fi e Bluetooth'],['wifi','Somente Wi-Fi'],['bluetooth','Somente Bluetooth']];
+      dialog('Configurar ESP32',`
+        <label class="tp-formfield">Nome para a Laylay<input name="display_name" value="${esc(d.display_name)}" maxlength="50" required></label>
+        <label class="tp-formfield">Cômodo<input name="room" value="${esc(d.room)}" maxlength="40" required></label>
+        <label class="tp-formfield">Conexão<select name="transport">${options.map(([value,label])=>`<option value="${value}"${d.esp32_transport===value?' selected':''}>${label}</option>`).join('')}</select></label>
+        <label class="tp-formfield">Nome anunciado por Bluetooth<input name="ble_name" value="${esc(d.esp32_ble_name)}" maxlength="20" required></label>
+        <p class="help-line">Para trocar a rede ou o nome anunciado pela placa, abra o painel do ESP32 e selecione “Abrir configuração do ESP32”.</p>
+        ${button('Abrir painel do ESP32','esp32-panel','type="button"')}
+      `,'Salvar',values=>action('iot_esp32_config','salvar configuração do ESP32',{
+        device:d.name,display_name:values.get('display_name'),room:values.get('room'),
+        transport:values.get('transport'),ble_name:values.get('ble_name'),
+      }));
+    }
+    else if(a==='esp32-panel')action('iot_esp32_painel','abrir painel do ESP32',{device:'rele_esp32'});
+    else if(a.startsWith('iot-')){
+      const d=list(obj(obj(s.dashboard).iot).devices).find(device=>device.name===name);
+      if(!d)return;
+      if(a==='iot-forget'){
+        dialog('Esquecer dispositivo?',`<p>A Laylay vai remover <strong>${esc(d.display_name)}</strong> da Automação e parar de aceitar comandos para ele. O aparelho fica no estado atual.</p>`,
+          'Esquecer',()=>action('iot_forget','esquecer dispositivo IoT',{device:d.name,confirmed:true}),true);
+      } else if(a==='iot-status')action('iot_status',`atualiza o estado de ${d.display_name}`,{device:d.name});
+      else {
+        const state=a==='iot-on'?'on':'off';
+        action('iot_power',`${state==='on'?'liga':'desliga'} ${d.display_name}`,{device:d.name,state});
+      }
+    }
     else if(a==='quick'){const id=target.dataset.id,requests={open_vscode:'abre o Visual Studio Code',organize_desktop:'organiza o desktop automaticamente',briefing:'me passa o briefing de hoje'};if(requests[id])action(id,requests[id]);}
     else if(a==='memory-category'){ui.memoryCategory=target.dataset.id;invalidate();}
     else if(a==='streaming-open')p.request('streaming',{operation:'open'});
@@ -367,7 +415,7 @@
     else if(field==='legacy-mascot'){ui.legacyMascot=event.target.checked;ui.settingsDirty=true;}
     else if(field==='volume')action('volume_set',`deixa o volume em ${value} por cento`,{level:Number(value)});
     else if(field==='audio'&&value){const device=list(obj(music().audio_output).devices).find(item=>item.ref===value);if(device)action('audio_output_select',`trocar a saída de áudio para ${device.name}`,{device_ref:device.ref});}
-    else if(field==='brightness'){const d=list(obj(obj(s.dashboard).iot).devices)[Number(event.target.dataset.index)];if(d)action('iot_brightness',`ajusta o brilho de ${d.display_name} para ${value} por cento`,{device:d.name,value:Number(value)});}
+    else if(field==='brightness'){const d=list(obj(obj(s.dashboard).iot).devices).find(device=>device.name===event.target.dataset.name);if(d)action('iot_brightness',`ajusta o brilho de ${d.display_name} para ${value} por cento`,{device:d.name,value:Number(value)});}
   });
   document.addEventListener('submit',event=>{if(event.target.id==='tp-dev-command'){event.preventDefault();const command=ui.devCommand;ui.devCommand='';event.target.querySelector('input').value='';runDev(command);}});
   p.onEvent(event=>{

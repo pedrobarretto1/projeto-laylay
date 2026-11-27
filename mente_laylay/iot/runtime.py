@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 import re
+from threading import Lock
 import time
+import webbrowser
 from typing import Any, Callable, Dict
+from urllib.parse import quote
 
 from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto, normalizar_texto_basico
 from mente_laylay.cognicao.gramatica_operacional import interpretar_relacao_valor_ajuste, localizar_quantidade_ajuste
@@ -17,9 +21,13 @@ from mente_laylay.cognicao.evidencia_operacional import (
 from mente_laylay.iot.controlador import ControladorIoT
 from mente_laylay.iot.configuracao import ler_variavel_ambiente
 from mente_laylay.iot.persistencia import PersistenciaIoT
+from mente_laylay.iot.protocolos.esp32 import CHAVE_ESP32, HOST_PADRAO, ProtocoloESP32, TRANSPORTES
 from mente_laylay.iot.protocolos.simulado import ProtocoloSimulado
 from mente_laylay.iot.protocolos.tuya import ProtocoloTuya
-from mente_laylay.iot.registro import criar_dispositivo_lampada, criar_dispositivo_ventilador
+from mente_laylay.iot.registro import (
+    RegistroDispositivos, criar_dispositivo_esp32, criar_dispositivo_lampada,
+    criar_dispositivo_ventilador,
+)
 from mente_laylay.memoria_mental.resultado_acao import ResultadoAcao
 from mente_laylay.personalidade.planejador_resposta import planejar_resposta_acao
 from mente_laylay.cognicao.identidade_conversacional import remover_vocativo_laylay
@@ -51,6 +59,10 @@ class RuntimeIoT:
 
         modo_solicitado = str(modo or ler_variavel_ambiente("LAYLAY_IOT_MODO", "simulado")).strip().lower()
         autorizado = ler_variavel_ambiente("IOT_CONTROLE_FISICO_AUTORIZADO").strip().upper() == "SIM"
+        self._esp32_habilitado = autorizado and (
+            ler_variavel_ambiente("LAYLAY_IOT_ESP32").strip().upper() == "SIM"
+        )
+        self._trava_operacao = Lock()
         self.modo = "tuya" if modo_solicitado == "tuya" and autorizado else "simulado"
         if modo_solicitado == "tuya" and not autorizado:
             self.log("🏠 [IOT:SEGURANCA] Tuya solicitado sem autorização explícita; usando simulador.")
@@ -61,6 +73,22 @@ class RuntimeIoT:
         )
         self.persistencia.sincronizar(dispositivos)
         self.registro = self.persistencia.carregar_registro()
+        esp32_padrao = criar_dispositivo_esp32()
+        if (
+            self._esp32_habilitado
+            and self.registro.resolver(esp32_padrao.nome) is None
+            and esp32_padrao.nome not in self.persistencia.nomes_desativados()
+        ):
+            nome_ble = ler_variavel_ambiente("LAYLAY_IOT_ESP32_BLE_NAME").strip()
+            if re.fullmatch(r"[ -~]{1,20}", nome_ble):
+                esp32_padrao.configuracao["nome_ble"] = nome_ble
+            RegistroDispositivos([*self.registro.listar(), esp32_padrao])
+            self.persistencia.cadastrar(esp32_padrao)
+            self.registro.registrar(esp32_padrao)
+        elif not self._esp32_habilitado:
+            self.registro = RegistroDispositivos(
+                item for item in self.registro.listar() if item.protocolo != "esp32"
+            )
         self._estados_dashboard: dict[str, dict[str, Any]] = {}
         try:
             persistidos = self.persistencia.memoria.listar_dispositivos_iot(
@@ -103,6 +131,8 @@ class RuntimeIoT:
             protocolos.append(self.simulador)
         else:
             protocolos.append(ProtocoloTuya())
+        if self._esp32_habilitado:
+            protocolos.append(ProtocoloESP32())
         self.controlador = ControladorIoT(
             self.registro,
             protocolos,
@@ -115,6 +145,49 @@ class RuntimeIoT:
             "🧠 [IOT:MENTE] consulta_lista=prioritaria dispositivos="
             + ",".join(item.nome for item in catalogados)
         )
+
+    def abrir_painel_esp32(self) -> bool:
+        if self.registro.resolver("rele_esp32") is None:
+            return False
+        chave = ler_variavel_ambiente(CHAVE_ESP32).strip()
+        fragmento = f"#parear={quote(chave, safe='')}" if chave else ""
+        return webbrowser.open(f"http://{HOST_PADRAO}/{fragmento}")
+
+    def configurar_esp32(
+        self, dispositivo: str, nome: str, ambiente: str, transporte: str, nome_ble: str,
+    ) -> bool:
+        if not self._esp32_habilitado or dispositivo != "rele_esp32":
+            return False
+        if not (
+            1 <= len(nome) <= 50 and nome.isprintable() and normalizar_texto(nome)
+            and 1 <= len(ambiente) <= 40 and ambiente.isprintable() and normalizar_texto(ambiente)
+            and transporte in TRANSPORTES
+            and re.fullmatch(r"[ -~]{1,20}", nome_ble)
+        ):
+            return False
+        with self._trava_operacao:
+            atual = self.registro.resolver(dispositivo)
+            if atual is None or atual.protocolo != "esp32":
+                return False
+            novo = replace(
+                atual, nome_amigavel=nome, ambiente=ambiente,
+                configuracao={"transporte": transporte, "nome_ble": nome_ble},
+            )
+            try:
+                self.registro.substituir(novo, persistir=self.persistencia.cadastrar)
+            except ValueError:
+                return False
+        return True
+
+    def esquecer_dispositivo(self, nome: str) -> bool:
+        """Desativa o cadastro local e impede que o dispositivo volte na inicialização."""
+        with self._trava_operacao:
+            dispositivo = self.registro.resolver(nome)
+            if dispositivo is None or dispositivo.nome != nome:
+                return False
+            self.registro.substituir(replace(dispositivo, ativo=False), persistir=self.persistencia.cadastrar)
+            self._estados_dashboard.pop(nome, None)
+        return True
 
     def _aliases(self) -> list[tuple[str, str]]:
         aliases: list[tuple[str, str]] = []
@@ -140,6 +213,9 @@ class RuntimeIoT:
                 "ambiente": item.ambiente,
                 "capacidades": sorted(item.capacidades),
             }
+            if item.protocolo == "esp32":
+                publico["transporte_esp32"] = item.configuracao.get("transporte", "auto")
+                publico["nome_ble_esp32"] = item.configuracao.get("nome_ble", "Laylay Home")
             estado_observado = self._estados_dashboard.get(item.nome)
             if isinstance(estado_observado, dict):
                 publico["estado_observado"] = dict(estado_observado)
@@ -792,14 +868,15 @@ class RuntimeIoT:
         ambiente = str(params.get("ambiente") or "").strip()
         origem = str(params.get("origem") or "usuario").strip().lower()
         confirmado = bool(params.get("confirmado", False))
-        resposta = self.controlador.executar(
-            acao,
-            alvo,
-            ambiente=ambiente,
-            origem=origem,
-            confirmado=confirmado,
-            parametros=params,
-        )
+        with self._trava_operacao:
+            resposta = self.controlador.executar(
+                acao,
+                alvo,
+                ambiente=ambiente,
+                origem=origem,
+                confirmado=confirmado,
+                parametros=params,
+            )
         if resposta.dispositivo:
             brilho_resultado = resposta.detalhes.get("brilho")
             anterior_dashboard = self._estados_dashboard.get(
@@ -849,7 +926,8 @@ class RuntimeIoT:
         nome_fala = self._nome_com_artigo(nome)
         nome_com_de = self._nome_com_de(nome_fala)
         nome_com_em = self._nome_com_em(nome_fala)
-        prefixo_modo = "No simulador, " if self.modo == "simulado" else ""
+        modo_resultado = dispositivo_resolvido.protocolo if dispositivo_resolvido else self.modo
+        prefixo_modo = "No simulador, " if modo_resultado == "simulado" else ""
         falas = {
             "ligado": f"{prefixo_modo}pronto, liguei {nome_fala}.",
             "desligado": f"{prefixo_modo}pronto, desliguei {nome_fala}.",
@@ -889,7 +967,7 @@ class RuntimeIoT:
                 confirmado=bool(resposta.confirmado),
                 detalhe=resposta.erro or str(resposta.detalhes or ""),
                 texto_usuario=texto_original,
-                contexto={"modo": self.modo, "ambiente": resposta.ambiente},
+                contexto={"modo": modo_resultado, "ambiente": resposta.ambiente},
             ),
             fala,
             emocao_preferida="calma",
@@ -917,7 +995,7 @@ class RuntimeIoT:
             "confirmado": resposta.confirmado,
             "erro": resposta.erro,
             "detalhes": dict(resposta.detalhes or {}),
-            "modo": self.modo,
+            "modo": modo_resultado,
             "resultado_acao": ResultadoAcao(
                 intent=intent,
                 status=resposta.status,
@@ -927,7 +1005,7 @@ class RuntimeIoT:
                 confirmado=bool(resposta.confirmado),
                 detalhe=resposta.erro or str(resposta.detalhes or ""),
                 texto_usuario=texto_original,
-                contexto={"modo": self.modo, "ambiente": resposta.ambiente},
+                contexto={"modo": modo_resultado, "ambiente": resposta.ambiente},
             ),
             "plano_resposta": {"fala": fala, "emocao": emocao_resultado, "nivel": nivel_resultado},
         }

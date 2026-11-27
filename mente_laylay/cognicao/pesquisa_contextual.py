@@ -12,8 +12,10 @@ import html as html_lib
 import hashlib
 import json
 from dataclasses import dataclass, asdict
+from difflib import SequenceMatcher
 from collections.abc import Callable
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 import requests
@@ -117,12 +119,104 @@ def _fontes_pagina_wikipedia(pagina: dict, idioma: str) -> list[dict]:
     if not titulo or not paragrafos or idioma not in {'pt', 'en'}:
         return []
     trecho = re.sub(r'\s+', ' ', paragrafos[0]).strip()
+    if len(trecho) > 850:
+        from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos
+
+        frases = enunciados_discursivos(trecho, separar_ponto_e_virgula=False)
+        trecho = frases[0] if frases else ""
     if not 0 < len(trecho) <= 850 or not trecho.endswith(('.', '!', '?')):
         return []
     return [{'titulo': titulo,
         'url': f'https://{idioma}.wikipedia.org/wiki/' + urllib.parse.quote(titulo.replace(' ', '_')),
         'dominio': f'{idioma}.wikipedia.org', 'trecho': trecho,
         'origem_leitura': 'api_extrato_pagina'}]
+
+
+class _QuadroCargoPolitico(HTMLParser):
+    """Lê o parâmetro publicado de ocupante do quadro de cargo político."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.ocupantes: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        dado = dict(attrs).get("data-mw") or ""
+        if tag not in {"span", "div", "table"} or '"incumbente"' not in dado:
+            return
+        for parte in json.loads(dado).get("parts") or ():
+            if not isinstance(parte, dict):
+                continue
+            modelo = parte.get("template") or {}
+            alvo = (modelo.get("target") or {}).get("wt", "").strip()
+            if _normalizar_texto_curto_basico(alvo) != "info/cargo politico":
+                continue
+            valor = ((modelo.get("params") or {}).get("incumbente") or {}).get("wt", "")
+            nome = re.fullmatch(r"\[\[([^|\[\]{}<>\n:]{2,110})(?:\|([^\[\]{}<>\n:]{2,110}))?\]\]", valor.strip())
+            if nome:
+                candidato = (nome[2] or nome[1]).strip()
+                if re.fullmatch(r"[\wÀ-ÿ'’ .()-]{2,100}", candidato) and not any(c.isdigit() for c in candidato):
+                    self.ocupantes.add(candidato)
+
+
+def _titulo_cargo_pertinente(consulta: str, titulos: list[str]) -> str:
+    normalizar = _normalizar_texto_curto_basico
+    base = normalizar(consulta)
+    exatos = [t for t in titulos if normalizar(t) == base]
+    if exatos:
+        return exatos[0]
+    termos = base.split()
+    if len(termos) < 3:
+        return ""
+    semelhantes = []
+    for titulo in titulos:
+        partes = normalizar(titulo).split()
+        if len(termos) != len(partes) or termos[:2] != partes[:2]:
+            continue
+        diferencas = [(a, b) for a, b in zip(termos[2:], partes[2:]) if a != b]
+        if len(diferencas) != 1:
+            continue
+        a, b = diferencas[0]
+        custo = sum(max(i2 - i1, j2 - j1) for tipo, i1, i2, j1, j2
+                    in SequenceMatcher(None, a, b, autojunk=False).get_opcodes() if tipo != "equal")
+        if min(len(a), len(b)) >= 4 and custo == 1:
+            semelhantes.append(titulo)
+    return semelhantes[0] if len(semelhantes) == 1 else ""
+
+
+def pesquisar_ocupante_cargo(consulta: str, *, requests_get=None, clock=time.time) -> dict:
+    """O título identifica o cargo. Só o campo atual da página confirma o ocupante."""
+    get = requests_get or requests.get
+    dominio = "pt.wikipedia.org"
+    api = f"https://{dominio}/w/api.php"
+    headers = {"User-Agent": "LaylayAssistant/2.5 (pesquisa contextual pessoal; contato local)"}
+    erro = {"ok": False, "tema": consulta, "motivo": "cargo_sem_fonte_pertinente"}
+    try:
+        busca = get(api, params={"action": "query", "format": "json", "list": "search",
+                                  "srsearch": consulta, "srlimit": 5},
+                    headers=headers, timeout=2, allow_redirects=False)
+        busca.raise_for_status()
+        titulo = _titulo_cargo_pertinente(consulta, [
+            str(item.get("title") or "") for item in (busca.json().get("query") or {}).get("search", ())
+            if isinstance(item, dict)
+        ])
+        if not titulo or not re.fullmatch(r"[\wÀ-ÿ'’ -]{3,160}", titulo):
+            return erro
+        url = f"https://{dominio}/wiki/" + urllib.parse.quote(titulo.replace(" ", "_"))
+        pagina = get(url, headers=headers, timeout=2, allow_redirects=False)
+        if pagina.status_code != 200 or len(pagina.content) > 1_500_000:
+            return erro
+        quadro = _QuadroCargoPolitico()
+        quadro.feed(pagina.text)
+        if len(quadro.ocupantes) != 1:
+            return erro
+        pessoa, = quadro.ocupantes
+        trecho = f"{titulo} — ocupante do cargo: {pessoa}."
+        return {"ok": True, "titulo": titulo, "ocupante": pessoa, "resumo": trecho,
+                "fonte": "wikipedia_pt", "confianca": 0.92,
+                "evidencia_obtida_em": float(clock()), "evidencia_validade_s": 900.0,
+                "fontes": [{"titulo": titulo, "url": url, "dominio": dominio, "trecho": trecho}]}
+    except (ValueError, TypeError, AttributeError, requests.RequestException):
+        return erro
 
 
 def pesquisar_contexto_tema(
@@ -232,6 +326,8 @@ def pesquisar_contexto_tema(
                             "resumo": resumo_direto[:700],
                             "fonte": f"wikipedia_{lang}",
                             "fontes": _fontes_pagina_wikipedia(pagina, lang),
+                            "identificacao_por_titulo": "disambiguation" not in (pagina.get("pageprops") or {}),
+                            "identificacao_ambigua": "disambiguation" in (pagina.get("pageprops") or {}),
                             "entidade_wikidata": str((pagina.get('pageprops') or {}).get('wikibase_item') or ''),
                             "confianca": 0.95,
                         })
@@ -302,6 +398,10 @@ def pesquisar_contexto_tema(
                             "resumo": resumo[:420],
                             "fonte": f"wikipedia_{lang}",
                             "fontes": _fontes_pagina_wikipedia(page, lang),
+                            "identificacao_por_titulo": normalizar(titulo) == normalizar(consulta)
+                                and "disambiguation" not in (page.get("pageprops") or {}),
+                            "identificacao_ambigua": normalizar(titulo) == normalizar(consulta)
+                                and "disambiguation" in (page.get("pageprops") or {}),
                             "entidade_wikidata": str((page.get('pageprops') or {}).get('wikibase_item') or ''),
                             "confianca": min(0.98, 0.45 + (score_hit / 140.0)),
                         })
@@ -724,6 +824,9 @@ class PesquisaContextualRuntime:
             requests_get=self.requests_get,
             clock=self.clock,
         )
+
+    def pesquisar_ocupante_cargo(self, consulta: str) -> dict:
+        return pesquisar_ocupante_cargo(consulta, requests_get=self.requests_get, clock=self.clock)
 
     def pesquisar_evidencias_multifonte(self, consulta: str, ttl_s: float = 1800.0, *, foco: str = "", somente_cache: bool = False) -> dict:
         """Evidência de páginas lidas, separada do cache de resumos antigos."""

@@ -231,7 +231,11 @@ _DESCRICAO_DOMINIO = {
 }
 
 _TERMOS_DOMINIO = {
-    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao", "movimento corporal", "modo companhia", "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha", "objetivo corporal", "sensor", "sensores", "borda", "obstaculo", "parede", "distancia", "giroscopio", "acelerometro", "imu", "inclinacao", "manuseio", "mpu6050", "giro medido"),
+    "corpo_motor": ("andar", "ande", "anda para", "motores", "motor", "drv8833", "ponte h", "locomocao",
+        "movimento corporal", "movimentos corporais", "movimentos do corpo", "modo companhia",
+        "gestos corporais", "passeio", "passear", "comemorar", "comemoracao", "dancinha",
+        "objetivo corporal", "sensor", "sensores", "borda", "obstaculo", "parede", "distancia",
+        "giroscopio", "acelerometro", "imu", "inclinacao", "manuseio", "mpu6050", "giro medido"),
     "rosto_oled": ("oled", "esp32", "rostinho", "rosto fisico", "corpo fisico", "animacao de hack", "mini terminal", "bip", "bips", "olhos expressivos"),
     "musica": ("musica", "som", "faixa", "playlist", "tocar", "pausar", "youtube", "spotify"),
     "sistema": (
@@ -1029,8 +1033,14 @@ class MapaHabilidadesRuntime:
                         "A pergunta não iniciou movimento.")
             if mapa["dominios"]["corpo_motor"]["estado"] != "disponivel":
                 return "Meu controle dos motores está indisponível agora: preciso de uma sessão recente e firmware com MOTOR1 habilitado."
-            modo = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("companhia") or {}
+            dados_corpo = (self._operacional().get("dominios") or {}).get("corpo_motor") or {}
+            modo = dados_corpo.get("companhia") or {}
             estado_modo = " O modo companhia está ativo nesta sessão." if modo.get("ativa") is True else " O modo companhia está desativado agora."
+            limite_manual = dados_corpo.get("duracao_maxima_manual_ms")
+            manual = (f" Aceito movimentos temporizados de 50 a {limite_manual} milissegundos neste perfil. "
+                      "Por exemplo, 'ande por 300 ms e depois gire para a direita'. "
+                      "Só avanço na sequência quando a etapa anterior tem confirmação."
+                      if limite_manual in {500, 5000} else "")
             saude=(((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("saude") or {})
             if saude.get("suportado"):
                 estado_modo+=" Posso recuperar o controle após reconexão estável do mesmo ESP identificado, sem repetir movimentos interrompidos. Parada ou desativação continuam revogando a retomada."
@@ -1084,13 +1094,13 @@ class MapaHabilidadesRuntime:
                 return ("Posso combinar movimentos contínuos, expressões e reações no perfil de rodas suspensas. "
                         "Cada movimento pode durar até 5 segundos quando o firmware negocia LONGO1; "
                         "uma tarefa no PC pode interromper o passeio. Não tenho sensores de deslocamento."
-                        + estado_modo)
+                        + manual + estado_modo)
             experiencia = ((self._operacional().get("dominios") or {}).get("corpo_motor") or {}).get("experiencia") or {}
             if experiencia.get("origem") == "experiencia_corporal_observada":
                 estado_modo += " Pedidos e gestos espontâneos alimentam a mesma experiência corporal; confirmação elétrica não prova deslocamento."
                 if experiencia.get("aprendizado_conectado") is True:
                     estado_modo += " Posso aprender com 'gostei desse movimento' ou 'não gostei desse gesto', vinculando a avaliação a uma experiência recente; a preferência não autoriza movimentos."
-            return "Posso " + _DESCRICAO_DOMINIO["corpo_motor"] + "." + estado_modo
+            return "Posso " + _DESCRICAO_DOMINIO["corpo_motor"] + "." + manual + estado_modo
         if "rosto_oled" in dominios and not pergunta_geral:
             if mapa["dominios"]["rosto_oled"]["estado"] != "disponivel":
                 return "Meu rosto no OLED está indisponível agora: preciso detectar um ESP32 compatível e receber uma confirmação recente do firmware."
@@ -1313,6 +1323,14 @@ class MapaHabilidadesRuntime:
                 "capacidade_apps",
                 contexto=dados_contexto,
             )
+        if ("caixa_entrada" in dominios and re.search(r"\b(?:pesquis|busc|procur)\w*\b", t)
+                and re.search(r"\b(?:salv|guard|anot|registr)\w*\b", t)):
+            if not capacidade_disponivel("INBOX_ADD"):
+                return "A caixa de entrada está indisponível agora."
+            return (
+                "Posso pesquisar um tema público e guardar o trecho com a fonte numa nota "
+                "quando consigo conferir o documento e a gravação."
+            )
         if "navegador" in dominios:
             return (
                 "Consigo consultar a aba ativa e as abas abertas, resumir a página atual, abrir sites, "
@@ -1387,7 +1405,10 @@ class MapaHabilidadesRuntime:
             return (
                 "Consigo guardar e classificar ideias, tarefas, pensamentos, links e notas na sua caixa de entrada. "
                 "Também consigo resumir uma discussão, separando sua ideia das minhas sugestões, listar o que foi "
-                "anotado e transformar uma nota em lembrete; alterações pedem confirmação."
+                "anotado e transformar uma nota em lembrete; alterações pedem confirmação. "
+                "Se você pedir que eu pesquise um tema público e salve em uma nota, "
+                "guardo o trecho com a fonte quando consigo conferir os dois passos. "
+                "Na mesma conversa, também posso guardar uma resposta publicada que ainda tenha fonte válida."
             )
         if "pessoas" in dominios:
             return (

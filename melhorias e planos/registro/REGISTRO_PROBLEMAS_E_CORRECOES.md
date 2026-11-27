@@ -14547,3 +14547,144 @@ nenhum executor alterado. Pedro confirmou que a janela isolada expandia:
 o desaparecimento na sessão pessoal original ainda exige conferência após
 reabrir `laylay.py`; não declarar identidade causal ou encerramento desse relato.
 Evidências e escopo: `artifacts/interface_v1/clique_20261111/DIAGNOSTICO.md`.
+
+### Ilha desktop — conteúdo apagado durante expansão — 25/11/2026
+
+Base `53e7b0e19d92ff9e174367052caf632fddc638fd` (`main`), com edições locais preservadas.
+Em Qt/WebEngine, medições intermediárias de 587×279 registraram `visibility: visible`
+e `opacity: 0` no painel. O Qt já havia entregue o viewport útil. As animações CSS
+mantinham o conteúdo apagado durante o resize e o JavaScript iniciava outra entrada
+depois do ACK. O seletor `.page` também reaplicava um fade próprio na ilha.
+O renderer mantém o conteúdo visível assim que cabe e usa a expansão nativa como
+única entrada da geometria. A troca entre páginas continua com a animação existente.
+O recolhimento mantém a animação própria da barra e a chegada preserva a do mascote.
+Prova focada cobre opacidade, controles, ACK e geometria com o renderer oficial.
+Nove testes passaram com a plataforma nativa do Windows. A regressão de interface
+teve 142 aprovados e duas falhas também observadas antes do patch: amostragem
+da geometria inicial e consulta de estilo de uma aba ativa ausente no resumo.
+Os efeitos observados na sessão pessoal ainda não foram confirmados após o patch.
+
+### Painel desktop — blocos pretos com a janela parada — 25/11/2026
+
+Pedro corrigiu o relato: partes do painel aberto ficam pretas mesmo sem
+redimensionar. A imagem enviada era uma referência do padrão, não uma captura
+da Laylay. Ocorrência distinta da opacidade durante a expansão.
+
+Base `53e7b0e19d92ff9e174367052caf632fddc638fd`, `main`, com a correção anterior
+e outras edições locais preservadas. Qt 6.11.1 / Chromium 140, Intel UHD 730 e
+GTX 1660 SUPER. Janela oficial no Windows, com preferências temporárias e
+ponte local autenticada sem executores. A/B no painel Início, com atualização
+de atividade e 38 capturas de tela por modo. Em ambas as condições o conteúdo
+parado não exibiu o sintoma nas capturas. Uma captura inicial incluía pixels
+da janela de trás, fora dos limites efetivamente desenhados da Laylay.
+
+Hipótese de composição gráfica ainda aberta. A renderização por software
+(`QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu`) abriu o painel e recebeu o snapshot.
+O teste não demonstra que o modo resolve o relato. Nenhum patch de produção
+para esses blocos. Próxima fronteira: capturar o defeito na sessão habitual e
+comparar com a mesma página usando o modo por software.
+
+Pedro executou `laylay.py` com `--disable-gpu` e relatou que os blocos não
+apareceram. A inicialização do cliente passa a acrescentar a opção somente no
+Windows, antes de criar o WebEngine. `LAYLAY_WEBENGINE_GPU=1` pula essa escolha
+automática para diagnóstico. O teste do entrypoint registrou a opção ausente
+antes do patch e confirmou depois a ilha, a janela completa e o controle com
+GPU explícita no Windows, com ponte autenticada. A observação na sessão habitual
+sustenta o modo de compatibilidade. A causa específica da renderização com GPU
+continua sem confirmação.
+
+### Ilha desktop — espera longa e troca brusca ao expandir — 25/11/2026
+
+Base `53e7b0e19d92ff9e174367052caf632fddc638fd` (`main`), com edições locais
+preservadas. Na expansão, o Qt crescia por 800 ms e o renderer trocava a barra
+pelo painel de uma vez ao atingir 220 px. RED no WebEngine: em torno de 200 px
+a barra estava totalmente opaca e o painel ainda oculto.
+
+O Qt ajusta a duração à distância e desacelera ao chegar. O CSS mistura as
+duas superfícies conforme a altura entre 170 e 220 px, sem temporizador extra.
+A barra mantém a forma e o centro, e controles do painel não recebem interação
+antes de haver espaço. A opção de movimento reduzido e o ACK continuam no mesmo
+fluxo. A renderização por software continua sendo o padrão no Windows.
+
+Janela Qt nativa com WebEngine por software e perfil temporário, três repetições
+por cenário. Medianas de tempo total em ms, antes → depois: resumo 930 → 640,
+Início 1024 → 813, Conversa 939 → 759. No resumo, chegar a 220 px passou de
+555 para 289 ms. A mediana de intervalos acima de 25 ms no Início caiu de nove
+para seis, com um pico de 83 ms após a mudança. Seis testes focados passaram no
+Windows. A fluidez percebida na sessão habitual ainda precisa de observação.
+
+Pedro identificou a diferença entre a moldura que crescia e a página que a
+seguia. Na integração com WebEngine, o corpo media 521 e 719 px em duas
+amostras, para destino de 798 px. O renderer agora prepara a largura final
+antes do ACK de preparação e a moldura revela o corpo sem recomputar sua largura
+a cada passo. As duas amostras e o estado final medem 798 px. O Qt e o backend
+gráfico permanecem os mesmos. No segundo conjunto de medições nativas, as
+medianas de tempo total foram 630 ms no resumo, 805 ms no Início e 745 ms na
+Conversa. A mediana do maior intervalo entre quadros no Início foi 33 ms
+(67 ms na base), com pico isolado de 67 ms no conjunto final.
+
+Na continuação, uma captura nativa mostrou a superfície anterior de 729×419
+enquanto a moldura já media 977×626. Reproduzido tanto no grab do Qt quanto na
+tela do Windows. Pedir repaint adicional não eliminou essa diferença. A largura
+pré-calculada resolve o reempacotamento, mas não sincroniza a textura do WebEngine
+com a janela nativa.
+
+No Windows, a expansão a partir da ilha pequena agora muda o viewport uma vez,
+confirma as dimensões WebEngine e preserva a barra enquanto o compositor prepara
+o quadro. O Qt revela a captura desse quadro por uma máscara crescente, com a
+pintura da WebView pausada até o final. O ACK final libera o painel vivo. A
+transição usa a mesma janela e o mesmo renderer por software. Quando interrompida,
+o recolhimento parte da região que estava realmente visível.
+
+Uma captura intermediária da tela mostrou o conteúdo já composto no recorte de
+535×256. Em nove execuções do diagnóstico foi observado um resize do WebEngine
+por abertura, contra 47 a 50 na base. A captura com apenas o ACK do viewport
+mostrava a textura anterior, por isso a barra permanece durante a preparação.
+
+A tentativa com espera fixa de 120 ms falhou em uma repetição. A versão final
+confere na captura o identificador visual da transição e amostra o miolo do
+quadro para evitar revelar somente o fundo. Se o quadro não estiver disponível
+após tentativas limitadas, a janela conclui sem animar uma textura antiga. A
+captura final de 535×256 mostrou título, mascote e navegação já presentes.
+
+#### CORPO-CANCELAMENTO-01 — prioridade manual — 26/11/2026
+
+Base `53e7b0e19d92ff9e174367052caf632fddc638fd`, worktree com mudanças
+paralelas preservadas. Uma ordem de deslocamento ou giro manual chamava
+`revogar` antes do executor, removendo a concessão que o owner usa para
+renovar SENTRY. O RED reproduziu HAZARD e parada confirmada, seguidos de
+vigia recusada na mesma sessão. A prioridade manual agora interrompe a
+ocorrência concorrente e preserva a concessão. Parada explícita revoga.
+Testes cobrem retorno ao passeio, vigia, prioridade concorrente e composição.
+A resposta física a uma nova parede após movimento ainda exige frontal apto.
+
+#### CORPO-I2C-01 — recuperação de sensor com OLED ativo — 26/11/2026
+
+COM4 permaneceu enumerada e respondeu 140 consultas HEALTH sem novo boot,
+mas com FACE ativo o firmware perdeu repetidamente a sessão com motivo I2C.
+O frontal reportou AUSENTE e GUARD perdeu sua sessão após a rotina de
+recuperação. A recuperação isolada em repouso agora preserva a sessão,
+mantendo as guardas da tração. O ensaio host reproduziu a perda antes da
+mudança e confirmou que falha de OLED e recuperação com motor pendente
+continuam cortando a sessão. Firmware gravado na COM4 com hash verificado.
+Após gravar, 51 sincronizações em 48 s mantiveram uma sessão, com frontal
+indisponível e tração bloqueada. Pendente diagnosticar a indisponibilidade
+do frontal físico. Nenhum comando de movimento foi enviado na placa.
+
+Adendo 26/11 — o módulo inercial respondia WHO_AM_I 0x98, porém 70 leituras
+consecutivas em CALIBRANDO informavam 0 g. Com o reset de interface prescrito
+para ICM-20689, a placa voltou a medir cerca de 1 g. Permaneceram amostras
+instáveis e erros I²C com o frontal conectado. DPROBE mostrou ACK no
+endereço padrão, seguido de falha dentro da inicialização do VL53L0X.
+Após desligar a alimentação e isolar o frontal, 34/34 leituras do MPU
+foram PRONTA e ESTAVEL. O ensaio não isola o módulo da fiação, da alimentação
+ou do efeito da partida a frio. Nova comparação depende da reconexão física.
+
+Ainda em 26/11, com frontal inicializado, o MPU voltou a ficar em
+CALIBRANDO no boot 458d8762 (26/26 leituras, nenhuma lacuna de amostragem,
+contador fora de repouso crescente e pico angular de 5,68°/s). O teste
+reproduziu viés lateral estável de 5,5°/s e comparou com giros reais
+simulados. O ICM-20689 agora aceita mais margem lateral na calibração
+somente durante uma janela de gravidade estável, com limite vertical
+preservado. O firmware gravado na COM4 passou 16/16 leituras PRONTA/ESTAVEL
+com frontal inicializado. No novo boot, o pico de calibração foi 5,12°/s.

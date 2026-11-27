@@ -86,53 +86,8 @@ function animateDesktopMotion(location) {
   if(!island)return;
   const expanded=state.desktopState==='expanded';
 
-  // ── Compact → Expandida: animações de entrada suaves ──────────────
-  if(expanded&&oldState!=='expanded') {
-    // Toolbar: desliza de cima com fade
-    animateSafe(island.querySelector('.desktop-toolbar'),
-      [{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:240,easing:'cubic-bezier(.22,.85,.2,1)',delay:30});
-    // Tabs: fade+slide
-    animateSafe(island.querySelector('.desktop-tabs,.desktop-window-body .desktop-tabs'),
-      [{opacity:0,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:220,easing:'cubic-bezier(.22,.85,.2,1)',delay:50});
-    // Presença (esquerda): desliza da esquerda
-    animateSafe(island.querySelector('.desktop-presence'),
-      [{opacity:0,transform:'translateX(-9px)'},{opacity:1,transform:'translateX(0)'}],
-      {duration:270,easing:'cubic-bezier(.22,.85,.2,1)',delay:70});
-    // Portrait/avatar: micro-bounce
-    animateSafe(island.querySelector('.desktop-portrait'),
-      [
-        {opacity:0,transform:'scale(0.84) translateY(10px)'},
-        {opacity:1,transform:'scale(1.04) translateY(-2px)',offset:0.6},
-        {opacity:1,transform:'scale(0.982) translateY(0)',offset:0.82},
-        {opacity:1,transform:'scale(1) translateY(0)'}
-      ],
-      {duration:420,easing:'linear',delay:75});
-    // Contexto (direita): desliza da direita
-    animateSafe(island.querySelector('.desktop-context'),
-      [{opacity:0,transform:'translateX(10px)'},{opacity:1,transform:'translateX(0)'}],
-      {duration:260,easing:'cubic-bezier(.22,.85,.2,1)',delay:90});
-    // Mensagem recente e compositor: fade suave
-    animateSafe(island.querySelector('.desktop-message'),
-      [{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:230,easing:'cubic-bezier(.2,.78,.2,1)',delay:120});
-    animateSafe(island.querySelector('.desktop-composer'),
-      [{opacity:0,transform:'translateY(5px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:230,easing:'cubic-bezier(.2,.78,.2,1)',delay:140});
-    // Rodapé: fade puro
-    animateSafe(island.querySelector('.desktop-foot'),
-      [{opacity:0},{opacity:1}],
-      {duration:280,easing:'ease-out',delay:160});
-    // Conteúdo de página (view=page)
-    animateSafe(island.querySelector('.desktop-page-content'),
-      [{opacity:0,transform:'translateY(7px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:270,easing:'cubic-bezier(.22,.85,.2,1)',delay:60});
-    animateSafe(island.querySelector('.desktop-page .context-bar'),
-      [{opacity:0,transform:'translateY(-4px)'},{opacity:1,transform:'translateY(0)'}],
-      {duration:220,easing:'cubic-bezier(.2,.78,.2,1)',delay:40});
-    motionRunCount++;return;
-  }
+  // O resize nativo já revelou o painel. Manter o conteúdo visível no ACK.
+  if(expanded&&oldState!=='expanded')return;
 
   // ── Expandida → Compacta: restore da ilha compacta ────────────────
   if(!expanded&&oldState==='expanded') {
@@ -464,7 +419,12 @@ function queuePresentationCommit(){
     if(presentationPrepareKey===key)return;
     if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
     presentationPrepareKey=key;
-    presentationPrepareFrame=requestAnimationFrame(()=>{
+    const preparar=()=>{
+      if(presentationPrepareKey!==key||state.desktopPhase!=='starting')return;
+      if(state.desktopReveal&&(innerWidth!==state.desktopTargetWidth||innerHeight!==state.desktopTargetHeight)){
+        presentationPrepareFrame=requestAnimationFrame(preparar);
+        return;
+      }
       presentationPrepareFrame=requestAnimationFrame(()=>{
         presentationPrepareFrame=0;
         const island=document.querySelector('.desktop-island');
@@ -476,7 +436,8 @@ function queuePresentationCommit(){
           bridge.preparacao_transicao_pronta(state.desktopTransition);
         }
       });
-    });
+    };
+    presentationPrepareFrame=requestAnimationFrame(preparar);
     return;
   }
   if(presentationPrepareFrame)cancelAnimationFrame(presentationPrepareFrame);
@@ -602,6 +563,13 @@ function render(options={}) {
   if(options.resetFields)resetFields=true;
   const root=document.getElementById('workspace');
   if(!root)return;
+  const preparandoPagina=state.mode==='desktop'&&state.desktopState==='expanded'
+    &&state.desktopPhase!=='idle'&&state.desktopTargetWidth>0;
+  if(preparandoPagina)root.style.setProperty('--desktop-target-width',state.desktopTargetWidth+'px');
+  else root.style.removeProperty('--desktop-target-width');
+  if(preparandoPagina&&state.desktopReveal&&state.desktopPhase==='starting'){
+    root.style.setProperty('--desktop-frame-probe','rgb(31 211 '+(50+state.desktopTransition%150)+')');
+  }else root.style.removeProperty('--desktop-frame-probe');
   const location=presentationLocation();
   document.body.classList.toggle('reduced',state.preferences.reduced);
   document.body.classList.toggle('cyan',state.preferences.accent==='cyan');
@@ -808,6 +776,7 @@ function receiveEvent(input) {
     if(Object.hasOwn(nativePages,msg.desktop_page))state.page=msg.desktop_page;
     if(typeof msg.desktop_pinned==='boolean')state.desktopPinned=msg.desktop_pinned;
     if(['idle','resizing','committing','starting'].includes(msg.desktop_phase))state.desktopPhase=msg.desktop_phase;
+    if(typeof msg.desktop_reveal==='boolean')state.desktopReveal=msg.desktop_reveal;
     if(state.mode!=='desktop'||state.desktopState!=='compact'||state.desktopPhase==='idle')state.desktopDockMotion='';
     else if(state.desktopDocked!==dockedBefore)state.desktopDockMotion=state.desktopDocked?'closing':'opening';
     if(Number.isFinite(msg.desktop_transition))state.desktopTransition=msg.desktop_transition;

@@ -122,7 +122,7 @@ def _intencao_deterministica_tem_alvo_explicito(resultado: Any, texto: str) -> b
     if intent == "CORPO_COMPANHIA":
         return alvo == "corpo" and params.get("acao") in {"ativar", "desativar"}
     if intent in {"CORPO_MOVER", "CORPO_PARAR"}:
-        return alvo == "corpo" and (intent == "CORPO_PARAR" or params.get("direcao") in {"frente", "tras", "esquerda", "direita"})
+        return alvo == "corpo" and (intent == "CORPO_PARAR" or params.get("direcao") in {"", "frente", "tras", "esquerda", "direita"})
     if intent in {"CREATE_FOLDER", "CREATE_FILE", "DELETE_ITEM", "CONFIRM_DELETE_ITEM", "CANCEL_DELETE_ITEM", "RESTORE_DELETED_ITEM", "MOVE_ITEM", "FILE_TRANSACTION", "FILE_READ", "FILE_OPEN_RESULT"}:
         return not valor_e_referencia_contextual(alvo)
     if intent in {"APP_OPEN", "CLOSE_APP", "MAXIMIZE_WINDOW", "OPEN_URL", "CLOSE_TAB"}:

@@ -10,8 +10,11 @@ import re
 import unicodedata
 from typing import Any, Mapping, TYPE_CHECKING
 from mente_laylay.cognicao.normalizacao_linguagem import (
-    SAUDACOES_CONVERSACIONAIS, SAUDACOES_TEMPORAIS, separar_saudacao_inicial,
+    SAUDACOES_CONVERSACIONAIS, SAUDACOES_TEMPORAIS,
+    normalizar_texto_basico, separar_saudacao_inicial,
 )
+from mente_laylay.cognicao.referencias_linguagem import enunciados_discursivos, texto_fora_de_citacoes
+from mente_laylay.personalidade.perfil_amizade import IDENTIDADE_VOZ_LAYLAY
 
 if TYPE_CHECKING:
     from mente_laylay.integracao.registro_conversa_llm import PacotePrompt
@@ -20,7 +23,8 @@ if TYPE_CHECKING:
 _PRESENCAS = ("Estou aqui conversando com você.", "Agora estou respondendo à sua mensagem.",
               "Estou acompanhando nossa conversa.")
 _SAUDACOES = SAUDACOES_CONVERSACIONAIS
-_RECIPROCIDADES = ("Tudo bem por aqui. E com você?",
+_RECIPROCIDADES = ("Tudo tranquilo por aqui. E você?",
+                  "Tudo bem por aqui. E com você?",
                   "Estou por aqui, pronta para conversar. Como você está?",
                   "Por aqui, tudo tranquilo. E por aí?")
 _ABERTURAS = ("Como você está?", "Bom ter você por aqui.", "Vamos conversar?")
@@ -29,6 +33,83 @@ _SENTIDO = ("Minha frase se refere à participação nesta conversa. "
             "Ela não informa outras atividades no computador nem o estado do corpo físico.")
 _SENTIDO_CORTESIA = "Eu estava retribuindo sua gentileza e dizendo que estou por aqui para conversar."
 _SENTIDO_DESPEDIDA = "Quis respeitar seu encerramento da conversa e me despedir."
+
+_AGRADECIMENTO_A_CONVERSA = re.compile(
+    r"(?:(?:valeu|obrigad[ao]|agradeco) pel[oa]|(?:gostei|adorei|curti) d[oa]) "
+    r"(?:conversa|papo|bate[- ]papo|companhia)(?:\s*[, ]+\s*(?:lay|laylay|chatgpt))?"
+)
+_ATE_PROXIMA = r"(?:ate (?:mais|logo|amanha|a proxima)|tchau)"
+_PERGUNTA_DE_PRESENCA = re.compile(
+    r"(?:e )?(?:(?:voce|vc|tu) )?(?:ainda )?"
+    r"(?:(?:(?:ta|esta|continua|segue) )?acordad[ao]|"
+    r"(?:ta|esta|continua|segue) (?:por )?(?:ai|aqui))"
+    r"(?: agora| (?:(?:nesta|nessa|hoje de) (?:madrugada|noite)|a (?:esta|essa) hora))?"
+    r"(?:,\s*(?:laylay|lay))?\?+"
+)
+
+
+def consulta_presenca_conversacional(texto: str) -> bool:
+    """Reconhece a pergunta integral sobre a presença da interlocutora no papo."""
+    from mente_laylay.cognicao.identidade_conversacional import remover_vocativo_laylay
+
+    _, corpo = separar_saudacao_inicial(remover_vocativo_laylay(texto))
+    return bool(_PERGUNTA_DE_PRESENCA.fullmatch(corpo))
+
+
+def despedida_social(texto: str) -> str:
+    """A despedida pode merecer resposta sem ser uma solicitação de fechar a sessão."""
+    autoral = texto_fora_de_citacoes(texto)
+    partes = enunciados_discursivos(autoral)
+    if "?" in autoral or len(partes) < 2:
+        return ""
+    saudacao, resto = separar_saudacao_inicial(partes[-1])
+    agradecimento = normalizar_texto_basico(partes[-2]).strip(" .!")
+    if saudacao in SAUDACOES_TEMPORAIS and not resto and _AGRADECIMENTO_A_CONVERSA.fullmatch(agradecimento):
+        return saudacao
+    return ""
+
+
+def retribui_despedida_social(fala: str) -> bool:
+    autoral = texto_fora_de_citacoes(fala)
+    partes = enunciados_discursivos(autoral)
+    if not partes or "?" in autoral:
+        return False
+    final = normalizar_texto_basico(partes[-1]).strip(" .!")
+    saudacao, resto = separar_saudacao_inicial(final)
+    return bool(re.fullmatch(_ATE_PROXIMA, final)
+        or (saudacao in SAUDACOES_TEMPORAIS and (not resto or re.fullmatch(rf"(?:e )?{_ATE_PROXIMA}", resto))))
+
+
+def realizar_despedida_social(texto: str, *, plano: Mapping[str, Any]) -> str:
+    """Realiza o fecho social vigente quando ele é a única entrega pendente."""
+    from mente_laylay.cognicao.referencias_linguagem import PerspectivaEnunciador
+
+    contrato = plano.get("contrato_fala") or {}
+    perspectiva = contrato.get("perspectiva_enunciador")
+    atos = set(contrato.get("atos") or ())
+    if (plano.get("texto_usuario") != texto or plano.get("autoriza_execucao") is not False
+        or plano.get("requer_execucao") or plano.get("comandos")
+        or contrato.get("origem") != "mente_unica" or contrato.get("autoriza_execucao") is not False
+        or type(perspectiva) is not PerspectivaEnunciador
+        or not perspectiva.vigente(texto, plano.get("id"))
+        or str(contrato.get("turno_id")) != perspectiva.turno_id
+        or "despedida_social" not in atos
+        or atos - {"conversa", "reacao", "agradecimento", "despedida_social"}):
+        return ""
+    cortesia = despedida_social(texto)
+    if not cortesia:
+        return ""
+    from mente_laylay.cognicao.modalidade_turno import classificar_modalidade_turno
+    from mente_laylay.personalidade.proporcao_resposta import classificar_proporcao
+
+    # O agradecimento final pode dominar a leitura da fala inteira. Antes de
+    # encerrar a resposta local, preserve pedidos anteriores como atos próprios.
+    antecedentes = enunciados_discursivos(texto_fora_de_citacoes(texto))[:-2]
+    for trecho in antecedentes:
+        if (classificar_proporcao(trecho) in {"explicativa", "matematica"}
+            or classificar_modalidade_turno(trecho).get("modalidade_geral") not in {"conversa", "reacao"}):
+            return ""
+    return "Gostei do papo também. " + _SAUDACOES[cortesia].rstrip()
 
 
 def _presenca_integral(fala: Any) -> bool:
@@ -54,7 +135,7 @@ def _realizacoes_do_ato(ato: str, saudacao: str) -> tuple[str, ...]:
     # acrescentar uma terceira frase ao limite contratual de duas.
     cortesia = tuple((prefixo.replace('! ', ', ') + p[:1].lower() + p[1:]) if prefixo else p
                      for p in _RECIPROCIDADES) + (prefixo + 'Tudo bem comigo.',)
-    return cortesia + presencas if ato == 'bem_estar' else cortesia
+    return cortesia
 
 
 def construir_fonte_sentido_presenca(texto: str, *, contrato: Mapping[str, Any],
@@ -195,7 +276,7 @@ def montar_pacote_presenca(texto: str, *, contrato: Mapping[str, Any], turno_id:
                                 "comandos": {"type": "array", "maxItems": 0, "items": {"type": "object"}}}},
         validar=validar)
     return PacotePrompt((
-        {"role": "system", "content": "Você é Laylay. Retribua a cortesia ou responda sobre sua presença "
+        {"role": "system", "content": IDENTIDADE_VOZ_LAYLAY + " Retribua a cortesia ou responda sobre sua presença "
          "nesta conversa com uma realização permitida, natural e curta. Prefira reciprocidade acolhedora "
          "nas perguntas de bem-estar; nas perguntas de atividade, responda o que faz nesta conversa. "
          "Quando o ato é encerramento, respeite a despedida: não reabra pergunta, convite, oferta ou assunto. "

@@ -19,7 +19,10 @@
 #endif
 
 // Um endpoint controla a sessão; conexão/autenticação não autorizam movimento.
-enum class OrigemControle { NENHUMA, USB, TCP };
+enum class OrigemControle { NENHUMA, USB, TCP, BLE };
+#if defined(LAYLAY_BLE) && LAYLAY_BLE
+bool enfileirarRespostaBle(const char *texto);
+#endif
 OrigemControle donoControle = OrigemControle::NENHUMA;
 OrigemControle origemEmProcessamento = OrigemControle::NENHUMA;
 constexpr uint16_t PORTA_WIFI = 8765;
@@ -120,6 +123,9 @@ void responder(const char *formato, ...) {
     return;
   }
   if (destino == OrigemControle::TCP) enfileirarRespostaWifi(texto);
+#if defined(LAYLAY_BLE) && LAYLAY_BLE
+  else if (destino == OrigemControle::BLE) enfileirarRespostaBle(texto);
+#endif
   else Serial.printf("%s", texto);
 }
 void responderLinha(const char *texto) { responder("%s\n", texto); }

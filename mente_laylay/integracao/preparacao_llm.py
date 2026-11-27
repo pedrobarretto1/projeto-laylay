@@ -362,10 +362,14 @@ def preparar_payload_llm(
                     preservar_ultima_mensagem_sistema
                 ),
             )
-        elif modo_rapido:
-            historico = originais[-4:] if len(originais) > 5 else originais[1:]
         else:
-            historico = originais[-10:] if len(originais) > 11 else originais[1:]
+            inicio = 1
+            if any(isinstance(m, dict) and m.get("dialogo_arquivado") is True for m in originais):
+                from mente_laylay.cognicao.seletor_contexto import inicio_contexto_discursivo
+                atual = next((i for i in range(len(originais) - 1, 0, -1)
+                             if isinstance(originais[i], dict) and originais[i].get("role") == "user"), -1)
+                inicio = max(inicio, inicio_contexto_discursivo(originais, atual))
+            historico = originais[inicio:][-(4 if modo_rapido else 10):]
         mensagens_envio = [prompt_sistema] + historico
     caracteres_selecionados = sum(
         len(str(item.get("content") or ""))
@@ -459,7 +463,11 @@ def preparar_payload_llm(
 
     data = {
         "model": model,
-        "messages": mensagens_envio,
+        "messages": [
+            {k: v for k, v in item.items() if k != "dialogo_arquivado"}
+            if isinstance(item, dict) and "dialogo_arquivado" in item else item
+            for item in mensagens_envio
+        ],
         "max_tokens": limite_tokens,
         "temperature": 0.7,
     }

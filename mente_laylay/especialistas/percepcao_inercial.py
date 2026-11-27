@@ -3,7 +3,16 @@ from __future__ import annotations
 
 ESTADOS_IMU = {"PRONTA", "CALIBRANDO", "AUSENTE", "AGUARDANDO", "EXPIRADA", "ERRO_I2C"}
 MANUSEIOS = {"ESTAVEL", "INCLINADA", "TOMBADA", "MOVIMENTO_BRUSCO", "POSSIVEL_LEVANTAMENTO", "DESCONHECIDO"}
-FASES_MANUSEIO = {"TRANQUILA", "CURIOSA", "DESCONFIADA", "SUSTO", "RESMUNGO", "DESORIENTADA", "RECOMPONDO", "DESCONHECIDA"}
+DESCRICOES_POSTURAS_IMU = {
+    "LATERAL": "A IMU mediu o corpo virado de lado.",
+    "EM_PE": "A IMU mediu o corpo na vertical, na direção da frente ou de trás.",
+    "INVERTIDA": "A IMU mediu o corpo de ponta-cabeça.",
+    "PROTESTO_LATERAL": "A IMU mediu o corpo de lado durante manuseio persistente ou repetido.",
+    "PROTESTO_VERTICAL": "A IMU mediu o corpo na vertical durante manuseio persistente ou repetido.",
+    "PROTESTO_INVERTIDA": "A IMU mediu o corpo de ponta-cabeça durante manuseio persistente ou repetido.",
+}
+FASES_MANUSEIO = {"TRANQUILA", "CURIOSA", "DESCONFIADA", "SUSTO", "RESMUNGO", "DESORIENTADA",
+                  "RECOMPONDO", "DESCONHECIDA", *DESCRICOES_POSTURAS_IMU}
 
 
 def interpretar_imu(linha: str, sequencia: int) -> dict:

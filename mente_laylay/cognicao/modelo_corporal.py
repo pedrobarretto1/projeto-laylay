@@ -114,6 +114,8 @@ def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_hist
     if not modelo or modelo.get("origem") != "owner_corpo_usb":
         return ""
     fatos = {k: modelo.get(k) for k in ("turno_id", "conectada", "companhia_ativa", "passeio_ativo", "perfil", "olhos", "emocao_causal", "motor_em_andamento", "atencao_pc", "condicao", "percepcao_fisica", "intencao_em_curso", "objetivo_para_continuar", "experiencia", "ultima_experiencia") if modelo.get(k) is not None}
+    if modelo.get("transporte_simulado") is True:
+        fatos["ambiente_corporal"] = "bancada_virtual; sensores, tração e efeitos são da simulação"
     # A mente recebe o fato necessário; metadados elétricos completos ficam no
     # owner e no DEV. Projeção não altera o retrato canônico nem concede controle.
     percepcao = fatos.get("percepcao_fisica") or {}
@@ -192,12 +194,20 @@ def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_hist
     # fatos inalterados para o cache do provedor, sem reutilizar estado antigo.
     if "turno_id" in fatos:
         fatos["turno_id"] = fatos.pop("turno_id")
-    return (
+    retrato = (
         "--- MEU CORPO AGORA (estado efêmero observado pelo host) ---\n"
         + json.dumps(fatos, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
         + ("\nSou a Laylay, no PC e neste corpo robótico conectado (OLED/motores). " if modelo.get("conectada") is True
            else "\nCorpo desconectado: não alegue acesso atual a tela/motores. ")
-        + "Emoção é expressiva; toque, temperatura, esforço e posição não são medidos. "
+    )
+    if _corpo_desconectado_sem_observacoes(fatos):
+        return retrato + (
+            "Emoção é expressiva. Sem observação física, não afirme movimento, "
+            "parada, posição, contato ou risco observado. Proposta e ausência de "
+            "leitura não comprovam resultado; só o executor pode confirmá-lo."
+        )
+    return retrato + (
+        "Emoção é expressiva; toque, temperatura, esforço e posição não são medidos. "
         "Só afirme borda/obstáculo com leitura recente (frente/inferior; sem traseira/laterais). "
         "Frontal inválido é desconhecido; medo reage ao risco. Giro por tempo não mede ângulo. "
         "IMU recente mede inclinação/rotação relativa, nunca posição; possível levantamento é hipótese, não certeza de colo. "
@@ -205,6 +215,33 @@ def formatar_realidade_corporal(modelo: Mapping[str, Any] | None, *, limite_hist
         "GUARD confirma observação, não sucesso de comando. Histórico contém observações de sessões anteriores, não permissão atual. "
         "Resultado permanece no turno original. Proposta não significa ação executada; novo turno exige proposta atual, sem replay nem herdar receipt. "
         "decisao_origem é a regra anterior ao efeito; sem fonte, causa desconhecida. intencao_da_mente não explica o raciocínio da LLM. "
+    )
+
+
+def _corpo_desconectado_sem_observacoes(fatos: Mapping[str, Any]) -> bool:
+    """Economiza a interpretação de evidências ausentes. O retrato fica intacto."""
+    condicao = fatos["condicao"]
+    percepcao = fatos["percepcao_fisica"]
+    experiencia = fatos.get("experiencia") or {}
+    registros = (
+        condicao.get("protecao"), fatos.get("intencao_em_curso"),
+        fatos.get("objetivo_para_continuar"),
+    )
+    return (
+        fatos.get("conectada") is False
+        and fatos.get("companhia_ativa") is False
+        and condicao.get("estado") == "desconectada"
+        and isinstance(experiencia, Mapping)
+        and not any(any(registro.values()) if isinstance(registro, Mapping) else registro
+                    for registro in registros)
+        and not any((
+            fatos.get("olhos"), fatos.get("motor_em_andamento"), fatos.get("passeio_ativo"),
+            condicao.get("recuperacao_pendente"), condicao.get("reacao_expressiva"),
+            percepcao.get("sensores_disponiveis"), percepcao.get("recente"),
+            percepcao.get("leituras"), percepcao.get("inercial"),
+            fatos.get("ultima_experiencia"), experiencia.get("historico_recente"),
+            experiencia.get("historico_omitido"), experiencia.get("feedback"),
+        ))
     )
 
 

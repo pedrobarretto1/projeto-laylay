@@ -207,8 +207,8 @@ class ContratoExplicativoAto:
 class ComplementoConversacionalTurno:
     """Cobertura restante, não autorização, receipt ou novo turno.
 
-    Projetada da leitura canônica; não reclassifica linguagem. O primeiro
-    consumidor é a prioridade que recorta ordens quando há um ato vetado.
+    Projetada da leitura canônica; não reclassifica linguagem. A prioridade
+    recorta as ordens e entrega os atos restantes ao contrato de fala.
     """
     turno_id: Any
     texto_usuario: str
@@ -234,14 +234,25 @@ class ComplementoConversacionalTurno:
         indices = tuple(s["indice"] for s in segmentos)
         if len(set(indices)) != len(indices):
             return None
-        if (not any(s["autoriza_execucao"] and not s.get("veto_execucao_operacional") for s in segmentos)
-            or not any(s.get("veto_execucao_operacional") for s in segmentos)
+        operacionais = [s for s in segmentos if s["autoriza_execucao"]]
+        if (not operacionais or any(s.get("veto_execucao_operacional") for s in operacionais)
             or not str(turno.get("texto_operacional") or "").strip()):
             return None
         restantes = tuple(s["indice"] for s in segmentos if not s["autoriza_execucao"])
         texto = str(turno.get("texto_conversacional") or "").strip()
         if not restantes or not texto:
             return None
+        if not any(s.get("veto_execucao_operacional") for s in segmentos):
+            from mente_laylay.cognicao.modalidade_turno import fontes_textuais_dos_segmentos
+            fontes = fontes_textuais_dos_segmentos(texto_usuario, segmentos)
+            if (len(fontes) != len(segmentos) or indices != tuple(range(len(segmentos)))
+                or not all(s.get("modalidade") == "comando" for s in operacionais)
+                or any(not s["autoriza_execucao"] and s.get("modalidade") not in {"conversa", "pergunta", "reacao"}
+                       for s in segmentos)
+                or not all(isinstance(s.get("texto"), str) for s in segmentos)
+                or " ".join(s["texto"] for s in operacionais) != turno["texto_operacional"]
+                or " ".join(s["texto"] for s in segmentos if not s["autoriza_execucao"]) != texto):
+                return None
         atos: list[ContratoExplicativoAto] = []
         for segmento in segmentos:
             if segmento["autoriza_execucao"]:

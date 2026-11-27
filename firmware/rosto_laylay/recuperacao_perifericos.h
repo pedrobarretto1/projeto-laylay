@@ -19,9 +19,14 @@ void atualizarRecuperacaoPerifericos(uint32_t agora) {
   if (uint32_t(agora-inicioFalhaPerifericos)<500
       || (recuperacaoPerifericosTentada && uint32_t(agora-ultimaRecuperacaoPerifericos)<5000)) return;
   ultimaRecuperacaoPerifericos=agora;recuperacaoPerifericosTentada=true;
-  // Corta antes das inicializações I2C, que podem conter esperas. O PC deve
-  // negociar nova sessão e conferir amostras novas; o gesto antigo terminou.
-  invalidarSessaoPor("I2C");
+  // Tela/tração comprometidas exigem perder a sessão. Um sensor isolado
+  // indisponível, com o corpo parado, continua visível na sessão do OLED.
+  // MOTOR e os reflexos ainda dependem das guardas e das amostras atuais.
+  if (falhaTela || motorEmUso() || reflexoProtecaoAtivo()) {
+    invalidarSessaoPor("I2C");
+  } else {
+    pararMotor();
+  }
 #if LAYLAY_SENSORES_DISTANCIA
   if (falhaDistancia) iniciarSensoresDistancia();
 #endif

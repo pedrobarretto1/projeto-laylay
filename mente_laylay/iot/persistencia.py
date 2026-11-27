@@ -48,9 +48,17 @@ class PersistenciaIoT:
     def cadastrar(self, dispositivo: DispositivoIoT) -> dict[str, Any]:
         return self.memoria.salvar_dispositivo_iot(self._dados_dispositivo(dispositivo))
 
+    def nomes_desativados(self) -> set[str]:
+        return {
+            item["nome"] for item in self.memoria.listar_dispositivos_iot(somente_ativos=False)
+            if not item.get("ativo", True)
+        }
+
     def sincronizar(self, dispositivos: Iterable[DispositivoIoT]) -> None:
+        desativados = self.nomes_desativados()
         for dispositivo in dispositivos:
-            self.cadastrar(dispositivo)
+            if dispositivo.nome not in desativados:
+                self.cadastrar(dispositivo)
 
     def carregar_registro(self, ambiente: str = "") -> RegistroDispositivos:
         itens = self.memoria.listar_dispositivos_iot(ambiente, somente_ativos=True)

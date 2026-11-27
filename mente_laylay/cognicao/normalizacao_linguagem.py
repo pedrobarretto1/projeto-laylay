@@ -236,10 +236,11 @@ _PREFIXO_DIRETIVA = r"(?:(?:agora|por favor)[, ]+)*(?:(?:voc[eê] )?(?:pode|pode
 def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
     """O alvo é um diálogo no canal atual, com participantes e extensão opcionais."""
     from mente_laylay.cognicao.qualificacao_intencao import NUMERO_EXTENSAO, QUANTIDADE_EXTENSAO
-    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia
+    from mente_laylay.cognicao.morfologia_oracao import consultar_morfologia, grupo_nominal_de_papel
 
     # Nesta gramática, a cópula «é» não marca coordenação entre atos.
-    texto = 'é'.join(remover_acentos(parte) for parte in re.split(r'\bé\b', texto.strip().casefold()))
+    literal = unicodedata.normalize('NFC', texto.strip().casefold())
+    texto = 'é'.join(remover_acentos(parte) for parte in re.split(r'\bé\b', literal))
     tamanho = r'(?:curto|pequeno|breve)'
     genero = r'(?:ficticio|imaginario)'
     # Os sujeitos retomam os participantes. Os predicados ficam dentro da
@@ -259,7 +260,7 @@ def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
     pedido = re.fullmatch(
         _PREFIXO_DIRETIVA + r'(?:escreva|escreve|escrever|redija|redige|redigir|crie|cria|criar) '
         + rf'um (?:{tamanho} )?dialogo(?: {tamanho}| (?P<genero>{genero}))?'
-        + rf'(?: (?:de|em|com) (?P<quantidade>{QUANTIDADE_EXTENSAO}) falas?)?'
+        + rf'(?: (?:de|em|com) (?:exatamente )?(?P<quantidade>{QUANTIDADE_EXTENSAO}) falas?)?'
         + r'(?: entre (?P<participantes>[^.;:!?]+?))?'
         + rf'(?:, (?P<papeis>{papel_retoma} e (?:outra|outro) que \w+'
           r'(?: (?!e\b|mas\b|depois\b)[\w-]+){0,9}))?'
@@ -271,6 +272,9 @@ def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
         + r'(?: aqui| no chat| nesta conversa)?[.!?]*'
         + rf'(?:\. (?:um|uma) (?P<verbo_papel1>\w+){complemento}; '
           rf'(?:o outro|a outra) (?P<verbo_papel2>\w+){complemento}(?:{desfecho})?[.!?]*)?'
+        + r'(?:\. (?:eles|elas|ambos|ambas|os dois|as duas) (?:discordam|divergem) sobre '
+          r'(?P<dissenso>[^.!?;,:]+), mas (?:decidem|resolvem|escolhem) '
+          r'(?P<decisao>[\w-]+)(?: (?P<modo>juntos|juntas|em dupla))?[.!]*)?'
         + r'(?: quero que (?:ambos|ambas|os dois|as duas) '
           r'(?:entendam|compreendam|reconhecam) (?:as diferencas|a diferenca) '
           r'entre (?:suas|seus|os|as) (?:emocoes|sentimentos|perspectivas|opinioes)[.!?]*)?'
@@ -280,7 +284,9 @@ def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
     )
     if pedido is None:
         return None
-    participantes = pedido['participantes'] or ''
+    # A gramática usa grafia normalizada, o léxico de papéis usa a superfície
+    # original. «Bússola» é substantivo, «bussola» pode ser verbo no índice.
+    participantes = literal[slice(*pedido.span('participantes'))] if pedido['participantes'] else ''
     if pedido['papeis']:
         if not re.fullmatch(r'(?:ess[ae]s |est[ae]s |aquel[ae]s )?(?:duas|dois|2) '
                             r'(?:pessoas|personagens|amig[oa]s)', participantes):
@@ -323,7 +329,19 @@ def pedido_dialogo_discursivo(texto: str) -> re.Match[str] | None:
         if not _tema_de_redacao_discursiva(assunto):
             return None
         participantes = divergencia['grupo']
-    if pedido['participantes'] and not (participantes and _tema_de_redacao_discursiva(participantes)):
+    if pedido['participantes']:
+        papeis = re.split(r'\s+e\s+(?=(?:um|uma|o|a)\s+)', participantes)
+        if not all(all(_tema_de_redacao_discursiva(nominal) for nominal in papel.split(' com ', 1))
+                   for papel in papeis):
+            return None
+    if pedido['dissenso'] and (
+        not participantes or not (
+            _tema_de_redacao_discursiva(pedido['dissenso'])
+            or grupo_nominal_de_papel(literal[slice(*pedido.span('dissenso'))])
+        )
+        or not (consultar_morfologia(pedido['decisao']) or 0) & 32
+        or not pedido['decisao'].endswith(('ar', 'er', 'ir'))
+    ):
         return None
     return pedido
 
@@ -338,6 +356,7 @@ def _pede_pergunta_discursiva(texto: str, prefixo: str) -> bool:
         prefixo + reencontro
         + r'(?:escolha|escolhe|escolher|proponha|propoe|propor|formule|formula|formular) '
         + unidade + rf'(?:(?: sobre | {tema_da_conversa})(?P<tema>[^.!?;:]+?))?'
+        + r'(?: para (?:(?:o|nosso) proximo encontro|(?:a|nossa) proxima conversa))?'
         + r'(?: que (?:voce )?gostaria de (?:discutir|explorar|fazer) (?:no proximo encontro|na proxima conversa))?'
         + rf'(?: {justificativa}|\. (?:quero|prefiro|pode ser) {unidade}'
         + r'(?: realmente aberta)?(?:, sem resposta (?:obvia|pronta))?'
@@ -346,6 +365,18 @@ def _pede_pergunta_discursiva(texto: str, prefixo: str) -> bool:
     )
     return bool(pedido and (
         not pedido['tema'] or _tema_de_redacao_discursiva(pedido['tema'].replace(', ', ' e '))
+    ))
+
+
+def adiamento_de_assunto(texto: str) -> bool:
+    """Reconhece o objeto adiado, sem predicativo, horário ou ação a agendar."""
+    literal = remover_conector_discursivo_inicial(normalizar_texto_basico(texto))
+    nome = r'[^\W\d_]+(?:-[^\W\d_]+)*'
+    return bool(re.fullmatch(
+        r'(?:(?:vamos|podemos|melhor) deixar|deixa|deixe|deixamos|deixemos) '
+        rf'(?:a|o|as|os|ess[ea]s?|est[ea]s?) {nome}'
+        rf'(?: (?:de|do|da|dos|das) {nome})* (?:pra|para) depois[.!?]*',
+        literal,
     ))
 
 
@@ -363,6 +394,10 @@ def tipo_transformacao_conversacional(texto: str) -> str:
         return "formato_resposta"
     if pedido_repeticao_itens_mencionados(t):
         return "reproducao"
+    if _duas_entregas_discursivas(t):
+        return "redacao"
+    if adiamento_de_assunto(literal):
+        return "transicao_tematica"
     # Moldura de reformulação não muda alvo/canal. Só a instrução completa
     # seguinte pode adquirir o papel discursivo; tentar abrir recurso externo
     # continua fora deste leitor. O original não é reescrito.
@@ -537,6 +572,19 @@ def tipo_transformacao_conversacional(texto: str) -> str:
     return ""
 
 
+def _duas_entregas_discursivas(texto: str) -> bool:
+    """Reconhece fecho composto quando cada parte tem finalidade textual."""
+    pedido = re.fullmatch(
+        r"(?:para (?:encerrar|terminar|concluir)(?: (?:a|nossa) conversa)?, )?"
+        r"(?P<resumo>(?:resuma|resume|sintetize) [^.!?;]+?) e "
+        r"(?P<pergunta>(?:proponha|propoe|formule|formula|escolha|escolhe) [^.!?;]+)[.!?]*"
+        r"(?: quero (?:ouvir|ler|receber) (?:as duas|ambas as) (?:partes|respostas)[.!?]*)?",
+        texto,
+    )
+    return bool(pedido and tipo_transformacao_conversacional(pedido["resumo"]) == "resumo"
+                and _pede_pergunta_discursiva(pedido["pergunta"], _PREFIXO_DIRETIVA))
+
+
 def pedido_repeticao_itens_mencionados(texto: str) -> re.Match[str] | None:
     """Liga a reprodução literal à lista mencionada na pergunta do falante."""
     base = remover_acentos(re.sub(r"\s+", " ", texto.strip().casefold()))
@@ -545,8 +593,9 @@ def pedido_repeticao_itens_mencionados(texto: str) -> re.Match[str] | None:
         r"quais (?:foram|eram|sao) os (?P<quantidade>dois|tres|quatro|[234]) "
         r"(?:objetos|itens|elementos|detalhes|nomes) que (?:eu )?(?:mencionei|citei|listei)"
         r"(?: (?:na|no|nessa|nesse|nesta|neste) (?P<referente>[a-z]+(?: [a-z]+)?))?\? "
-        r"(?:repita|reproduza|copie)-os (?:exatamente|literalmente)"
-        r"(?:, sem (?:acrescentar|adicionar) (?:nenhum|nada))?[.!]*",
+        r"(?:repita|reproduza|copie)(?:-os| os (?:nomes|itens|elementos|objetos|detalhes)) "
+        r"(?:exatamente|literalmente)(?: como (?:eu )?(?:os )?(?:escrevi|disse|citei|mencionei))?"
+        r"(?:, sem (?:acrescentar|adicionar) (?:nenhum|nada|outros))?[.!]*",
         base,
     )
 
@@ -934,7 +983,14 @@ def corrigir_erros_portugues_operacionais(
         )
         correcao_termo = _CORRECOES_TERMOS_OPERACIONAIS.get(token)
         tipo_correcao = "termo_operacional"
-        if not correcao_termo and moldura_forte:
+        anterior = tokens_exatos[indice - 1] if indice else ""
+        inicio_alvo_nominal = (
+            anterior in determinantes or anterior in marcadores_consulta
+            or anterior in _VERBOS_OPERACIONAIS or anterior in _ERROS_VERBAIS_EXPLICITOS
+        )
+        if not correcao_termo and moldura_forte and inicio_alvo_nominal:
+            # A moldura autoriza buscar um substantivo na posição do alvo.
+            # Seu interrogativo não abre aproximações em complementos livres.
             correcao_termo = _termo_operacional_proximo(token)
             tipo_correcao = "termo_operacional_aproximado"
         if not correcao_termo:
@@ -1282,8 +1338,8 @@ def texto_pede_opiniao(texto: str) -> bool:
         return False
     if extrair_escolha_avaliativa(t) is not None:
         return True
-    from mente_laylay.cognicao.referencias_linguagem import consulta_opiniao_propria
-    if consulta_opiniao_propria(texto) is not None:
+    from mente_laylay.cognicao.referencias_linguagem import consulta_escolha_justificada, consulta_opiniao_propria
+    if consulta_escolha_justificada(texto) or consulta_opiniao_propria(texto) is not None:
         return True
     # Predicados de gosto dirigidos ao interlocutor são atos subjetivos,
     # independentemente do domínio do complemento. Não procurar o verbo

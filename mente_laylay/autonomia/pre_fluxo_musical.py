@@ -13,6 +13,18 @@ def _turno_atual(ctx: Dict[str, Any]) -> Dict[str, Any]:
     turno = mente.get("turno_atual") if isinstance(mente, dict) else {}
     return dict(turno or {}) if isinstance(turno, dict) else {}
 
+def processar_aceite_oferta_playlist(
+    ctx: Dict[str, Any], texto_usuario: str,
+) -> Tuple[bool, str]:
+    turno = _turno_atual(ctx)
+    if turno.get("autoriza_execucao") or turno_tem_veto_execucao(turno):
+        return False, ""
+    processar = _get(ctx, "_processar_aceite_oferta_playlist")
+    if callable(processar) and processar(texto_usuario):
+        return True, "aceite_oferta_faixa_playlist"
+    return False, ""
+
+
 def processar_confirmacao_musical_pendente(
     ctx: Dict[str, Any], texto_usuario: str,
 ) -> Tuple[bool, str]:

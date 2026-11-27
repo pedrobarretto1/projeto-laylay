@@ -2,6 +2,10 @@
    Laylay keeps its own renderer, palette, transport and character. */
 html.desktop-transparent,body.mode-desktop,body.mode-desktop .workspace{background:transparent!important}
 body.mode-desktop .workspace{display:block;inset:0}
+body.mode-desktop.desktop-preparing #workspace::after{
+  content:'';position:fixed;right:0;bottom:0;width:4px;height:4px;
+  background:var(--desktop-frame-probe,transparent);z-index:9;pointer-events:none;
+}
 body.mode-desktop .toast{top:auto;bottom:12px;height:auto;max-width:calc(100% - 24px);font-size:11px;z-index:8}
 .desktop-island{height:100%;width:100%;overflow:hidden;border-radius:24px;background:#0b0d12;color:#edf0f6;border:1px solid #ffffff12;box-shadow:inset 0 1px #ffffff05;font:12px/1.45 var(--font)}
 .desktop-compact{width:100%;height:50px;padding:0 16px;display:flex;gap:11px;align-items:center;text-align:left;background:linear-gradient(110deg,#15151e,#0b0d12);border-radius:24px}

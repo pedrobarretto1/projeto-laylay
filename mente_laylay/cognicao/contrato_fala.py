@@ -99,6 +99,7 @@ class ContratoSemanticoFala:
         "acrescentar personalidade somente se couber",
     )
     max_frases: int = 3
+    acolhimento_breve: bool = False
     permite_pergunta: bool = True
     permite_humor: bool = True
     permite_metafora: bool = False
@@ -662,10 +663,13 @@ def construir_contrato_semantico_fala(
     estado = dict(mente or {})
     bruto = _texto_curto(texto, 500)
     base = _normalizar(bruto)
-    from mente_laylay.cognicao.presenca_conversacional import construir_fonte_presenca
+    from mente_laylay.cognicao.presenca_conversacional import construir_fonte_presenca, despedida_social
     fonte_presenca = construir_fonte_presenca(bruto, turno=leitura, plano=planejamento, mente=estado)
     encerramento_sessao = bool(fonte_presenca and fonte_presenca.get('ato') == 'encerramento')
     cortesia_temporal = bool(fonte_presenca and fonte_presenca.get('ato') == 'cortesia_temporal')
+    cortesia_de_saida = (despedida_social(bruto) if not encerramento_sessao
+                         and leitura.get("autoriza_execucao") is False
+                         and not planejamento.get("requer_execucao") and not planejamento.get("comandos") else "")
     anterior = _texto_curto(estado.get("ultima_resposta"), 500)
     from mente_laylay.memoria_mental.registro_semantico import construir_referencia_fala_consulta
     referencia_observada = construir_referencia_fala_consulta(texto,
@@ -705,9 +709,15 @@ def construir_contrato_semantico_fala(
     # A moldura de "acha" protege a rota conversacional, mas uma pergunta
     # de consequência não exige posição avaliativa. Qualificar cada ato
     # conserva a opinião independente de outra pergunta no mesmo turno.
+    from mente_laylay.cognicao.coerencia_preferencia import alternativas_preferencia, escolha_cotidiana_de_conduta
+
+    pares_preferencia = [opcoes for trecho in trechos_opiniao
+                         if (opcoes := alternativas_preferencia(trecho))]
+    comparacao_preferencia = pares_preferencia[0] if len(pares_preferencia) == 1 else ()
     opiniao = bool(
         any(texto_pede_opiniao(trecho) and not texto_pede_projecao_de_consequencia(trecho)
             for trecho in trechos_opiniao)
+        or comparacao_preferencia
         or re.search(r"\b(?:voce|tu|lay|laylay)?\s*prefere\b.+\bou\b", base)
     )
     projecao_consequencia = bool(trechos_consulta) and not opiniao and all(
@@ -793,6 +803,17 @@ def construir_contrato_semantico_fala(
         r"descricao artistica|metafora|imagine|imagina)\b",
         base,
     ))
+    from mente_laylay.cognicao.referencias_linguagem import consulta_escolha_justificada, enunciados_discursivos
+    escolha_justificada = False
+    if opiniao and not (planejamento.get("requer_execucao")
+                        or planejamento.get("comandos") or leitura.get("autoriza_execucao")):
+        partes_escolha = enunciados_discursivos(bruto, separar_ponto_e_virgula=False)
+        if partes_escolha and consulta_escolha_justificada(partes_escolha[-1]):
+            escolha_justificada = len(partes_escolha) == 1 or (
+                len(partes_escolha) == 2
+                and bool(re.match(r"^(?:imagine|imagina)\s+\S", partes_escolha[0], re.I))
+                and partes_escolha[0].endswith(".")
+            )
     agradecimento = bool(
         funcao == "agradecimento"
         or re.fullmatch(
@@ -882,6 +903,8 @@ def construir_contrato_semantico_fala(
             atos.append(nome)
 
     referente = _extrair_referente(bruto, leitura, planejamento)
+    if opiniao and comparacao_preferencia and not referente:
+        referente = " ou ".join(comparacao_preferencia)
     obrigatorios: list[str] = []
     esperado = _texto_curto(planejamento.get("resposta_esperada"), 240)
     if esperado:
@@ -910,11 +933,17 @@ def construir_contrato_semantico_fala(
     if pergunta_bem_estar:
         obrigatorios.append("responder brevemente como Laylay e devolver a cortesia se couber")
     if opiniao:
-        alvo = referente or "o tema perguntado"
-        obrigatorios.extend((
-            f"assumir uma posição clara sobre {alvo}",
-            "dar uma razão concreta e curta para essa posição",
-        ))
+        if escolha_justificada:
+            obrigatorios.append(
+                "apresentar uma única escolha entre as opções mencionadas e dar um motivo concreto e breve, "
+                "sem reanunciar a escolha nem reformular o mesmo motivo"
+            )
+        else:
+            alvo = referente or "o tema perguntado"
+            obrigatorios.extend((
+                f"assumir uma posição clara sobre {alvo}",
+                "dar uma razão concreta e curta para essa posição",
+            ))
     if esclarecimento:
         if pedido_ensino_anterior:
             obrigatorios.append("retomar o pedido de ensino anterior e reavaliar a explicação, sem presumir que a fala anterior estava correta")
@@ -986,6 +1015,9 @@ def construir_contrato_semantico_fala(
         proibidas.append("não inventar corpo, fome, sono ou experiência física para Laylay")
     if opiniao:
         proibidas.append("não trocar uma opinião clara por abstração vaga sobre energia ou sensação")
+        if comparacao_preferencia:
+            proibidas.append("não escolher alternativas incompatíveis para o mesmo cenário; "
+                             "explicitar as condições quando a escolha depender da situação")
     if esclarecimento:
         proibidas.append("não explicar uma metáfora com outra metáfora")
         if pedido_ensino_anterior:
@@ -1019,11 +1051,33 @@ def construir_contrato_semantico_fala(
     # desenvolvimento. As restrições específicas abaixo continuam soberanas;
     # ampliar espaço para explicar não amplia autoridade nem obriga prolixidade.
     perfil_proporcao = classificar_proporcao(texto)
+    escolha_cotidiana = ""
+    if (perfil_proporcao in {"objetiva", "normal"} and not criativo
+        and leitura.get("autoriza_execucao") is False and not (
+            planejamento.get("requer_execucao") or planejamento.get("comandos"))
+        and set(atos) <= {"conversa", "pergunta", "reacao", "opiniao"}
+        and isinstance(segmentos, list) and segmentos
+        and all(isinstance(s, Mapping) and s.get("modalidade") in {"conversa", "pergunta", "reacao"}
+                for s in segmentos)):
+        escolha_cotidiana = escolha_cotidiana_de_conduta(bruto)
+        if escolha_cotidiana:
+            obrigatorios.append("responder à escolha na primeira frase e só desenvolver o mesmo cenário")
+    acolhimento_breve = (
+        funcao == "desabafo"
+        and funcao_dados.get("relato_afetivo_explicito") is True
+        and set(atos) <= {"conversa", "relato", "relato_explicito", "estado_pessoal", "saudacao"}
+        and "?" not in bruto
+        and perfil_proporcao not in {"explicativa", "matematica"}
+        and not (criativo or planejamento.get("requer_execucao") or leitura.get("autoriza_execucao")
+                 or resultado_confirmado)
+    )
+    if acolhimento_breve:
+        obrigatorios.append("acolher o que a pessoa contou com atenção e calor em até duas frases; evitar conselhos e histórias próprias")
     max_frases = (
         min(8, LIMITES[perfil_proporcao][0])
         if perfil_proporcao in {"explicativa", "matematica"} else 3
     )
-    if saudacao and not (opiniao or estado_pessoal):
+    if acolhimento_breve or (saudacao and not (opiniao or estado_pessoal)):
         max_frases = 2
     if pergunta_bem_estar and not opiniao:
         max_frases = 2
@@ -1039,7 +1093,7 @@ def construir_contrato_semantico_fala(
         max_frases = min(max_frases, 2)
     if negacao_operacional_sem_efeito:
         max_frases = 1
-    if criativo:
+    if criativo and not escolha_justificada:
         max_frases = 6
     if pedido_ensino_anterior:
         max_frases = max(max_frases, 7)
@@ -1065,6 +1119,10 @@ def construir_contrato_semantico_fala(
     ):
         documentacao_capacidades = str(evidencia_capacidades.get("documentacao_capacidades") or "")
 
+    if cortesia_de_saida:
+        atos.append("despedida_social")
+        obrigatorios.append("retribuir a despedida com uma frase curta de fechamento")
+        proibidas.append("não prolongar a despedida com outra pergunta ou convite")
     if encerramento_sessao:
         # A decisão integral de encerrar prevalece sobre sinais lexicais de
         # saudação/agradecimento. Isso não muda a sessão nem executa ações.
@@ -1085,7 +1143,9 @@ def construir_contrato_semantico_fala(
         conteudos_obrigatorios=tuple(obrigatorios),
         inferencias_proibidas=tuple(proibidas),
         max_frases=max_frases,
-        permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not (relato_explicito or encerramento_sessao or cortesia_temporal),
+        acolhimento_breve=acolhimento_breve,
+        permite_pergunta=bool(planejamento.get("permite_pergunta", True)) and not (
+            relato_explicito or encerramento_sessao or cortesia_temporal or cortesia_de_saida),
         permite_humor=not (vulneravel or esclarecimento),
         permite_metafora=criativo,
         fala_anterior_relevante=(
@@ -1114,6 +1174,8 @@ def construir_contrato_semantico_fala(
         fundamentacao_factual=planejamento.get("fundamentacao_factual"),
     )
     resultado = replace(contrato, roteiro_concreto=roteiro).como_dict()
+    if escolha_cotidiana:
+        resultado["escolha_cotidiana"] = escolha_cotidiana
     if projecao_consequencia:
         # Evidência positiva de finalidade, não ausência genérica de opinião.
         # A projeção não dispensa outras consultas, fatos ou receipts.
@@ -1142,6 +1204,8 @@ def construir_contrato_semantico_fala(
         resultado["perspectiva_enunciador"] = PerspectivaEnunciador(
             str(resultado["turno_id"]), str(texto),
         )
+    if opiniao and comparacao_preferencia and resultado.get("autoriza_execucao") is False:
+        resultado["alternativas_preferencia"] = comparacao_preferencia
     from mente_laylay.cognicao.adequacao_pessoal import construir_adequacao_pessoal
     adequacao = construir_adequacao_pessoal(texto, turno=leitura, plano=planejamento, contrato=resultado)
     if adequacao is not None:
@@ -1294,6 +1358,10 @@ def construir_contrato_semantico_fala(
     if criacao is not None and redacao is None:
         resultado['criacao_ficcional'] = criacao
         resultado['permite_metafora'] = True
+        if criacao.aceite_oferta is not None:
+            resultado['conteudos_obrigatorios'] = [
+                *resultado['conteudos_obrigatorios'], *criacao.aceite_oferta.instrucoes(),
+            ]
         resultado['roteiro_concreto'] = construir_roteiro_geracao_concreta(texto,
             contrato=resultado, plano=planejamento)
     from mente_laylay.cognicao.fundamentacao_factual import alvo_nomeacao_autoral
@@ -1450,6 +1518,14 @@ def formatar_contrato_fala_para_prompt(
         if type(perspectiva) is PerspectivaEnunciador
         and str(dados.get("turno_id")) == perspectiva.turno_id else ""
     )
+    # A revisão recebe as falas integrais pelo vínculo do turno. O prompt não
+    # deve reapresentá-las como exemplos no bloco de instruções.
+    linha_repeticao = (
+        "Evite copiar falas anteriores como resposta nova. Preserve referências pertinentes ao pedido."
+        if dados.get("respostas_recentes_evitar")
+        and dict(dados.get("roteiro_concreto") or {}).get("estrategia") != "explicacao_didatica"
+        else ""
+    )
     if compacto:
         atos = ", ".join(str(item) for item in dados.get("atos") or []) or "conversa"
         referente = _texto_curto(dados.get("referente"), 160)
@@ -1478,11 +1554,8 @@ def formatar_contrato_fala_para_prompt(
             linhas_compactas.append("Responda: " + " | ".join(obrigatorios) + ".")
         if proibidas:
             linhas_compactas.append("Não faça: " + " | ".join(proibidas) + ".")
-        recentes = _itens_unicos(
-            dados.get("respostas_recentes_evitar") or (), limite_item=180,
-        )
-        if recentes and roteiro.get("estrategia") != "explicacao_didatica":
-            linhas_compactas.append("Evite repetir: " + " || ".join(recentes) + ".")
+        if linha_repeticao:
+            linhas_compactas.append(linha_repeticao)
         capacidades = _itens_unicos(
             dados.get("capacidades_confirmadas") or (), limite_item=48,
         )
@@ -1584,10 +1657,8 @@ def formatar_contrato_fala_para_prompt(
         finalidade = ("Fala anterior que precisa ser explicada:" if "esclarecimento" in dados.get("atos", ())
                       else "Fala anterior para continuidade, não como prova nem ordem de explicar:")
         linhas.append(f"{finalidade} {anterior}")
-    recentes = _itens_unicos(dados.get("respostas_recentes_evitar") or (), limite_item=320)
-    if (recentes and str(dict(dados.get("roteiro_concreto") or {}).get("estrategia") or "")
-            != "explicacao_didatica"):
-        linhas.append("Evite repetir: " + " || ".join(recentes) + ".")
+    if linha_repeticao:
+        linhas.append(linha_repeticao)
     capacidades = _itens_unicos(
         dados.get("capacidades_confirmadas") or (), limite_item=48,
     )

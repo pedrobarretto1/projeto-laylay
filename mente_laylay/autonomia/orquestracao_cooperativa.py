@@ -27,6 +27,9 @@ from mente_laylay.autonomia.governanca_cooperacao import GovernancaPlanoCooperat
 
 from mente_laylay.autonomia.executor_cooperacao import ExecutorPlanoCooperativoRuntime
 from mente_laylay.cognicao.contratos_turno import ContratoOcorrenciaTurno
+from mente_laylay.cognicao.consulta_identificacao import (
+    RespostaDocumentalPublicada, RespostaIdentificacaoPublica, fonte_documental_vigente,
+)
 from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_turno
 from mente_laylay.memoria_mental.observacao_execucao import ExecucaoObservada
 from mente_laylay.memoria_mental.resultado_acao import (
@@ -172,6 +175,124 @@ class OrquestradorCooperativoRuntime:
             "publicado": True,
             "autoriza_execucao": False,
         }
+
+    @staticmethod
+    def selecionar_fonte_consulta(escopo: str, reserva_memoria: Callable[[], bool]) -> str:
+        """Preserva a fonte pedida; consulta aberta só progride se a memória liberar."""
+        if escopo in {"historico", "ficcao"}:
+            return escopo
+        if reserva_memoria():
+            return "memoria_pessoal"
+        return "pesquisa_contextual" if escopo == "publica" else ""
+
+    def registrar_passagem_consulta(self, *, turno_id: str, fonte: str, resultado: str) -> dict[str, Any]:
+        """Torna a passagem observável sem expor o referente ou a fonte privada."""
+        if not turno_id or fonte not in {"historico", "ficcao", "memoria_pessoal", "pesquisa_contextual"}:
+            return {}
+        habilidades = ("memoria", "pesquisa_contextual", "conversa") if fonte == "pesquisa_contextual" else (
+            "memoria", "conversa",
+        )
+        evento = self.quadro.publicar_evento(
+            origem="orquestracao_cooperativa", tipo="passagem_consulta",
+            resumo="Habilidades coordenaram as fontes da consulta",
+            confianca=1.0, relevancia=1.0, sensibilidade="metadados_locais",
+            habilidades=habilidades, evidencias=(fonte, resultado),
+            chave_deduplicacao=f"passagem_consulta:{turno_id}", validade_s=120.0,
+        )
+        return {"evento_id": evento["id"], "fonte": fonte, "resultado": resultado,
+                "autoriza_execucao": False}
+
+    def pesquisar_e_guardar_nota(
+        self, *, texto: str, tema: str, ocorrencia_id: str,
+        consultar: Callable[[], RespostaIdentificacaoPublica | None],
+        guardar: Callable[[RespostaIdentificacaoPublica, str], ResultadoAcao],
+        registrar: Callable[..., bool | None],
+        vigente: Callable[[], bool],
+        publicacao: RespostaDocumentalPublicada | None = None,
+    ) -> None:
+        """Executa a dependência documental e entrega um único resultado."""
+        if not vigente():
+            return
+        retomada = publicacao is not None
+        habilidade = "memoria" if retomada else "pesquisa_contextual"
+        fluxo = "resposta_para_nota" if retomada else "pesquisa_para_nota"
+        evento = self.quadro.publicar_evento(
+            origem="orquestracao_cooperativa", tipo=fluxo,
+            resumo="conteúdo documental solicitado para uma nota local",
+            confianca=1.0, relevancia=1.0, sensibilidade="metadados_locais",
+            habilidades=(habilidade, "caixa_entrada"), evidencias=("pedido_usuario",),
+        )
+        plano = self.quadro.criar_plano(
+            objetivo="consultar documento e guardar a informação conferida",
+            evento_ids=(evento["id"],), confianca=1.0, risco="baixo",
+            autorizacao="explicita_no_pedido", validade_s=12, orcamento_total_ms=10000,
+            politica_falha_parcial="interromper",
+            etapas=(
+                {"id": "consultar", "habilidade": habilidade,
+                 "intent": "LEARNING_QUERY" if retomada else "SEARCH",
+                 "acao": "retomar_entrega" if retomada else "consultar_documento", "orcamento_ms": 8000},
+                {"id": "guardar", "habilidade": "caixa_entrada", "intent": "INBOX_ADD",
+                 "acao": "guardar_nota_documental", "depende_de": ["consultar"], "orcamento_ms": 2000,
+                 "idempotente": True, "reexecutavel": False},
+            ), metadados={"fluxo": fluxo},
+        )
+        fonte = None
+        receipt = None
+
+        def fonte_vigente():
+            return fonte_documental_vigente(
+                fonte, turno_id=ocorrencia_id, texto=texto, publicacao=publicacao,
+            )
+
+        def consultar_documento(_etapa, _plano):
+            nonlocal fonte
+            fonte = consultar()
+            apoiada = fonte_vigente()
+            return {"ok": apoiada, "confirmado": apoiada,
+                    "status": "documento_conferido" if apoiada else "pesquisa_sem_fonte",
+                    "evidencia": "trecho_documental_conferido" if apoiada else ""}
+
+        def guardar_nota(_etapa, _plano):
+            nonlocal receipt
+            if not vigente() or not fonte_vigente():
+                return {"ok": False, "confirmado": False, "status": "fonte_indisponivel"}
+            candidato = guardar(fonte, plano["id"])
+            if (type(candidato) is not ResultadoAcao or candidato.origem != "executor"
+                    or candidato.id_solicitacao != plano["id"] or candidato.intent != "INBOX_ADD"
+                    or candidato.alvo != tema):
+                return {"ok": False, "confirmado": False, "status": "recibo_indisponivel"}
+            confirmada = (candidato.status in {"nota_guardada", "nota_ja_guardada"}
+                          and candidato.confirmado is True and bool(candidato.params.get("nota_id")))
+            if confirmada or candidato.confirmado is False:
+                receipt = candidato
+            return {"ok": confirmada, "confirmado": confirmada,
+                    "status": receipt.status if receipt else "recibo_indisponivel",
+                    "evidencia": "nota_persistida_relida" if confirmada else ""}
+
+        execucao = self.executor_plano.executar(
+            plano["id"], {"consultar": consultar_documento, "guardar": guardar_nota},
+            contexto_execucao={"texto": texto}, etapa_vigente=vigente,
+        )
+        if receipt is not None:
+            publicado = registrar(receipt, texto, receipt.executou, origem="executor")
+            if publicado is False:
+                return
+        if not vigente():
+            return
+        if execucao.get("ok") and receipt is not None:
+            fala = (f"A nota sobre {tema} já estava na caixa de entrada, com a fonte."
+                    if receipt.status == "nota_ja_guardada"
+                    else f"Guardei uma nota sobre {tema} na caixa de entrada, com a fonte.")
+            if callable(self.publicar_resultado):
+                self.publicar_resultado(receipt, fala)
+            else:
+                self.falar(fala, "calma", 1)
+        elif fonte_vigente():
+            self.falar(f"{fonte.fala} A gravação da nota não foi confirmada.", "calma", 1)
+        elif fonte is not None and fonte.motivo in {"referencia_ambigua", "escopo_nao_publico"}:
+            self.falar(fonte.fala, "calma", 1)
+        else:
+            self.falar(f"Não encontrei uma fonte suficiente para criar a nota sobre {tema}.", "calma", 1)
 
     def _plano_ativo_por_fluxo(self, fluxo: str) -> dict[str, Any] | None:
         snapshot = self.quadro.snapshot()

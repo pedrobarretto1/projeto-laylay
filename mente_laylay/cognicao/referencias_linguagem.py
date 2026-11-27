@@ -162,9 +162,26 @@ def consulta_adequacao_pessoal(texto: str) -> str | None:
     return categoria if categoria and operando_opiniao_literal(categoria) else None
 
 
+def consulta_escolha_justificada(texto: str) -> bool:
+    """Uma escolha hipotética entre opções mencionadas, seguida do motivo."""
+    from mente_laylay.cognicao.morfologia_oracao import grupo_nominal_de_papel
+
+    if intervalos_citados(texto):
+        return False
+    literal = re.sub(r"\s+", " ", unicodedata.normalize("NFC", texto).strip()).casefold()
+    pedido = re.fullmatch(
+        r"qual (?:deles|delas|dos dois|das duas|das op[cç][oõ]es|das alternativas) "
+        r"(?:(?:voc[eê]|tu) )?(?:escolheria|preferiria)"
+        r"(?: (?:como|para) (?P<criterio>[^,;.!?]+?))?,? e por qu[eê]\?",
+        literal,
+    )
+    return bool(pedido and (not pedido["criterio"] or grupo_nominal_de_papel(pedido["criterio"])))
+
+
 def consulta_opiniao_propria(texto: str, *, explicativa: bool = False) -> dict[str, object] | None:
     """Lacuna subjetiva simples; não prova gosto, causa, experiência ou efeito."""
     from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+    from mente_laylay.cognicao.identidade_conversacional import remover_vocativo_laylay
     if intervalos_citados(texto):
         return None
     base = normalizar_texto_basico(texto)
@@ -172,9 +189,21 @@ def consulta_opiniao_propria(texto: str, *, explicativa: bool = False) -> dict[s
     # A moldura de esclarecimento preserva a pergunta subordinada integral;
     # não aproveita um fragmento de pergunta seguida por outra instrução.
     literal = re.sub(r'^(?:eu\s+)?(?:estou|t[oô])\s+(?:s[oó]|apenas)\s+perguntando\s+se\s+', '', literal)
+    literal = re.sub(r'^(?:e|ent[aã]o|mas)(?:\s*,\s*|\s+)', '', literal, count=1)
+    if re.match(r'^(?:laylay|lay)\s*[,;:!]', literal):
+        literal = remover_vocativo_laylay(literal)
     base = normalizar_texto_basico(literal)
     sujeito = r'(?:voc[eê]|vc|tu|laylay|lay)'
     nominal = r'[\w]+(?:[ -][\w]+){0,3}'
+    gosto = r'(?:gosta|goste|curte|curta|aprecia|aprecie|prefere|prefira)'
+    tipo_musical = r'(?:tipo de musica|estilo(?: musical| de musica)|genero(?: musical| de musica))'
+    if re.fullmatch(rf'(?:qual|que)\s+{tipo_musical}\s+{sujeito}\s+{gosto}(?: de)?[?!.]*', base):
+        return {'tipo': 'categoria', 'categoria': 'genero_musical'}
+    exemplar = re.fullmatch(
+        rf'(?:(?:me\s+)?(?:fala|fale|diz|diga|conta|conte|indica|indique)\s+um[a]?|qual)\s+'
+        rf'(?P<nome>\w+)(?:\s+especific[oa])?\s+(?:que\s+)?{sujeito}\s+{gosto}[?!.]*', base)
+    if exemplar and exemplar['nome'] in CATEGORIAS_PREFERENCIA:
+        return {'tipo': 'exemplar', 'categoria': exemplar['nome']}
 
     # A moldura interrogativa não decide a categoria: as formas nominal e
     # existencial consultam o MESMO vocabulário, inclusive nomes compostos.
@@ -207,10 +236,20 @@ def consulta_opiniao_propria(texto: str, *, explicativa: bool = False) -> dict[s
         if categoria in CATEGORIAS_PREFERENCIA:
             return {'tipo': 'polar', 'alvo': CATEGORIAS_PREFERENCIA[categoria][1],
                     'predicado': 'gostar', 'negada': False}
-    polar = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+(?P<negacao>n[aã]o\s+)?(?:gosta|curte|aprecia)\s+'
-        rf'(?:de|do|da|dos|das)\s+(?P<alvo>{nominal})[?!.]*', literal)
-    if polar and operando_opiniao_literal(polar['alvo']):
+    preposicao = r'(?:de|do|da|dos|das)\s+'
+    polar = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+(?P<negacao>n[aã]o\s+)?'
+        rf'(?:gosta\s+{preposicao}|(?:curte|aprecia)\s+(?:{preposicao})?)'
+        rf'(?P<alvo>{nominal})[?!.]*', literal)
+    if polar and polar['alvo'] not in {'de', 'do', 'da', 'dos', 'das'} and operando_opiniao_literal(polar['alvo']):
         return {'tipo': 'polar', 'alvo': polar['alvo'], 'predicado': 'gostar', 'negada': bool(polar['negacao'])}
+    # Uma letra omitida no predicado é recuperável com um alvo já conhecido.
+    # Nomes livres, outros sujeitos e orações adicionais continuam de fora.
+    lapso = re.fullmatch(rf'{sujeito}\s+(?P<negacao>n[aã]o\s+)?gota\s+de\s+(?P<alvo>{nominal})\?', literal)
+    if lapso and operando_opiniao_literal(lapso['alvo']):
+        from mente_laylay.memoria_mental.memoria_pessoas import classificar_gosto_explicito
+        alvo = normalizar_texto_basico(lapso['alvo'])
+        if alvo in CATEGORIAS_PREFERENCIA or classificar_gosto_explicito(alvo)[0] == 'genero_musical':
+            return {'tipo': 'polar', 'alvo': lapso['alvo'], 'predicado': 'gostar', 'negada': bool(lapso['negacao'])}
     escolha = re.fullmatch(rf'(?:e\s+)?{sujeito}\s+prefere\s+'
         rf'(?P<a>{nominal})\s+ou\s+(?P<b>{nominal})[?!.]*', literal)
     if escolha and all(operando_opiniao_literal(escolha[c]) for c in ('a', 'b')):
@@ -229,11 +268,26 @@ def consulta_explicacao_gosto(texto: str) -> dict[str, object] | None:
     if intervalos_citados(texto):
         return None
     base = re.sub(r'\s+', ' ', unicodedata.normalize('NFC', texto).casefold()).strip()
+    normal = normalizar_texto_basico(base)
+    avaliacao = re.fullmatch(r'(?:e |mas )?o que (?:te faria escolher ess[ea]|(?:te )?chama (?:a )?atencao ness[ea]) '
+        r'(?P<objeto>estilo|genero|opcao|alternativa)[?!.]*', normal)
+    if avaliacao:
+        # A leitura só abre uma consulta: o owner ainda precisa vincular uma
+        # posição publicada do mesmo assunto. O pronome nunca comprova o motivo.
+        return {'tipo': 'eliptica', 'categoria': 'genero_musical' if avaliacao['objeto'] in {'estilo', 'genero'} else ''}
+    if re.fullmatch(r'(?:e |mas )?(?:qual (?:e )?o motivo|(?:voce )?tem (?:um |algum )?motivo)'
+        r'(?:[, ]+ne)?[?!.]*', normal):
+        return {'tipo': 'eliptica', 'questiona_motivo': True}
+    if re.fullmatch(r'(?:mas )?(?:voce|tu) nao (?:pode|da pra) (?:dizer que )?(?:nao )?gosta(?:r)? de algo'
+        r' (?:que|se) (?:nem |nao )?tem (?:um )?motivo (?:pra|para) (?:nao )?gostar[?!.]*', normal):
+        return {'tipo': 'eliptica', 'questiona_certeza': True}
     m = re.fullmatch(r'(?:e\s+|mas\s+)?por\s*qu[eê](?:\s+(?P<corpo>[^?!.;]+))?[?!.]*', base)
     if not m:
         return None
     if not m['corpo']:
         return {'tipo': 'eliptica'}
+    if normalizar_texto_basico(m['corpo']) == 'nao':
+        return {'tipo': 'eliptica', 'negada': True}
     leitura = consulta_opiniao_propria(m['corpo'], explicativa=True)
     if leitura is None or leitura['tipo'] not in {'polar', 'preferencia_nomeada'}:
         return None

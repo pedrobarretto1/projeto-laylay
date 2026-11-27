@@ -1,4 +1,4 @@
-param([ValidatePattern('^(COM[0-9]+|AUTO|WIFI|off)$')][string]$Porta = 'AUTO', [switch]$HotspotLocal)
+param([ValidatePattern('^(COM[0-9]+|AUTO|WIFI|BLE|Bluetooth|off)$')][string]$Porta = 'AUTO', [switch]$HotspotLocal)
 $ErrorActionPreference = 'Stop'
 $raizLaylay = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
 $pythonLaylay = Join-Path $raizLaylay '.venv314\Scripts\python.exe'

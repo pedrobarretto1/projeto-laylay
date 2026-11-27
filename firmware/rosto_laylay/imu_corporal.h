@@ -3,11 +3,24 @@
 #ifndef LAYLAY_IMU
 #define LAYLAY_IMU 0
 #endif
+#ifndef LAYLAY_IMU_INVERTIDA_X
+#define LAYLAY_IMU_INVERTIDA_X 0
+#endif
+#ifndef LAYLAY_IMU_REPOUSO_ROLL_CG
+#define LAYLAY_IMU_REPOUSO_ROLL_CG 0
+#endif
+#ifndef LAYLAY_IMU_REPOUSO_PITCH_CG
+#define LAYLAY_IMU_REPOUSO_PITCH_CG 0
+#endif
 struct EstadoImuCorporal {
   bool presente=false, amostra=false, calibrada=false, erro=false;
+  bool toleraViesLateral=false;
   uint32_t medidaEm=0, inicioCal=0, estabilidadeEm=0, movimentoEm=0,inicioBrusco=0;
   unsigned amostrasCal=0;
+  uint32_t lacunasCal=0, foraRepousoCal=0;
+  float maiorDeltaCal=0, maiorGiroCal=0;
   float bias[3]={}, soma[3]={}, anterior[3]={};
+  float gravidadeInicioCal[3]={};
   float roll=0,pitch=0,yaw=0,gz=0,norma=0,energia=0;
   const char *manuseio="ESTAVEL";
   void calibrar() {
@@ -15,6 +28,26 @@ struct EstadoImuCorporal {
     for(int i=0;i<3;++i) soma[i]=bias[i]=0;
   }
   void incorporar(uint32_t t,float ax,float ay,float az,float gx,float gy,float z,bool motor) {
+#if LAYLAY_IMU_INVERTIDA_X
+    // Rotação física de 180° em X, aplicada antes da calibração e dos filtros.
+    ay=-ay; az=-az; gy=-gy; z=-z;
+#endif
+#if LAYLAY_IMU_REPOUSO_ROLL_CG || LAYLAY_IMU_REPOUSO_PITCH_CG
+    // Alinha a gravidade medida na base nivelada com o eixo Z do corpo.
+    constexpr float radPorCentigrau = 0.0001745329252f;
+    static const float senoRoll = sinf(LAYLAY_IMU_REPOUSO_ROLL_CG * radPorCentigrau);
+    static const float cossenoRoll = cosf(LAYLAY_IMU_REPOUSO_ROLL_CG * radPorCentigrau);
+    static const float senoPitch = sinf(LAYLAY_IMU_REPOUSO_PITCH_CG * radPorCentigrau);
+    static const float cossenoPitch = cosf(LAYLAY_IMU_REPOUSO_PITCH_CG * radPorCentigrau);
+    auto alinharAoCorpo = [&](float &x, float &y, float &vertical) {
+      const float zSemRoll = senoRoll * y + cossenoRoll * vertical;
+      y = cossenoRoll * y - senoRoll * vertical;
+      vertical = cossenoPitch * zSemRoll - senoPitch * x;
+      x = cossenoPitch * x + senoPitch * zSemRoll;
+    };
+    alinharAoCorpo(ax, ay, az);
+    alinharAoCorpo(gx, gy, z);
+#endif
     uint32_t intervalo=amostra?uint32_t(t-medidaEm):0;
     float dt=intervalo<=75?intervalo*.001f:0;
     float n=sqrtf(ax*ax+ay*ay+az*az);
@@ -23,14 +56,26 @@ struct EstadoImuCorporal {
     float r=atan2f(ay,az)*57.29578f,p=atan2f(-ax,sqrtf(ay*ay+az*az))*57.29578f;
     bool primeira=!amostra;
     // Lacuna de amostras não se transforma em rotação integrada fictícia.
-    if (amostra && intervalo>75) calibrar();
+    if (amostra && intervalo>75) {++lacunasCal;calibrar();}
     amostra=presente=true;erro=false;medidaEm=t;norma=n;energia=delta;
     if(!calibrada) {
-      bool quieta=!motor && n>.85f && n<1.15f && delta<.035f
-          && fabsf(gx)<5 && fabsf(gy)<5 && fabsf(z)<5;
-      if(!quieta) {amostrasCal=0;inicioCal=t;for(float &v:soma)v=0;}
+      maiorDeltaCal=max(maiorDeltaCal,delta);
+      maiorGiroCal=max(maiorGiroCal,max(fabsf(gx),max(fabsf(gy),fabsf(z))));
+      const float limiteLateral=toleraViesLateral?7.f:5.f;
+      const float dx=ax-gravidadeInicioCal[0], dy=ay-gravidadeInicioCal[1];
+      const float dz=az-gravidadeInicioCal[2];
+      // O viés lateral pode ultrapassar 5 graus/s. Uma mudança acumulada
+      // da gravidade durante a janela impede confundir um giro com viés.
+      const bool gravidadeEstavel=!toleraViesLateral || !amostrasCal
+          || dx*dx+dy*dy+dz*dz<.035f*.035f;
+      bool quieta=!motor && n>.85f && n<1.15f && delta<.035f && gravidadeEstavel
+          && fabsf(gx)<limiteLateral && fabsf(gy)<limiteLateral && fabsf(z)<5;
+      if(!quieta) {++foraRepousoCal;amostrasCal=0;inicioCal=t;for(float &v:soma)v=0;}
       else {
-        if(!amostrasCal) inicioCal=t;
+        if(!amostrasCal) {
+          inicioCal=t;
+          gravidadeInicioCal[0]=ax;gravidadeInicioCal[1]=ay;gravidadeInicioCal[2]=az;
+        }
         soma[0]+=gx;soma[1]+=gy;soma[2]+=z;++amostrasCal;
         if(amostrasCal>=100 && uint32_t(t-inicioCal)>=1800) {
           for(int i=0;i<3;++i) bias[i]=soma[i]/amostrasCal;
@@ -66,22 +111,31 @@ struct EstadoImuCorporal {
 #if LAYLAY_IMU
 EstadoImuCorporal imu;
 // Continuidade expressiva sobre a classificação já medida, sem outra decisão motora.
+enum class PosturaImu { Comum, Lateral, Vertical, Invertida };
 struct EpisodioManuseio {
   const char *fase="TRANQUILA",*anterior="ESTAVEL";
   uint32_t inicio=0,mudouEm=0,ultimoEpisodio=0,sequencia=0;
   unsigned repeticoes=0;
-  void atualizar(uint32_t t,const char *m,bool valido) {
+  PosturaImu postura=PosturaImu::Comum;
+  uint32_t posturaDesde=0;
+  void atualizar(uint32_t t,const char *m,bool valido,PosturaImu medida=PosturaImu::Comum) {
     const char *nova="TRANQUILA";
-    if(!valido) { anterior="ESTAVEL";inicio=0;repeticoes=0;ultimoEpisodio=0; }
+    if(!valido) { anterior="ESTAVEL";inicio=0;repeticoes=0;ultimoEpisodio=0;postura=PosturaImu::Comum; }
     else {
       bool alterado=strcmp(m,"ESTAVEL")!=0;
+      if (postura!=medida) {postura=medida;posturaDesde=t;}
       if(alterado && !strcmp(anterior,"ESTAVEL")) {
         repeticoes=ultimoEpisodio && uint32_t(t-ultimoEpisodio)<20000?min(3u,repeticoes+1):1;
         ultimoEpisodio=inicio=t;
       }
-      if(!strcmp(m,"TOMBADA") || !strcmp(m,"POSSIVEL_LEVANTAMENTO")) nova="DESORIENTADA";
+      const bool posturaConfirmada = alterado && uint32_t(t-posturaDesde)>=140;
+      const bool insiste = repeticoes>1 || uint32_t(t-posturaDesde)>=1250;
+      if(posturaConfirmada && postura==PosturaImu::Invertida) nova=insiste?"PROTESTO_INVERTIDA":"INVERTIDA";
+      else if(posturaConfirmada && postura==PosturaImu::Vertical) nova=insiste?"PROTESTO_VERTICAL":"EM_PE";
+      else if(posturaConfirmada && postura==PosturaImu::Lateral) nova=insiste?"PROTESTO_LATERAL":"LATERAL";
+      else if(!strcmp(m,"TOMBADA") || !strcmp(m,"POSSIVEL_LEVANTAMENTO")) nova="DESORIENTADA";
       else if(!strcmp(m,"MOVIMENTO_BRUSCO")) nova=uint32_t(t-inicio)>700 || repeticoes>1?"RESMUNGO":"SUSTO";
-      else if(!strcmp(m,"INCLINADA")) nova=uint32_t(t-inicio)>1200?"DESCONFIADA":"CURIOSA";
+      else if(!strcmp(m,"INCLINADA")) nova=uint32_t(t-inicio)>1200 || repeticoes>1?"DESCONFIADA":"CURIOSA";
       else if(strcmp(anterior,"ESTAVEL")) { inicio=t;nova="RECOMPONDO"; }
       else if(!strcmp(fase,"RECOMPONDO") && uint32_t(t-inicio)<3000) nova="RECOMPONDO";
       if(!alterado && ultimoEpisodio && uint32_t(t-ultimoEpisodio)>=20000) repeticoes=0;
@@ -90,16 +144,25 @@ struct EpisodioManuseio {
     if(strcmp(nova,fase)) {fase=nova;mudouEm=t;++sequencia;}
   }
 } episodioManuseio;
-uint8_t enderecoImu=0x68;
+PosturaImu posturaPelaGravidade() {
+  if (imu.norma<.85f || imu.norma>1.15f) return PosturaImu::Comum;
+  const auto *g=imu.anterior; // Eixos já alinhados ao chassi quando aplicável.
+  if (g[2]<-.80f*imu.norma) return PosturaImu::Invertida;
+  if (fabsf(g[2])>.48f*imu.norma) return PosturaImu::Comum;
+  return fabsf(g[1])>=fabsf(g[0]) ? PosturaImu::Lateral : PosturaImu::Vertical;
+}
+constexpr uint8_t ENDERECOS_IMU[]={0x68,0x69};
+uint8_t enderecoImu=0;
 uint8_t identidadeImu=0;
 uint32_t ultimaConsultaImu=0,ultimoSomManuseio=0;
+uint32_t inicioAmostragemImu=0;
 uint32_t sustoManuseioAte=0;
 const char *estadoManuseioAnterior="ESTAVEL";
 bool bloqueioManuseioAnterior=false;
-bool lerRegistrosImu(uint8_t reg,uint8_t *dados,uint8_t tamanho) {
-  Wire.beginTransmission(enderecoImu);Wire.write(reg);
+bool lerRegistrosImu(uint8_t endereco,uint8_t reg,uint8_t *dados,uint8_t tamanho) {
+  Wire.beginTransmission(endereco);Wire.write(reg);
   if(Wire.endTransmission(false))return false;
-  if(Wire.requestFrom(enderecoImu,tamanho)!=tamanho)return false;
+  if(Wire.requestFrom(endereco,tamanho)!=tamanho)return false;
   for(uint8_t i=0;i<tamanho;++i) dados[i]=Wire.read();
   return true;
 }
@@ -112,22 +175,49 @@ void iniciarImuCorporal() {
   imu=EstadoImuCorporal{};
   episodioManuseio=EpisodioManuseio{};
   sustoManuseioAte=0;
-  uint8_t id=0,confirmacao=0;
-  imu.presente=lerRegistrosImu(0x75,&id,1) && lerRegistrosImu(0x75,&confirmacao,1)
-      && id==confirmacao && (id==0x68 || id==0x98);
+  enderecoImu=0;
+  identidadeImu=0;
+  uint8_t selecionado=0,id=0;
+  for (uint8_t endereco : ENDERECOS_IMU) {
+    uint8_t identidade=0,confirmacao=0;
+    if (!lerRegistrosImu(endereco,0x75,&identidade,1) || (identidade!=0x68 && identidade!=0x98)
+        || !lerRegistrosImu(endereco,0x75,&confirmacao,1) || identidade!=confirmacao) continue;
+    // Duas identidades válidas deixam o sensor do corpo indeterminado.
+    if (selecionado) return;
+    selecionado=endereco;
+    id=identidade;
+  }
+  if (!selecionado) return;
+  enderecoImu=selecionado;
+  imu.presente=true;
   identidadeImu=id;
+  imu.toleraViesLateral=id==0x98;
+  if(imu.presente && id==0x98) {
+    // ICM-20689: reinicia a interface antes de inicializar os registradores.
+    imu.presente=gravarRegistroImu(0x6B,0x81);
+    if(imu.presente) {
+      delay(100);
+      uint8_t confirmacao=0;
+      imu.presente=lerRegistrosImu(enderecoImu,0x75,&confirmacao,1) && confirmacao==id;
+    }
+  }
   if(imu.presente) imu.presente=gravarRegistroImu(0x6B,1)
       && gravarRegistroImu(0x1A,3) && gravarRegistroImu(0x19,9)
       && gravarRegistroImu(0x1B,8) && gravarRegistroImu(0x1C,8)
       && (id!=0x98 || (gravarRegistroImu(0x1D,3) && gravarRegistroImu(0x6C,0)));
   uint8_t escalas[2]={};
-  if(imu.presente) imu.presente=lerRegistrosImu(0x1B,escalas,2) && escalas[0]==8 && escalas[1]==8;
+  if(imu.presente) imu.presente=lerRegistrosImu(enderecoImu,0x1B,escalas,2) && escalas[0]==8 && escalas[1]==8;
+  inicioAmostragemImu=millis();
 }
 void atualizarImuCorporal(uint32_t agora) {
-  if(!imu.presente || uint32_t(agora-ultimaConsultaImu)<10)return;
+  if(!imu.presente || uint32_t(agora-inicioAmostragemImu)<40
+      || uint32_t(agora-ultimaConsultaImu)<10)return;
   ultimaConsultaImu=agora;
   uint8_t bytes[14];
-  if(!lerRegistrosImu(0x3B,bytes,14)) {imu.erro=true;return;}
+  if(!lerRegistrosImu(enderecoImu,0x3B,bytes,14)) {imu.erro=true;return;}
+  bool pacoteNulo=true;
+  for(uint8_t byte:bytes) pacoteNulo &= byte==0;
+  if(pacoteNulo) {imu.erro=true;return;}
   auto valor=[&](int n){return int16_t(uint16_t(bytes[n])<<8|bytes[n+1]);};
   imu.incorporar(millis(),valor(0)/8192.f,valor(2)/8192.f,valor(4)/8192.f,
       valor(8)/65.5f,valor(10)/65.5f,valor(12)/65.5f,motorEmUso());
@@ -188,6 +278,11 @@ float pesoOlharManuseio() {
 int expressaoManuseio() {
   if(!imu.recente(millis()) || !imu.calibrada)return 0;
   const char *f=episodioManuseio.fase;
+  if (!strcmp(f,"CURIOSA")) return 5;
+  if (!strcmp(f,"LATERAL")) return 6;
+  if (!strcmp(f,"EM_PE")) return 7;
+  if (!strcmp(f,"INVERTIDA")) return 8;
+  if (!strncmp(f,"PROTESTO_",9)) return 9;
   return !strcmp(f,"DESORIENTADA")?2:!strcmp(f,"RESMUNGO") || !strcmp(f,"DESCONFIADA")?3:
       !strcmp(f,"RECOMPONDO")?4:!strcmp(f,"SUSTO")?1:0;
 }
@@ -197,19 +292,22 @@ void atualizarReacaoManuseio(uint32_t agora) {
     // Cancela o episódio, preservando a concessão: sem recuos no colo.
     pararMotor();
 #if LAYLAY_PROTECAO_CORPORAL
-    if(reflexoProtecaoAtivo()) terminarProtecao("BLOQUEADA",agora);
+    if(reflexoProtecaoAtivo())
+      terminarProtecao(!strcmp(causaProtecao,"OBSTACULO") ? "ESPERA_BUSCA" : "BLOQUEADA",agora);
 #endif
   }
   bloqueioManuseioAnterior=bloqueio;
   const char *m=manuseioImu();
   uint32_t anteriorFase=episodioManuseio.sequencia;
   episodioManuseio.atualizar(agora,m,imu.recente(agora) && imu.calibrada && conectado
-      && uint32_t(agora-ultimoPacote)<ttl);
+      && uint32_t(agora-ultimoPacote)<ttl,posturaPelaGravidade());
   if(!strcmp(imu.manuseio,"MOVIMENTO_BRUSCO")) sustoManuseioAte=agora+1100;
   if(conectado && uint32_t(agora-ultimoPacote)<ttl && episodioManuseio.sequencia!=anteriorFase
       && expressaoManuseio() && uint32_t(agora-ultimoSomManuseio)>3500
       && !somExpressivoAtivo) {
-    tipoSomExpressivo=expressaoManuseio()==3?11:expressaoManuseio()==4?6:9;indiceNotaSom=0;
+    const int expressao=expressaoManuseio();
+    tipoSomExpressivo=expressao==3 || expressao==9 ? 11 : expressao==4 || expressao==5 ? 6 : 9;
+    indiceNotaSom=0;
     ultimoInicioSom=inicioNotaSom=ultimoSomManuseio=agora;
     somExpressivoAtivo=somJaTocou=true;aplicarNotaSom();
   }
@@ -253,13 +351,14 @@ void processarSondaImu(const char *entrada) {
       || !decimalSemSinal(campos[2],seq) || !seq) {responderLinha("ERROR 1 IPROBE_INVALIDA");return;}
 #if LAYLAY_IMU
   // Somente leitura dos endereços conhecidos; não altera calibração ou lease.
-  uint8_t salvo=enderecoImu;
-  for(uint8_t e : {uint8_t(0x68),uint8_t(0x69)}) {
-    enderecoImu=e;uint8_t id=255;
-    bool ok=lerRegistrosImu(0x75,&id,1);
+  for(uint8_t e : ENDERECOS_IMU) {
+    uint8_t id=255;
+    bool ok=lerRegistrosImu(e,0x75,&id,1);
     responder("IPROBE 1 %lu %u %u %u\n",(unsigned long)seq,unsigned(e),ok?1u:0u,unsigned(id));
   }
-  enderecoImu=salvo;
+  responder("ICAL 1 %lu %u %lu %lu %ld %ld\n",(unsigned long)seq,imu.amostrasCal,
+      (unsigned long)imu.lacunasCal,(unsigned long)imu.foraRepousoCal,
+      lroundf(imu.maiorDeltaCal*1000),lroundf(imu.maiorGiroCal*100));
 #else
   responderLinha("ERROR 1 IMU_DESABILITADA");
 #endif

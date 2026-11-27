@@ -1144,15 +1144,6 @@ html[data-reduced="true"] .pr-stream-symbol {
    9. AUTOMAÇÃO — estados + ícones + transições
    ════════════════════════════════════════════════════════════ */
 
-/* Estado desligado: levemente opaco */
-.pr-device:not(.is-on) {
-  opacity: .82;
-  transition: opacity 250ms, border-color 250ms, box-shadow 250ms, background 250ms;
-}
-.pr-device:not(.is-on):hover {
-  opacity: 1;
-}
-
 /* On: glow de borda superior mais intenso */
 .pr-device.is-on {
   box-shadow:
@@ -1610,14 +1601,9 @@ html[data-reduced="true"] .tp-player.is-playing .tp-wave i {
   to   { opacity: 1; transform: translateY(0); }
 }
 /* Fade na troca de aba — modo full */
-.page {
+body.mode-full .page {
   animation: rp-page-enter 180ms cubic-bezier(.25,.8,.25,1) both;
 }
-/* Fade no conteúdo da ilha */
-.desktop-page-content {
-  animation: rp-page-enter 160ms cubic-bezier(.25,.8,.25,1) both;
-}
-
 /* Fade inferior — REMOVIDO: causava sombra fixa em todas as abas */
 
 
@@ -2213,7 +2199,7 @@ html[data-reduced="true"] .desktop-page-content {
 /* Ilustração / ícone: caixa quadrada com bg */
 .device-illustration {
   grid-column: 1;
-  grid-row: 1 / 3;
+  grid-row: 1;
   width: 48px;
   height: 48px;
   background: color-mix(in srgb, var(--accent) 10%, #1a1f2b);
@@ -2286,16 +2272,15 @@ html[data-reduced="true"] .desktop-page-content {
 .pr-device-state.on i {
   background: var(--rp-on, #8dccaf);
   box-shadow: 0 0 6px color-mix(in srgb, var(--rp-on, #8dccaf) 50%, transparent);
-  animation: rp-pulse-on 3s ease-in-out infinite;
 }
 .pr-device-state.on {
   color: var(--rp-on, #8dccaf);
 }
 
 /* Toggle button: lado direito */
-button.toggle {
+.pr-device button.toggle {
   grid-column: 3;
-  grid-row: 1 / 3;
+  grid-row: 1;
   width: 42px;
   height: 24px;
   border-radius: 99px;
@@ -2306,7 +2291,7 @@ button.toggle {
   transition: background 220ms, border-color 220ms, box-shadow 220ms;
   flex-shrink: 0;
 }
-button.toggle::after {
+.pr-device button.toggle::after {
   content: '';
   position: absolute;
   top: 2px;
@@ -2315,18 +2300,18 @@ button.toggle::after {
   height: 18px;
   border-radius: 50%;
   background: #ffffff60;
-  transition: transform 220ms cubic-bezier(.34,1.56,.64,1), background 220ms;
+  transition: left 160ms ease-out, background 160ms;
 }
-button.toggle[aria-pressed="true"] {
+.pr-device button.toggle[aria-pressed="true"] {
   background: color-mix(in srgb, var(--rp-on, #8dccaf) 30%, transparent);
   border-color: color-mix(in srgb, var(--rp-on, #8dccaf) 50%, transparent);
   box-shadow: 0 0 10px color-mix(in srgb, var(--rp-on, #8dccaf) 20%, transparent);
 }
-button.toggle[aria-pressed="true"]::after {
-  transform: translateX(18px);
+.pr-device button.toggle[aria-pressed="true"]::after {
+  left: calc(100% - 20px);
   background: var(--rp-on, #8dccaf);
 }
-button.toggle:disabled {
+.pr-device button.toggle:disabled {
   opacity: .4;
   cursor: default;
 }
@@ -2335,7 +2320,7 @@ button.toggle:disabled {
 .device-options {
   grid-column: 1 / -1;
   grid-row: 2;
-  margin-top: 10px;
+  margin-top: 0;
   border-top: 1px solid #ffffff07;
   padding-top: 10px;
 }
@@ -2364,12 +2349,8 @@ button.toggle:disabled {
   gap: 10px;
 }
 .pr-device {
-  transition: border-color 220ms, box-shadow 220ms, background 220ms, opacity 220ms;
+  transition: border-color 160ms, background 160ms;
 }
-.pr-device:not(.is-on) {
-  opacity: .78;
-}
-.pr-device:not(.is-on):hover { opacity: 1; }
 
 
 /* ════════════════════════════════════════════════════════════

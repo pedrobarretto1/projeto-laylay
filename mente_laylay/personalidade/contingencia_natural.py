@@ -6,6 +6,7 @@ import hashlib
 import re
 from typing import Any, Mapping
 
+from mente_laylay.cognicao.reacao_social_curta import resposta_contingencia_risada
 from mente_laylay.emocoes.contrato_causal import evento_esta_ativo
 from mente_laylay.emocoes.leitura_usuario import analisar_intencao_emocional
 from mente_laylay.personalidade.variacao_fala import escolher_variacao
@@ -102,13 +103,7 @@ def _resposta_social_curta(texto: str) -> str:
             "De nada. Eu reclamo um pouco, mas entrego.",
             "Por nada. Minha pose agradece o reconhecimento.",
         ])
-    if re.fullmatch(r"(?:k{2,}|h+a+h+a+)(?:\s+.*)?", limpo, flags=re.IGNORECASE):
-        return escolher_variacao([
-            "Kkkkk, essa me pegou. Ponto seu.",
-            "Tá, essa foi boa. Minha pose sofreu um dano leve.",
-            "Kkkkk, aproveita a vitória porque eu não distribuo assim toda hora.",
-        ])
-    return ""
+    return resposta_contingencia_risada(limpo)
 
 
 def _resposta_leitura_emocional_causal(

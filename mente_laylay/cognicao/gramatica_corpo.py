@@ -3,7 +3,21 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from decimal import Decimal
 from typing import Any
+
+
+_VERBOS_GIRO = r"(?:gira|gire|girar|vira|vire|virar|(?:da|de|dar)\s+uma\s+girada)"
+_VERBOS_DESLOCAMENTO = r"(?:anda|ande|andar|avanca|avance|avancar|recua|recue|recuar)"
+_NUMEROS_TEMPO = dict(zip(
+    ("um", "dois", "tres", "quatro", "cinco", "seis", "sete", "oito", "nove", "dez"),
+    range(1, 11),
+))
+_TEMPO_SOLICITADO = re.compile(
+    r"\s+(?:por|durante)\s+(?P<quantidade>\d{1,7}(?:[.,]\d{1,3})?|meio|"
+    + "|".join(_NUMEROS_TEMPO)
+    + r")\s*(?P<unidade>milissegundos?|ms|segundos?|s)(?=\s|$)"
+)
 
 
 def analisar_pedido_corporal(texto: str) -> dict[str, Any] | None:
@@ -27,12 +41,29 @@ def analisar_pedido_corporal(texto: str) -> dict[str, Any] | None:
     if giro_medido and 15 <= int(giro_medido[1]) <= 360:
         return {"intent": "CORPO_MOVER", "params": {"alvo": "corpo", "direcao": giro_medido[2],
                 "angulo_graus": int(giro_medido[1]), "pwm": 160, "duracao_ms": 5000}}
-    giro = re.fullmatch(r"(?:gira|gire|girar|vira|vire|virar)\s+(?:(?:para|pra)\s+)?(?:a\s+)?(esquerda|direita)(?:\s+um\s+(?:pouco|pouquinho))?", t)
+
+    duracao_ms = 250
+    tempo = _TEMPO_SOLICITADO.search(t)
+    if tempo:
+        quantidade = tempo["quantidade"]
+        valor = Decimal("0.5") if quantidade == "meio" else Decimal(
+            _NUMEROS_TEMPO.get(quantidade, quantidade.replace(",", "."))
+        )
+        if tempo["unidade"].startswith("s"):
+            valor *= 1000
+        if valor != valor.to_integral_value():
+            return None
+        duracao_ms = int(valor)
+        t = t[:tempo.start()] + t[tempo.end():]
+
+    giro = re.fullmatch(_VERBOS_GIRO
+        + r"(?:\s+(?:(?:para|pra)\s+)?(?:a\s+)?(esquerda|direita))?"
+        + r"(?:\s+um\s+(?:pouco|pouquinho))?", t)
     if giro:
-        direcao = giro.group(1)
+        direcao = giro.group(1) or ""
     else:
         movimento = re.fullmatch(
-            r"(anda|ande|andar|avanca|avance|avancar|recua|recue|recuar)"
+            rf"({_VERBOS_DESLOCAMENTO})"
             r"(?:\s+um\s+(?:pouco|pouquinho))?"
             r"(?:\s+(?:(?:para|pra)\s+)?(?:a\s+)?(frente|tras))?"
             r"(?:\s+um\s+(?:pouco|pouquinho))?", t,
@@ -41,7 +72,8 @@ def analisar_pedido_corporal(texto: str) -> dict[str, Any] | None:
             return None
         direcao = movimento.group(2) or ("tras" if movimento.group(1).startswith("recu") else "frente")
     return {"intent": "CORPO_MOVER", "params": {
-        "alvo": "corpo", "direcao": direcao, "pwm": 255, "duracao_ms": 250,
+        "alvo": "corpo", "direcao": direcao, "pwm": 160 if duracao_ms > 500 else 255,
+        "duracao_ms": duracao_ms,
     }}
 
 

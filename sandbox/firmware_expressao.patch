@@ -1,0 +1,69 @@
+--- a/protecao_corporal.h
++++ b/protecao_corporal.h
+@@ -54,4 +54,8 @@
+   return "NENHUM";
+ }
++bool frenteEstreitaParaBusca(uint32_t agora) {
++  return !strcmp(estadoDistancia(distancias[0],agora),"VALIDA")
++      && distancias[0].mm<=LIMITE_LIBERACAO_FRONTAL_MM;
++}
+ void faseNovaProtecao(const char *fase, uint32_t agora) {
+   pararMotor(); faseProtecao = fase; inicioFaseProtecao = agora;
+@@ -89,4 +93,11 @@
+ ReacaoFrontal reacaoFrontal = ReacaoFrontal::Neutra;
+ ReacaoFrontal expressaoFrontal() { return reacaoFrontal; }
++float olharEsperaFrontal(uint32_t agora) {
++  if (!vigiaProtecao || strcmp(faseProtecao,"ESPERA_BUSCA")
++      || reacaoFrontal!=ReacaoFrontal::Impaciente) return 0;
++  const uint32_t espera = agora - inicioFaseProtecao;
++  // Fica de olho no obstáculo, depois olha para onde faria a nova tentativa.
++  return espera<2400 ? 0.0f : -ladoBuscaFrontal*5.0f;
++}
+ uint32_t frenteDesde = 0, frenteAte = 0, frenteMedidaAnterior = 0;
+ uint16_t frenteDistanciaAnterior = 0;
+@@ -136,9 +147,12 @@
+       : (!strcmp(risco,"BORDA_SEM_RETORNO") || !strncmp(risco,"FALHA",5)) ? 4 : 0;
+   bool nova = classe != classeAlertaProtecao;
+-  atualizarReacaoFrontal(agora,classe==3,classe==0 || classe==3);
++  const bool frenteEmEspera = classe==0 && !strcmp(faseProtecao,"ESPERA_BUSCA")
++      && frenteEstreitaParaBusca(agora);
++  atualizarReacaoFrontal(agora,classe==3 || frenteEmEspera,classe==0 || classe==3);
+   if (nova) { classeAlertaProtecao = classe; inicioAlertaProtecao = agora; }
+   reacaoAlertaProtecao = classe == 1 && (uint32_t(agora-inicioAlertaProtecao)>=900
+       || !strcmp(faseProtecao,"BLOQUEADA")) ? 2 : classe;
+   if (!classe && reflexoProtecaoAtivo()) reacaoAlertaProtecao = !strcmp(causaProtecao,"OBSTACULO") ? 3 : 1;
++  if (frenteEmEspera && reacaoFrontal==ReacaoFrontal::Impaciente) reacaoAlertaProtecao=3;
+   // Expressão não concede tração. Um bip inicial e depois respiros de8s.
+   if (!motorEmUso() && !reflexoProtecaoAtivo() && classe
+@@ -224,7 +238,5 @@
+     // Uma busca já iniciada usa o mesmo limiar para sair da espera e para
+     // liberar a trava. Entre os dois limiares só cabe reavaliar, sem avançar.
+-    bool frenteAindaEstreita = repetirBusca && !strcmp(risco,"NENHUM")
+-        && !strcmp(estadoDistancia(distancias[0],agora),"VALIDA")
+-        && distancias[0].mm<=LIMITE_LIBERACAO_FRONTAL_MM;
++    bool frenteAindaEstreita = repetirBusca && !strcmp(risco,"NENHUM") && frenteEstreitaParaBusca(agora);
+     bool admitirBusca=(trocarParaParede || repetirBusca) && vigiaProtecao && conectado
+         && uint32_t(agora-ultimoPacote)<ttl && motoresProntos && telaInicializada
+@@ -370,4 +382,5 @@
+ int expressaoProtecaoCorporal(uint32_t) { return 0; }
+ ReacaoFrontal expressaoFrontal() { return ReacaoFrontal::Neutra; }
++float olharEsperaFrontal(uint32_t) { return 0; }
+ #endif
+ void processarVigiaProtecao(const char *entrada) {
+--- a/rosto_laylay.ino
++++ b/rosto_laylay.ino
+@@ -104,4 +104,5 @@
+ enum class ReacaoFrontal { Neutra, Curiosa, Surpresa, Impaciente, Aliviada };
+ ReacaoFrontal expressaoFrontal();
++float olharEsperaFrontal(uint32_t agora);
+ void atualizarSensoresDistancia(uint32_t agora);
+ void invalidarSessao();
+@@ -604,4 +605,8 @@
+   }
+   float alvoOlhar = dormindo ? 0 : emocao == 6 ? -2.5f : olharAlvo;
++  if (!expressaoAtiva && irritacaoLocal) {
++    const float olharBusca = olharEsperaFrontal(agora);
++    if (olharBusca != 0) alvoOlhar = olharBusca;
++  }
+   if (expressaoAtiva && !dormindo) alvoOlhar = faseExpressao == 3 ? 0
+       : ladoExpressao * (estiloExpressao == 6 ? 3.5f : 5.5f);

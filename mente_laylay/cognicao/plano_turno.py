@@ -313,6 +313,9 @@ def planejar_turno(
         "ts": time.time(),
     }
     plano["decisao_turno"] = criar_contrato_decisao(leitura, plano)
+    aceite_ficcional = leitura.get('aceite_oferta_ficcional')
+    if aceite_ficcional is not None:
+        plano['aceite_oferta_ficcional'] = aceite_ficcional
     from mente_laylay.cognicao.recordacao_atributo import construir_recordacao_atributo
     recordacao = construir_recordacao_atributo(texto, plano=plano, mente=estado)
     if recordacao is not None:
@@ -382,6 +385,13 @@ def verificar_fala_turno(
     origem: str = "conversa",
 ) -> Dict[str, Any]:
     """O mesmo juiz consome suporte declarado e mantém as demais guardas."""
+    from mente_laylay.cognicao.consulta_identificacao import resposta_identificacao_publica_vigente
+    if origem == "identificacao_publica" and plano:
+        conferida = resposta_identificacao_publica_vigente(str(plano.get("texto_usuario") or ""), plano)
+        if conferida and fala == conferida:
+            return {"aceita": True, "fala": conferida, "acao": "aceita", "problemas": [],
+                    "pontuacao": 1.0, "autoriza_execucao": False,
+                    "conclusao": "identificacao_publica_conferida"}
     from mente_laylay.cognicao.estado_tecnico_llm import realizacao_falha_principal, realizacao_falha_resposta
     falha_secundaria = realizacao_falha_resposta(plano)
     falha = falha_secundaria or realizacao_falha_principal(plano)
@@ -418,6 +428,9 @@ def verificar_fala_turno(
                 *resultado.get("problemas", []), "suporte_declarado_sem_prova_semantica"]))
             if resultado.get("aceita"):
                 resultado["acao"] = "ajustada"
+                if (resultado["revisao_suporte_autoria"]["parcial"]
+                        and resultado.get("fala") == candidata):
+                    resultado["entrega_parcial"] = True
     return resultado
 
 
@@ -531,6 +544,15 @@ def _verificar_fala_turno_base(
         and not contrato.get("requer_execucao")
         and not contrato.get("comandos")
     )
+    if recomendacao:
+        from mente_laylay.cognicao.opiniao_autoral import OpiniaoAutoral, avaliar_opiniao_autoral
+
+        opiniao = (contrato.get('contrato_fala') or {}).get('opiniao_autoral')
+        if (type(opiniao) is OpiniaoAutoral and opiniao.categoria.startswith('exemplar:')
+            and (avaliar_opiniao_autoral(texto_usuario, ajustada, plano=contrato) or {}).get('aceita') is True):
+            # A resposta conferida só declara ausência de um exemplar de gosto.
+            # Ela não recomenda título e segue pela revisão factual usual.
+            recomendacao = False
     if recomendacao:
         validacao_recomendacao = validar_resposta_recomendacao(
             ajustada, fundamentacao=fundamentacao, texto_usuario=texto_usuario,

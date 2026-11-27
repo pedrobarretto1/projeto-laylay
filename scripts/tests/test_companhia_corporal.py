@@ -111,7 +111,7 @@ def test_modo_explicito_gesto_cooperativo_cooldown_sem_replay_da_emocao_antiga()
     assert corpo.companhia.diagnostico()["gestos_emitidos"] == 3
 
 
-@pytest.mark.parametrize("invalidar", ["sessao", "ack", "stop", "manual"])
+@pytest.mark.parametrize("invalidar", ["sessao", "ack", "stop"])
 def test_concessao_vigente_precisa_sobreviver_ate_executor_sem_rearme(invalidar):
     estado, esp, rosto, corpo, _, agora = montar()
     assert ativar(corpo)["ok"]
@@ -120,16 +120,26 @@ def test_concessao_vigente_precisa_sobreviver_ate_executor_sem_rearme(invalidar)
         assert rosto.sincronizar()
     elif invalidar == "ack":
         rosto._ultimo_ack = float("-inf")
-    elif invalidar == "stop":
-        assert corpo.executar("CORPO_PARAR", {})["ok"]
     else:
-        assert corpo.executar("CORPO_MOVER", {"direcao": "frente"})["ok"]
+        assert corpo.executar("CORPO_PARAR", {})["ok"]
     corpo.companhia.processar()  # Consome a perda antes de qualquer reconexão.
     assert not corpo.diagnostico()["autonomia_ativada"]
     assert rosto.sincronizar()
     numero = len(motores(esp))
     emocao(estado, rosto, "alegre")
     assert not corpo.companhia.processar()["ok"] and len(motores(esp)) == numero
+
+
+def test_passeio_continua_depois_de_movimento_manual_bem_sucedido():
+    _, esp, rosto, corpo, _, agora = montar(automatico=True, passeio=True)
+    assert corpo.companhia.processar()["ok"]
+    assert corpo.executar("CORPO_MOVER", {"direcao": "frente"})["ok"]
+    assert corpo.companhia.diagnostico()["ativa"]
+    quantidade = len(motores(esp))
+    agora[0] += 60
+    assert corpo.companhia.processar()["ok"]
+    assert len(motores(esp)) > quantidade
+    rosto.encerrar()
 
 
 def test_face_confirmada_nao_empresta_sucesso_ao_motor_sem_mack():
@@ -411,6 +421,30 @@ def test_stop_acorda_antecipacao_sem_esperar_ou_acionar_motor():
         worker.join(2)
 
 
+def test_movimento_manual_interrompe_gesto_em_curso_sem_revogar_companhia():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    estado, esp, rosto, corpo, _, _ = montar()
+    assert ativar(corpo)["ok"]
+    emocao(estado, rosto, "envergonhada")
+    esperando = Event()
+    original = corpo.companhia._aguardar_gesto
+
+    def aguardar(ms, validar):
+        esperando.set()
+        return original(max(ms, 350), validar)
+
+    corpo.companhia._aguardar_gesto = aguardar
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        gesto = worker.submit(corpo.companhia.processar)
+        assert esperando.wait(2)
+        assert corpo.executar("CORPO_MOVER", {"direcao": "frente"})["ok"]
+        assert gesto.result(timeout=2)["motivo"] == "movimento_manual_prioritario"
+    assert len(motores(esp)) == 1
+    assert corpo.companhia.autorizar_busca_obstaculos(rosto.diagnostico()["sessao"])
+    rosto.encerrar()
+
+
 def test_concessao_dura_sessao_sem_expirar_por_tempo_ou_trinta_gestos():
     estado, esp, rosto, corpo, _, agora = montar()
     assert ativar(corpo)["ok"]
@@ -538,6 +572,8 @@ with MonkeyPatch.context() as mp:
     assert corpo.companhia.diagnostico()["passeio_ativado"] is (sys.argv[2] == "1") and not motores(esp)
     emocao(estado, rosto, "surpresa")
     assert corpo.companhia.processar()["ok"] and len(motores(esp)) == 1
+    assert corpo.executar("CORPO_MOVER", {"direcao": "frente"})["ok"] and len(motores(esp)) == 2
+    assert corpo.companhia.diagnostico()["ativa"]
     assert corpo.executar("CORPO_PARAR", {})["ok"]
     corpo.companhia.processar()
     assert not corpo.companhia.diagnostico()["ativa"]

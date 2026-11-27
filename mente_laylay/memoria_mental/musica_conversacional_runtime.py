@@ -22,6 +22,12 @@ from mente_laylay.memoria_mental.musica_conversacional import (
 from mente_laylay.memoria_mental.encerramento_assunto import (
     classificar_encerramento_assunto,
 )
+from mente_laylay.cognicao.normalizacao_linguagem import normalizar_texto_basico
+from mente_laylay.memoria_mental.aprendizado_rotina_musica import classificar_confirmacao_local
+from mente_laylay.memoria_mental.continuidade_contexto import (
+    oferta_pendente_ativa, playlist_da_oferta_de_faixa,
+)
+from mente_laylay.memoria_mental.registro_semantico import selecionar_fala_observada
 
 
 class MusicaConversacionalRuntime:
@@ -39,6 +45,8 @@ class MusicaConversacionalRuntime:
         modelo_llm: Any = None,
         buscar_resultados_musicais: Callable[[str, int], list] | None = None,
         pendencia_runtime: Any = None,
+        detalhar_playlist: Callable[[str], dict[str, Any]] | None = None,
+        atualizar_mente: Callable[[Callable[[dict], dict]], Any] | None = None,
         log: Callable[[str], None] | None = None,
     ) -> None:
         self.estado_mental_getter = estado_mental_getter
@@ -54,6 +62,8 @@ class MusicaConversacionalRuntime:
         )
         self.buscar_resultados_musicais = buscar_resultados_musicais
         self.pendencia_runtime = pendencia_runtime
+        self.detalhar_playlist = detalhar_playlist
+        self.atualizar_mente = atualizar_mente
         self.log = log or print
 
     def _sugestao_pendente(self) -> Dict[str, Any]:
@@ -302,6 +312,64 @@ class MusicaConversacionalRuntime:
             and confirmado is True
         ):
             self._limpar_sugestao_pendente("concluida_por_outra_rota")
+
+    def processar_aceite_oferta_playlist(self, texto: str = "") -> bool:
+        """Consome a oferta de indicação sem entregar o aceite ao executor."""
+        estado = self._estado()
+        oferta = oferta_pendente_ativa(estado) or {}
+        if oferta.get("modo") != "sugerir_faixa_playlist" or oferta.get("autoriza_execucao") is not False:
+            return False
+        norm = normalizar_texto_basico(texto).strip(" .,!?:;")
+        aceitou = classificar_confirmacao_local(texto, somente_aceite_generico=True)
+        if aceitou is None and norm == "ta bom":
+            aceitou = True
+        if aceitou is None or not callable(self.atualizar_mente):
+            return False
+        entrega = selecionar_fala_observada(estado.get("registro_semantico"))
+        nome = str(oferta.get("contexto") or "")
+        if (not nome or entrega.get("id") != oferta.get("entrega_id")
+                or playlist_da_oferta_de_faixa(entrega["fala"]) != nome):
+            return False
+        consumida = False
+
+        def consumir(mental):
+            nonlocal consumida
+            if (mental.get("oferta_pendente") == oferta
+                    and (mental.get("registro_semantico") or {}).get("ultima_fala_observada_id") == entrega["id"]
+                    and (mental.get("turno_atual") or {}).get("id") == (estado.get("turno_atual") or {}).get("id")):
+                consumida = True
+                return {**mental, "oferta_pendente": {}}
+            return mental
+
+        self.atualizar_mente(consumir)
+        if not consumida:
+            return False
+        if aceitou is False:
+            fala = "Tudo bem, deixo a sugestão pra outra hora."
+        else:
+            fala = self._sugerir_faixa_da_playlist(nome)
+        if (self._estado().get("turno_atual") or {}).get("id") != (estado.get("turno_atual") or {}).get("id"):
+            return True
+        if self.falar(fala, "calma", 1) is not False:
+            self.registrar_mente_curta(texto, fala, alvo=nome, habilidade="musica")
+        return True
+
+    def _sugerir_faixa_da_playlist(self, nome: str) -> str:
+        try:
+            lista = self.detalhar_playlist(nome) if callable(self.detalhar_playlist) else None
+        except Exception as erro:
+            self.log(f"⚠️ [MÚSICA:OFERTA] leitura falhou: {type(erro).__name__}")
+            lista = None
+        if lista is None:
+            return f"Não consegui consultar a playlist «{nome}» agora."
+        if (not lista.get("ok") or normalizar_texto_basico(lista.get("name")) != normalizar_texto_basico(nome)):
+            return f"Não encontrei a playlist «{nome}»."
+        faixa = next((item for item in lista.get("items", ())
+                      if item.get("title") and item["title"] != "Faixa sem título"), None)
+        if faixa is None:
+            return f"Não encontrei uma faixa com título na playlist «{nome}»."
+        canal = f", de {faixa['channel']}" if faixa.get("channel") else ""
+        return f"Da playlist «{lista['name']}», eu sugiro «{faixa['title']}»{canal}."
 
     def processar_confirmacao(self, texto: str = "") -> bool:
         """Continua uma recomendacao conversacional sem recriar habilidade antiga."""

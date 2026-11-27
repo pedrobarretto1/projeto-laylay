@@ -1,0 +1,416 @@
+[
+  {
+    "t": 2.19,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 42,
+      "idade_ms": 242,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 3.11,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 41,
+      "idade_ms": 134,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 4.04,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 38,
+      "idade_ms": 143,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 5.09,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 39,
+      "idade_ms": 142,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 6.03,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 39,
+      "idade_ms": 137,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 6.96,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 37,
+      "idade_ms": 140,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 8.0,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 40,
+      "idade_ms": 140,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 8.94,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 44,
+      "idade_ms": 141,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 9.86,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 38,
+      "idade_ms": 142,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 10.9,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 40,
+      "idade_ms": 138,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 11.83,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 37,
+      "idade_ms": 132,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 12.75,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 35,
+      "idade_ms": 133,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 13.77,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 45,
+      "idade_ms": 132,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 14.71,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 36,
+      "idade_ms": 146,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 15.64,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 48,
+      "idade_ms": 142,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 16.68,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 37,
+      "idade_ms": 146,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 17.61,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 44,
+      "idade_ms": 132,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 18.54,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 41,
+      "idade_ms": 132,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 19.56,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 42,
+      "idade_ms": 106,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 20.51,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 37,
+      "idade_ms": 111,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 21.43,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "ERRO_I2C",
+      "mm": null,
+      "idade_ms": 146,
+      "status": 255
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 22.48,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 36,
+      "idade_ms": 141,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  },
+  {
+    "t": 23.4,
+    "ok": true,
+    "modo": "serial",
+    "porta": "COM4",
+    "motivo": "frame_confirmado_pelo_esp",
+    "rosto": true,
+    "frente": {
+      "estado": "VALIDA",
+      "mm": 42,
+      "idade_ms": 132,
+      "status": 0
+    },
+    "borda": "DESATIVADA",
+    "boot": "b726e84f",
+    "perdas": 1,
+    "motivo_perda": "TTL"
+  }
+]

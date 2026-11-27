@@ -15,6 +15,7 @@ from mente_laylay.emocoes.contrato_causal import evento_pode_alterar_estado
 from mente_laylay.personalidade.antirrepeticao import assinaturas_recentes
 from mente_laylay.personalidade.perfil_amizade import (
     VERSAO_PERFIL_PERSONALIDADE,
+    orientar_registro_amizade,
     selecionar_postura_amizade,
 )
 
@@ -31,6 +32,7 @@ class RetratoExpressaoTurno:
     max_frases: int
     preservar_resultado: bool
     sensivel: bool
+    permite_metafora: bool = False
     assinaturas_evitar: tuple[str, ...] = ()
     autoriza_execucao: bool = False
 
@@ -66,6 +68,17 @@ def construir_retrato_expressivo(
     sensivel = postura.humor == "bloqueado" or funcao in {
         "desabafo", "inseguranca", "decepcao", "frustracao", "correcao",
     }
+    contrato = estado.get("contrato_fala_atual") or {}
+    turno_id = (estado.get("turno_atual") or {}).get("id")
+    roteiro = contrato.get("roteiro_concreto") or {}
+    permite_metafora = (
+        postura.nome != "operacional_amigavel" and not sensivel
+        and contrato.get("origem") == "mente_unica"
+        and bool(turno_id) and str(contrato.get("turno_id")) == str(turno_id)
+        and contrato.get("autoriza_execucao") is False
+        and roteiro.get("ancora_literal") == texto_usuario
+        and contrato.get("permite_metafora") is True
+    )
     estrategia, motivo = "nenhum", "turno_literal"
     if operacional:
         evento = dict(estado.get("avaliacao_emocional_operacional_atual") or {})
@@ -100,6 +113,7 @@ def construir_retrato_expressivo(
         max_frases=postura.max_frases,
         preservar_resultado=bool(operacional),
         sensivel=sensivel,
+        permite_metafora=permite_metafora,
         assinaturas_evitar=tuple(assinaturas_recentes(mensagens, limite=6)),
     )
 
@@ -114,7 +128,8 @@ def formatar_retrato_expressivo_para_prompt(retrato: RetratoExpressaoTurno) -> s
     return (
         "--- RETRATO EXPRESSIVO EFÊMERO ---\n"
         f"Perfil={retrato.versao_perfil}; postura={retrato.postura}; "
-        f"sensível={'sim' if retrato.sensivel else 'não'}; máximo={retrato.max_frases} frases. "
+        f"sensível={'sim' if retrato.sensivel else 'não'}; referência de ritmo={retrato.max_frases} frases. "
+        f"{orientar_registro_amizade(permite_metafora=retrato.permite_metafora)} "
         f"{regra_humor} Evite os moldes recentes: {evitar}. "
         "Responda ao conteúdo primeiro. Humor não cria fatos, comandos, autorização ou confirmação."
     )

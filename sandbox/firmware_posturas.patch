@@ -1,0 +1,100 @@
+--- a/imu_corporal.h
++++ b/imu_corporal.h
+@@ -112,20 +112,29 @@
+ EstadoImuCorporal imu;
+ // Continuidade expressiva sobre a classificação já medida, sem outra decisão motora.
++enum class PosturaImu { Comum, Lateral, Vertical, Invertida };
+ struct EpisodioManuseio {
+   const char *fase="TRANQUILA",*anterior="ESTAVEL";
+   uint32_t inicio=0,mudouEm=0,ultimoEpisodio=0,sequencia=0;
+   unsigned repeticoes=0;
+-  void atualizar(uint32_t t,const char *m,bool valido) {
++  PosturaImu postura=PosturaImu::Comum;
++  uint32_t posturaDesde=0;
++  void atualizar(uint32_t t,const char *m,bool valido,PosturaImu medida=PosturaImu::Comum) {
+     const char *nova="TRANQUILA";
+-    if(!valido) { anterior="ESTAVEL";inicio=0;repeticoes=0;ultimoEpisodio=0; }
++    if(!valido) { anterior="ESTAVEL";inicio=0;repeticoes=0;ultimoEpisodio=0;postura=PosturaImu::Comum; }
+     else {
+       bool alterado=strcmp(m,"ESTAVEL")!=0;
++      if (postura!=medida) {postura=medida;posturaDesde=t;}
+       if(alterado && !strcmp(anterior,"ESTAVEL")) {
+         repeticoes=ultimoEpisodio && uint32_t(t-ultimoEpisodio)<20000?min(3u,repeticoes+1):1;
+         ultimoEpisodio=inicio=t;
+       }
+-      if(!strcmp(m,"TOMBADA") || !strcmp(m,"POSSIVEL_LEVANTAMENTO")) nova="DESORIENTADA";
++      const bool posturaConfirmada = alterado && uint32_t(t-posturaDesde)>=140;
++      const bool insiste = repeticoes>1 || uint32_t(t-posturaDesde)>=1250;
++      if(posturaConfirmada && postura==PosturaImu::Invertida) nova=insiste?"PROTESTO_INVERTIDA":"INVERTIDA";
++      else if(posturaConfirmada && postura==PosturaImu::Vertical) nova=insiste?"PROTESTO_VERTICAL":"EM_PE";
++      else if(posturaConfirmada && postura==PosturaImu::Lateral) nova=insiste?"PROTESTO_LATERAL":"LATERAL";
++      else if(!strcmp(m,"TOMBADA") || !strcmp(m,"POSSIVEL_LEVANTAMENTO")) nova="DESORIENTADA";
+       else if(!strcmp(m,"MOVIMENTO_BRUSCO")) nova=uint32_t(t-inicio)>700 || repeticoes>1?"RESMUNGO":"SUSTO";
+-      else if(!strcmp(m,"INCLINADA")) nova=uint32_t(t-inicio)>1200?"DESCONFIADA":"CURIOSA";
++      else if(!strcmp(m,"INCLINADA")) nova=uint32_t(t-inicio)>1200 || repeticoes>1?"DESCONFIADA":"CURIOSA";
+       else if(strcmp(anterior,"ESTAVEL")) { inicio=t;nova="RECOMPONDO"; }
+       else if(!strcmp(fase,"RECOMPONDO") && uint32_t(t-inicio)<3000) nova="RECOMPONDO";
+@@ -136,4 +145,11 @@
+   }
+ } episodioManuseio;
++PosturaImu posturaPelaGravidade() {
++  if (imu.norma<.85f || imu.norma>1.15f) return PosturaImu::Comum;
++  const auto *g=imu.anterior; // Eixos já alinhados ao chassi quando aplicável.
++  if (g[2]<-.80f*imu.norma) return PosturaImu::Invertida;
++  if (fabsf(g[2])>.48f*imu.norma) return PosturaImu::Comum;
++  return fabsf(g[1])>=fabsf(g[0]) ? PosturaImu::Lateral : PosturaImu::Vertical;
++}
+ constexpr uint8_t ENDERECOS_IMU[]={0x68,0x69};
+ uint8_t enderecoImu=0;
+@@ -263,4 +279,9 @@
+   if(!imu.recente(millis()) || !imu.calibrada)return 0;
+   const char *f=episodioManuseio.fase;
++  if (!strcmp(f,"CURIOSA")) return 5;
++  if (!strcmp(f,"LATERAL")) return 6;
++  if (!strcmp(f,"EM_PE")) return 7;
++  if (!strcmp(f,"INVERTIDA")) return 8;
++  if (!strncmp(f,"PROTESTO_",9)) return 9;
+   return !strcmp(f,"DESORIENTADA")?2:!strcmp(f,"RESMUNGO") || !strcmp(f,"DESCONFIADA")?3:
+       !strcmp(f,"RECOMPONDO")?4:!strcmp(f,"SUSTO")?1:0;
+@@ -272,5 +293,6 @@
+     pararMotor();
+ #if LAYLAY_PROTECAO_CORPORAL
+-    if(reflexoProtecaoAtivo()) terminarProtecao("BLOQUEADA",agora);
++    if(reflexoProtecaoAtivo())
++      terminarProtecao(!strcmp(causaProtecao,"OBSTACULO") ? "ESPERA_BUSCA" : "BLOQUEADA",agora);
+ #endif
+   }
+@@ -279,10 +301,12 @@
+   uint32_t anteriorFase=episodioManuseio.sequencia;
+   episodioManuseio.atualizar(agora,m,imu.recente(agora) && imu.calibrada && conectado
+-      && uint32_t(agora-ultimoPacote)<ttl);
++      && uint32_t(agora-ultimoPacote)<ttl,posturaPelaGravidade());
+   if(!strcmp(imu.manuseio,"MOVIMENTO_BRUSCO")) sustoManuseioAte=agora+1100;
+   if(conectado && uint32_t(agora-ultimoPacote)<ttl && episodioManuseio.sequencia!=anteriorFase
+       && expressaoManuseio() && uint32_t(agora-ultimoSomManuseio)>3500
+       && !somExpressivoAtivo) {
+-    tipoSomExpressivo=expressaoManuseio()==3?11:expressaoManuseio()==4?6:9;indiceNotaSom=0;
++    const int expressao=expressaoManuseio();
++    tipoSomExpressivo=expressao==3 || expressao==9 ? 11 : expressao==4 || expressao==5 ? 6 : 9;
++    indiceNotaSom=0;
+     ultimoInicioSom=inicioNotaSom=ultimoSomManuseio=agora;
+     somExpressivoAtivo=somJaTocou=true;aplicarNotaSom();
+--- a/rosto_laylay.ino
++++ b/rosto_laylay.ino
+@@ -630,4 +630,9 @@
+     if(reacaoManuseio==3) {inclinacaoDetalhe=4;assimetriaDetalhe=-4;ruborDetalhe=.45f;}
+     if(reacaoManuseio==4) {inclinacaoDetalhe=2;assimetriaDetalhe=-2;}
++    if(reacaoManuseio==5) {alturaAlvo=28;larguraDetalhe=-2;assimetriaDetalhe=3;}
++    if(reacaoManuseio==6) {alturaAlvo=26;larguraDetalhe=0;assimetriaDetalhe=8;inclinacaoDetalhe=7;}
++    if(reacaoManuseio==7) {alturaAlvo=33;larguraDetalhe=-8;assimetriaDetalhe=-2;}
++    if(reacaoManuseio==8) {alturaAlvo=37;larguraDetalhe=-10;tristezaDetalhe=.9f;assimetriaDetalhe=-5;}
++    if(reacaoManuseio==9) {alturaAlvo=17;larguraDetalhe=3;inclinacaoDetalhe=9;assimetriaDetalhe=-5;}
+     detalhe=1;brilhoDetalhe=.8f;
+   }
+@@ -649,5 +654,5 @@
+       inclinacaoDetalhe, detalhe * ((faseExpressao == 1 || faseExpressao == 3)
+       && estiloExpressao >= 2 && estiloExpressao <= 7));
+-  if(reacaoManuseio==3 || reacaoManuseio==4) palpebraAlvo=inclinacaoDetalhe;
++  if(reacaoManuseio==3 || reacaoManuseio==4 || reacaoManuseio==6 || reacaoManuseio==9) palpebraAlvo=inclinacaoDetalhe;
+   inclinacaoPalpebra = aproximar(inclinacaoPalpebra,palpebraAlvo,dt,0.24f);
+   float alegriaAlvo = medoLocal || irritacaoLocal ? 0 : max(emocao == 1 ? 1.0f : 0.0f, alegriaDetalhe * detalhe);

@@ -8,6 +8,7 @@ from typing import Callable, List, Optional
 from mente_laylay.cognicao.gramatica_operacional import (
     texto_pede_avanco_midia_via_vai,
 )
+from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
 from mente_laylay.cognicao.normalizacao_linguagem import (
     PADRAO_COORDENACAO_OPERACIONAL,
 )
@@ -40,7 +41,7 @@ _INICIO_ETAPA_OPERACIONAL = re.compile(
 )
 
 _SEPARADOR_ETAPA_OPERACIONAL = re.compile(
-    rf"\b{PADRAO_COORDENACAO_OPERACIONAL}\b|[,;]",
+    rf"\b{PADRAO_COORDENACAO_OPERACIONAL}\b|;|(?<!\d),|,(?!\d)",
     flags=re.IGNORECASE,
 )
 
@@ -48,10 +49,12 @@ _SEPARADOR_ETAPA_OPERACIONAL = re.compile(
 def _parece_etapa_operacional(texto: str) -> bool:
     """Aceita um corte somente quando o trecho começa como ordem operacional."""
     t = str(texto or "").strip()
-    return bool(
-        _INICIO_ETAPA_OPERACIONAL.match(t)
-        or texto_pede_avanco_midia_via_vai(t)
-    )
+    if _INICIO_ETAPA_OPERACIONAL.match(t) or texto_pede_avanco_midia_via_vai(t):
+        return True
+    # A direita de um conector ainda pode conter várias ordens. A gramática
+    # corporal lê a primeira etapa completa, incluindo a vírgula decimal.
+    primeira = _SEPARADOR_ETAPA_OPERACIONAL.split(t, maxsplit=1)[0]
+    return bool(detectar_intencao_corpo(primeira))
 
 
 def limpar_resposta(texto: str) -> str:

@@ -2333,7 +2333,8 @@ _uso_confirmado_runtime = criar_uso_confirmado_runtime(
     log=print,
 )
 
-_corpo_motor_runtime.experiencias.conectar_aprendizado(_motor_aprendizado_runtime)
+if "LAYLAY_CORPO_SIMULADOR_PORTA" not in os.environ:
+    _corpo_motor_runtime.experiencias.conectar_aprendizado(_motor_aprendizado_runtime)
 _dev_console_runtime.configurar_corpo_getter(lambda: {
     "transporte": _rosto_oled_runtime.diagnostico(), "corpo": _corpo_motor_runtime.diagnostico(),
 })
@@ -3331,11 +3332,14 @@ _musica_conversacional_runtime = _criar_musica_conversacional_runtime_mente(
     modelo_llm=_registro_modelo_llm_runtime,
     buscar_resultados_musicais=_busca_musical_runtime.buscar_resultados,
     pendencia_runtime=_pendencia_acao_runtime,
+    detalhar_playlist=_playlist_runtime.detalhar,
+    atualizar_mente=lambda transformar: _estado_compartilhado_runtime.atualizar("mental", transformar),
     log=print,
 )
 _texto_pede_direcao_musical_generica = _musica_conversacional_runtime.texto_pede_direcao
 _responder_pedido_direcao_musical_generica = _musica_conversacional_runtime.responder_pedido_direcao
 _processar_confirmacao_sugestao_musical = _musica_conversacional_runtime.processar_confirmacao
+_processar_aceite_oferta_playlist = _musica_conversacional_runtime.processar_aceite_oferta_playlist
 _texto_pede_opiniao_musica_atual = _musica_conversacional_runtime.texto_pede_opiniao_atual
 _responder_opiniao_musica_atual = _musica_conversacional_runtime.responder_opiniao_atual
 _recomendar_musica_verificada = _musica_conversacional_runtime.recomendar_artista_verificado
@@ -3566,6 +3570,9 @@ _desktop_bridge_runtime = _criar_desktop_bridge_runtime(
             _atividade_operacional_runtime.executar,
             _saidas_audio_runtime.selecionar,
         ),
+        configurar_esp32=_iot_runtime.configurar_esp32,
+        abrir_painel_esp32=_iot_runtime.abrir_painel_esp32,
+        esquecer_dispositivo=_iot_runtime.esquecer_dispositivo,
     ),
     playlist_operacoes=_registro_musica_operacoes_runtime,
     modo_setter=lambda ativo: _definir_modo_chat(ativo, origem="terminal_2"),

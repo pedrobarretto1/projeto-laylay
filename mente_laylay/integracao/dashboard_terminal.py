@@ -531,6 +531,11 @@ class DashboardTerminalRuntime:
                     int(brilho_observado) if brilho_observado is not None else None
                 ),
             })
+            if nome == "rele_esp32":
+                transporte = item.get("transporte_esp32")
+                if transporte in ("auto", "wifi", "bluetooth"):
+                    dispositivos[-1]["esp32_transport"] = transporte
+                    dispositivos[-1]["esp32_ble_name"] = _texto(item.get("nome_ble_esp32"), 20)
         controles = bool(
             dispositivos and provedor_disponivel and modo in {"simulado", "tuya"}
         )

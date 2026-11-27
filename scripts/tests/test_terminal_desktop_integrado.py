@@ -891,10 +891,10 @@ def test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino(interf
     janela.expandir_desktop()
     animacao = janela._animacao_desktop
     assert animacao.state() == QAbstractAnimation.Running
-    assert animacao.duration() == 800
+    assert 450 <= animacao.duration() <= 520
     assert animacao.easingCurve().type() == QEasingCurve.BezierSpline
-    assert .045 <= animacao.easingCurve().valueForProgress(.1) <= .055
-    assert .48 <= animacao.easingCurve().valueForProgress(.5) <= .52
+    assert .075 <= animacao.easingCurve().valueForProgress(.1) <= .13
+    assert .63 <= animacao.easingCurve().valueForProgress(.5) <= .75
     duracao_abertura = animacao.duration()
     area = janela.screen().availableGeometry()
     for percentual in (10, 35, 60, 90):
@@ -919,24 +919,21 @@ def test_animacao_desktop_inverte_do_ponto_atual_e_reduced_aplica_destino(interf
 
 
 def test_animacao_geometria_desktop_mantem_progresso_suave_sem_limitar_quadros(interface_web):
-    from PySide6.QtCore import QAbstractAnimation, QEasingCurve, QPropertyAnimation, QPointF, QRect
+    from PySide6.QtCore import QPropertyAnimation, QRect
 
     app, _worker, janela, _enviadas, _eventos = interface_web
     janela.show()
     app.processEvents()
+    janela.apresentar('desktop')
     animacao = janela._animacao_desktop
     assert type(animacao) is QPropertyAnimation
     animacao.stop()
     inicio = QRect(janela.x(), janela.y(), 272, 36)
     destino = QRect(inicio.x(), inicio.y(), 1100, 730)
-    janela.setGeometry(inicio)
-    curva = QEasingCurve(QEasingCurve.BezierSpline)
-    curva.addCubicBezierSegment(QPointF(.2, 0), QPointF(.8, 1), QPointF(1, 1))
-    animacao.setDuration(800)
-    animacao.setEasingCurve(curva)
-    animacao.setStartValue(inicio)
-    animacao.setEndValue(destino)
-    animacao.start()
+    janela.estado_desktop = 'expanded'
+    janela._iniciar_animacao_geometria_desktop(destino, inicio)
+    assert janela.geometry() == inicio
+    animacao.pause()
     amostras = []
     anterior = QRect(inicio)
     for tempo in (*range(16, animacao.duration(), 16), animacao.duration()):
@@ -949,11 +946,11 @@ def test_animacao_geometria_desktop_mantem_progresso_suave_sem_limitar_quadros(i
         amostras.append((tempo, deslocamento, atual))
         anterior = atual
 
-    assert animacao.duration() == 800
-    assert max(delta[0] for _, delta, _ in amostras) <= 24, {
+    assert 580 <= animacao.duration() <= 650
+    assert max(delta[0] for _, delta, _ in amostras) <= 36, {
         'largest_width_step_per_16ms': max(delta[0] for _, delta, _ in amostras),
     }
-    assert max(delta[1] for _, delta, _ in amostras) <= 20, {
+    assert max(delta[1] for _, delta, _ in amostras) <= 30, {
         'largest_height_step_per_16ms': max(delta[1] for _, delta, _ in amostras),
     }
     assert all(
@@ -967,10 +964,9 @@ def test_animacao_geometria_desktop_mantem_progresso_suave_sem_limitar_quadros(i
     animacao.setCurrentTime(animacao.duration())
     assert janela.geometry() == destino
 
-    animacao.setDirection(QAbstractAnimation.Backward)
-    animacao.setCurrentTime(animacao.duration() - 10)
-    app.processEvents()
-    animacao.setCurrentTime(0)
+    janela.estado_desktop = 'compact'
+    janela._iniciar_animacao_geometria_desktop(inicio, destino)
+    animacao.setCurrentTime(animacao.duration())
     app.processEvents()
     assert janela.geometry() == inicio
     animacao.stop()
@@ -1282,8 +1278,8 @@ def test_geometria_de_cada_aba_cabe_em_tela_estreita_e_monitor_negativo(pagina):
         assert abs(destino.center().x() - tela.center().x()) <= 1
 
 
-@pytest.mark.parametrize("iniciar_desktop", [True, False])
-def test_entrypoint_oficial_respeita_preferencia_com_ponte_real(tmp_path, iniciar_desktop):
+@pytest.mark.parametrize("iniciar_desktop,gpu_explicita", [(True, False), (False, False), (True, True)])
+def test_entrypoint_oficial_respeita_preferencia_com_ponte_real(tmp_path, iniciar_desktop, gpu_explicita):
     import os
     import subprocess
     import sys
@@ -1302,6 +1298,10 @@ preferencias.setValue('v1/iniciar_no_desktop', os.environ['LAYLAY_TEST_DESKTOP_S
 terminal.QSettings = lambda *_: preferencias
 class AplicacaoInspecionada(QApplication):
     def __init__(self, argumentos):
+        flags = os.environ.get('QTWEBENGINE_CHROMIUM_FLAGS', '').split()
+        assert '--log-level=2' in flags
+        software = sys.platform == 'win32' and os.environ['LAYLAY_WEBENGINE_GPU'] != '1'
+        assert flags.count('--disable-gpu') == int(software), flags
         super().__init__(argumentos)
         QTimer.singleShot(3000, self.verificar)
         QTimer.singleShot(7000, self.resgatar)
@@ -1337,7 +1337,8 @@ finally:
     ponte.parar()
 print('ENTRYPOINT_DESKTOP_OK')
 '''
-    ambiente = dict(os.environ, QT_QPA_PLATFORM="offscreen", QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu --no-sandbox",
+    ambiente = dict(os.environ, QT_QPA_PLATFORM=os.getenv("QT_QPA_PLATFORM", "offscreen"),
+        QTWEBENGINE_CHROMIUM_FLAGS="--log-level=2", LAYLAY_WEBENGINE_GPU="1" if gpu_explicita else "",
         LAYLAY_TEST_DESKTOP_INI=str(tmp_path / "entrada.ini"), LAYLAY_TEST_DESKTOP_START="1" if iniciar_desktop else "0",
         LAYLAY_TEST_DESKTOP_MODO="desktop" if iniciar_desktop else "full")
     resultado = subprocess.run([sys.executable, "-c", codigo], cwd=Path(__file__).parents[2], env=ambiente,
@@ -1836,10 +1837,26 @@ def test_expansao_preserva_ilha_ate_viewport_util_e_confirma_ack(conversa_web, m
     assert quadro_minimo['expanded']['visibility'] == 'hidden', quadro_minimo
     assert quadro_minimo['expanded']['pointerEvents'] == 'none', quadro_minimo
 
-    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration() // 2)
-    QTest.qWait(20)
+    animacao = janela._animacao_desktop
+    origem, destino = animacao.startValue(), animacao.endValue()
+    tempo = min(range(animacao.duration()), key=lambda ms: abs(
+        origem.height() + (destino.height() - origem.height())
+        * animacao.easingCurve().valueForProgress(ms / animacao.duration()) - 200
+    ))
+    animacao.setCurrentTime(tempo)
+    aguardar(lambda: js('innerHeight>=198&&innerHeight<=202'))
+    sobreposicao = json.loads(js("""JSON.stringify(['.desktop-compact','.desktop-expanded'].map(selector=>{
+        const style=getComputedStyle(document.querySelector(selector));
+        return [Number(style.opacity),style.visibility,style.pointerEvents];
+    }))"""))
+    assert all(0 < opacidade < 1 and visibilidade == 'visible' and ponteiro == 'none'
+               for opacidade, visibilidade, ponteiro in sobreposicao), sobreposicao
+    assert sum(item[0] for item in sobreposicao) == pytest.approx(1)
+
+    # Verifica o painel totalmente revelado antes do fim da geometria.
+    janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration() * 4 // 5)
     aguardar(lambda: js(
-        f"innerHeight>={240}&&innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
+        f"innerHeight>=240&&innerWidth==={janela.web.width()}&&innerHeight==={janela.web.height()}"))
     quadro_util = json.loads(js("""JSON.stringify((()=>{
       const island=document.querySelector('.desktop-island');
       const expanded=island.querySelector('.desktop-expanded');
@@ -1850,7 +1867,9 @@ def test_expansao_preserva_ilha_ate_viewport_util_e_confirma_ack(conversa_web, m
         phase:LaylayInterface.state.desktopPhase,
         viewport:[innerWidth,innerHeight],
         expandedVisibility:getComputedStyle(expanded).visibility,
+        expandedOpacity:Number(getComputedStyle(expanded).opacity),
         controlsVisibility:getComputedStyle(controls).visibility,
+        toolbarOpacity:Number(getComputedStyle(toolbar).opacity),
         controlsHeight:rect.height,
         controlsWidth:rect.width
       };
@@ -1858,7 +1877,9 @@ def test_expansao_preserva_ilha_ate_viewport_util_e_confirma_ack(conversa_web, m
     assert quadro_util['phase'] == 'resizing', quadro_util
     assert quadro_util['viewport'][1] >= 240, quadro_util
     assert quadro_util['expandedVisibility'] == 'visible', quadro_util
+    assert quadro_util['expandedOpacity'] == 1, quadro_util
     assert quadro_util['controlsVisibility'] == 'visible', quadro_util
+    assert quadro_util['toolbarOpacity'] == 1, quadro_util
     assert quadro_util['controlsHeight'] > 0 and quadro_util['controlsWidth'] > 0, quadro_util
 
     QApplication.instance().processEvents()
@@ -1895,11 +1916,11 @@ def test_expansao_tem_progressao_suave_e_aguarda_ack_do_viewport(conversa_web, m
     aguardar(lambda: janela._desktop_fase == 'resizing')
     assert janela._animacao_desktop.state() == QAbstractAnimation.Running
     duracao = janela._animacao_desktop.duration()
-    assert duracao == 800
+    assert 450 <= duracao <= 520
     janela._animacao_desktop.pause()
     amostras_esperadas = (
-        (10, .049), (25, .197), (36, .327), (40, .376), (50, .50),
-        (60, .624), (64, .673), (75, .803), (90, .951),
+        (10, .097), (25, .318), (36, .492), (40, .553), (50, .690),
+        (60, .804), (64, .842), (75, .925), (90, .988),
     )
     progresso = []
     geometrias = []
@@ -1934,11 +1955,8 @@ def test_expansao_tem_progressao_suave_e_aguarda_ack_do_viewport(conversa_web, m
         all(anterior[dimensao] <= atual[dimensao] for dimensao in range(2))
         for anterior, atual in zip(progresso, progresso[1:])
     ), {'samples': progresso}
-    assert all(
-        all(abs(progresso[i][dimensao] + progresso[-1-i][dimensao] - 1) <= .025
-            for dimensao in range(2))
-        for i in range(len(progresso) // 2)
-    ), {'samples': progresso}
+    assert all(progresso[4][d] - progresso[1][d] > progresso[7][d] - progresso[4][d]
+               for d in range(2)), {'samples': progresso}
     altura_esperada_aos_40 = origem.height() + .33 * (
         janela._desktop_destino.height() - origem.height()
     )
@@ -1980,6 +1998,126 @@ def test_expansao_espera_renderer_aplicar_conteudo_antes_de_animar_janela(conver
     assert js("getComputedStyle(document.querySelector('.desktop-expanded')).visibility!=='hidden'")
     assert float(js("document.querySelector('.desktop-expanded').getBoundingClientRect().height")) > 0
     assert janela._animacao_desktop.state() == QAbstractAnimation.Running
+    assert entradas == []
+
+
+def test_pagina_prepara_largura_final_e_mantem_layout_durante_expansao(conversa_web, monkeypatch):
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop' and janela._desktop_fase == 'idle')
+    janela.selecionar_pagina_desktop('home')
+    aguardar(lambda: janela._desktop_fase == 'resizing')
+    animacao = janela._animacao_desktop
+    animacao.pause()
+    medida = "document.querySelector('.desktop-window-body').getBoundingClientRect().width"
+    larguras = []
+    for percentual in (35, 65):
+        animacao.setCurrentTime(animacao.duration() * percentual // 100)
+        aguardar(lambda: js(f"innerWidth==={janela.web.width()}"))
+        assert js('innerWidth') < janela._desktop_destino.width()
+        larguras.append(js(medida))
+    assert larguras == [janela._desktop_destino.width() - 2] * 2
+    animacao.resume()
+    animacao.setCurrentTime(animacao.duration())
+    aguardar(lambda: janela._desktop_fase == 'idle' and js("LaylayInterface.state.desktopPhase==='idle'"))
+    assert js(medida) == larguras[0]
+    assert entradas == []
+
+
+def test_windows_revela_painel_preparado_sem_redimensionar_webview_a_cada_quadro(conversa_web, monkeypatch):
+    from PySide6.QtGui import QGuiApplication
+
+    if QGuiApplication.platformName() != 'windows':
+        pytest.skip('Exercita a composição nativa da janela Windows')
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop' and janela._desktop_fase == 'idle')
+    origem = janela.geometry()
+    hwnd = int(janela.winId())
+    janela.selecionar_pagina_desktop('home')
+    aguardar(lambda: janela._desktop_fase == 'resizing')
+    animacao = janela._animacao_desktop
+    animacao.pause()
+    alvo = janela._desktop_destino
+    medidas = []
+    for percentual in (25, 65):
+        animacao.setCurrentTime(animacao.duration() * percentual // 100)
+        assert janela.geometry() == alvo
+        assert js('innerWidth') == alvo.width()
+        assert js('innerHeight') == alvo.height()
+        medidas.append(janela.mask().boundingRect())
+    assert origem.width() < medidas[0].width() < medidas[1].width() < alvo.width()
+    assert medidas[0].top() == medidas[1].top() == 0
+    quadro = janela._transicao_cobertura.pixmap()
+    assert not janela.web.updatesEnabled()
+    imagem = quadro.toImage()
+    recorte = medidas[0]
+    escala = quadro.devicePixelRatio()
+    cores = {
+        imagem.pixel(round(x * escala), round(y * escala))
+        for x in range(8, recorte.width() - 8, 8)
+        for y in range(8, recorte.bottom() - 8, 8)
+    }
+    assert len(cores) >= 6, 'A região revelada precisa conter o painel, não a textura uniforme anterior'
+    animacao.resume()
+    animacao.setCurrentTime(animacao.duration())
+    aguardar(lambda: janela._desktop_fase == 'idle')
+    assert janela.mask().boundingRect() == janela.rect()
+    assert janela.web.updatesEnabled()
+    assert int(janela.winId()) == hwnd
+    assert entradas == []
+
+
+@pytest.mark.parametrize('fase', ['starting', 'resizing'])
+def test_windows_recolhe_da_regiao_visivel_ao_interromper_abertura(conversa_web, monkeypatch, fase):
+    from PySide6.QtGui import QGuiApplication
+
+    if QGuiApplication.platformName() != 'windows':
+        pytest.skip('Exercita a composição nativa da janela Windows')
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    js("LaylayInterface.goMode('desktop')")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop' and janela._desktop_fase == 'idle')
+    origem = janela.geometry()
+    janela.selecionar_pagina_desktop('home')
+    aguardar(lambda: janela._desktop_fase == fase)
+    if fase == 'resizing':
+        janela._animacao_desktop.pause()
+        janela._animacao_desktop.setCurrentTime(janela._animacao_desktop.duration() // 2)
+    visivel = janela.mask().boundingRect().translated(janela.pos())
+    janela.recolher_desktop()
+    assert janela.geometry() == visivel
+    aguardar(lambda: janela.estado_desktop == 'compact' and janela._desktop_fase == 'idle')
+    assert janela.geometry() == origem
+    assert janela._transicao_cobertura is None
+    assert janela.web.updatesEnabled()
+    assert entradas == []
+
+
+def test_windows_conclui_sem_animar_se_a_textura_atual_nao_chegar(conversa_web, monkeypatch):
+    from PySide6.QtGui import QGuiApplication
+
+    if QGuiApplication.platformName() != 'windows':
+        pytest.skip('Exercita a composição nativa da janela Windows')
+    janela, _ponte, entradas, js, aguardar = conversa_web
+    monkeypatch.setenv('LAYLAY_REDUZIR_MOVIMENTO', '0')
+    js("""LaylayInterface.goMode('desktop');
+       const folha=document.createElement('style');
+       folha.textContent='#workspace::after {background:transparent!important}';
+       document.head.append(folha);""")
+    aguardar(lambda: janela.modo_apresentacao == 'desktop' and janela._desktop_fase == 'idle')
+    animacoes = []
+    janela._animacao_desktop.stateChanged.connect(lambda estado, _anterior: animacoes.append(estado))
+    janela.selecionar_pagina_desktop('home')
+    assert janela._desktop_fase == 'starting'
+    aguardar(lambda: janela._desktop_fase == 'idle')
+    assert animacoes == []
+    assert janela.geometry() == janela._desktop_destino
+    assert janela.mask().boundingRect() == janela.rect()
+    assert janela._transicao_cobertura is None
+    assert janela.web.updatesEnabled()
     assert entradas == []
 
 
@@ -2233,7 +2371,8 @@ def test_enfeites_css_nao_animam_em_paralelo_ao_resize_nativo(conversa_web, monk
         assert all(item['transicao'] == 'none' and item['animacao'] == 'none'
                    for item in estilos), estilos
 
-    janela.expandir_desktop(fixar=True)
+    # O resumo não tem aba ativa. Exercitar uma página para medir o indicador.
+    janela.selecionar_pagina_desktop('home')
     verificar_enfeites_suspensos()
     assert janela.mask().boundingRect() == janela.rect()
     assert janela.mask().contains(janela.rect().center())

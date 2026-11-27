@@ -408,7 +408,12 @@ def exigir_suporte_no_pacote_autoral(
                 if "sem_fonte" in unidade:
                     raise ValueError("decisao_de_fonte_nao_negociada")
         if base is not None:
-            base.validar({k: v for k, v in projetados.items() if k != "suporte_proposicoes"})
+            projecao_base = {k: v for k, v in projetados.items() if k != "suporte_proposicoes"}
+            base.validar(projecao_base)
+            # O owner pode derivar a etiqueta do motivo da realização integral
+            # que conferiu. Não deixar a etiqueta proposta sobrescrever essa derivação.
+            if "criterio_autoral" in dados:
+                dados["criterio_autoral"] = projecao_base["criterio_autoral"]
         # A projeção só é publicada depois de ambos os contratos passarem.
         dados['suporte_proposicoes'] = canonicas
         dados["fala"] = fala

@@ -78,6 +78,7 @@ def decidir_intencao_corporal(conversa: Mapping[str, Any], atividade: Mapping[st
                              plano: Mapping[str, Any] | None = None,
                              proposta_corporal: Mapping[str, Any] | None = None,
                              vivencia_sensorial: Mapping[str, Any] | None = None,
+                             recuperacao_manuseio: bool = False,
                              agora: float | None = None, wall_time: float | None = None) -> IntencaoCorporal:
     """Atividade PC → oportunidade, emoção causal → estilo, receipt → reação."""
     agora = time.monotonic() if agora is None else agora
@@ -143,6 +144,8 @@ def decidir_intencao_corporal(conversa: Mapping[str, Any], atividade: Mapping[st
         return resultado("reagir_falha", "falha_operacional_observada", 85, True)
     if novo_sucesso and projetar_sucesso_operacional(atividade, agora=agora):
         return resultado("comemorar", "sucesso_operacional_confirmado", 80, True)
+    if recuperacao_manuseio:
+        return resultado("expressar", "estabilidade_recuperada_apos_manuseio", 75, True)
     if nova_emocao and emocao and nivel >= 2:
         return resultado("expressar", "mudanca_emocional_causal", 70, True)
     if emocao in {2, 8}:

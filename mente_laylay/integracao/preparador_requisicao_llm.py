@@ -12,11 +12,40 @@ from mente_laylay.integracao.preparacao_llm import (
 )
 from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual
 from mente_laylay.cognicao.modelo_corporal import projetar_protocolo_corporal_para_schema_negociado
-from mente_laylay.personalidade.prompt_voz_unica import projetar_base_para_schema_negociado
+from mente_laylay.personalidade.prompt_voz_unica import (
+    BASE_SYSTEM_PROMPT,
+    projetar_base_para_schema_negociado,
+)
 from mente_laylay.integracao.registro_conversa_llm import (
     PedidoModelo,
     RequisicaoTransporteLLM,
 )
+
+
+def _separar_instrucao_composta_da_base(mensagens: list[dict[str, Any]]) -> None:
+    if not mensagens or mensagens[0].get("role") != "system":
+        return
+    conteudo = mensagens[0].get("content")
+    if not isinstance(conteudo, str) or not conteudo.startswith(
+        "INSTRUÇÃO PRIORITÁRIA DO TURNO ATUAL: "
+    ):
+        return
+    instrucao, separador, base = conteudo.partition("\n\n")
+    if not base.startswith(BASE_SYSTEM_PROMPT):
+        return
+    indice_usuario = next((
+        indice for indice in range(len(mensagens) - 1, 1, -1)
+        if mensagens[indice].get("role") == "user"
+    ), 0)
+    if not indice_usuario or mensagens[indice_usuario - 1].get("role") != "system":
+        return
+    atual = mensagens[indice_usuario - 1]
+    if not isinstance(atual.get("content"), str):
+        return
+    # O perfil já foi escolhido. O bloco do ato atual continua como system,
+    # junto de suas fontes e limites, e a base fixa volta ao prefixo do cache.
+    mensagens[0] = {**mensagens[0], "content": base}
+    mensagens[indice_usuario - 1] = {**atual, "content": instrucao + separador + atual["content"]}
 
 
 class PreparadorRequisicaoLLMRuntime:
@@ -120,6 +149,9 @@ class PreparadorRequisicaoLLMRuntime:
             # Contrato tipado do host, nunca inferido de conteúdo user/página.
             payload["_laylay_preservar_evento_sistema"] = True
         if pedido.contrato_saida is not None:
+            if (endpoint_local and self.otimizacao_prompt_ativa
+                and pedido.tipo_chamada == "principal" and not pedido.contexto_fechado):
+                _separar_instrucao_composta_da_base(payload["messages"])
             for indice, mensagem in enumerate(payload["messages"]):
                 conteudo = mensagem.get("content")
                 if mensagem.get("role") != "system" or not isinstance(conteudo, str):

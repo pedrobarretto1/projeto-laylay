@@ -1207,6 +1207,13 @@ def sanitizar_dashboard_estado(
                     int(brilho_observado) if brilho_observado is not None else None
                 ),
             })
+            if nome == "rele_esp32":
+                transporte = item.get("esp32_transport")
+                if transporte in ("auto", "wifi", "bluetooth"):
+                    dispositivos_iot[-1]["esp32_transport"] = transporte
+                    dispositivos_iot[-1]["esp32_ble_name"] = _texto_seguro(
+                        item.get("esp32_ble_name"), 20,
+                    )
     iot_controles = bool(
         iot.get("controls_available") is True
         and iot_frescor == "fresh"
@@ -1482,6 +1489,9 @@ def validar_mensagem_cliente(
                 "iot_status": {"device"},
                 "iot_power": {"device", "state"},
                 "iot_brightness": {"device", "value"},
+                "iot_esp32_config": {"device", "display_name", "room", "transport", "ble_name"},
+                "iot_esp32_painel": {"device"},
+                "iot_forget": {"device", "confirmed"},
                 "routine_cancel": {"name"},
             }
             permitidos = permitidos_por_acao.get(acao_id, set())
@@ -1560,6 +1570,16 @@ def validar_mensagem_cliente(
                 if not re.fullmatch(r"[a-z0-9_]+", dispositivo):
                     raise ErroProtocoloDesktop("dispositivo IoT inválido")
                 payload["device"] = dispositivo
+            if acao_id == "iot_forget":
+                if bruto_payload.get("confirmed") is not True:
+                    raise ErroProtocoloDesktop("confirmação ausente para esquecer dispositivo")
+                payload["confirmed"] = True
+            if acao_id == "iot_esp32_config":
+                for campo, limite in (("display_name", 50), ("room", 40), ("transport", 9), ("ble_name", 20)):
+                    valor = bruto_payload.get(campo)
+                    if not isinstance(valor, str) or not 1 <= len(valor) <= limite or not valor.isprintable():
+                        raise ErroProtocoloDesktop("configuração de ESP32 inválida")
+                    payload[campo] = valor
             if "state" in permitidos:
                 estado_iot = _texto_seguro(
                     bruto_payload.get("state"), 8,

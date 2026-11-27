@@ -181,6 +181,21 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         return {"funcao": "pedido_expressao", "objetivo": "encenar a expressão pedida sem inventar sentimentos ou efeitos externos",
                 "postura_esperada": "brincalhona", "permite_pergunta": False,
                 "confianca": 1.0, "expressao_solicitada": pedido, "texto": bruto, "ts": time.time()}
+    from mente_laylay.cognicao.referencias_linguagem import texto_fora_de_citacoes
+
+    relato_atual = re.sub(r"\s+", " ", texto_fora_de_citacoes(bruto).casefold()).strip()
+    moldura_relato = r"(?:^|[.!,:;])\s*(?:(?:hoje|ontem|agora|mais cedo)\s+)?"
+    relato_afetivo = re.search(
+        moldura_relato + r"(?:eu\s+)?(?:estou|t[oô]|fiquei|me senti|me sinto)\s+"
+        r"(?:(?:bem|muito|bastante|meio|um pouco)\s+)*"
+        r"(?:cansad[oa]|exaust[oa]|esgotad[oa]|triste|preocupad[oa]|ansios[oa]|sem energia)\b",
+        relato_atual,
+    )
+    relato_leve = re.search(
+        moldura_relato + r"(?:rolou|aconteceu)\s+(?:uma coisa|algo|um neg[oó]cio|uma situa[cç][aã]o)\s+"
+        r"(?:(?:bem|muito)\s+)?(?:engra[cç]ad[oa]|divertid[oa]|hil[aá]ri[oa])\b",
+        relato_atual,
+    )
     regras = (
         ("correcao", r"^(?:eu\s+)?(?:estou\s+(?:perguntando|falando)|perguntei|falei)\s+(?:sobre|d[aoe])\b[^.!?]{1,180}\bn[aã]o\s+(?:sobre|d[aoe])\b", "reconhecer a correcao de escopo sem confundir contexto com autorizacao"),
         ("encerramento", r"\b(?:era so isso|era só isso|por hoje e so|por hoje é só|ate mais|até mais|falou|depois a gente ve|depois a gente vê)\b", "encerrar o assunto sem retomar contexto antigo"),
@@ -190,7 +205,7 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
         ("agradecimento", r"\b(?:obrigad[oa]?|brigad[oa]?|valeu|vlw)\b", "reconhecer a ajuda concreta que motivou o agradecimento"),
         ("reacao_positiva", r"^(?:que bom|ainda bem|fico feliz)(?: lay| laylay)?[.!]*$", "receber a reação positiva sem inventar novo estado nem forçar pergunta"),
         ("elogio", r"\b(?:voce e incrivel|você é incrível|voce e maravilhosa|você é maravilhosa|gosto de voce|gosto de você|te adoro|te amo)\b", "receber o elogio como dirigido a Laylay"),
-        ("desabafo", r"^(?:eu\s+)?(?:estou|to|tô)\s+(?:(?:um\s+pouco|meio|muito|bem|bastante)\s+)?triste\b|\b(?:nao aguento|não aguento|to triste|tô triste|to cansad|tô cansad|estou cansad|me sinto|dia horrivel|dia horrível)\b", "acolher antes de oferecer solucao"),
+        ("desabafo", r"\b(?:nao aguento|não aguento|me sinto|dia horrivel|dia horrível)\b", "acolher antes de oferecer solucao"),
         ("frustracao", r"\b(?:nao foi|não foi|nao funcionou|não funcionou|de novo isso|voce errou|você errou|ja falei|já falei)\b", "reconhecer a frustracao e corrigir sem se defender"),
         ("decepcao", r"\b(?:fiquei decepcionad|esperava mais|que pena|achei que ia|poxa vida)\b", "reconhecer a decepcao antes de explicar"),
         ("inseguranca", r"\b(?:sera que eu consigo|será que eu consigo|nao sei se consigo|não sei se consigo|to com medo|tô com medo)\b", "acolher a inseguranca sem prometer resultado"),
@@ -250,12 +265,15 @@ def analisar_funcao_comunicativa(texto: str) -> Dict[str, Any]:
             from mente_laylay.cognicao.referencias_linguagem import contem_agradecimento_autoral
             if not contem_agradecimento_autoral(bruto):
                 continue
-        if re.search(padrao, base):
+        relato_reconhecido = (funcao == 'desabafo' and relato_afetivo) or (funcao == 'brincadeira' and relato_leve)
+        texto_da_funcao = relato_atual if funcao == 'desabafo' else base
+        if relato_reconhecido or re.search(padrao, texto_da_funcao):
             emocao, postura, permite_pergunta = perfis.get(funcao, ("neutra", "natural", True))
             return {
                 "funcao": funcao, "objetivo": objetivo, "emocao_implicita": emocao,
                 "postura_esperada": postura, "permite_pergunta": permite_pergunta,
                 "confianca": 0.94, "texto": bruto, "ts": time.time(),
+                **({"relato_afetivo_explicito": True} if funcao == 'desabafo' and relato_afetivo else {}),
             }
     return {
         "funcao": "informacao", "objetivo": "responder ao conteudo atual",

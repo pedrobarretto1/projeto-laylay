@@ -334,7 +334,8 @@ class ExperienciaCorporalRuntime:
             self.estado.atualizar("mental", lambda mental: {**mental,
                 "historico_corporal": _limitar_historico(list(mental.get("historico_corporal") or []) + [e]),
                 "experiencia_corporal": e})
-            if fase in {"DESCONFIADA", "SUSTO", "RESMUNGO", "DESORIENTADA", "RECOMPONDO"}:
+            from mente_laylay.especialistas.percepcao_inercial import DESCRICOES_POSTURAS_IMU
+            if fase in DESCRICOES_POSTURAS_IMU or fase in {"DESCONFIADA", "SUSTO", "RESMUNGO", "DESORIENTADA", "RECOMPONDO"}:
                 self.notificacao_observada.set()
             if self.aprendizado is not None:
                 try:
@@ -410,7 +411,9 @@ class ExperienciaCorporalRuntime:
         """Uma oportunidade factual por fase, sem falar nem conceder tração."""
         d = self.diagnostico_getter()
         i = d.get("imu") or {}
+        from mente_laylay.especialistas.percepcao_inercial import DESCRICOES_POSTURAS_IMU
         descricoes = {
+            **DESCRICOES_POSTURAS_IMU,
             "DESCONFIADA": "Meu corpo permaneceu inclinado por mais de um segundo.",
             "SUSTO": "Meu sensor mediu um movimento brusco no corpo.",
             "RESMUNGO": "Meu sensor mediu balanço forte persistente ou repetido no corpo.",

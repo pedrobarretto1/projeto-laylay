@@ -43,6 +43,9 @@ from mente_laylay.cognicao.esclarecimento_operacional import (
     detectar_esclarecimento_operacional,
     limpar_esclarecimento_operacional,
 )
+from mente_laylay.cognicao.contratos_turno import ComplementoConversacionalTurno, ContratoOcorrenciaTurno
+from mente_laylay.cognicao.decisao_turno import motivo_divergencia_ocorrencia_turno
+from mente_laylay.cognicao.gramatica_operacional import referencia_resposta_para_nota
 from mente_laylay.cognicao.modalidade_turno import (
     autoriza_execucao_efetiva,
     bloqueia_execucao_operacional_prioritaria,
@@ -389,6 +392,27 @@ def segmentar_composto_caixa_agenda(texto: str) -> tuple[str, str] | None:
     return (primeira, segunda) if guarda_ideia and cria_lembrete else None
 
 
+def tema_pesquisa_para_nota(texto: str) -> str:
+    """Reconhece duas ordens separadas com o resultado como operando da nota."""
+    partes = segmentar_comandos_em_cadeia(texto)
+    if len(partes) != 2:
+        return ""
+    consulta, escrita = partes
+    if not re.fullmatch(
+        r"(?:salv[ae]|guard[ae]|anot[ae]|registr[ae])\s+"
+        r"(?:(?:a\s+resposta|o\s+resultado|isso)\s+)?"
+        r"(?:numa\s+nota|em\s+uma\s+nota|nas\s+(?:minhas\s+)?notas)",
+        _texto_normalizado_local(escrita).strip(" .,!?;:"),
+    ):
+        return ""
+    pedido = re.fullmatch(
+        r"(?:pesquis[ae]|busc(?:a|que)|procur[ae])\s+"
+        r"(?:(?:informa[cç][oõ]es\s+)?sobre\s+)?(?P<tema>[\wÀ-ÿ' -]{3,120})",
+        consulta, re.IGNORECASE,
+    )
+    return pedido["tema"].strip() if pedido and len(pedido["tema"].split()) <= 8 else ""
+
+
 class ComandosImediatosRuntime:
     def __init__(
         self,
@@ -402,6 +426,104 @@ class ComandosImediatosRuntime:
         self.loop_getter = loop_getter
         self.memoria_pessoas = memoria_pessoas
         self.iot = iot
+
+    def _processar_nota_documental(self, texto: str, ns: Dict[str, Any], turno: Dict[str, Any]) -> bool:
+        tema = tema_pesquisa_para_nota(texto)
+        referencia = None if tema else referencia_resposta_para_nota(texto)
+        if (not tema and referencia is None) or not _candidato_prioritario_autorizado({"intent": "INBOX_ADD"}, turno):
+            return False
+        estado = ns["_estado_compartilhado_runtime"]
+        ocorrencia = ContratoOcorrenciaTurno(turno_id=turno.get("id"), texto_usuario=texto)
+        caixa = ns.get("_caixa_entrada_pessoal_runtime")
+        cooperacao = ns.get("_orquestrador_cooperativo_runtime")
+        pesquisa = ns.get("_pesquisa_contextual_runtime")
+        vincular = ns.get("_vincular_registro_resultado_execucao")
+        if not all(callable(porta) for porta in (
+            getattr(caixa, "guardar_resultado_pesquisa", None),
+            getattr(cooperacao, "pesquisar_e_guardar_nota", None), vincular,
+        )):
+            falar = ns.get("falar_com_lipsync")
+            if callable(falar):
+                falar("A caixa de entrada está indisponível para guardar essa pesquisa.", "calma", 1)
+            return True
+
+        from mente_laylay.memoria_mental.registro_semantico import localizar_respostas_documentais, selecionar_fala_observada
+
+        publicacao = None
+        if referencia is not None:
+            registro = estado.retrato_dominio("mental").get("registro_semantico")
+            candidatas = localizar_respostas_documentais(
+                registro, referencia.tema, somente_ultima=referencia.somente_ultima,
+            )
+            if len(candidatas) != 1:
+                falar = ns.get("falar_com_lipsync")
+                if callable(falar):
+                    temas = list(dict.fromkeys(c.tema for c in candidatas))[:3]
+                    alternativas = " ou ".join(temas)
+                    fala = (f"Qual resposta você quer guardar: {alternativas}?"
+                            if len(temas) > 1 else "Qual resposta você quer guardar?"
+                            if candidatas else "Não encontrei uma resposta publicada com fonte válida para guardar.")
+                    falar(fala, "calma", 1)
+                return True
+            publicacao, = candidatas
+            tema = publicacao.tema
+
+        from mente_laylay.cognicao.consulta_identificacao import (
+            RespostaIdentificacaoPublica, cargo_identificacao_atual, construir_resposta_identificacao_publica,
+            tema_com_escopo_publico,
+        )
+        from mente_laylay.cognicao.fundamentacao_factual import classificar_atualidade_factual, montar_fundamentacao
+
+        def vigente():
+            mental = estado.retrato_dominio("mental")
+            if motivo_divergencia_ocorrencia_turno(
+                ocorrencia, turno=mental.get("turno_atual"),
+                plano=mental.get("plano_turno_atual"), retrato=mental.get("retrato_turno_atual"),
+            ) or not _candidato_prioritario_autorizado({"intent": "INBOX_ADD"}, mental.get("turno_atual")):
+                return False
+            if publicacao is None:
+                return True
+            encontrada = selecionar_fala_observada(
+                mental.get("registro_semantico"), ocorrencia_id=publicacao.entrega_id,
+            )
+            return encontrada.get("documento_publicado") == publicacao
+
+        def consultar():
+            if publicacao is not None:
+                return publicacao.documento
+            pergunta = f"Quem é {tema}?"
+            reserva_pessoal = getattr(self.memoria_pessoas, "reserva_consulta", None)
+            if (not tema_com_escopo_publico(tema)
+                    or callable(reserva_pessoal) and reserva_pessoal(pergunta)):
+                return RespostaIdentificacaoPublica(
+                    str(turno["id"]), texto,
+                    "Para guardar uma pesquisa na caixa de entrada, preciso que você indique um tema público.",
+                    "escopo_nao_publico",
+                )
+            cargo = cargo_identificacao_atual(pergunta)
+            atualidade = classificar_atualidade_factual(pergunta)
+            if cargo:
+                dados = pesquisa.pesquisar_ocupante_cargo(cargo)
+            elif atualidade.get("depende_atualidade"):
+                return None
+            else:
+                dados = pesquisa.pesquisar_contexto_tema(tema)
+            return construir_resposta_identificacao_publica(
+                texto, turno_id=turno["id"], pesquisa=dados, tema=tema, cargo=cargo,
+                fundamentacao=montar_fundamentacao(tema, dados, atualidade=atualidade),
+            )
+
+        def guardar(fonte, solicitacao_id):
+            return caixa.guardar_resultado_pesquisa(
+                fonte=fonte, tema=tema, ocorrencia_id=str(turno["id"]), texto=texto,
+                solicitacao_id=solicitacao_id, publicacao=publicacao,
+            )
+
+        cooperacao.pesquisar_e_guardar_nota(
+            texto=texto, tema=tema, ocorrencia_id=str(turno["id"]), consultar=consultar,
+            guardar=guardar, registrar=vincular(), vigente=vigente, publicacao=publicacao,
+        )
+        return True
 
     def _processar_resistencia_pendente(
         self, texto: str, ns: Dict[str, Any], turno: Dict[str, Any],
@@ -758,16 +880,14 @@ class ComandosImediatosRuntime:
                 )
                 texto = texto_final
 
-        # A autoridade agregada de um turno misto não autoriza todos os seus
-        # atos. O ato vetado permanece na mente; detectores e cadeias recebem
-        # somente as ordens independentes que o owner canônico autorizou.
-        # Não reinterpretar o veto aqui nem herdar permissão do conjunto.
+        # O contrato do turno conserva o complemento para a autoria. A rota
+        # prioritária recebe somente o recorte das ordens independentes.
+        segmentos_prioritarios = turno_prioritario.get("segmentos") or ()
         if (
             autoriza_execucao_efetiva(turno_prioritario)
-            and any(
-                bool(s.get("veto_execucao_operacional"))
-                for s in turno_prioritario.get("segmentos", [])
-                if isinstance(s, dict)
+            and (
+                any(s.get("veto_execucao_operacional") for s in segmentos_prioritarios if isinstance(s, dict))
+                or ComplementoConversacionalTurno.da_prioridade(turno_prioritario, str(texto or "")) is not None
             )
         ):
             texto = str(turno_prioritario.get("texto_operacional") or "").strip()
@@ -1108,6 +1228,9 @@ class ComandosImediatosRuntime:
         # resumo por engano.
         if str(texto or "").lstrip().startswith("/"):
             print("⚠️ [COMANDO INTERNO] comando de barra não reconhecido")
+            return True
+
+        if self._processar_nota_documental(texto, ns, turno_atual):
             return True
 
         # É uma leitura explícita da aba atual. Ela precisa vencer caixa de

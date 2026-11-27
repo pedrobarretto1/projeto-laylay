@@ -18,7 +18,7 @@ from typing import Any, TYPE_CHECKING
 from urllib.parse import quote
 import uuid
 
-from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPointF, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent
+from PySide6.QtCore import QByteArray, QBuffer, QIODevice, QObject, QPointF, QRect, Qt, QUrl, QUrlQuery, Signal, Slot, QTimer, QPropertyAnimation, QEasingCurve, QEvent, Property
 from PySide6.QtGui import QImage, QColor, QCursor, QPainterPath, QRegion, QIcon, QPixmap, QPainter, QAction, QGuiApplication
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile, QWebEngineSettings, QWebEngineUrlRequestInterceptor, QWebEngineUrlRequestInfo, QWebEngineUrlScheme, QWebEngineUrlSchemeHandler, QWebEngineUrlRequestJob
@@ -626,6 +626,7 @@ class JanelaInterfaceWebV1(QMainWindow):
         self._desktop_fase = 'idle'
         self._desktop_sequencia = 0
         self._desktop_destino = QRect()
+        self._revelacao_desktop: QRect | None = None
         self._transicao_cobertura: QLabel | None = None
         # A cobertura já esconde a WebView no resize; não gastar pintura de
         # Chromium em cada tamanho intermediário da janela.
@@ -866,6 +867,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             "desktop_page": pagina,
             "desktop_view": 'page' if pagina else 'overview',
             "desktop_phase": self._desktop_fase,
+            "desktop_reveal": self._revelacao_desktop is not None,
             "desktop_transition": self._desktop_sequencia,
             "desktop_target_width": self._desktop_destino.width() or self.width(),
             "desktop_target_height": self._desktop_destino.height() or self.height(),
@@ -903,6 +905,7 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._flags_completa = self.windowFlags()
         self.parar_streaming()
         self._animacao_desktop.stop()
+        self._revelacao_desktop = None
         self._retomar_pintura_web_desktop()
         self._inatividade_desktop_timer.stop()
         self._remover_cobertura_transicao()
@@ -1238,6 +1241,22 @@ class JanelaInterfaceWebV1(QMainWindow):
             tela.availableGeometry(), self.estado_desktop == 'expanded',
             self._pagina_apresentada_desktop(), recolhida=self._desktop_recolhida,
         )
+        if self._revelacao_desktop is not None:
+            if destino == self._desktop_destino and self.estado_desktop == 'expanded':
+                self.ponte_web.publicar(self.apresentacao_publica())
+                return
+            # Uma nova intenção parte da região que estava na tela.
+            origem_visivel = self._revelacao_desktop.translated(self.pos())
+            if self._web_pintura_congelada and self._transicao_cobertura is not None:
+                quadro = self._transicao_cobertura.pixmap()
+                escala = quadro.devicePixelRatio()
+                self._transicao_cobertura.setPixmap(quadro.copy(
+                    0, 0, round(origem_visivel.width() * escala), round(origem_visivel.height() * escala),
+                ))
+            self._animacao_desktop.stop()
+            self._revelacao_desktop = None
+            self.setGeometry(origem_visivel)
+            self._atualizar_mascara_desktop()
         if self._desktop_destino == destino and self._animacao_desktop.state() == QPropertyAnimation.Running:
             self.ponte_web.publicar(self.apresentacao_publica())
             return
@@ -1265,6 +1284,13 @@ class JanelaInterfaceWebV1(QMainWindow):
                 and self._desktop_renderer_preparacao_disponivel
                 and not self._movimento_reduzido()):
             self._desktop_fase = 'starting'
+            if (QGuiApplication.platformName() == 'windows' and self.ponte_web._pronta
+                    and self.isVisible() and destino.contains(geometria_origem)
+                    and geometria_origem.height() <= TAMANHO_ILHA_COMPACTA[1]):
+                self._cobrir_transicao()
+                self._revelacao_desktop = geometria_origem.translated(-destino.topLeft())
+                self._atualizar_mascara_desktop()
+                self.setGeometry(destino)
             self.ponte_web.publicar(self.apresentacao_publica())
             return
         self._desktop_fase = 'resizing'
@@ -1276,6 +1302,46 @@ class JanelaInterfaceWebV1(QMainWindow):
             self._iniciar_animacao_geometria_desktop(destino, geometria_origem)
 
     def iniciar_transicao_desktop(self, sequencia: int) -> None:
+        if sequencia != self._desktop_sequencia or self._desktop_fase != 'starting':
+            return
+        if self._revelacao_desktop is not None:
+            self._aguardar_quadro_desktop(sequencia, tentativas=6)
+        else:
+            self._iniciar_transicao_preparada_desktop(sequencia)
+
+    def _aguardar_quadro_desktop(self, sequencia: int, tentativas: int) -> None:
+        if (self._fechada or self._desktop_fase != 'starting'
+                or sequencia != self._desktop_sequencia or self._revelacao_desktop is None):
+            return
+        # A marca de cor fica no canto excluído pela máscara da janela. Ela
+        # identifica a textura da expansão atual, não apenas o tamanho do DOM.
+        quadro = self.web.grab()
+        imagem = quadro.toImage()
+        margem = max(1, round(2 * quadro.devicePixelRatio()))
+        if imagem.width() > margem and imagem.height() > margem:
+            cor = imagem.pixelColor(imagem.width() - margem, imagem.height() - margem)
+            if cor == QColor(31, 211, 50 + sequencia % 150) and self._quadro_tem_conteudo_desktop(imagem, quadro.devicePixelRatio()):
+                self._iniciar_transicao_preparada_desktop(sequencia, quadro)
+                return
+        if tentativas > 1:
+            QTimer.singleShot(48, self, lambda: self._aguardar_quadro_desktop(sequencia, tentativas - 1))
+        else:
+            # Sem uma textura atual, concluir sem animar um quadro antigo.
+            self._iniciar_transicao_preparada_desktop(sequencia)
+
+    @staticmethod
+    def _quadro_tem_conteudo_desktop(imagem: QImage, escala: float) -> bool:
+        # O canto pode pintar antes do miolo. Conferir também a área que será
+        # revelada primeiro, abaixo da barra anterior de 36 DIP.
+        passo = max(1, round(4 * escala))
+        for y in range(round(58 * escala), min(imagem.height(), round(228 * escala)), passo):
+            for x in range(round(12 * escala), min(imagem.width(), round(400 * escala)), passo):
+                rgb = imagem.pixel(x, y)
+                if max((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255) >= 116:
+                    return True
+        return False
+
+    def _iniciar_transicao_preparada_desktop(self, sequencia: int, quadro: QPixmap | None = None) -> None:
         if (self._fechada or self.modo_apresentacao != 'desktop'
                 or self.estado_desktop != 'expanded'
                 or self._desktop_fase != 'starting'
@@ -1285,24 +1351,38 @@ class JanelaInterfaceWebV1(QMainWindow):
         geometria_origem = QRect(self.geometry())
         self._desktop_fase = 'resizing'
         self.ponte_web.publicar(self.apresentacao_publica())
-        if self._movimento_reduzido():
+        if self._movimento_reduzido() or (self._revelacao_desktop is not None and quadro is None):
             self.setGeometry(destino)
             self._geometria_desktop_concluida()
             return
+        if self._revelacao_desktop is not None:
+            # Revelar o quadro já composto, mantendo controles sob a cobertura
+            # até o ACK de conclusão confirmar o painel interativo.
+            if self._transicao_cobertura is not None:
+                self._transicao_cobertura.setPixmap(quadro)
+                self._pausar_pintura_web_desktop()
+            self._iniciar_animacao_geometria_desktop(self.rect(), self._revelacao_desktop, revelar=True)
+            return
         self._iniciar_animacao_geometria_desktop(destino, geometria_origem)
 
-    def _iniciar_animacao_geometria_desktop(self, destino: QRect, origem: QRect) -> None:
+    def _iniciar_animacao_geometria_desktop(self, destino: QRect, origem: QRect, *, revelar: bool = False) -> None:
         if destino == origem:
             self._geometria_desktop_concluida()
             return
         aumentando = destino.width() > origem.width() or destino.height() > origem.height()
         if aumentando:
             curva = QEasingCurve(QEasingCurve.BezierSpline)
-            curva.addCubicBezierSegment(QPointF(.2, 0), QPointF(.8, 1), QPointF(1, 1))
+            curva.addCubicBezierSegment(QPointF(.24, .15), QPointF(.5, 1), QPointF(1, 1))
         else:
             curva = QEasingCurve(QEasingCurve.InCubic)
         self._animacao_desktop.setEasingCurve(curva)
-        self._animacao_desktop.setDuration(800 if self.estado_desktop == 'expanded' else 360)
+        duracao = 360
+        if self.estado_desktop == 'expanded':
+            # Mais tempo para trajetos longos mantém o deslocamento por quadro menor.
+            distancia = max(abs(destino.width() - origem.width()), abs(destino.height() - origem.height()))
+            duracao = min(500, 360 + distancia // 5) if revelar else min(620, 380 + distancia // 3)
+        self._animacao_desktop.setDuration(duracao)
+        self._animacao_desktop.setPropertyName(b'regiaoReveladaDesktop' if revelar else b'geometry')
         self._animacao_desktop.setStartValue(origem)
         self._animacao_desktop.setEndValue(destino)
         self._animacao_desktop.start()
@@ -1330,6 +1410,9 @@ class JanelaInterfaceWebV1(QMainWindow):
             cobertura.deleteLater()
 
     def _geometria_desktop_concluida(self) -> None:
+        if self._revelacao_desktop is not None:
+            self._revelacao_desktop = None
+            self._atualizar_mascara_desktop()
         self._retomar_pintura_web_desktop()
         if self.modo_apresentacao != 'desktop' or self._fechada:
             return
@@ -1346,6 +1429,8 @@ class JanelaInterfaceWebV1(QMainWindow):
         if self._animacao_desktop.state() == QPropertyAnimation.Running or (largura, altura) != (self.web.width(), self.web.height()):
             return
         if self._desktop_fase not in {'committing', 'starting'}:
+            return
+        if self._desktop_fase == 'starting' and self._revelacao_desktop is not None:
             return
         self._remover_cobertura_transicao()
         # Manter opaco durante todo o shrink, inclusive frames intermediários.
@@ -1394,11 +1479,27 @@ class JanelaInterfaceWebV1(QMainWindow):
 
     def _atualizar_mascara_desktop(self) -> None:
         if self.modo_apresentacao == 'desktop':
+            if self._revelacao_desktop is not None:
+                area = self._revelacao_desktop
+                regiao = self._regiao_desktop(area.width(), area.height())
+                self.setMask(regiao.translated(area.topLeft()))
+                return
             self.setMask(self._regiao_desktop(
                 self.width(), self.height(),
                 compacta=self.estado_desktop == 'compact',
                 recolhida=self._desktop_recolhida and self._desktop_fase != 'resizing',
             ))
+
+    @Property(QRect)
+    def regiaoReveladaDesktop(self) -> QRect:  # noqa: N802
+        return QRect(self._revelacao_desktop or self.rect())
+
+    @regiaoReveladaDesktop.setter
+    def regiaoReveladaDesktop(self, area: QRect) -> None:  # noqa: N802
+        self._revelacao_desktop = area
+        if self._transicao_cobertura is not None:
+            self._transicao_cobertura.move(area.topLeft())
+        self._atualizar_mascara_desktop()
 
     def resizeEvent(self, evento) -> None:  # noqa: N802
         super().resizeEvent(evento)

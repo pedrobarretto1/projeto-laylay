@@ -94,6 +94,8 @@ class CompanhiaCorporalRuntime:
         self._intencao: dict[str, Any] = {}
         self._falha_observada = 0
         self._lock = threading.RLock()
+        self._execucao_corporal = threading.Lock()
+        self._ordens_manuais = 0
         self._revogada = threading.Event()
         self._revogada.set()
         self._concessao: dict[str, Any] | None = None
@@ -184,9 +186,11 @@ class CompanhiaCorporalRuntime:
 
     @staticmethod
     def _canal_permitido(diag: Mapping[str, Any]) -> bool:
-        """USB ou TCP autenticado pelo owner; descoberta não concede movimento."""
+        """USB ou rádio autenticado pelo owner; descoberta não concede movimento."""
+        if diag.get("transporte") == "simulado":
+            return diag.get("modo_conexao") == "bancada_virtual" and diag.get("canal_autenticado") is True
         return diag.get("transporte") == "serial" or (
-            diag.get("transporte") == "tcp" and diag.get("canal_autenticado") is True
+            diag.get("transporte") in {"tcp", "ble"} and diag.get("canal_autenticado") is True
         )
 
     def _recuperar_conexao(self, diag: Mapping[str, Any]) -> dict[str, Any]:
@@ -247,7 +251,7 @@ class CompanhiaCorporalRuntime:
         with self._lock:
             concessao = dict(self._concessao or {})
             ativa = bool(concessao and not self._revogada.is_set())
-            return {"ativa": ativa, "motivo": self._motivo, "transporte_exigido": "serial_ou_tcp_autenticado",
+            return {"ativa": ativa, "motivo": self._motivo, "transporte_exigido": "serial_ou_radio_autenticado",
                     "recuperacao_pendente": bool(self._retomada_pendente),
                     "motivo_suspensao": (self._retomada_pendente or {}).get("motivo_suspensao", ""),
                     "falhas_tecnicas_consecutivas": self._falhas_tecnicas_consecutivas,
@@ -282,6 +286,18 @@ class CompanhiaCorporalRuntime:
             vigente = bool(c and sessao and c.get("sessao")==sessao and not self._revogada.is_set())
         return bool(vigente and not self._atencao_prioritaria()
                     and not projetar_execucao_operacional(self._atividade()))
+
+    def executar_movimento_manual(self, executar: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+        # O gesto em curso perde a vez. A autorização da companhia e a vigia
+        # continuam pertencendo à mesma sessão.
+        with self._lock:
+            self._ordens_manuais += 1
+        try:
+            with self._execucao_corporal:
+                return executar()
+        finally:
+            with self._lock:
+                self._ordens_manuais -= 1
 
     def configurar(self, acao: str, autorizacao: Mapping[str, Any]) -> dict[str, Any]:
         pedido = detectar_intencao_corpo(str(autorizacao.get("texto") or ""))
@@ -351,7 +367,7 @@ class CompanhiaCorporalRuntime:
         with self._lock:
             c = self._concessao
             agora = self.monotonic()
-            return bool(c and not self._revogada.is_set() and c["id"] == meta.get("concessao_id")
+            return bool(c and not self._ordens_manuais and not self._revogada.is_set() and c["id"] == meta.get("concessao_id")
                         and (not meta.get("objetivo_curto_id") or (
                             meta["objetivo_curto_id"] == self._intencao.get("id")
                             and agora <= meta.get("objetivo_curto_ate", -1)))
@@ -590,6 +606,13 @@ class CompanhiaCorporalRuntime:
         return None
 
     def processar(self) -> dict[str, Any]:
+        with self._execucao_corporal:
+            with self._lock:
+                if self._ordens_manuais:
+                    return {"ok": False, "motivo": "movimento_manual_prioritario"}
+            return self._processar_companhia()
+
+    def _processar_companhia(self) -> dict[str, Any]:
         retrato = self._retrato()
         diag = self.corpo.transporte.diagnostico()
         self.corpo.experiencias.observar_sensores(diag, perfil=self.perfil_corporal)
@@ -636,6 +659,16 @@ class CompanhiaCorporalRuntime:
         falha = projetar_falha_operacional(atividade, agora=self.monotonic())
         nova_falha = bool(falha and falha[0] != self._falha_observada)
         proposta = self._proposta_mente(c)
+        imu = diag.get("imu") or {}
+        evento_manuseio = imu.get("evento_manuseio")
+        idade_manuseio = imu.get("idade_fase_ms")
+        recompor = (diag.get("transporte") == "simulado" and not proposta
+            and imu.get("recente") is True and imu.get("manuseio") == "ESTAVEL"
+            and imu.get("fase_manuseio") == "RECOMPONDO"
+            and type(evento_manuseio) is int and evento_manuseio > 0
+            and evento_manuseio != c.get("manuseio_expresso")
+            and type(idade_manuseio) is int and 850 <= idade_manuseio <= 2500
+            and sensores.get("recente") is True and protecao.get("risco") == "NENHUM")
         decisao = decidir_intencao_corporal(self._conversa(), atividade,
             permitir_passeio=bool(c.get("passeio")), nova_emocao=retrato[:2] != anterior[:2],
             passeio_em_repouso=self.monotonic() < c["proximo_passeio"],
@@ -643,7 +676,7 @@ class CompanhiaCorporalRuntime:
             novo_sucesso=novo_sucesso, nova_falha=nova_falha, agora=self.monotonic(),
             interacao_prioritaria=self._atencao_prioritaria(),
             plano=self._plano_pc() if self.perfil_corporal == "rodas_suspensas" or proposta else None,
-            proposta_corporal=proposta, vivencia_sensorial=vivencia)
+            proposta_corporal=proposta, vivencia_sensorial=vivencia, recuperacao_manuseio=recompor)
         self._registrar_intencao(decisao)
         if not decisao.permite_movimento:
             observar = decisao.nome == "atenta"
@@ -688,6 +721,12 @@ class CompanhiaCorporalRuntime:
                 PASSEIOS[self._passeios % len(PASSEIOS)] if decisao.nome == "explorar" else
                 GestoCorporal("interacao_mente", 60, ((100, -100, 150),)) if decisao.nome == "interagir" else
                 GESTOS[4] if decisao.nome == "reagir_falha" else None)
+        if decisao.motivo == "estabilidade_recuperada_apos_manuseio":
+            lado = 1 if evento_manuseio % 2 else -1
+            repetido = (imu.get("repeticoes_manuseio") or 0) > 1
+            gesto = GestoCorporal("recompor_apos_manuseio", 0,
+                                 ((110 * lado, -110 * lado, 105 if repetido else 145),))
+            origem_gesto = "recuperacao_manuseio"
         if gesto is None:
             self._observado = retrato
             return {"ok": False, "motivo": "sem_gesto_novo_ou_em_intervalo"}
@@ -733,6 +772,10 @@ class CompanhiaCorporalRuntime:
         with self._lock:
             if not self._concessao or self._concessao["id"] != c["id"] or self._revogada.is_set():
                 return {"ok": False, "motivo": "concessao_revogada"}
+            if origem_gesto == "recuperacao_manuseio":
+                if self._concessao.get("manuseio_expresso") == evento_manuseio:
+                    return {"ok": False, "motivo": "recomposicao_ja_expressa"}
+                self._concessao["manuseio_expresso"] = evento_manuseio
             self._concessao["gestos"] += 1
             self._observado = retrato
             self._concessao["ultimo_gesto"] = self.monotonic()
@@ -838,7 +881,11 @@ class CompanhiaCorporalRuntime:
             retorno = {**retorno, "interrompido_por_protecao": True,
                 "risco_detectado": receipts_mente[-1].get("risco_detectado"),
                 "protecao": receipts_mente[-1].get("protecao"), "receipts_movimentos": receipts_mente}
-        if not retorno.get("ok"):
+        with self._lock:
+            cedendo_ao_manual = bool(self._ordens_manuais)
+        if not retorno.get("ok") and cedendo_ao_manual:
+            retorno = {**retorno, "motivo": "movimento_manual_prioritario", "cancelado": True}
+        elif not retorno.get("ok"):
             causa_substituida = interrompido_por_causa and self._vigente(meta)
             falha = not self._revogada.is_set() and not causa_substituida
             falha_gesto = falha

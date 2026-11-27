@@ -7,6 +7,10 @@ from mente_laylay.memoria_mental.experiencia_corporal_runtime import criar_exper
 from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado, FalhaExecucaoComFontes
 
 
+LIMITE_CURTO_MOVIMENTO_MS = 500
+LIMITE_LONGO_MOVIMENTO_MS = 5000
+
+
 class PortaTransporteCorpo(Protocol):
     def mover_corpo(self, pwm_esquerdo: int, pwm_direito: int, duracao_ms: int,
                     *, validar_inicio: Callable[[], bool] | None = None) -> dict[str, Any]: ...
@@ -37,6 +41,15 @@ class CorpoMotorRuntime:
             prioridade_interacao_getter=prioridade_interacao_getter,
             **({"monotonic": monotonic} if monotonic is not None else {}))
 
+    def _limite_manual(self, diagnostico: Mapping[str, Any]) -> int:
+        motor = diagnostico.get("motor") or {}
+        if (self.companhia.perfil_corporal == "rodas_suspensas"
+                and isinstance(diagnostico.get("sessao"), str) and diagnostico["sessao"]
+                and motor.get("disponivel") is True
+                and motor.get("duracao_maxima_ms") == LIMITE_LONGO_MOVIMENTO_MS):
+            return LIMITE_LONGO_MOVIMENTO_MS
+        return LIMITE_CURTO_MOVIMENTO_MS
+
     def diagnostico(self) -> dict[str, Any]:
         diag: dict[str, Any] = {}
         try:
@@ -53,6 +66,7 @@ class CorpoMotorRuntime:
             {"sensores":sensores,"sessao":str(diag.get("sessao") or ""),
              "aplicacao_confirmada":diag.get("aplicacao_confirmada")}, perfil=self.companhia.perfil_corporal)
         return {**motor, "pulsos_limitados": True, "duracao_maxima_ms": motor.get("duracao_maxima_ms", 500),
+                "duracao_maxima_manual_ms": self._limite_manual(diag),
                 "autonomia_ativada": self.companhia.diagnostico()["ativa"],
                 "companhia": self.companhia.diagnostico(), "experiencia": experiencia,
                 "sensores": sensores, "imu": diag.get("imu") or {}, "saude":saude, "possui_sensor_de_deslocamento": False}
@@ -134,6 +148,7 @@ class CorpoMotorRuntime:
         if conectada and inercial.get("bloqueio_manuseio"):
             condicao = "manuseio_ou_calibracao"
         modelo = {"origem": "owner_corpo_usb", "ts": time.time(), "turno_id": turno_leitura_id,
+            "transporte_simulado": diag.get("transporte") == "simulado",
             "sessao": diag.get("sessao", ""), "concessao_id": c.get("id", ""),
             "conectada": conectada, "companhia_ativa": ativa and conectada and motor.get("disponivel") is True,
             "passeio_ativo": ativa and conectada and c.get("passeio") is True,
@@ -229,24 +244,38 @@ class CorpoMotorRuntime:
                 angulo_assinado = angulo if direcao == "esquerda" else -angulo
                 ocorrencia = self.experiencias.iniciar(nome=f"giro_medido_{direcao}", origem_intencao="pedido_usuario",
                     perfil=self.companhia.perfil_corporal, angulo_solicitado_graus=angulo_assinado)
-                self.companhia.revogar("movimento_manual_prioritario")
-                return self._executar_manual_observado(ocorrencia, intent,
-                    lambda: self.transporte.girar_corpo(angulo_assinado, pwm=pwm))
+                return self.companhia.executar_movimento_manual(
+                    lambda: self._executar_manual_observado(ocorrencia, intent,
+                        lambda: self.transporte.girar_corpo(angulo_assinado, pwm=pwm)))
             if (direcao not in {"frente", "tras", "esquerda", "direita"}
                     or type(pwm) is not int or not 1 <= pwm <= 255
-                    or type(duracao) is not int or not 50 <= duracao <= 500):
+                    or type(duracao) is not int):
                 return {"ok": False, "motivo": "parametros_corporais_invalidos"}
+            limite = LIMITE_CURTO_MOVIMENTO_MS
+            sessao = ""
+            if duracao > LIMITE_CURTO_MOVIMENTO_MS:
+                diagnostico = self.transporte.diagnostico()
+                limite = self._limite_manual(diagnostico)
+                sessao = diagnostico.get("sessao") or ""
+            if not 50 <= duracao <= limite:
+                return {"ok": False, "motivo": "duracao_corporal_fora_do_limite", "duracao_maxima_ms": limite}
+            if duracao > LIMITE_CURTO_MOVIMENTO_MS and pwm > 160:
+                return {"ok": False, "motivo": "pwm_longo_fora_do_limite"}
             esqu, dire = {
                 "frente": (pwm, pwm), "tras": (-pwm, -pwm),
                 "esquerda": (-pwm, pwm), "direita": (pwm, -pwm),
             }[direcao]
             ocorrencia = self.experiencias.iniciar(nome=f"mover_{direcao}", origem_intencao="pedido_usuario",
                 perfil=self.companhia.perfil_corporal, movimentos=((esqu, dire, duracao),))
-            estava_ativa = self.companhia.diagnostico()["ativa"]
-            self.companhia.revogar("movimento_manual_prioritario")
-            if estava_ativa and (self.transporte.diagnostico().get("motor") or {}).get("em_andamento"):
-                self.transporte.parar_corpo()
-            return self._executar_manual_observado(ocorrencia, intent, lambda: self.transporte.mover_corpo(esqu, dire, duracao))
+            def mover() -> dict[str, Any]:
+                if duracao <= LIMITE_CURTO_MOVIMENTO_MS:
+                    return self.transporte.mover_corpo(esqu, dire, duracao)
+                return self.transporte.mover_corpo(esqu, dire, duracao, validar_inicio=lambda: (
+                    self.companhia.perfil_corporal == "rodas_suspensas"
+                    and self.transporte.diagnostico().get("sessao") == sessao
+                ))
+            return self.companhia.executar_movimento_manual(
+                lambda: self._executar_manual_observado(ocorrencia, intent, mover))
 
 
 def criar_corpo_motor_runtime(**kwargs: Any) -> CorpoMotorRuntime:

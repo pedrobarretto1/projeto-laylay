@@ -138,6 +138,24 @@ ACOES_PAINEL_TERMINAL: Final[tuple[dict[str, str], ...]] = (
         "request": "",
         "intent": "IOT_CONTROL",
     },
+    {
+        "id": "iot_esp32_config",
+        "label": "Configurar ESP32",
+        "request": "",
+        "intent": "IOT_CONFIG",
+    },
+    {
+        "id": "iot_esp32_painel",
+        "label": "Abrir painel do ESP32",
+        "request": "",
+        "intent": "IOT_CONFIG",
+    },
+    {
+        "id": "iot_forget",
+        "label": "Esquecer dispositivo",
+        "request": "",
+        "intent": "IOT_CONFIG",
+    },
 )
 
 ACOES_RAPIDAS_POR_ID: Final[dict[str, dict[str, str]]] = {

@@ -18,6 +18,7 @@ from mente_laylay.cognicao.referencias_linguagem import (
     moldura_narrativa_inicial,
 )
 from mente_laylay.cognicao.gramatica_operacional import (
+    referencia_resposta_para_nota,
     texto_pede_avanco_midia_via_vai,
     texto_pede_restauracao_contextual,
     tipo_recurso_nucleo_operacional,
@@ -31,6 +32,7 @@ from mente_laylay.arquivos.nome_natural import (
 
 from mente_laylay.cognicao.normalizacao_linguagem import (
     PADRAO_COORDENACAO_OPERACIONAL,
+    adiamento_de_assunto,
     corrigir_erros_portugues_operacionais,
     remover_conector_discursivo_inicial,
     separar_adjunto_pessoal_inicial,
@@ -824,7 +826,8 @@ def _classificar_modalidade_base(
     # oração diretiva. Uma lista menor aqui perdia inclusive verbos que a
     # própria P0 já conhecia (ajuste, renomeie, minimize), e impedia separar
     # comandos conjuntos. O léxico não resolve capacidade, alvo ou efeito.
-    imperativo_direto = bool(_P0_PEDIDO_DIRETO_INICIAL.match(t))
+    imperativo_direto = (bool(_P0_PEDIDO_DIRETO_INICIAL.match(t))
+                         or referencia_resposta_para_nota(t) is not None)
     # Verbos do corpo entram na mesma classificação de ato e nas mesmas
     # proteções P0. A gramática de domínio só fornece o alvo implícito (a
     # própria ponte), nunca uma segunda política de autorização.
@@ -1534,7 +1537,7 @@ def _evidencia_pergunta_independente(
     # indireta sem ponto de interrogação. Isto prova uma fronteira de ato,
     # não sua autoridade: inventários e destinos seguem na classificação.
     indireta = bool(re.match(
-        r"^(?:me\s+)?(?:diga|diz|fale|fala)\s+"
+        r"^(?:(?:me\s+)?(?:diga|diz|fale|fala)|me\s+(?:conta|conte))\s+"
         r"(?:qual|quais|quem|onde|quando|como|quanto|quantos|quantas|o\s+que|por\s+que)\b",
         t, flags=re.IGNORECASE,
     ))
@@ -1728,11 +1731,28 @@ def _separar_primeira_fronteira_forte(
     adjunto_papel, _ = separar_adjunto_papel_inicial(bloco,
         fonte_literal=_fonte_literal_do_bloco(bloco, texto_original))
     virgula_papel = len(adjunto_papel.rstrip()) - 1 if adjunto_papel else -1
-    for m in re.finditer(
+    marcas = tuple(re.finditer(
         r"(?P<sep>[,;!?]|\.+)\s*(?P<conj>(?:mas|e|entao)\s+)?",
         bloco,
         flags=re.IGNORECASE,
-    ):
+    ))
+    # A consulta pode ser o antecedente da diretiva seguinte. Conferir o
+    # prefixo completo antes de cortar na interrogação preserva a autoria
+    # textual e ainda permite classificar o pedido independente à direita.
+    if "?" in bloco:
+        for m in marcas:
+            separador = m.group("sep")
+            fim = m.end("sep")
+            if separador not in {".", "!", "?"} or "?" not in bloco[:m.start()]:
+                continue
+            if (fim < len(bloco) and not bloco[fim].isspace()) or any(
+                abertura < m.start() < fechamento for abertura, fechamento in pares_aspas.items()
+            ):
+                continue
+            esquerda, direita = bloco[:fim].strip(), _limpar_ato_semantico(bloco[m.end():])
+            if direita and tipo_transformacao_conversacional(esquerda):
+                return m, esquerda, direita, "TRANSFORMACAO_CONVERSACIONAL_COMPOSTA"
+    for m in marcas:
         if any(inicio < m.start() < fim for inicio, fim in pares_aspas.items()):
             continue
         if m.group('sep') == ',' and m.start() == virgula_adjunto:
@@ -1813,6 +1833,11 @@ def _separar_primeira_fronteira_forte(
                 esquerda, normalizar_texto=normalizar_texto,
             )[0]:
                 return m, esquerda, direita, "ATO_CONDICIONADO"
+
+        # O tema adiado termina no próprio complemento temporal, inclusive
+        # quando a continuação é um relato e não outra diretiva ou pergunta.
+        if adiamento_de_assunto(esquerda):
+            return m, esquerda, direita, "ADIAMENTO_DE_ASSUNTO"
 
         # Uma transformação textual completa também é um ato independente.
         # Não a fundir à pergunta anterior só porque ela dispensa executor;
@@ -2014,11 +2039,12 @@ def _segmentar_turno_misto(
     t = re.sub(r"\s+", " ", str(texto_estrutural or "")).strip()
     if not t:
         return []
+    from mente_laylay.cognicao.referencias_linguagem import consulta_escolha_justificada
 
     # Citações e a restrição de não executar pertencem ao ato discursivo.
     # Só um match integral pode preservar o bloco; pedidos mistos seguem
     # para a segmentação normal abaixo.
-    if tipo_transformacao_conversacional(t):
+    if tipo_transformacao_conversacional(t) or consulta_escolha_justificada(t):
         return [t]
 
     # As duas cláusulas formam uma única política: a segunda não é um novo
@@ -2052,7 +2078,10 @@ def _segmentar_turno_misto(
                 continue
 
             _m, esquerda, direita, _origem = corte
-            papel_esquerda = "adjunto_finalidade" if _origem == "MATRIZ_APOS_ADJUNTO" else ""
+            papel_esquerda = {
+                "MATRIZ_APOS_ADJUNTO": "adjunto_finalidade",
+                "TRANSFORMACAO_CONVERSACIONAL_COMPOSTA": "transformacao_composta",
+            }.get(_origem, "")
             novos.extend([(esquerda, papel_esquerda), (direita, "")])
             mudou = True
 
@@ -2075,13 +2104,17 @@ def _segmentar_turno_misto(
         if moldura_narrativa_inicial(bloco):
             finais.append(bloco)
             continue
+        if consulta_escolha_justificada(bloco):
+            # «E por quê?» pede o critério da escolha, dentro do mesmo ato.
+            finais.append(bloco)
+            continue
         atual = bloco
 
         while True:
             corte = None
             pares_aspas = mapear_pares_aspas_globais(atual) or {}
             for m in re.finditer(
-                rf"\s+(?P<conj>{PADRAO_COORDENACAO_OPERACIONAL}|mas)\s+",
+                rf"\s+(?P<conj>{PADRAO_COORDENACAO_OPERACIONAL}|mas)(?=\s)",
                 atual,
                 flags=re.IGNORECASE,
             ):
@@ -2096,6 +2129,8 @@ def _segmentar_turno_misto(
                 )
                 if not esquerda or not direita:
                     continue
+                if m['conj'].casefold() == 'depois' and adiamento_de_assunto(atual[:m.end()]):
+                    continue  # Neste ato, "depois" pertence a "para depois".
 
                 condicao_atual = _inicio_condicao_nao_verificada(atual)
                 if condicao_atual is not None:
@@ -2114,6 +2149,10 @@ def _segmentar_turno_misto(
                     # Sem fronteira de independência, uma coordenação não
                     # desliga a condição de nenhuma consequência do conjunto.
                     continue
+
+                if adiamento_de_assunto(esquerda):
+                    corte = (esquerda, direita)
+                    break
 
                 esq_ok, _ = _evidencia_ato_operacional(
                     esquerda,
@@ -2491,6 +2530,7 @@ _P0_VERBOS_PEDIDO_DIRETO = (
     r"altera|altere|muda|mude|ajusta|ajuste|"
     r"executa|execute|repete|repita|refaz|refaca|tenta|tente|"
     r"leia|verifique|resuma|resume|acha|ache|localiza|localize|"
+    r"(?:da|dá|de|dê)(?=\s+uma\s+girada\b)|"
     r"anda|ande|avanca|avance|recua|recue|gira|gire|vira|vire|para|pare|ativa|ative|desativa|desative"
     r")"
 )
@@ -2507,6 +2547,7 @@ _P0_VERBOS_INFINITIVO_OPERACIONAL = (
     r"alterar|mudar|ajustar|"
     r"executar|repetir|refazer|tentar|"
     r"ler|ver|olhar|mostrar|passar|verificar|resumir|achar|localizar|"
+    r"dar(?=\s+uma\s+girada\b)|"
     r"andar|avancar|recuar|girar|virar|parar|ativar|desativar"
     r")"
 )

@@ -7,7 +7,7 @@ from typing import Any, Callable
 from mente_laylay.autonomia.contrato_executor import ResultadoDespacho
 from mente_laylay.cognicao.modalidade_turno import autoriza_execucao_efetiva
 from mente_laylay.cognicao.gramatica_corpo import detectar_intencao_corpo
-from mente_laylay.memoria_mental.resultado_acao import AspectoResultado
+from mente_laylay.memoria_mental.resultado_acao import AspectoResultado, ResultadoAcao
 from mente_laylay.memoria_mental.decisao_observada import FontesComparacaoResultado, FalhaExecucaoComFontes
 from mente_laylay.memoria_mental.experiencia_corporal_runtime import medicoes_rotacao_observadas, nao_qualificacoes_rotacao_observadas
 
@@ -17,6 +17,26 @@ class DependenciasExecutorCorpo:
     marcar_resultado: Callable[..., Any]
     falar_por_status: Callable[..., Any]
     id_solicitacao: str = ""
+
+
+def _movimento_corresponde(proposto: dict[str, Any], autorizado: dict[str, Any]) -> bool:
+    return all(chave not in proposto or (type(proposto[chave]) is type(autorizado.get(chave))
+                                        and proposto[chave] == autorizado.get(chave))
+               for chave in ("direcao", "pwm", "duracao_ms", "angulo_graus"))
+
+
+def fala_impedimento_movimento(resultado: ResultadoAcao) -> str:
+    """Realiza somente impedimentos emitidos pelo executor para esta ação."""
+    if (resultado.intent != "CORPO_MOVER" or resultado.origem != "executor"
+            or resultado.status != "nao_executado_por_politica" or resultado.executou is not False):
+        return ""
+    receipt = resultado.contexto.get("receipt_corpo") or {}
+    if receipt.get("motivo") == "lado_nao_informado":
+        return "Quer que eu gire para a esquerda ou para a direita?"
+    limite = receipt.get("duracao_maxima_ms")
+    if receipt.get("motivo") == "duracao_corporal_fora_do_limite" and type(limite) is int:
+        return f"Neste perfil, cada movimento precisa durar entre 50 e {limite} milissegundos. Não executei esse movimento."
+    return ""
 
 
 def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original: str,
@@ -61,9 +81,11 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
             parte = detectar_intencao_corpo(str(segmento.get("texto") or ""))
             if parte and parte["intent"] == intent:
                 candidatos.append(parte)
-        candidato = next((parte for parte in candidatos if intent == "CORPO_PARAR"
-                          or (intent == "CORPO_COMPANHIA" and parte["params"].get("acao") == params.get("acao"))
-                          or (intent == "CORPO_MOVER" and parte["params"].get("direcao") == params.get("direcao"))), None)
+        correspondentes = [parte for parte in candidatos if intent == "CORPO_PARAR"
+                           or (intent == "CORPO_COMPANHIA" and parte["params"].get("acao") == params.get("acao"))
+                           or (intent == "CORPO_MOVER" and _movimento_corresponde(params, parte["params"]))]
+        if correspondentes and all(parte == correspondentes[0] for parte in correspondentes):
+            candidato = correspondentes[0]
     resolver_repeticao = ctx.get("_resolver_repeticao_ultima_acao")
     repeticao = resolver_repeticao(texto_original) if callable(resolver_repeticao) and not candidato else None
     repeticao_valida = bool(isinstance(repeticao, dict) and repeticao.get("intent") == intent
@@ -74,14 +96,16 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
             or (candidato and candidato["intent"] != intent)):
         return concluir("bloqueado_sem_autorizacao", ok=False, detalhe="o turno não autorizou este pedido corporal",
                         fala="Preciso de um pedido atual de movimento ou parada para acionar o corpo.")
-    # Um comando proposto não pode trocar a direção presente na fala atual.
-    if candidato and intent == "CORPO_MOVER" and any(
-        params.get(chave, candidato["params"].get(chave)) != candidato["params"].get(chave)
-        for chave in ("direcao", "pwm", "duracao_ms", "angulo_graus")
-        if chave in candidato["params"] or chave in params
-    ):
-        return concluir("bloqueado_alvo_divergente", ok=False, detalhe="direção difere da fala autorizadora",
-                        fala="O movimento proposto não corresponde à direção que você pediu.")
+    if candidato and intent == "CORPO_MOVER":
+        if not _movimento_corresponde(params, candidato["params"]):
+            return concluir("bloqueado_alvo_divergente", ok=False, detalhe="parâmetros diferem da fala autorizadora",
+                            fala="O movimento proposto não corresponde ao que você pediu.")
+        # Campos omitidos por uma proposta não descartam parâmetros da fala.
+        params = candidato["params"]
+        if not params["direcao"]:
+            return concluir("nao_executado_por_politica", ok=False, detalhe="lado do giro não especificado",
+                            fala="Quer que eu gire para a esquerda ou para a direita?",
+                            receipt={"motivo": "lado_nao_informado"})
     if intent == "CORPO_COMPANHIA" and (not candidato or params != candidato["params"]):
         return concluir("bloqueado_sem_autorizacao", ok=False, detalhe="concessão difere do pedido atual",
                         fala="Ative o modo companhia na bancada ou na área delimitada para permitir os gestos.")
@@ -106,6 +130,12 @@ def executar_intencao_corpo(intent: str, params: dict[str, Any], texto_original:
         return concluir("falha_execucao", ok=False, detalhe=f"executor corporal: {type(erro).__name__}",
                         fala="O controle do corpo falhou. Não consegui confirmar a execução.")
     if receipt.get("ok") is not True:
+        if receipt.get("motivo") == "duracao_corporal_fora_do_limite":
+            limite = receipt["duracao_maxima_ms"]
+            return concluir("nao_executado_por_politica", ok=False,
+                            detalhe=f"duração solicitada: {params['duracao_ms']} ms; limite neste perfil: {limite} ms",
+                            fala=f"Neste perfil, cada movimento precisa durar entre 50 e {limite} milissegundos. Não executei esse movimento.",
+                            receipt=receipt)
         if intent == "CORPO_COMPANHIA":
             return concluir("falha_execucao", ok=False, detalhe=str(receipt.get("motivo") or "modo indisponível"),
                             fala="Não consegui confirmar o modo companhia. Preciso do corpo conectado pela USB e pronto.", receipt=receipt)
