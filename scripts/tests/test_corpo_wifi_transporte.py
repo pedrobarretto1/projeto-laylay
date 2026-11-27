@@ -41,6 +41,17 @@ def test_factory_auto_prepara_dois_canais_sem_abrir_socket_ou_usb(tmp_path, monk
     assert TOKEN_TESTE not in str(dados)
 
 
+@pytest.mark.parametrize("porta", ["AUTO", "WIFI"])
+def test_wifi_reutiliza_raiz_explicita_do_gerenciador_de_hotspot(tmp_path, monkeypatch, porta):
+    configurar(tmp_path, monkeypatch)
+    raiz_hotspot = tmp_path / "instalacao-original"
+    monkeypatch.setenv("LAYLAY_CORPO_HOTSPOT_RAIZ", str(raiz_hotspot))
+    runtime = criar_rosto_oled_runtime(porta=porta, estado_getter=lambda: {},
+        abrir_serial=proibido, abrir_tcp=proibido, listar_portas=proibido)
+    assert runtime.rede_local.raiz == raiz_hotspot.resolve()
+    assert not runtime.diagnostico()["conectado"]
+
+
 @pytest.mark.parametrize('arquivo_presente', [True, False])
 def test_wifi_explicito_prevalece_sobre_preferencia_usb_sem_fallback(tmp_path, monkeypatch, arquivo_presente):
     caminho = configurar(tmp_path, monkeypatch)

@@ -1178,6 +1178,8 @@ def criar_rosto_oled_runtime(**kwargs: Any) -> RostoOledRuntime:
                 kwargs["wifi_alternativo_path"] = caminho_wifi
     kwargs["porta"] = "" if automatico or desligado or rede_explicita or ble_explicito else porta
     kwargs.setdefault("autodetectar", automatico and "config_wifi_path" not in kwargs)
-    if "config_wifi_path" in kwargs or "wifi_alternativo_path" in kwargs:
-        kwargs.setdefault("rede_local", RedeLocalCorpoWindows())
+    if ("config_wifi_path" in kwargs or "wifi_alternativo_path" in kwargs) and "rede_local" not in kwargs:
+        raiz_hotspot = os.environ.get("LAYLAY_CORPO_HOTSPOT_RAIZ", "").strip()
+        kwargs["rede_local"] = RedeLocalCorpoWindows(
+            raiz=Path(raiz_hotspot).expanduser().resolve() if raiz_hotspot else None)
     return RostoOledRuntime(**kwargs)

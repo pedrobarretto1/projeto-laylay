@@ -24,6 +24,18 @@ O JSON guarda o IP obtido do roteador. Se o DHCP mudar esse endereço, execute
 novamente a configuração local. `laylay-corpo.local` é anunciado pela placa,
 mas nesta versão o cliente usa IPv4 para limitar o tempo de conexão.
 
+### Usar outra cópia no mesmo PC
+
+Mantenha o pareamento local em `memoria/corpo_wifi.json` e o perfil do hotspot
+em `memoria/corpo_hotspot_windows.json`. Em `configuracao.env`, preserve
+a identidade USB e o perfil corporal que você já usa.
+
+Se o hotspot é gerenciado pela instalação original, defina
+`LAYLAY_CORPO_HOTSPOT_RAIZ` com o caminho absoluto daquela instalação.
+A cópia passa a verificar o processo e o recibo daquele gerenciador ao
+reconectar. A verificação continua exigindo o script esperado e a rede
+confirmada. O token do ESP32 continua sendo validado na conexão.
+
 ### Endereço fixo por rede
 
 O firmware aceita configuração local pela USB, separada das credenciais NVS:
